@@ -18,7 +18,13 @@ abstract contract TimelockOwner is Initializable {
     address timelockOwnerCandidate;
 
     /// @notice event emitted when owner is updated
-    event OwnerUpdated(address indexed newOwner);
+    event TimelockOwnerUpdated(address indexed newTimelockOwner);
+
+    /// @notice event emitted when new TimelockOwner is proposed
+    event TimelockOwnerProposed(address indexed proposedTimelockOwner);
+
+    /// @notice event emitted when new TimelockOwner proposal cancelled
+    event canceledTimelockOwnerProposal(address indexed from);
 
     /// @notice Check for zero address
     /// @dev Modifier
@@ -43,7 +49,7 @@ abstract contract TimelockOwner is Initializable {
     {
         timelockOwner = _timelockOwner;
         lockedPeriod = 7200;
-        emit OwnerUpdated(_timelockOwner);
+        emit TimelockOwnerUpdated(_timelockOwner);
     }
 
     /**
@@ -56,6 +62,7 @@ abstract contract TimelockOwner is Initializable {
     {
         timestamp = block.timestamp;
         timelockOwnerCandidate = _timelockOwnerCandidate;
+        emit TimelockOwnerProposed(_timelockOwnerCandidate);
     }
 
     /**
@@ -72,7 +79,7 @@ abstract contract TimelockOwner is Initializable {
             "Locking period not expired"
         );
         timelockOwner = timelockOwnerCandidate;
-        emit OwnerUpdated(timelockOwnerCandidate);
+        emit TimelockOwnerUpdated(timelockOwnerCandidate);
     }
 
     /**
@@ -85,6 +92,7 @@ abstract contract TimelockOwner is Initializable {
                 "ERR NOT autorized for cancelling timelock ownership proposal"
             );
         timelockOwnerCandidate = address(0x0);
+        emit canceledTimelockOwnerProposal(msg.sender);
     }
 
     /**********************
