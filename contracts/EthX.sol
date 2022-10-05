@@ -4,18 +4,21 @@ pragma solidity ^0.8.2;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
  * @title ethX Contract
  * @author Stader Labs
  * @notice The ERC20 contract for the ethX token
  */
-contract ETHX is ERC20, ERC20Burnable, AccessControl {
+contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     constructor() ERC20("ETHX", "ETHX") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
+        _grantRole(PAUSER_ROLE, msg.sender);
     }
 
     /**
@@ -23,7 +26,7 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl {
      * @param to the account to mint to
      * @param amount the amount of ethX to mint
      */
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) whenNotPaused() {
         _mint(to, amount);
     }
 
@@ -36,12 +39,38 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl {
         public
         override
         onlyRole(MINTER_ROLE)
+        whenNotPaused()
     {
         _burn(account, amount);
     }
 
-    function setMinterRole(address _minterRole) external onlyRole(MINTER_ROLE) {
+    function setMinterRole(address _minterRole) external onlyRole(MINTER_ROLE) whenNotPaused() {
         _grantRole(MINTER_ROLE, _minterRole);
         approve(_minterRole, type(uint256).max);
+    }
+
+    function transfer(address to, uint256 amount) public virtual override whenNotPaused() returns (bool) {
+        address owner = _msgSender();
+        _transfer(owner, to, amount);
+        return true;
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) public virtual override whenNotPaused() returns (bool) {
+        address spender = _msgSender();
+        _spendAllowance(from, spender, amount);
+        _transfer(from, to, amount);
+        return true;
+    }
+
+    function pause() public onlyRole(PAUSER_ROLE) whenNotPaused() {
+        _pause();
+    }
+
+    function unpause() public onlyRole(PAUSER_ROLE) {
+        _unpause();
     }
 }
