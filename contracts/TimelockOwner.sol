@@ -73,7 +73,7 @@ abstract contract TimelockOwner is Initializable {
         external
         checkTimelockOwner
     {
-        require(timestamp!=type(uint256).max, "NO Valid Proposal for ownership");
+        require(timestamp!=(type(uint256).max-lockedPeriod), "No proposal active");
         require(
             timestamp + lockedPeriod >= block.timestamp,
             "Locking period not expired"
@@ -89,7 +89,7 @@ abstract contract TimelockOwner is Initializable {
     function cancelTimelockOwnerProposal() external {
         require(timelockOwnerCandidate == msg.sender || timelockOwner == msg.sender, "NOT authorized to cancel proposal");
         timelockOwnerCandidate = address(0);
-        timestamp = type(uint256).max;
+        timestamp = type(uint256).max - lockedPeriod;
         emit canceledTimelockOwnerProposal(msg.sender);
     }
 
