@@ -180,7 +180,7 @@ contract StaderStakePoolsManager is TimelockOwner {
         );
         poolWeights[0] = _staderSSVStakePoolWeight;
         poolWeights[1] = _staderManagedStakePoolWeight;
-        emit updatedPoolWeights(poolWeights[0],poolWeights[1]);
+        emit updatedPoolWeights(poolWeights[0], poolWeights[1]);
     }
 
     /**
@@ -198,7 +198,7 @@ contract StaderStakePoolsManager is TimelockOwner {
     {
         poolAddresses[0] = _staderSSVStakePoolAddress;
         poolAddresses[1] = _staderManagedStakePoolAddress;
-        emit updatedPoolAddresses(poolAddresses[0],poolAddresses[1]);
+        emit updatedPoolAddresses(poolAddresses[0], poolAddresses[1]);
     }
 
     /**
