@@ -8,14 +8,14 @@ abstract contract TimelockOwner is Initializable {
     uint256 public lockedPeriod;
 
     ///@dev timestamp of change owner request, owner can be changed after waiting for lockedPeriod
-    uint256 timestamp;
+    uint256 public timestamp;
 
     /// @notice address of multisig admin account which act as the owner for Stader's Ethereum Staking DAO operations
-    address timelockOwner;
+    address public timelockOwner;
 
     ///@notice address of new multisig admin account which will act as the new owner for Stader's
     /// Ethereum Staking DAO operations after lockedPeriod if change owner proposal not cancelled in the meantime
-    address timelockOwnerCandidate;
+    address public timelockOwnerCandidate;
 
     /// @notice event emitted when owner is updated
     event TimelockOwnerUpdated(address indexed newTimelockOwner);
@@ -36,8 +36,7 @@ abstract contract TimelockOwner is Initializable {
     /// @notice Check for TimelockOwner
     /// @dev Modifier
     modifier checkTimelockOwner() {
-        if (msg.sender != timelockOwner)
-            revert("Errr NOT autorized for DAO operation");
+        require(msg.sender == timelockOwner,"Errr NOT authorized for DAO operation");
         _;
     }
 
@@ -49,6 +48,7 @@ abstract contract TimelockOwner is Initializable {
     {
         timelockOwner = _timelockOwner;
         lockedPeriod = 7200;
+        timestamp= type(uint256).max;
         emit TimelockOwnerUpdated(_timelockOwner);
     }
 
@@ -71,15 +71,15 @@ abstract contract TimelockOwner is Initializable {
      */
     function acceptTimelockOwnership()
         external
-        checkZeroAddress(timelockOwnerCandidate)
         checkTimelockOwner
     {
+        require(timestamp!=type(uint256).max, "NO Valid Proposal for ownership");
         require(
             timestamp + lockedPeriod >= block.timestamp,
             "Locking period not expired"
         );
         timelockOwner = timelockOwnerCandidate;
-        emit TimelockOwnerUpdated(timelockOwnerCandidate);
+        emit TimelockOwnerUpdated(timelockOwner);
     }
 
     /**
@@ -87,35 +87,10 @@ abstract contract TimelockOwner is Initializable {
      * Can only be called by the timelockOwnerCandidate or timelockOwner
      */
     function cancelTimelockOwnerProposal() external {
-        if (timelockOwnerCandidate != msg.sender && timelockOwner != msg.sender)
-            revert(
-                "ERR NOT autorized for cancelling timelock ownership proposal"
-            );
-        timelockOwnerCandidate = address(0x0);
+        require(timelockOwnerCandidate == msg.sender || timelockOwner == msg.sender, "NOT authorized to cancel proposal");
+        timelockOwnerCandidate = address(0);
+        timestamp = type(uint256).max;
         emit canceledTimelockOwnerProposal(msg.sender);
-    }
-
-    /**********************
-     * Getter functions   *
-     **********************/
-
-    /**
-     * @dev Returns the address of the current timelock owner.
-     */
-    function getTimelockOwner() public view virtual returns (address) {
-        return timelockOwner;
-    }
-
-    /**
-     * @dev Returns the address of the new timelock owner candidate.
-     */
-    function getTimelockOwnerCandidate()
-        external
-        view
-        virtual
-        returns (address)
-    {
-        return timelockOwnerCandidate;
     }
 
     /**********************
