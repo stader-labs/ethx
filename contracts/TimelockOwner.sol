@@ -36,7 +36,10 @@ abstract contract TimelockOwner is Initializable {
     /// @notice Check for TimelockOwner
     /// @dev Modifier
     modifier checkTimelockOwner() {
-        require(msg.sender == timelockOwner,"Errr NOT authorized for DAO operation");
+        require(
+            msg.sender == timelockOwner,
+            "Errr NOT authorized for DAO operation"
+        );
         _;
     }
 
@@ -48,7 +51,7 @@ abstract contract TimelockOwner is Initializable {
     {
         timelockOwner = _timelockOwner;
         lockedPeriod = 7200;
-        timestamp= type(uint256).max;
+        timestamp = type(uint256).max;
         emit TimelockOwnerUpdated(_timelockOwner);
     }
 
@@ -69,11 +72,11 @@ abstract contract TimelockOwner is Initializable {
      * @notice Assigns the ownership of the contract to timelockOwnerCandidate. Can only be called by the timelockOwner.
      * @dev new time lock owner can be set after waiting for lockedPeriod
      */
-    function acceptTimelockOwnership()
-        external
-        checkTimelockOwner
-    {
-        require(timestamp!=type(uint256).max, "NO Valid Proposal for ownership");
+    function acceptTimelockOwnership() external checkTimelockOwner {
+        require(
+            timestamp != type(uint256).max,
+            "NO Valid Proposal for ownership"
+        );
         require(
             timestamp + lockedPeriod >= block.timestamp,
             "Locking period not expired"
@@ -87,7 +90,10 @@ abstract contract TimelockOwner is Initializable {
      * Can only be called by the timelockOwnerCandidate or timelockOwner
      */
     function cancelTimelockOwnerProposal() external {
-        require(timelockOwnerCandidate == msg.sender || timelockOwner == msg.sender, "NOT authorized to cancel proposal");
+        require(
+            timelockOwnerCandidate == msg.sender || timelockOwner == msg.sender,
+            "NOT authorized to cancel proposal"
+        );
         timelockOwnerCandidate = address(0);
         timestamp = type(uint256).max;
         emit canceledTimelockOwnerProposal(msg.sender);

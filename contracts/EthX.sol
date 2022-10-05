@@ -26,7 +26,11 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
      * @param to the account to mint to
      * @param amount the amount of ethX to mint
      */
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) whenNotPaused() {
+    function mint(address to, uint256 amount)
+        public
+        onlyRole(MINTER_ROLE)
+        whenNotPaused
+    {
         _mint(to, amount);
     }
 
@@ -39,17 +43,27 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
         public
         override
         onlyRole(MINTER_ROLE)
-        whenNotPaused()
+        whenNotPaused
     {
         _burn(account, amount);
     }
 
-    function setMinterRole(address _minterRole) external onlyRole(MINTER_ROLE) whenNotPaused() {
+    function setMinterRole(address _minterRole)
+        external
+        onlyRole(MINTER_ROLE)
+        whenNotPaused
+    {
         _grantRole(MINTER_ROLE, _minterRole);
         approve(_minterRole, type(uint256).max);
     }
 
-    function transfer(address to, uint256 amount) public virtual override whenNotPaused() returns (bool) {
+    function transfer(address to, uint256 amount)
+        public
+        virtual
+        override
+        whenNotPaused
+        returns (bool)
+    {
         address owner = _msgSender();
         _transfer(owner, to, amount);
         return true;
@@ -59,14 +73,14 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
         address from,
         address to,
         uint256 amount
-    ) public virtual override whenNotPaused() returns (bool) {
+    ) public virtual override whenNotPaused returns (bool) {
         address spender = _msgSender();
         _spendAllowance(from, spender, amount);
         _transfer(from, to, amount);
         return true;
     }
 
-    function pause() public onlyRole(PAUSER_ROLE) whenNotPaused() {
+    function pause() public onlyRole(PAUSER_ROLE) whenNotPaused {
         _pause();
     }
 
