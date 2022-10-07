@@ -4,8 +4,7 @@ pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract StaderValidatorRegistry is Initializable, OwnableUpgradeable{
-
+contract StaderValidatorRegistry is Initializable, OwnableUpgradeable {
     address staderSSVStakePool;
     address staderManagedStakePool;
     uint256 public validatorCount;
@@ -21,27 +20,31 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable{
 
     /// @notice zero address check modifier
     modifier onlyPool() {
-        require(msg.sender== staderSSVStakePool || msg.sender== staderManagedStakePool, "Not a pool address");
+        require(
+            msg.sender == staderSSVStakePool ||
+                msg.sender == staderManagedStakePool,
+            "Not a pool address"
+        );
         _;
     }
 
-    struct Validator{
+    struct Validator {
         bytes pubKey; //public Key of the validator
         bytes withdrawal_credentials; //public key for withdraw
         bytes signature; //signature for deposit to Ethereum Deposit contract
         bytes32 deposit_data_root; //deposit data root for deposit to Ethereum Deposit contract
         bool depositStatus; //Deposit Status indicates wheather 32ETh deposited for that validator
     }
-    mapping (uint256 => Validator) public validatorRegistry;
+    mapping(uint256 => Validator) public validatorRegistry;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
-    function initialize() external initializer{
+    function initialize() external initializer {
         __Ownable_init_unchained();
-        validatorCount=0;
+        validatorCount = 0;
     }
-    
+
     /**
      * @dev add a validator to the registry
      * @param _pubKey public Key of the validator
@@ -71,7 +74,11 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable{
      * @notice set stader ssv stake pool address
      * @param _staderSSVStakePool address of staderSSVStakePool
      */
-    function setstaderSSVStakePoolAddress(address _staderSSVStakePool) external checkZeroAddress(_staderSSVStakePool) onlyOwner{
+    function setstaderSSVStakePoolAddress(address _staderSSVStakePool)
+        external
+        checkZeroAddress(_staderSSVStakePool)
+        onlyOwner
+    {
         staderSSVStakePool = _staderSSVStakePool;
     }
 
@@ -79,7 +86,11 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable{
      * @notice set stader managed stake pool address
      * @param _staderManagedStakePool address of staderManagedStakePool
      */
-    function setstaderManagedStakePoolAddress(address _staderManagedStakePool) external checkZeroAddress(_staderManagedStakePool) onlyOwner{
+    function setstaderManagedStakePoolAddress(address _staderManagedStakePool)
+        external
+        checkZeroAddress(_staderManagedStakePool)
+        onlyOwner
+    {
         staderManagedStakePool = _staderManagedStakePool;
     }
 }
