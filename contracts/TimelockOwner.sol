@@ -1,3 +1,4 @@
+// File: contracts/StaderStakePoolsManager.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
@@ -73,10 +74,7 @@ abstract contract TimelockOwner is Initializable {
      * @dev new time lock owner can be set after waiting for lockedPeriod
      */
     function acceptTimelockOwnership() external checkTimelockOwner {
-        require(
-            timestamp != (type(uint256).max - lockedPeriod),
-            "No proposal active"
-        );
+        require(timestamp != (type(uint256).max), "No proposal active");
         require(
             timestamp + lockedPeriod >= block.timestamp,
             "Locking period not expired"
@@ -95,7 +93,7 @@ abstract contract TimelockOwner is Initializable {
             "NOT authorized to cancel proposal"
         );
         timelockOwnerCandidate = address(0);
-        timestamp = type(uint256).max - lockedPeriod;
+        timestamp = type(uint256).max;
         emit canceledTimelockOwnerProposal(msg.sender);
     }
 
