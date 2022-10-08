@@ -100,8 +100,8 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         _staderSSVRegistry.publicShares = _publicShares;
         _staderSSVRegistry.encyptedShares = _encyptedShares;
         _staderSSVRegistry.operatorIDs = _operatorIDs;
-        emit addedTostaderSSVRegistry(_pubKey, staderSSVRegistryCount);
         staderSSVRegistryCount++;
+        emit addedTostaderSSVRegistry(_pubKey, staderSSVRegistryCount);
     }
 
     /**

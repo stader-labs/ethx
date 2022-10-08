@@ -5,8 +5,8 @@ pragma solidity ^0.8.2;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract StaderValidatorRegistry is Initializable, OwnableUpgradeable {
-    address staderSSVStakePool;
-    address staderManagedStakePool;
+    address public staderSSVStakePool;
+    address public staderManagedStakePool;
     uint256 public validatorCount;
 
     /// @notice event emits after adding a validator to validatorRegistry
@@ -66,8 +66,8 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable {
         _validatorRegistry.signature = _signature;
         _validatorRegistry.deposit_data_root = _deposit_data_root;
         _validatorRegistry.depositStatus = false;
-        emit addedToValidatorRegistry(_pubKey, validatorCount);
         validatorCount++;
+        emit addedToValidatorRegistry(_pubKey, validatorCount);
     }
 
     /**

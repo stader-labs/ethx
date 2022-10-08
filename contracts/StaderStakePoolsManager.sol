@@ -134,7 +134,7 @@ contract StaderStakePoolsManager is TimelockOwner {
     function initialSetup() internal {
         minDeposit = 1;
         maxDeposit = 32 ether;
-        bufferedEth = 0;
+        bufferedEth =0;
         isStakePaused = false;
         _paused = false;
     }
@@ -164,7 +164,7 @@ contract StaderStakePoolsManager is TimelockOwner {
         uint256 amountToSend = (amount * decimals) / exchangeRate;
 
         ethX.mint(msg.sender, amountToSend);
-        bufferedEth = bufferedEth + amount;
+        bufferedEth = bufferedEth+ amount;
         emit Deposited(msg.sender, amount, _referral);
     }
 
@@ -186,13 +186,11 @@ contract StaderStakePoolsManager is TimelockOwner {
      */
     function selectPool() internal {
         uint256 poolIndex = poolWeights[0] > poolWeights[1] ? 0 : 1;
-        uint256 numberOfDeposits = bufferedEth / deposit_size;
-        poolAddresses[poolIndex].transfer(numberOfDeposits * deposit_size);
-        (bool success, ) = (poolAddresses[poolIndex]).call{
-            value: numberOfDeposits * deposit_size
-        }(abi.encodeWithSignature("receiveEthFromPoolManager()"));
+        uint256 numberOfDeposits = bufferedEth/deposit_size ;
+        (bool success, ) = (poolAddresses[poolIndex]).call{value: numberOfDeposits* deposit_size}(
+            abi.encodeWithSignature('receiveEthFromPoolManager()'));
         if (!success) revert("sending Eth to pool Failed");
-        bufferedEth = bufferedEth - (numberOfDeposits * deposit_size);
+        bufferedEth = bufferedEth-(numberOfDeposits* deposit_size);
         emit TransferredtoPool(poolAddresses[poolIndex]);
     }
 
@@ -200,7 +198,7 @@ contract StaderStakePoolsManager is TimelockOwner {
      * @notice calculation of exchange Rate
      * @dev exchange rate determines of amount of ethX receive on staking eth
      */
-    function getExchangeRate() public view returns (uint256) {
+    function getExchangeRate() public view returns(uint256){
         uint256 exchangeRate = 1 * decimals;
         uint256 tvl = getTotalTVL();
         uint256 totalSupply = ethX.totalSupply();
@@ -216,12 +214,9 @@ contract StaderStakePoolsManager is TimelockOwner {
      * @notice computes the total amount of eth staked with stader along with the rewards
      * @dev it is equal to the validator's balance on beacon chain plus both pool balance along with buffered ETh count
      */
-    function getTotalTVL() public view returns (uint256) {
-        uint256 beaconValidatorBalance = 0; ///add chainlink function here
-        uint256 totalTVL = bufferedEth +
-            beaconValidatorBalance +
-            address(poolAddresses[0]).balance +
-            address(poolAddresses[1]).balance;
+    function getTotalTVL() public view returns(uint256){
+        uint256 beaconValidatorBalance = 0 ;///add chainlink function here
+        uint256 totalTVL = bufferedEth + beaconValidatorBalance+ address(poolAddresses[0]).balance+ address(poolAddresses[1]).balance;
         return totalTVL;
     }
 
