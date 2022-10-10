@@ -27,6 +27,12 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     /// @notice validator is added to SSV Network
     event registeredValidatortoSSVNetwork(bytes indexed pubKey);
 
+    /// @notice event emits after updating operators for a validator
+    event updatedValidatortoSSVNetwork(bytes indexed pubKey, uint256 index);
+
+    /// @notice event emits after removing validator from SSV 
+    event removedValidatorfromSSVNetwork(bytes indexed pubKey, uint256 index);
+
     /// @notice Deposited in Ethereum Deposit contract
     event depositToDepositContract(bytes indexed pubKey);
 
@@ -130,6 +136,66 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         );
         emit registeredValidatortoSSVNetwork(_pubKey);
     }
+
+    function updateValidatortoSSVNetwork(
+        bytes memory _pubKey,
+        bytes[] memory _publicShares,
+        bytes[] memory _encyptedShares,
+        uint32[] memory _operatorIDs,
+        uint256 tokenFees
+    ) external onlyOwner {
+        uint256 index = getValidatorIndexByPublicKey(_pubKey);
+        require(
+            index < staderSSVRegistryCount,
+            "validator should be register to update"
+        );
+
+        ssvNetwork.updateValidator(
+            _pubKey,
+            _operatorIDs,
+            _publicShares,
+            _encyptedShares,
+            tokenFees
+        );
+        staderSSVRegistry[index].operatorIDs = _operatorIDs;
+        staderSSVRegistry[index].publicShares = _publicShares;
+        staderSSVRegistry[index].encyptedShares = _encyptedShares;
+
+        emit updatedValidatortoSSVNetwork(staderSSVRegistry[index].pubKey,index);
+    }
+
+    function removeValidatorfromSSVNetwork(bytes calldata publicKey)
+        external
+        onlyOwner
+    {
+        uint256 index = getValidatorIndexByPublicKey(publicKey);
+        require(
+            index < staderSSVRegistryCount,
+            "index should be less than staderSSVRegistryCount"
+        );
+
+        ssvNetwork.removeValidator(publicKey);
+        delete(staderSSVRegistry[index]);
+        staderSSVRegistryCount-- ;
+
+        emit removedValidatorfromSSVNetwork(publicKey,index);
+    }
+
+    function getValidatorIndexByPublicKey(bytes memory _publicKey)
+        public
+        view
+        returns (uint256)
+    {
+        for (uint256 i = 0; i < staderSSVRegistryCount; i++) {
+            if (
+                keccak256(_publicKey) == keccak256(staderSSVRegistry[i].pubKey)
+            ) {
+                return i;
+            }
+        }
+        return type(uint256).max;
+    }
+
 
     /// @dev deposit 32 ETH in ethereum deposit contract
     function depositEthToDepositContract(
