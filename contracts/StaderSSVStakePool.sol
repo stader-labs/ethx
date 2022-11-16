@@ -1,4 +1,4 @@
-// File: contracts/Stader.sol
+// File: contracts/StaderSSVStakePool.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
@@ -8,7 +8,7 @@ import "./interfaces/IStaderValidatorRegistry.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
- * @notice Staking pool implementaion on top of SSV Technology
+ * @notice Staking pool implementation on top of SSV Technology
  * Secret Shared Validator (SSV) technology is the first secure and robust way
  * to split a validator key for ETH staking between non-trusting nodes run by operators.
  * It is a unique protocol that enables the distributed operation of an Ethereum validator.
@@ -22,22 +22,22 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     uint256 public staderSSVRegistryCount;
 
     /// @notice validator is added to on chain registry
-    event addedTostaderSSVRegistry(bytes indexed pubKey, uint256 index);
+    event addedToStaderSSVRegistry(bytes indexed pubKey, uint256 index);
 
     /// @notice validator is added to SSV Network
-    event registeredValidatortoSSVNetwork(bytes indexed pubKey);
+    event registeredValidatorToSSVNetwork(bytes indexed pubKey);
 
     /// @notice event emits after updating operators for a validator
-    event updatedValidatortoSSVNetwork(bytes indexed pubKey, uint256 index);
+    event updatedValidatorToSSVNetwork(bytes indexed pubKey, uint256 index);
 
     /// @notice event emits after removing validator from SSV 
-    event removedValidatorfromSSVNetwork(bytes indexed pubKey, uint256 index);
+    event removedValidatorFromSSVNetwork(bytes indexed pubKey, uint256 index);
 
     /// @notice Deposited in Ethereum Deposit contract
     event depositToDepositContract(bytes indexed pubKey);
 
     /// event emits after receiving ETH from stader stake pool manager
-    event ReceivedFromPoolManager(address indexed from, uint256 amout);
+    event ReceivedFromPoolManager(address indexed from, uint256 amount);
 
     /**
      * @dev Validator registry structure
@@ -45,7 +45,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     struct ValidatorShares {
         bytes pubKey; ///public Key of the validator
         bytes[] publicShares; ///public shares for operators of a validator
-        bytes[] encyptedShares; ///encypt shares for operators of a validator
+        bytes[] encryptedShares; ///encrypt shares for operators of a validator
         uint32[] operatorIDs; ///operator IDs of operator assigned to a validator
     }
 
@@ -63,7 +63,6 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @param _ssvNetwork SSV Network Contract
      * @param _ssvToken SSV Token Contract
      * @param _ethValidatorDeposit ethereum Deposit contract
-     * @param _staderValidatorRegistry stader validator registry
      */
     function initialize(
         ISSVNetwork _ssvNetwork,
@@ -82,6 +81,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         ssvNetwork = _ssvNetwork;
         ssvToken = _ssvToken;
         ethValidatorDeposit = _ethValidatorDeposit;
+        staderValidatorRegistry = _staderValidatorRegistry;
         ssvToken.approve(address(ssvNetwork), type(uint256).max);
         staderSSVRegistryCount = 0;
     }
@@ -90,13 +90,13 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @dev add a validator to the registry
      * @param _pubKey public Key of the validator
      * @param _publicShares public shares for operators of a validator
-     * @param _encyptedShares encypt shares for operators of a validator
+     * @param _encryptedShares encrypt shares for operators of a validator
      * @param _operatorIDs operator IDs of operator assigned to a validator
      */
-    function addTostaderSSVRegistry(
+    function addToStaderSSVRegistry(
         bytes memory _pubKey,
         bytes[] memory _publicShares,
-        bytes[] memory _encyptedShares,
+        bytes[] memory _encryptedShares,
         uint32[] memory _operatorIDs
     ) internal {
         ValidatorShares storage _staderSSVRegistry = staderSSVRegistry[
@@ -104,20 +104,20 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         ];
         _staderSSVRegistry.pubKey = _pubKey;
         _staderSSVRegistry.publicShares = _publicShares;
-        _staderSSVRegistry.encyptedShares = _encyptedShares;
+        _staderSSVRegistry.encryptedShares = _encryptedShares;
         _staderSSVRegistry.operatorIDs = _operatorIDs;
         staderSSVRegistryCount++;
-        emit addedTostaderSSVRegistry(_pubKey, staderSSVRegistryCount);
+        emit addedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
     }
 
     /**
      * @dev register a Validator to SSV Network
      * @param tokenFees ssv token as network and operators fee
      */
-    function registerValidatortoSSVNetwork(
+    function registerValidatorToSSVNetwork(
         bytes memory _pubKey,
         bytes[] memory _publicShares,
-        bytes[] memory _encyptedShares,
+        bytes[] memory _encryptedShares,
         uint32[] memory _operatorIDs,
         uint256 tokenFees
     ) external onlyOwner {
@@ -125,22 +125,22 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             _pubKey,
             _operatorIDs,
             _publicShares,
-            _encyptedShares,
+            _encryptedShares,
             tokenFees
         );
-        addTostaderSSVRegistry(
+        addToStaderSSVRegistry(
             _pubKey,
             _publicShares,
-            _encyptedShares,
+            _encryptedShares,
             _operatorIDs
         );
-        emit registeredValidatortoSSVNetwork(_pubKey);
+        emit registeredValidatorToSSVNetwork(_pubKey);
     }
 
-    function updateValidatortoSSVNetwork(
+    function updateValidatorToSSVNetwork(
         bytes memory _pubKey,
         bytes[] memory _publicShares,
-        bytes[] memory _encyptedShares,
+        bytes[] memory _encryptedShares,
         uint32[] memory _operatorIDs,
         uint256 tokenFees
     ) external onlyOwner {
@@ -154,17 +154,17 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             _pubKey,
             _operatorIDs,
             _publicShares,
-            _encyptedShares,
+            _encryptedShares,
             tokenFees
         );
         staderSSVRegistry[index].operatorIDs = _operatorIDs;
         staderSSVRegistry[index].publicShares = _publicShares;
-        staderSSVRegistry[index].encyptedShares = _encyptedShares;
+        staderSSVRegistry[index].encryptedShares = _encryptedShares;
 
-        emit updatedValidatortoSSVNetwork(staderSSVRegistry[index].pubKey,index);
+        emit updatedValidatorToSSVNetwork(staderSSVRegistry[index].pubKey,index);
     }
 
-    function removeValidatorfromSSVNetwork(bytes calldata publicKey)
+    function removeValidatorFromSSVNetwork(bytes calldata publicKey)
         external
         onlyOwner
     {
@@ -178,7 +178,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         delete(staderSSVRegistry[index]);
         staderSSVRegistryCount-- ;
 
-        emit removedValidatorfromSSVNetwork(publicKey,index);
+        emit removedValidatorFromSSVNetwork(publicKey,index);
     }
 
     function getValidatorIndexByPublicKey(bytes memory _publicKey)
@@ -206,14 +206,14 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     ) external onlyOwner {
         require(
             address(this).balance >= 32 ether,
-            "balance should be atleast 32 Eth"
+            "balance should be at least 32 Eth"
         );
-        ethValidatorDeposit.deposit{value: 32 ether}(
-            pubKey,
-            withdrawal_credentials,
-            signature,
-            deposit_data_root
-        );
+        // ethValidatorDeposit.deposit{value: 32 ether}(
+        //     pubKey,
+        //     withdrawal_credentials,
+        //     signature,
+        //     deposit_data_root
+        // );
         staderValidatorRegistry.addToValidatorRegistry(
             pubKey,
             withdrawal_credentials,
@@ -261,7 +261,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
 
     /**
      * @notice Allows the contract to receive ETH
-     * @dev execution layer rewards may be sent as plain ETH transfers
+     * @dev stader pool manager send ETH to stader SSV stake pool
      */
     function receiveEthFromPoolManager() external payable {
         emit ReceivedFromPoolManager(msg.sender, msg.value);

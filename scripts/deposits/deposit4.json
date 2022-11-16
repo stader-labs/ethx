@@ -1,0 +1,11 @@
+{
+    "pubkey": "839ca626eccd2edf45ce633e365715bf8610b85c9d24225ac5893d4861e385fb81529880358040bb4b86fea288db4dfc",
+    "withdrawal_credentials": "00df29f6fe189f2f5bb1c72caaae07340bdf5087786e0008e763d1600f6d9c26",
+    "amount": 32000000000,
+    "signature": "a5c03615a26fa72748aa7312c47cd281f73afed21da8e877f560d62267968ae94c73cdf83663da42186f2d95ba40520305bf638daf28b1564da5a54e01c2824f32e2b6d0ba97f2eeead8bddc9ca662a63c83e55eadadb101265c08ff8766b6e0",
+    "deposit_message_root": "411a64516a88d62ecfb3d1403ec6b15de006ab8a20051a3a92f0c85ff2dbf1eb",
+    "deposit_data_root": "74e1d3bcb1d4b844d70f695933401d525a12371a28e1384e81633d5fbb09aae9",
+    "fork_version": "00001020",
+    "network_name": "prater",
+    "deposit_cli_version": "2.2.0"
+  }

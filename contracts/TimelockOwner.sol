@@ -1,10 +1,10 @@
-// File: contracts/StaderStakePoolsManager.sol
+// File: contracts/TimelockOwner.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-abstract contract TimelockOwner is Initializable {
+abstract contract TimeLockOwner is Initializable {
     ///@notice time in secs for withholding ownership transfer
     uint256 public lockedPeriod;
 
@@ -12,20 +12,20 @@ abstract contract TimelockOwner is Initializable {
     uint256 public timestamp;
 
     /// @notice address of multisig admin account which act as the owner for Stader's Ethereum Staking DAO operations
-    address public timelockOwner;
+    address public timeLockOwner;
 
     ///@notice address of new multisig admin account which will act as the new owner for Stader's
     /// Ethereum Staking DAO operations after lockedPeriod if change owner proposal not cancelled in the meantime
-    address public timelockOwnerCandidate;
+    address public timeLockOwnerCandidate;
 
     /// @notice event emitted when owner is updated
-    event TimelockOwnerUpdated(address indexed newTimelockOwner);
+    event TimeLockOwnerUpdated(address indexed newTimeLockOwner);
 
-    /// @notice event emitted when new TimelockOwner is proposed
-    event TimelockOwnerProposed(address indexed proposedTimelockOwner);
+    /// @notice event emitted when new TimeLockOwner is proposed
+    event TimeLockOwnerProposed(address indexed proposedTimeLockOwner);
 
-    /// @notice event emitted when new TimelockOwner proposal cancelled
-    event canceledTimelockOwnerProposal(address indexed from);
+    /// @notice event emitted when new TimeLockOwner proposal cancelled
+    event canceledTimeLockOwnerProposal(address indexed from);
 
     /// @notice Check for zero address
     /// @dev Modifier
@@ -34,78 +34,78 @@ abstract contract TimelockOwner is Initializable {
         require(_address != address(0), "Address cannot be zero");
         _;
     }
-    /// @notice Check for TimelockOwner
+    /// @notice Check for TimeLockOwner
     /// @dev Modifier
-    modifier checkTimelockOwner() {
+    modifier checkTimeLockOwner() {
         require(
-            msg.sender == timelockOwner,
-            "Errr NOT authorized for DAO operation"
+            msg.sender == timeLockOwner,
+            "Err NOT authorized for DAO operation"
         );
         _;
     }
 
     /// @notice initialize the setup parameters
-    /// @param _timelockOwner the address of owner/admin for carrying out the Doa operations
-    function initializeTimelockOwner(address _timelockOwner)
+    /// @param _timeLockOwner the address of owner/admin for carrying out the Doa operations
+    function initializeTimeLockOwner(address _timeLockOwner)
         internal
         onlyInitializing
     {
-        timelockOwner = _timelockOwner;
+        timeLockOwner = _timeLockOwner;
         lockedPeriod = 7200;
         timestamp = type(uint256).max;
-        emit TimelockOwnerUpdated(_timelockOwner);
+        emit TimeLockOwnerUpdated(_timeLockOwner);
     }
 
     /**
      * @dev Proposes a new TimelockOwner. Can only be called by the current timelockOwner
      */
-    function proposeTimelockOwner(address _timelockOwnerCandidate)
+    function proposeTimeLockOwner(address _timeLockOwnerCandidate)
         external
-        checkZeroAddress(_timelockOwnerCandidate)
-        checkTimelockOwner
+        checkZeroAddress(_timeLockOwnerCandidate)
+        checkTimeLockOwner
     {
         timestamp = block.timestamp;
-        timelockOwnerCandidate = _timelockOwnerCandidate;
-        emit TimelockOwnerProposed(_timelockOwnerCandidate);
+        timeLockOwnerCandidate = _timeLockOwnerCandidate;
+        emit TimeLockOwnerProposed(_timeLockOwnerCandidate);
     }
 
     /**
-     * @notice Assigns the ownership of the contract to timelockOwnerCandidate. Can only be called by the timelockOwner.
+     * @notice Assigns the ownership of the contract to timeLockOwnerCandidate. Can only be called by the timeLockOwner.
      * @dev new time lock owner can be set after waiting for lockedPeriod
      */
-    function acceptTimelockOwnership() external checkTimelockOwner {
+    function acceptTimeLockOwnership() external checkTimeLockOwner {
         require(timestamp != (type(uint256).max), "No proposal active");
         require(
             timestamp + lockedPeriod >= block.timestamp,
             "Locking period not expired"
         );
-        timelockOwner = timelockOwnerCandidate;
-        emit TimelockOwnerUpdated(timelockOwner);
+        timeLockOwner = timeLockOwnerCandidate;
+        emit TimeLockOwnerUpdated(timeLockOwner);
     }
 
     /**
      * @dev Cancels the new time lock owner proposal.
-     * Can only be called by the timelockOwnerCandidate or timelockOwner
+     * Can only be called by the timeLockOwnerCandidate or timeLockOwner
      */
-    function cancelTimelockOwnerProposal() external {
+    function cancelTimeLockOwnerProposal() external {
         require(
-            timelockOwnerCandidate == msg.sender || timelockOwner == msg.sender,
+            timeLockOwnerCandidate == msg.sender || timeLockOwner == msg.sender,
             "NOT authorized to cancel proposal"
         );
-        timelockOwnerCandidate = address(0);
+        timeLockOwnerCandidate = address(0);
         timestamp = type(uint256).max;
-        emit canceledTimelockOwnerProposal(msg.sender);
+        emit canceledTimeLockOwnerProposal(msg.sender);
     }
 
     /**********************
      * Setter functions   *
      **********************/
 
-    /// @notice Set the locking period for the transfer of timelock ownership
-    /// @param _lockedPeriod time in secs for withholding timelock ownership transfer
+    /// @notice Set the locking period for the transfer of timeLock ownership
+    /// @param _lockedPeriod time in secs for withholding timeLock ownership transfer
     function setLockedPeriod(uint256 _lockedPeriod)
         external
-        checkTimelockOwner
+        checkTimeLockOwner
     {
         lockedPeriod = _lockedPeriod;
     }
