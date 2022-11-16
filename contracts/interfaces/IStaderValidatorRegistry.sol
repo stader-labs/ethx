@@ -1,6 +1,6 @@
 // File: contracts/interfaces/IStaderValidatorRegistry.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 interface IStaderValidatorRegistry {
     event Initialized(uint8 version);
@@ -12,9 +12,9 @@ interface IStaderValidatorRegistry {
 
     function addToValidatorRegistry(
         bytes memory _pubKey,
-        bytes memory _withdrawal_credentials,
+        bytes memory _withdrawalCredentials,
         bytes memory _signature,
-        bytes32 _deposit_data_root
+        bytes32 _depositDataRoot
     ) external;
 
     function initialize() external;
@@ -23,10 +23,10 @@ interface IStaderValidatorRegistry {
 
     function renounceOwnership() external;
 
-    function setstaderManagedStakePoolAddress(address _staderManagedStakePool)
+    function setStaderManagedStakePoolAddress(address _staderManagedStakePool)
         external;
 
-    function setstaderSSVStakePoolAddress(address _staderSSVStakePool) external;
+    function setStaderSSVStakePoolAddress(address _staderSSVStakePool) external;
 
     function transferOwnership(address newOwner) external;
 
@@ -37,9 +37,9 @@ interface IStaderValidatorRegistry {
         view
         returns (
             bytes memory pubKey,
-            bytes memory withdrawal_credentials,
+            bytes memory withdrawalCredentials,
             bytes memory signature,
-            bytes32 deposit_data_root,
+            bytes32 depositDataRoot,
             bool depositStatus
         );
 }

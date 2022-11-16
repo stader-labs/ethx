@@ -1,7 +1,7 @@
 // File: contracts/interfaces/IStaderSSVStakePool.sol
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 interface IStaderManagedStakePool {
     event Initialized(uint8 version);

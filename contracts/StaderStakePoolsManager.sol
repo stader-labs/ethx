@@ -1,6 +1,6 @@
 // File: contracts/StaderStakePoolsManager.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 import "./EthX.sol";
 import "./TimelockOwner.sol";
@@ -9,11 +9,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-
 /**
  *  @title Liquid Staking Pool Implementation
- *  Stader is a non-custodial smart contract-based staking platform that helps you conveniently discover and access staking solutions.
- *  We are building key staking middleware infra for multiple PoS networks for retail crypto users, exchanges and custodians.
+ *  Stader is a non-custodial smart contract-based staking platform
+ *  that helps you conveniently discover and access staking solutions.
+ *  We are building key staking middleware infra for multiple PoS networks
+ * for retail crypto users, exchanges and custodians.
  */
 contract StaderStakePoolsManager is TimeLockOwner {
     using SafeMath for uint256;
@@ -21,8 +22,8 @@ contract StaderStakePoolsManager is TimeLockOwner {
     AggregatorV3Interface internal ethXFeed;
     uint256 public minDeposit;
     uint256 public maxDeposit;
-    uint256 public constant decimals = 10**18;
-    uint256 public constant deposit_size = 32 ether;
+    uint256 public constant DECIMALS = 10**18;
+    uint256 public constant DEPOSIT_SIZE = 32 ether;
     bool public isStakePaused;
     bool public _paused;
     address public staderStakePoolsManagerOwner;
@@ -35,10 +36,10 @@ contract StaderStakePoolsManager is TimeLockOwner {
     uint256 public totalTVL;
 
     // event emits after stake function
-    event Deposited(address indexed sender, uint256 amount, address referral);
+    event deposited(address indexed sender, uint256 amount, address referral);
 
     /// event emits after transfer of ETh to a selected pool
-    event TransferredToPool(address indexed poolAddress);
+    event transferredToPool(address indexed poolAddress);
 
     /// event emits after updating pool weights
     event updatedPoolWeights(
@@ -68,10 +69,10 @@ contract StaderStakePoolsManager is TimeLockOwner {
     event updatedStaderStakePoolsManagerOwner(address account);
 
     // Emit when the pause is triggered by `account`.
-    event Paused(address account);
+    event paused(address account);
 
     // Emit when the pause is lifted by `account`.
-    event Unpaused(address account);
+    event unPaused(address account);
 
     /**
      * @dev Modifier to make a function callable only when the contract is not paused.
@@ -107,13 +108,13 @@ contract StaderStakePoolsManager is TimeLockOwner {
      * @param _staderSSVStakePoolAddress stader SSV Managed Pool, validator are assigned to operator through SSV
      * @param _staderManagedStakePoolAddress validator are assigned to operator, managed by stader
      * @param _staderSSVStakePoolWeight weight of stader SSV pool, if it is 1 then validator gets operator via SSV
-     * @param _staderManagedStakePoolWeight weight of stader managed pool, if it is 1 then validator gets stader managed operator
+     * @param _staderManagedStakePoolWeight weight of stader managed pool
      */
     function initialize(
         address _timeLockOwner,
         ETHX _ethX,
-        address  _staderSSVStakePoolAddress,
-        address  _staderManagedStakePoolAddress,
+        address _staderSSVStakePoolAddress,
+        address _staderManagedStakePoolAddress,
         uint256 _staderSSVStakePoolWeight,
         uint256 _staderManagedStakePoolWeight
     )
@@ -131,7 +132,9 @@ contract StaderStakePoolsManager is TimeLockOwner {
         TimeLockOwner.initializeTimeLockOwner(_timeLockOwner);
         staderStakePoolsManagerOwner = msg.sender;
         ethX = _ethX;
-        ethXFeed = AggregatorV3Interface(0xa81FE04086865e63E12dD3776978E49DEEa2ea4e);
+        ethXFeed = AggregatorV3Interface(
+            0xa81FE04086865e63E12dD3776978E49DEEa2ea4e
+        );
         poolAddresses.push(_staderSSVStakePoolAddress);
         poolAddresses.push(_staderManagedStakePoolAddress);
         poolWeights.push(_staderSSVStakePoolWeight);
@@ -142,10 +145,10 @@ contract StaderStakePoolsManager is TimeLockOwner {
     function initialSetup() internal {
         minDeposit = 1;
         maxDeposit = 32 ether;
-        bufferedEth =0;
+        bufferedEth = 0;
         isStakePaused = false;
         _paused = false;
-        exchangeRate = 1 * decimals;
+        exchangeRate = 1 * DECIMALS;
         totalTVL = 0;
     }
 
@@ -166,12 +169,12 @@ contract StaderStakePoolsManager is TimeLockOwner {
         uint256 amount = msg.value;
         require(
             amount >= minDeposit && amount <= maxDeposit,
-            "Stake amount must be within valid range"
+            "invalid stake amount"
         );
-        uint256 amountToSend = (amount * decimals) / exchangeRate;
+        uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
         ethX.mint(msg.sender, amountToSend);
-        bufferedEth = bufferedEth+ amount;
-        emit Deposited(msg.sender, amount, _referral);
+        bufferedEth = bufferedEth + amount;
+        emit deposited(msg.sender, amount, _referral);
     }
 
     /**
@@ -181,7 +184,7 @@ contract StaderStakePoolsManager is TimeLockOwner {
     function stakeEpoch() external {
         require(
             address(this).balance > 32 ether,
-            "Not enough ETH for transferring to a Pool"
+            "Not enough ETH for stakeEpoch"
         );
         selectPool();
     }
@@ -192,27 +195,32 @@ contract StaderStakePoolsManager is TimeLockOwner {
      */
     function selectPool() internal {
         uint256 poolIndex = poolWeights[0] > poolWeights[1] ? 0 : 1;
-        uint256 numberOfDeposits = bufferedEth/deposit_size ;
-        (bool success, ) = (poolAddresses[poolIndex]).call{value: numberOfDeposits* deposit_size}(
-            abi.encodeWithSignature('receiveEthFromPoolManager()'));
+        uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
+        (bool success, ) = (poolAddresses[poolIndex]).call{
+            value: numberOfDeposits * DEPOSIT_SIZE
+        }(abi.encodeWithSignature("receiveEthFromPoolManager()"));
         // (bool success, ) = (poolAddresses[poolIndex]).receiveEthFromPoolManager(){value: 32 ether};
-        if (!success) revert("sending Eth to pool Failed");
-        bufferedEth = bufferedEth-(numberOfDeposits* deposit_size);
-        emit TransferredToPool(poolAddresses[poolIndex]);
+        if (!success) revert("ETH transfer failed");
+        bufferedEth = bufferedEth - (numberOfDeposits * DEPOSIT_SIZE);
+        emit transferredToPool(poolAddresses[poolIndex]);
     }
 
     /**
      * @notice calculation of exchange Rate
      * @dev exchange rate determines of amount of ethX receive on staking eth
      */
-    function updateExchangeRate() public returns(uint256){
-        (,int256 beaconValidatorBalance,,,) = ethXFeed.latestRoundData() ;
-        totalTVL = bufferedEth + uint256(beaconValidatorBalance)+ address(poolAddresses[0]).balance+ address(poolAddresses[1]).balance;
+    function updateExchangeRate() public returns (uint256) {
+        (, int256 beaconValidatorBalance, , , ) = ethXFeed.latestRoundData();
+        totalTVL =
+            bufferedEth +
+            uint256(beaconValidatorBalance) +
+            address(poolAddresses[0]).balance +
+            address(poolAddresses[1]).balance;
         uint256 totalSupply = ethX.totalSupply();
         if (totalSupply == 0 || totalTVL == 0) {
-            return 1 * decimals;
+            return 1 * DECIMALS;
         } else {
-            exchangeRate = (totalTVL * decimals) / totalSupply;
+            exchangeRate = (totalTVL * DECIMALS) / totalSupply;
         }
         return exchangeRate;
     }
@@ -257,7 +265,7 @@ contract StaderStakePoolsManager is TimeLockOwner {
      * @param _minDeposit minimum deposit value
      */
     function updateMinDeposit(uint256 _minDeposit) external checkOwner {
-        require(_minDeposit > 0, "minimum deposit should be greater than 0");
+        require(_minDeposit > 0, "invalid minDeposit value");
         minDeposit = _minDeposit;
         emit updatedMinDeposit(minDeposit);
     }
@@ -269,7 +277,7 @@ contract StaderStakePoolsManager is TimeLockOwner {
     function updateMaxDeposit(uint256 _maxDeposit) external checkOwner {
         require(
             _maxDeposit > minDeposit,
-            "maximum deposit should be greater than minimum deposit"
+            "invalid maxDeposit value"
         );
         maxDeposit = _maxDeposit;
         emit updatedMaxDeposit(maxDeposit);
@@ -288,7 +296,7 @@ contract StaderStakePoolsManager is TimeLockOwner {
         emit updatedEthXFeed(address(_ethXFeed));
     }
 
-        /**
+    /**
      * @dev update ethX address
      * @param _ethX ethX contract
      */
@@ -319,7 +327,7 @@ contract StaderStakePoolsManager is TimeLockOwner {
      */
     function _pause() external checkOwner whenNotPaused {
         _paused = true;
-        emit Paused(msg.sender);
+        emit paused(msg.sender);
     }
 
     /**
@@ -328,7 +336,7 @@ contract StaderStakePoolsManager is TimeLockOwner {
      */
     function _unpause() external checkOwner whenPaused {
         _paused = false;
-        emit Unpaused(msg.sender);
+        emit unPaused(msg.sender);
     }
 
     /**

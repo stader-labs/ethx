@@ -1,12 +1,16 @@
 // File: contracts/StaderValidatorRegistry.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IPoRAddressList.sol";
 
-contract StaderValidatorRegistry is Initializable, OwnableUpgradeable, IPoRAddressList {
-    address public staderSSVStakePool ;
+contract StaderValidatorRegistry is
+    Initializable,
+    OwnableUpgradeable,
+    IPoRAddressList
+{
+    address public staderSSVStakePool;
     address public staderManagedStakePool;
     uint256 public validatorCount;
 
@@ -31,9 +35,9 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable, IPoRAddre
 
     struct Validator {
         bytes pubKey; //public Key of the validator
-        bytes withdrawal_credentials; //public key for withdraw
+        bytes withdrawalCredentials; //public key for withdraw
         bytes signature; //signature for deposit to Ethereum Deposit contract
-        bytes32 deposit_data_root; //deposit data root for deposit to Ethereum Deposit contract
+        bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
         bool depositStatus; //Deposit Status indicates whether 32ETh deposited for that validator
     }
     mapping(uint256 => Validator) public validatorRegistry;
@@ -41,7 +45,7 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable, IPoRAddre
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
-    function initialize()external initializer {
+    function initialize() external initializer {
         __Ownable_init_unchained();
         validatorCount = 0;
         staderManagedStakePool = address(0);
@@ -51,23 +55,23 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable, IPoRAddre
     /**
      * @dev add a validator to the registry
      * @param _pubKey public Key of the validator
-     * @param _withdrawal_credentials public key for withdraw
+     * @param _withdrawalCredentials public key for withdraw
      * @param _signature signature for deposit to Ethereum Deposit contract
-     * @param _deposit_data_root deposit data root for deposit to Ethereum Deposit contract
+     * @param _depositDataRoot deposit data root for deposit to Ethereum Deposit contract
      */
     function addToValidatorRegistry(
         bytes memory _pubKey,
-        bytes memory _withdrawal_credentials,
+        bytes memory _withdrawalCredentials,
         bytes memory _signature,
-        bytes32 _deposit_data_root
+        bytes32 _depositDataRoot
     ) public onlyPool {
         Validator storage _validatorRegistry = validatorRegistry[
             validatorCount
         ];
         _validatorRegistry.pubKey = _pubKey;
-        _validatorRegistry.withdrawal_credentials = _withdrawal_credentials;
+        _validatorRegistry.withdrawalCredentials = _withdrawalCredentials;
         _validatorRegistry.signature = _signature;
-        _validatorRegistry.deposit_data_root = _deposit_data_root;
+        _validatorRegistry.depositDataRoot = _depositDataRoot;
         _validatorRegistry.depositStatus = true;
         validatorCount++;
         emit addedToValidatorRegistry(_pubKey, validatorCount);
@@ -128,7 +132,7 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable, IPoRAddre
         returns (string[] memory)
     {
         string[] memory bytesAddresses = new string[](validatorCount);
-        for(uint256 i=0; i<validatorCount;i++){
+        for (uint256 i = 0; i < validatorCount; i++) {
             bytesAddresses[i] = toString(validatorRegistry[i].pubKey);
         }
         return bytesAddresses;
@@ -146,5 +150,4 @@ contract StaderValidatorRegistry is Initializable, OwnableUpgradeable, IPoRAddre
         }
         return string(str);
     }
-
 }

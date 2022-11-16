@@ -1,7 +1,7 @@
 // WARNING:  Contract has not been audited and is meant to be for demonstration purposes
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 /**
  * @title Chainlink Proof-of-Reserve address list interface.
@@ -22,8 +22,5 @@ interface IPoRAddressList {
      * that would be used when querying the balance of that address.
      * @return Array of addresses as strings.
      */
-    function getPoRAddressList()
-        external
-        view
-        returns (string[] memory);
+    function getPoRAddressList() external view returns (string[] memory);
 }

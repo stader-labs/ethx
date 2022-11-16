@@ -1,6 +1,6 @@
 // File: contracts/StaderSSVStakePool.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 import "./interfaces/ISSVNetwork.sol";
 import "./interfaces/IDepositContract.sol";
@@ -30,14 +30,14 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     /// @notice event emits after updating operators for a validator
     event updatedValidatorToSSVNetwork(bytes indexed pubKey, uint256 index);
 
-    /// @notice event emits after removing validator from SSV 
+    /// @notice event emits after removing validator from SSV
     event removedValidatorFromSSVNetwork(bytes indexed pubKey, uint256 index);
 
     /// @notice Deposited in Ethereum Deposit contract
     event depositToDepositContract(bytes indexed pubKey);
 
     /// event emits after receiving ETH from stader stake pool manager
-    event ReceivedFromPoolManager(address indexed from, uint256 amount);
+    event receivedFromPoolManager(address indexed from, uint256 amount);
 
     /**
      * @dev Validator registry structure
@@ -147,7 +147,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         uint256 index = getValidatorIndexByPublicKey(_pubKey);
         require(
             index < staderSSVRegistryCount,
-            "validator should be register to update"
+            "validator not registered"
         );
 
         ssvNetwork.updateValidator(
@@ -161,7 +161,10 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         staderSSVRegistry[index].publicShares = _publicShares;
         staderSSVRegistry[index].encryptedShares = _encryptedShares;
 
-        emit updatedValidatorToSSVNetwork(staderSSVRegistry[index].pubKey,index);
+        emit updatedValidatorToSSVNetwork(
+            staderSSVRegistry[index].pubKey,
+            index
+        );
     }
 
     function removeValidatorFromSSVNetwork(bytes calldata publicKey)
@@ -171,14 +174,14 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         uint256 index = getValidatorIndexByPublicKey(publicKey);
         require(
             index < staderSSVRegistryCount,
-            "index should be less than staderSSVRegistryCount"
+            "invalid index"
         );
 
         ssvNetwork.removeValidator(publicKey);
-        delete(staderSSVRegistry[index]);
-        staderSSVRegistryCount-- ;
+        delete (staderSSVRegistry[index]);
+        staderSSVRegistryCount--;
 
-        emit removedValidatorFromSSVNetwork(publicKey,index);
+        emit removedValidatorFromSSVNetwork(publicKey, index);
     }
 
     function getValidatorIndexByPublicKey(bytes memory _publicKey)
@@ -196,17 +199,16 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         return type(uint256).max;
     }
 
-
     /// @dev deposit 32 ETH in ethereum deposit contract
     function depositEthToDepositContract(
         bytes calldata pubKey,
-        bytes calldata withdrawal_credentials,
+        bytes calldata withdrawalCredentials,
         bytes calldata signature,
-        bytes32 deposit_data_root
+        bytes32 depositDataRoot
     ) external onlyOwner {
         require(
             address(this).balance >= 32 ether,
-            "balance should be at least 32 Eth"
+            "not enough balance to deposit"
         );
         // ethValidatorDeposit.deposit{value: 32 ether}(
         //     pubKey,
@@ -216,9 +218,9 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         // );
         staderValidatorRegistry.addToValidatorRegistry(
             pubKey,
-            withdrawal_credentials,
+            withdrawalCredentials,
             signature,
-            deposit_data_root
+            depositDataRoot
         );
         emit depositToDepositContract(pubKey);
     }
@@ -264,6 +266,6 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @dev stader pool manager send ETH to stader SSV stake pool
      */
     function receiveEthFromPoolManager() external payable {
-        emit ReceivedFromPoolManager(msg.sender, msg.value);
+        emit receivedFromPoolManager(msg.sender, msg.value);
     }
 }

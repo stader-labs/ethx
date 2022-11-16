@@ -1,7 +1,7 @@
 // File: contracts/interfaces/IStaderSSVStakePool.sol
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 interface IStaderSSVStakePool {
     event Initialized(uint8 version);
@@ -9,18 +9,18 @@ interface IStaderSSVStakePool {
         address indexed previousOwner,
         address indexed newOwner
     );
-    event ReceivedFromPoolManager(address indexed from, uint256 amout);
-    event addedTostaderSSVRegistry(bytes indexed pubKey, uint256 index);
+    event receivedFromPoolManager(address indexed from, uint256 amount);
+    event addedToStaderSSVRegistry(bytes indexed pubKey, uint256 index);
     event depositToDepositContract(bytes indexed pubKey);
-    event registeredValidatortoSSVNetwork(bytes indexed pubKey);
-    event removedValidatorfromSSVNetwork(bytes indexed pubKey, uint256 index);
-    event updatedValidatortoSSVNetwork(bytes indexed pubKey, uint256 index);
+    event registeredValidatorToSSVNetwork(bytes indexed pubKey);
+    event removedValidatorFromSSVNetwork(bytes indexed pubKey, uint256 index);
+    event updatedValidatorToSSVNetwork(bytes indexed pubKey, uint256 index);
 
     function depositEthToDepositContract(
         bytes memory pubKey,
-        bytes memory withdrawal_credentials,
+        bytes memory withdrawalCredentials,
         bytes memory signature,
-        bytes32 deposit_data_root
+        bytes32 depositDataRoot
     ) external;
 
     function ethValidatorDeposit() external view returns (address);
@@ -41,15 +41,15 @@ interface IStaderSSVStakePool {
 
     function receiveEthFromPoolManager() external payable;
 
-    function registerValidatortoSSVNetwork(
+    function registerValidatorToSSVNetwork(
         bytes memory _pubKey,
         bytes[] memory _publicShares,
-        bytes[] memory _encyptedShares,
+        bytes[] memory _encryptedShares,
         uint32[] memory _operatorIDs,
         uint256 tokenFees
     ) external;
 
-    function removeValidatorfromSSVNetwork(bytes memory publicKey) external;
+    function removeValidatorFromSSVNetwork(bytes memory publicKey) external;
 
     function renounceOwnership() external;
 
@@ -74,10 +74,10 @@ interface IStaderSSVStakePool {
 
     function updateSSVTokenAddress(address _ssvToken) external;
 
-    function updateValidatortoSSVNetwork(
+    function updateValidatorToSSVNetwork(
         bytes memory _pubKey,
         bytes[] memory _publicShares,
-        bytes[] memory _encyptedShares,
+        bytes[] memory _encryptedShares,
         uint32[] memory _operatorIDs,
         uint256 tokenFees
     ) external;

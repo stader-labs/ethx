@@ -1,6 +1,6 @@
 // File: contracts/TimelockOwner.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.2.0;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -19,10 +19,10 @@ abstract contract TimeLockOwner is Initializable {
     address public timeLockOwnerCandidate;
 
     /// @notice event emitted when owner is updated
-    event TimeLockOwnerUpdated(address indexed newTimeLockOwner);
+    event timeLockOwnerUpdated(address indexed newTimeLockOwner);
 
     /// @notice event emitted when new TimeLockOwner is proposed
-    event TimeLockOwnerProposed(address indexed proposedTimeLockOwner);
+    event timeLockOwnerProposed(address indexed proposedTimeLockOwner);
 
     /// @notice event emitted when new TimeLockOwner proposal cancelled
     event canceledTimeLockOwnerProposal(address indexed from);
@@ -53,7 +53,7 @@ abstract contract TimeLockOwner is Initializable {
         timeLockOwner = _timeLockOwner;
         lockedPeriod = 7200;
         timestamp = type(uint256).max;
-        emit TimeLockOwnerUpdated(_timeLockOwner);
+        emit timeLockOwnerUpdated(_timeLockOwner);
     }
 
     /**
@@ -66,7 +66,7 @@ abstract contract TimeLockOwner is Initializable {
     {
         timestamp = block.timestamp;
         timeLockOwnerCandidate = _timeLockOwnerCandidate;
-        emit TimeLockOwnerProposed(_timeLockOwnerCandidate);
+        emit timeLockOwnerProposed(_timeLockOwnerCandidate);
     }
 
     /**
@@ -80,7 +80,7 @@ abstract contract TimeLockOwner is Initializable {
             "Locking period not expired"
         );
         timeLockOwner = timeLockOwnerCandidate;
-        emit TimeLockOwnerUpdated(timeLockOwner);
+        emit timeLockOwnerUpdated(timeLockOwner);
     }
 
     /**
