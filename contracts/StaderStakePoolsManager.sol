@@ -149,18 +149,17 @@ contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
     function _selectPool() internal {
         uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits*DEPOSIT_SIZE;
-        uint256 ssvPoolAmountRatio = poolWeights[0]/100 ;
         (bool ssvPoolSuccess, ) = (poolAddresses[0]).call{
-            value: amount*ssvPoolAmountRatio
+            value: amount*(poolWeights[0]/100)
         }(abi.encodeWithSignature("receive()"));
         (bool staderPoolSuccess, ) = (poolAddresses[1]).call{
-            value: amount*(1-ssvPoolAmountRatio)
+            value: amount*(poolWeights[1]/100)
         }(abi.encodeWithSignature("receive()"));
         require(ssvPoolSuccess, "SSV Pool ETH transfer failed");
         require(staderPoolSuccess, "Stader Pool ETH transfer failed");
         bufferedEth -= (amount);
-        emit TransferredToSSVPool(poolAddresses[0], amount*ssvPoolAmountRatio);
-        emit TransferredToStaderPool(poolAddresses[1], amount*(1-ssvPoolAmountRatio));
+        emit TransferredToSSVPool(poolAddresses[0], amount*(poolWeights[0]/100));
+        emit TransferredToStaderPool(poolAddresses[1], amount*(poolWeights[1]/100));
     }
 
     /**

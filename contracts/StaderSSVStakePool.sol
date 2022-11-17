@@ -17,10 +17,10 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     uint256 public constant DEPOSIT_SIZE = 32 ether;
-    ISSVNetwork public ssvNetwork;
-    IERC20 public ssvToken;
-    IDepositContract public ethValidatorDeposit;
-    IStaderValidatorRegistry public staderValidatorRegistry;
+    address public ssvNetwork;
+    address public ssvToken; 
+    address public ethValidatorDeposit;
+    address public staderValidatorRegistry;
     uint256 public staderSSVRegistryCount;
 
     /// @notice validator is added to on chain registry
@@ -67,24 +67,24 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @param _ethValidatorDeposit ethereum Deposit contract
      */
     function initialize(
-        ISSVNetwork _ssvNetwork,
-        IERC20 _ssvToken,
-        IDepositContract _ethValidatorDeposit,
-        IStaderValidatorRegistry _staderValidatorRegistry
+        address _ssvNetwork,
+        address _ssvToken,
+        address _ethValidatorDeposit,
+        address _staderValidatorRegistry
     )
         external
         initializer
-        checkZeroAddress(address(_ssvNetwork))
-        checkZeroAddress(address(_ssvToken))
-        checkZeroAddress(address(_ethValidatorDeposit))
-        checkZeroAddress(address(_staderValidatorRegistry))
+        checkZeroAddress(_ssvNetwork)
+        checkZeroAddress(_ssvToken)
+        checkZeroAddress(_ethValidatorDeposit)
+        checkZeroAddress(_staderValidatorRegistry)
     {
         __Ownable_init_unchained();
         ssvNetwork = _ssvNetwork;
         ssvToken = _ssvToken;
         ethValidatorDeposit = _ethValidatorDeposit;
         staderValidatorRegistry = _staderValidatorRegistry;
-        ssvToken.approve(address(ssvNetwork), type(uint256).max);
+        IERC20(ssvToken).approve(address(ssvNetwork), type(uint256).max);
     }
 
     /**
@@ -122,7 +122,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         uint32[] memory _operatorIDs,
         uint256 tokenFees
     ) external onlyOwner {
-        ssvNetwork.registerValidator(
+        ISSVNetwork(ssvNetwork).registerValidator(
             _pubKey,
             _operatorIDs,
             _publicShares,
@@ -151,7 +151,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             "validator not registered"
         );
 
-        ssvNetwork.updateValidator(
+        ISSVNetwork(ssvNetwork).updateValidator(
             _pubKey,
             _operatorIDs,
             _publicShares,
@@ -178,7 +178,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             "validator not registered"
         );
 
-        ssvNetwork.removeValidator(publicKey);
+        ISSVNetwork(ssvNetwork).removeValidator(publicKey);
         delete (staderSSVRegistry[index]);
         staderSSVRegistryCount--;
 
@@ -211,13 +211,13 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             address(this).balance >= DEPOSIT_SIZE,
             "not enough balance to deposit"
         );
-        ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(
+        IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
             pubKey,
             withdrawalCredentials,
             signature,
             depositDataRoot
         );
-        staderValidatorRegistry.addToValidatorRegistry(
+        IStaderValidatorRegistry(staderValidatorRegistry).addToValidatorRegistry(
             pubKey,
             withdrawalCredentials,
             signature,
@@ -230,9 +230,9 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @dev update the SSV Network contract
      * @param _ssvNetwork ssv Network contract
      */
-    function updateSSVNetworkAddress(ISSVNetwork _ssvNetwork)
+    function updateSSVNetworkAddress(address _ssvNetwork)
         external
-        checkZeroAddress(address(_ssvNetwork))
+        checkZeroAddress(_ssvNetwork)
         onlyOwner
     {
         ssvNetwork = _ssvNetwork;
@@ -242,9 +242,9 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @dev update the Eth Deposit contract
      * @param _ethValidatorDeposit  Eth Deposit contract
      */
-    function updateEthDepositAddress(IDepositContract _ethValidatorDeposit)
+    function updateEthDepositAddress(address _ethValidatorDeposit)
         external
-        checkZeroAddress(address(_ethValidatorDeposit))
+        checkZeroAddress(_ethValidatorDeposit)
         onlyOwner
     {
         ethValidatorDeposit = _ethValidatorDeposit;
@@ -254,9 +254,9 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @dev update the SSV Token contract
      * @param _ssvToken  SSV Token contract
      */
-    function updateSSVTokenAddress(IERC20 _ssvToken)
+    function updateSSVTokenAddress(address _ssvToken)
         external
-        checkZeroAddress(address(_ssvToken))
+        checkZeroAddress(_ssvToken)
         onlyOwner
     {
         ssvToken = _ssvToken;
