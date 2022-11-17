@@ -35,6 +35,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
 
     /// @notice Validator Registry mapping
     mapping(uint256 => ValidatorShares) public staderSSVRegistry;
+    mapping (bytes => uint256) public ssvValidatorPubKeyIndex;
 
     /// @notice validator is added to on chain registry
     event AddedToStaderSSVRegistry(bytes indexed pubKey, uint256 index);
@@ -231,14 +232,13 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         view
         returns (uint256)
     {
-        for (uint256 i = 0; i < staderSSVRegistryCount; i++) {
-            if (
-                keccak256(_publicKey) == keccak256(staderSSVRegistry[i].pubKey)
-            ) {
-                return i;
-            }
+        if (ssvValidatorPubKeyIndex[_publicKey]!=0){
+            return ssvValidatorPubKeyIndex[_publicKey];
         }
-        return type(uint256).max;
+        else{
+            if(keccak256(_publicKey) == keccak256(staderSSVRegistry[0].pubKey)) return 0;
+            else return type(uint256).max;
+        }
     }
 
     /**
@@ -261,6 +261,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         _staderSSVRegistry.publicShares = _publicShares;
         _staderSSVRegistry.encryptedShares = _encryptedShares;
         _staderSSVRegistry.operatorIDs = _operatorIDs;
+        ssvValidatorPubKeyIndex[_pubKey] = staderSSVRegistryCount;
         staderSSVRegistryCount++;
         emit AddedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
     }

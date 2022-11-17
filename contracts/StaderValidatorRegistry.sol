@@ -26,6 +26,7 @@ contract StaderValidatorRegistry is
         bool depositStatus; //Deposit Status indicates whether 32ETh deposited for that validator
     }
     mapping(uint256 => Validator) public validatorRegistry;
+    mapping(bytes => uint256) public validatorPubKeyIndex;
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -71,6 +72,7 @@ contract StaderValidatorRegistry is
         _validatorRegistry.signature = _signature;
         _validatorRegistry.depositDataRoot = _depositDataRoot;
         _validatorRegistry.depositStatus = true;
+        validatorPubKeyIndex[_pubKey] = validatorCount;
         validatorCount++;
         emit AddedToValidatorRegistry(_pubKey, validatorCount);
     }
@@ -126,14 +128,13 @@ contract StaderValidatorRegistry is
         view
         returns (uint256)
     {
-        for (uint256 i = 0; i < validatorCount; i++) {
-            if (
-                keccak256(_publicKey) == keccak256(validatorRegistry[i].pubKey)
-            ) {
-                return i;
-            }
+        if (validatorPubKeyIndex[_publicKey]!=0){
+            return validatorPubKeyIndex[_publicKey];
         }
-        return type(uint256).max;
+        else{
+            if(keccak256(_publicKey) == keccak256(validatorRegistry[0].pubKey)) return 0;
+            else return type(uint256).max;
+        }
     }
 
     function toString(bytes memory data) private pure returns (string memory) {
