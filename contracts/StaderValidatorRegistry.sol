@@ -3,6 +3,7 @@
 pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import "./interfaces/IPoRAddressList.sol";
 
 contract StaderValidatorRegistry is

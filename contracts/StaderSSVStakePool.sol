@@ -16,6 +16,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
  */
 
 contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
+    uint256 public constant DEPOSIT_SIZE = 32 ether;
     ISSVNetwork public ssvNetwork;
     IERC20 public ssvToken;
     IDepositContract public ethValidatorDeposit;
@@ -207,10 +208,10 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         bytes32 depositDataRoot
     ) external onlyOwner {
         require(
-            address(this).balance >= 32 ether,
+            address(this).balance >= DEPOSIT_SIZE,
             "not enough balance to deposit"
         );
-        ethValidatorDeposit.deposit{value: 32 ether}(
+        ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(
             pubKey,
             withdrawalCredentials,
             signature,

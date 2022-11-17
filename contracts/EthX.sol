@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -49,14 +48,6 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
         _burn(account, amount);
     }
 
-    function setMinterRole(address _minterRole)
-        external
-        onlyRole(MINTER_ROLE)
-        whenNotPaused
-    {
-        _grantRole(MINTER_ROLE, _minterRole);
-        approve(_minterRole, type(uint256).max);
-    }
 
     function transfer(address to, uint256 amount)
         public
