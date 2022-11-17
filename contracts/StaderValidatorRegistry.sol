@@ -18,6 +18,15 @@ contract StaderValidatorRegistry is
     /// @notice event emits after adding a validator to validatorRegistry
     event AddedToValidatorRegistry(bytes publicKey, uint256 count);
 
+    struct Validator {
+        bytes pubKey; //public Key of the validator
+        bytes withdrawalCredentials; //public key for withdraw
+        bytes signature; //signature for deposit to Ethereum Deposit contract
+        bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
+        bool depositStatus; //Deposit Status indicates whether 32ETh deposited for that validator
+    }
+    mapping(uint256 => Validator) public validatorRegistry;
+
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
         require(_address != address(0), "Address cannot be zero");
@@ -33,15 +42,6 @@ contract StaderValidatorRegistry is
         );
         _;
     }
-
-    struct Validator {
-        bytes pubKey; //public Key of the validator
-        bytes withdrawalCredentials; //public key for withdraw
-        bytes signature; //signature for deposit to Ethereum Deposit contract
-        bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
-        bool depositStatus; //Deposit Status indicates whether 32ETh deposited for that validator
-    }
-    mapping(uint256 => Validator) public validatorRegistry;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -62,7 +62,7 @@ contract StaderValidatorRegistry is
         bytes memory _withdrawalCredentials,
         bytes memory _signature,
         bytes32 _depositDataRoot
-    ) public onlyPool {
+    ) external onlyPool {
         Validator storage _validatorRegistry = validatorRegistry[
             validatorCount
         ];
@@ -99,21 +99,6 @@ contract StaderValidatorRegistry is
         staderManagedStakePool = _staderManagedStakePool;
     }
 
-    function getValidatorIndexByPublicKey(bytes memory _publicKey)
-        public
-        view
-        returns (uint256)
-    {
-        for (uint256 i = 0; i < validatorCount; i++) {
-            if (
-                keccak256(_publicKey) == keccak256(validatorRegistry[i].pubKey)
-            ) {
-                return i;
-            }
-        }
-        return type(uint256).max;
-    }
-
     function getPoRAddressListLength()
         external
         view
@@ -134,6 +119,21 @@ contract StaderValidatorRegistry is
             bytesAddresses[i] = toString(validatorRegistry[i].pubKey);
         }
         return bytesAddresses;
+    }
+
+    function getValidatorIndexByPublicKey(bytes memory _publicKey)
+        public
+        view
+        returns (uint256)
+    {
+        for (uint256 i = 0; i < validatorCount; i++) {
+            if (
+                keccak256(_publicKey) == keccak256(validatorRegistry[i].pubKey)
+            ) {
+                return i;
+            }
+        }
+        return type(uint256).max;
     }
 
     function toString(bytes memory data) private pure returns (string memory) {

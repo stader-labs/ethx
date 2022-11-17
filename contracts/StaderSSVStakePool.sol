@@ -18,10 +18,23 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     address public ssvNetwork;
-    address public ssvToken; 
+    address public ssvToken;
     address public ethValidatorDeposit;
     address public staderValidatorRegistry;
     uint256 public staderSSVRegistryCount;
+
+    /**
+     * @dev Validator registry structure
+     */
+    struct ValidatorShares {
+        bytes pubKey; ///public Key of the validator
+        bytes[] publicShares; ///public shares for operators of a validator
+        bytes[] encryptedShares; ///encrypt shares for operators of a validator
+        uint32[] operatorIDs; ///operator IDs of operator assigned to a validator
+    }
+
+    /// @notice Validator Registry mapping
+    mapping(uint256 => ValidatorShares) public staderSSVRegistry;
 
     /// @notice validator is added to on chain registry
     event AddedToStaderSSVRegistry(bytes indexed pubKey, uint256 index);
@@ -40,19 +53,6 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
 
     /// event emits after receiving ETH from stader stake pool manager
     event ReceivedETH(address indexed from, uint256 amount);
-
-    /**
-     * @dev Validator registry structure
-     */
-    struct ValidatorShares {
-        bytes pubKey; ///public Key of the validator
-        bytes[] publicShares; ///public shares for operators of a validator
-        bytes[] encryptedShares; ///encrypt shares for operators of a validator
-        uint32[] operatorIDs; ///operator IDs of operator assigned to a validator
-    }
-
-    /// @notice Validator Registry mapping
-    mapping(uint256 => ValidatorShares) public staderSSVRegistry;
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -88,27 +88,11 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev add a validator to the registry
-     * @param _pubKey public Key of the validator
-     * @param _publicShares public shares for operators of a validator
-     * @param _encryptedShares encrypt shares for operators of a validator
-     * @param _operatorIDs operator IDs of operator assigned to a validator
+     * @notice Allows the contract to receive ETH
+     * @dev stader pool manager send ETH to stader SSV stake pool
      */
-    function _addToStaderSSVRegistry(
-        bytes memory _pubKey,
-        bytes[] memory _publicShares,
-        bytes[] memory _encryptedShares,
-        uint32[] memory _operatorIDs
-    ) internal {
-        ValidatorShares storage _staderSSVRegistry = staderSSVRegistry[
-            staderSSVRegistryCount
-        ];
-        _staderSSVRegistry.pubKey = _pubKey;
-        _staderSSVRegistry.publicShares = _publicShares;
-        _staderSSVRegistry.encryptedShares = _encryptedShares;
-        _staderSSVRegistry.operatorIDs = _operatorIDs;
-        staderSSVRegistryCount++;
-        emit AddedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
+    receive() external payable {
+        emit ReceivedETH(msg.sender, msg.value);
     }
 
     /**
@@ -146,10 +130,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         uint256 tokenFees
     ) external onlyOwner {
         uint256 index = getValidatorIndexByPublicKey(_pubKey);
-        require(
-            index < staderSSVRegistryCount,
-            "validator not registered"
-        );
+        require(index < staderSSVRegistryCount, "validator not registered");
 
         ISSVNetwork(ssvNetwork).updateValidator(
             _pubKey,
@@ -173,31 +154,13 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         onlyOwner
     {
         uint256 index = getValidatorIndexByPublicKey(publicKey);
-        require(
-            index < staderSSVRegistryCount,
-            "validator not registered"
-        );
+        require(index < staderSSVRegistryCount, "validator not registered");
 
         ISSVNetwork(ssvNetwork).removeValidator(publicKey);
         delete (staderSSVRegistry[index]);
         staderSSVRegistryCount--;
 
         emit RemovedValidatorFromSSVNetwork(publicKey, index);
-    }
-
-    function getValidatorIndexByPublicKey(bytes memory _publicKey)
-        public
-        view
-        returns (uint256)
-    {
-        for (uint256 i = 0; i < staderSSVRegistryCount; i++) {
-            if (
-                keccak256(_publicKey) == keccak256(staderSSVRegistry[i].pubKey)
-            ) {
-                return i;
-            }
-        }
-        return type(uint256).max;
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
@@ -217,12 +180,13 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             signature,
             depositDataRoot
         );
-        IStaderValidatorRegistry(staderValidatorRegistry).addToValidatorRegistry(
-            pubKey,
-            withdrawalCredentials,
-            signature,
-            depositDataRoot
-        );
+        IStaderValidatorRegistry(staderValidatorRegistry)
+            .addToValidatorRegistry(
+                pubKey,
+                withdrawalCredentials,
+                signature,
+                depositDataRoot
+            );
         emit DepositToDepositContract(pubKey);
     }
 
@@ -262,11 +226,42 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         ssvToken = _ssvToken;
     }
 
+    function getValidatorIndexByPublicKey(bytes memory _publicKey)
+        public
+        view
+        returns (uint256)
+    {
+        for (uint256 i = 0; i < staderSSVRegistryCount; i++) {
+            if (
+                keccak256(_publicKey) == keccak256(staderSSVRegistry[i].pubKey)
+            ) {
+                return i;
+            }
+        }
+        return type(uint256).max;
+    }
+
     /**
-     * @notice Allows the contract to receive ETH
-     * @dev stader pool manager send ETH to stader SSV stake pool
+     * @dev add a validator to the registry
+     * @param _pubKey public Key of the validator
+     * @param _publicShares public shares for operators of a validator
+     * @param _encryptedShares encrypt shares for operators of a validator
+     * @param _operatorIDs operator IDs of operator assigned to a validator
      */
-    receive() external payable {
-        emit ReceivedETH(msg.sender, msg.value);
+    function _addToStaderSSVRegistry(
+        bytes memory _pubKey,
+        bytes[] memory _publicShares,
+        bytes[] memory _encryptedShares,
+        uint32[] memory _operatorIDs
+    ) internal {
+        ValidatorShares storage _staderSSVRegistry = staderSSVRegistry[
+            staderSSVRegistryCount
+        ];
+        _staderSSVRegistry.pubKey = _pubKey;
+        _staderSSVRegistry.publicShares = _publicShares;
+        _staderSSVRegistry.encryptedShares = _encryptedShares;
+        _staderSSVRegistry.operatorIDs = _operatorIDs;
+        staderSSVRegistryCount++;
+        emit AddedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
     }
 }

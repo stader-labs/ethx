@@ -48,7 +48,6 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
         _burn(account, amount);
     }
 
-
     function transfer(address to, uint256 amount)
         public
         virtual

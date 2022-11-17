@@ -18,7 +18,6 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
  * for retail crypto users, exchanges and custodians.
  */
 contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
-
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     ETHX public ethX;
@@ -105,13 +104,26 @@ contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
         poolAddresses.push(_staderManagedStakePoolAddress);
         poolWeights.push(_staderSSVStakePoolWeight);
         poolWeights.push(_staderManagedStakePoolWeight);
-        initialSetup();
+        _initialSetup();
     }
 
-    function initialSetup() internal {
-        minDeposit = 1;
-        maxDeposit = 32 ether;
-        exchangeRate = 1 * DECIMALS;
+    /**
+     * @notice Send funds to the pool
+     * @dev Users are able to deposit their funds by transacting to the receive function.
+     */
+    receive() external payable {
+        require(msg.value == 0, "Invalid Amount");
+        _deposit(address(0));
+    }
+
+    /**
+     * @notice Send funds to the pool
+     * @dev Users are able to deposit their funds by transacting to the fallback function.
+     * protection against accidental submissions by calling non-existent function
+     */
+    fallback() external payable {
+        require(msg.value == 0, "Invalid Amount");
+        _deposit(address(0));
     }
 
     /**
@@ -120,66 +132,6 @@ contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
      */
     function deposit(address _referral) external payable {
         _deposit(_referral);
-    }
-
-    /**
-     * @dev Process user deposit, mints liquid tokens ethX based on exchange Rate
-     * @param _referral address of referral.
-     */
-    function _deposit(address _referral) internal whenNotPaused {
-        require(!isStakePaused, "Staking is paused");
-        uint256 amount = msg.value;
-        require(
-            amount >= minDeposit && amount <= maxDeposit,
-            "invalid stake amount"
-        );
-        uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
-        bufferedEth += amount;
-        ethX.mint(msg.sender, amountToSend);
-        if(address(this).balance >= 32 ether){
-            _selectPool();
-        }
-        emit Deposited(msg.sender, amount, _referral);
-    }
-
-    /**
-     * @notice selecting a pool from SSSP and SMSP
-     * @dev select a pool based on poolWeight
-     */
-    function _selectPool() internal {
-        uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
-        uint256 amount = numberOfDeposits*DEPOSIT_SIZE;
-        (bool ssvPoolSuccess, ) = (poolAddresses[0]).call{
-            value: (amount*poolWeights[0])/100
-        }(abi.encodeWithSignature("receive()"));
-        (bool staderPoolSuccess, ) = (poolAddresses[1]).call{
-            value: (amount*poolWeights[1])/100
-        }(abi.encodeWithSignature("receive()"));
-        require(ssvPoolSuccess, "SSV Pool ETH transfer failed");
-        require(staderPoolSuccess, "Stader Pool ETH transfer failed");
-        bufferedEth -= (amount);
-        emit TransferredToSSVPool(poolAddresses[0], amount*(poolWeights[0]/100));
-        emit TransferredToStaderPool(poolAddresses[1], amount*(poolWeights[1]/100));
-    }
-
-    /**
-     * @notice calculation of exchange Rate
-     * @dev exchange rate determines of amount of ethX receive on staking eth
-     */
-    function updateExchangeRate() public returns (uint256) {
-        (, int256 beaconValidatorBalance, , , ) = ethXFeed.latestRoundData();
-        totalTVL =
-            bufferedEth +
-            uint256(beaconValidatorBalance) +
-            address(poolAddresses[0]).balance +
-            address(poolAddresses[1]).balance;
-        uint256 totalSupply = ethX.totalSupply();
-        if (totalSupply == 0 || totalTVL == 0) {
-            return 1 * DECIMALS;
-        } else {
-            exchangeRate = (totalTVL * DECIMALS) / totalSupply;
-        }
-        return exchangeRate;
     }
 
     /**
@@ -205,16 +157,12 @@ contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
      */
     function updateSSVStakePoolAddresses(
         address payable _staderSSVStakePoolAddress
-    )
-        external
-        checkZeroAddress(_staderSSVStakePoolAddress)
-        checkTimeLockOwner
-    {
+    ) external checkZeroAddress(_staderSSVStakePoolAddress) checkTimeLockOwner {
         poolAddresses[0] = _staderSSVStakePoolAddress;
         emit UpdatedSSVStakePoolAddress(poolAddresses[0]);
     }
 
-        /**
+    /**
      * @notice update the pool to register validators
      * @dev update the pool weights
      */
@@ -233,7 +181,7 @@ contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
      * @dev update the minimum stake amount
      * @param _minDeposit minimum deposit value
      */
-    function updateMinDeposit(uint256 _minDeposit) external  {
+    function updateMinDeposit(uint256 _minDeposit) external {
         require(_minDeposit > 0, "invalid minDeposit value");
         minDeposit = _minDeposit;
         emit UpdatedMinDeposit(minDeposit);
@@ -244,10 +192,7 @@ contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
      * @param _maxDeposit maximum deposit value
      */
     function updateMaxDeposit(uint256 _maxDeposit) external checkTimeLockOwner {
-        require(
-            _maxDeposit > minDeposit,
-            "invalid maxDeposit value"
-        );
+        require(_maxDeposit > minDeposit, "invalid maxDeposit value");
         maxDeposit = _maxDeposit;
         emit UpdatedMaxDeposit(maxDeposit);
     }
@@ -279,21 +224,74 @@ contract StaderStakePoolsManager is TimeLockOwner, PausableUpgradeable {
     }
 
     /**
-     * @notice Send funds to the pool
-     * @dev Users are able to deposit their funds by transacting to the fallback function.
-     * protection against accidental submissions by calling non-existent function
+     * @notice calculation of exchange Rate
+     * @dev exchange rate determines of amount of ethX receive on staking eth
      */
-    fallback() external payable {
-        require(msg.value == 0, "Invalid Amount");
-        _deposit(address(0));
+    function updateExchangeRate() public returns (uint256) {
+        (, int256 beaconValidatorBalance, , , ) = ethXFeed.latestRoundData();
+        totalTVL =
+            bufferedEth +
+            uint256(beaconValidatorBalance) +
+            address(poolAddresses[0]).balance +
+            address(poolAddresses[1]).balance;
+        uint256 totalSupply = ethX.totalSupply();
+        if (totalSupply == 0 || totalTVL == 0) {
+            return 1 * DECIMALS;
+        } else {
+            exchangeRate = (totalTVL * DECIMALS) / totalSupply;
+        }
+        return exchangeRate;
+    }
+
+    function _initialSetup() internal {
+        minDeposit = 1;
+        maxDeposit = 32 ether;
+        exchangeRate = 1 * DECIMALS;
     }
 
     /**
-     * @notice Send funds to the pool
-     * @dev Users are able to deposit their funds by transacting to the receive function.
+     * @dev Process user deposit, mints liquid tokens ethX based on exchange Rate
+     * @param _referral address of referral.
      */
-    receive() external payable {
-        require(msg.value == 0, "Invalid Amount");
-        _deposit(address(0));
+    function _deposit(address _referral) internal whenNotPaused {
+        require(!isStakePaused, "Staking is paused");
+        uint256 amount = msg.value;
+        require(
+            amount >= minDeposit && amount <= maxDeposit,
+            "invalid stake amount"
+        );
+        uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
+        bufferedEth += amount;
+        ethX.mint(msg.sender, amountToSend);
+        if (address(this).balance >= 32 ether) {
+            _selectPool();
+        }
+        emit Deposited(msg.sender, amount, _referral);
+    }
+
+    /**
+     * @notice selecting a pool from SSSP and SMSP
+     * @dev select a pool based on poolWeight
+     */
+    function _selectPool() internal {
+        uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
+        uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
+        (bool ssvPoolSuccess, ) = (poolAddresses[0]).call{
+            value: (amount * poolWeights[0]) / 100
+        }(abi.encodeWithSignature("receive()"));
+        (bool staderPoolSuccess, ) = (poolAddresses[1]).call{
+            value: (amount * poolWeights[1]) / 100
+        }(abi.encodeWithSignature("receive()"));
+        require(ssvPoolSuccess, "SSV Pool ETH transfer failed");
+        require(staderPoolSuccess, "Stader Pool ETH transfer failed");
+        bufferedEth -= (amount);
+        emit TransferredToSSVPool(
+            poolAddresses[0],
+            amount * (poolWeights[0] / 100)
+        );
+        emit TransferredToStaderPool(
+            poolAddresses[1],
+            amount * (poolWeights[1] / 100)
+        );
     }
 }

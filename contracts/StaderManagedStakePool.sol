@@ -8,8 +8,11 @@ import "./interfaces/IStaderValidatorRegistry.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-
-contract StaderManagedStakePool is Initializable, OwnableUpgradeable, PausableUpgradeable {
+contract StaderManagedStakePool is
+    Initializable,
+    OwnableUpgradeable,
+    PausableUpgradeable
+{
     /// event emits after receiving ETH from stader stake pool manager
     event ReceivedETH(address indexed from, uint256 amount);
 
