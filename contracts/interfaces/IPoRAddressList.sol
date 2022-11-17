@@ -1,7 +1,7 @@
 // WARNING:  Contract has not been audited and is meant to be for demonstration purposes
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2.0;
+pragma solidity ^0.8.2;
 
 /**
  * @title Chainlink Proof-of-Reserve address list interface.

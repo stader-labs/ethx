@@ -1,10 +1,11 @@
-// File: contracts/StaderSSVStakePool.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2.0;
+
+pragma solidity ^0.8.2;
 
 import "./interfaces/ISSVNetwork.sol";
 import "./interfaces/IDepositContract.sol";
 import "./interfaces/IStaderValidatorRegistry.sol";
+
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
@@ -22,22 +23,22 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
     uint256 public staderSSVRegistryCount;
 
     /// @notice validator is added to on chain registry
-    event addedToStaderSSVRegistry(bytes indexed pubKey, uint256 index);
+    event AddedToStaderSSVRegistry(bytes indexed pubKey, uint256 index);
 
     /// @notice validator is added to SSV Network
-    event registeredValidatorToSSVNetwork(bytes indexed pubKey);
+    event RegisteredValidatorToSSVNetwork(bytes indexed pubKey);
 
     /// @notice event emits after updating operators for a validator
-    event updatedValidatorToSSVNetwork(bytes indexed pubKey, uint256 index);
+    event UpdatedValidatorToSSVNetwork(bytes indexed pubKey, uint256 index);
 
     /// @notice event emits after removing validator from SSV
-    event removedValidatorFromSSVNetwork(bytes indexed pubKey, uint256 index);
+    event RemovedValidatorFromSSVNetwork(bytes indexed pubKey, uint256 index);
 
     /// @notice Deposited in Ethereum Deposit contract
-    event depositToDepositContract(bytes indexed pubKey);
+    event DepositToDepositContract(bytes indexed pubKey);
 
     /// event emits after receiving ETH from stader stake pool manager
-    event receivedFromPoolManager(address indexed from, uint256 amount);
+    event ReceivedETH(address indexed from, uint256 amount);
 
     /**
      * @dev Validator registry structure
@@ -83,7 +84,6 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         ethValidatorDeposit = _ethValidatorDeposit;
         staderValidatorRegistry = _staderValidatorRegistry;
         ssvToken.approve(address(ssvNetwork), type(uint256).max);
-        staderSSVRegistryCount = 0;
     }
 
     /**
@@ -93,7 +93,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @param _encryptedShares encrypt shares for operators of a validator
      * @param _operatorIDs operator IDs of operator assigned to a validator
      */
-    function addToStaderSSVRegistry(
+    function _addToStaderSSVRegistry(
         bytes memory _pubKey,
         bytes[] memory _publicShares,
         bytes[] memory _encryptedShares,
@@ -107,7 +107,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         _staderSSVRegistry.encryptedShares = _encryptedShares;
         _staderSSVRegistry.operatorIDs = _operatorIDs;
         staderSSVRegistryCount++;
-        emit addedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
+        emit AddedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
     }
 
     /**
@@ -128,13 +128,13 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             _encryptedShares,
             tokenFees
         );
-        addToStaderSSVRegistry(
+        _addToStaderSSVRegistry(
             _pubKey,
             _publicShares,
             _encryptedShares,
             _operatorIDs
         );
-        emit registeredValidatorToSSVNetwork(_pubKey);
+        emit RegisteredValidatorToSSVNetwork(_pubKey);
     }
 
     function updateValidatorToSSVNetwork(
@@ -161,7 +161,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         staderSSVRegistry[index].publicShares = _publicShares;
         staderSSVRegistry[index].encryptedShares = _encryptedShares;
 
-        emit updatedValidatorToSSVNetwork(
+        emit UpdatedValidatorToSSVNetwork(
             staderSSVRegistry[index].pubKey,
             index
         );
@@ -174,14 +174,14 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
         uint256 index = getValidatorIndexByPublicKey(publicKey);
         require(
             index < staderSSVRegistryCount,
-            "invalid index"
+            "validator not registered"
         );
 
         ssvNetwork.removeValidator(publicKey);
         delete (staderSSVRegistry[index]);
         staderSSVRegistryCount--;
 
-        emit removedValidatorFromSSVNetwork(publicKey, index);
+        emit RemovedValidatorFromSSVNetwork(publicKey, index);
     }
 
     function getValidatorIndexByPublicKey(bytes memory _publicKey)
@@ -210,19 +210,19 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
             address(this).balance >= 32 ether,
             "not enough balance to deposit"
         );
-        // ethValidatorDeposit.deposit{value: 32 ether}(
-        //     pubKey,
-        //     withdrawal_credentials,
-        //     signature,
-        //     deposit_data_root
-        // );
+        ethValidatorDeposit.deposit{value: 32 ether}(
+            pubKey,
+            withdrawalCredentials,
+            signature,
+            depositDataRoot
+        );
         staderValidatorRegistry.addToValidatorRegistry(
             pubKey,
             withdrawalCredentials,
             signature,
             depositDataRoot
         );
-        emit depositToDepositContract(pubKey);
+        emit DepositToDepositContract(pubKey);
     }
 
     /**
@@ -265,7 +265,7 @@ contract StaderSSVStakePool is Initializable, OwnableUpgradeable {
      * @notice Allows the contract to receive ETH
      * @dev stader pool manager send ETH to stader SSV stake pool
      */
-    function receiveEthFromPoolManager() external payable {
-        emit receivedFromPoolManager(msg.sender, msg.value);
+    receive() external payable {
+        emit ReceivedETH(msg.sender, msg.value);
     }
 }

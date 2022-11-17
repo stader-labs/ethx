@@ -1,6 +1,6 @@
-// File: contracts/interfaces/IStaderValidatorRegistry.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2.0;
+
+pragma solidity ^0.8.2;
 
 interface IStaderValidatorRegistry {
     event Initialized(uint8 version);
@@ -8,7 +8,7 @@ interface IStaderValidatorRegistry {
         address indexed previousOwner,
         address indexed newOwner
     );
-    event addedToValidatorRegistry(bytes publicKey, uint256 count);
+    event AddedToValidatorRegistry(bytes publicKey, uint256 count);
 
     function addToValidatorRegistry(
         bytes memory _pubKey,

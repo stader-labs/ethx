@@ -5,22 +5,11 @@ coverage.json
 typechain
 typechain-types
 .DS_Store
-
-#Hardhat files
-cache
-artifacts
-
-
-node_modules
-.env
-coverage
-coverage.json
-typechain
-typechain-types
-
-#Hardhat files
-cache
-artifacts
 .vscode
+cache
+artifacts
 .openzeppelin
+
+
+
 

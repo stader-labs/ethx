@@ -1,6 +1,6 @@
-// File: contracts/StaderValidatorRegistry.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2.0;
+
+pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IPoRAddressList.sol";
@@ -15,7 +15,7 @@ contract StaderValidatorRegistry is
     uint256 public validatorCount;
 
     /// @notice event emits after adding a validator to validatorRegistry
-    event addedToValidatorRegistry(bytes publicKey, uint256 count);
+    event AddedToValidatorRegistry(bytes publicKey, uint256 count);
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -47,9 +47,6 @@ contract StaderValidatorRegistry is
      */
     function initialize() external initializer {
         __Ownable_init_unchained();
-        validatorCount = 0;
-        staderManagedStakePool = address(0);
-        staderSSVStakePool = address(0);
     }
 
     /**
@@ -74,7 +71,7 @@ contract StaderValidatorRegistry is
         _validatorRegistry.depositDataRoot = _depositDataRoot;
         _validatorRegistry.depositStatus = true;
         validatorCount++;
-        emit addedToValidatorRegistry(_pubKey, validatorCount);
+        emit AddedToValidatorRegistry(_pubKey, validatorCount);
     }
 
     /**

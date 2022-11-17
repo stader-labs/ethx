@@ -1,10 +1,10 @@
-// File: contracts/TimelockOwner.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.2.0;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+pragma solidity ^0.8.2;
 
-abstract contract TimeLockOwner is Initializable {
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
+abstract contract TimeLockOwner is Initializable, OwnableUpgradeable {
     ///@notice time in secs for withholding ownership transfer
     uint256 public lockedPeriod;
 
@@ -19,13 +19,13 @@ abstract contract TimeLockOwner is Initializable {
     address public timeLockOwnerCandidate;
 
     /// @notice event emitted when owner is updated
-    event timeLockOwnerUpdated(address indexed newTimeLockOwner);
+    event TimeLockOwnerUpdated(address indexed newTimeLockOwner);
 
     /// @notice event emitted when new TimeLockOwner is proposed
-    event timeLockOwnerProposed(address indexed proposedTimeLockOwner);
+    event TimeLockOwnerProposed(address indexed proposedTimeLockOwner);
 
     /// @notice event emitted when new TimeLockOwner proposal cancelled
-    event canceledTimeLockOwnerProposal(address indexed from);
+    event CanceledTimeLockOwnerProposal(address indexed from);
 
     /// @notice Check for zero address
     /// @dev Modifier
@@ -53,7 +53,7 @@ abstract contract TimeLockOwner is Initializable {
         timeLockOwner = _timeLockOwner;
         lockedPeriod = 7200;
         timestamp = type(uint256).max;
-        emit timeLockOwnerUpdated(_timeLockOwner);
+        emit TimeLockOwnerUpdated(_timeLockOwner);
     }
 
     /**
@@ -66,7 +66,7 @@ abstract contract TimeLockOwner is Initializable {
     {
         timestamp = block.timestamp;
         timeLockOwnerCandidate = _timeLockOwnerCandidate;
-        emit timeLockOwnerProposed(_timeLockOwnerCandidate);
+        emit TimeLockOwnerProposed(_timeLockOwnerCandidate);
     }
 
     /**
@@ -80,7 +80,7 @@ abstract contract TimeLockOwner is Initializable {
             "Locking period not expired"
         );
         timeLockOwner = timeLockOwnerCandidate;
-        emit timeLockOwnerUpdated(timeLockOwner);
+        emit TimeLockOwnerUpdated(timeLockOwner);
     }
 
     /**
@@ -94,7 +94,7 @@ abstract contract TimeLockOwner is Initializable {
         );
         timeLockOwnerCandidate = address(0);
         timestamp = type(uint256).max;
-        emit canceledTimeLockOwnerProposal(msg.sender);
+        emit CanceledTimeLockOwnerProposal(msg.sender);
     }
 
     /**********************
