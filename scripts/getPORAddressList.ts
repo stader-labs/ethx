@@ -7,6 +7,5 @@ async function main() {
   const porAddressList = await validatorRegistryInstance.getPoRAddressList();
   console.log("porlist is ", porAddressList);
 }
-
 main();
 "\n"
