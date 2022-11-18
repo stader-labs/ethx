@@ -7,4 +7,5 @@ export async function createStaderManagerInstance() {
 	const staderMangerInstance = await staderMangerFactory.attach(SSV_MANAGER_CONTRACT);
 	console.log("Created contract instance");
 	return staderMangerInstance;
-} \r\n
+} 
+"\n"
