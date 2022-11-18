@@ -3,12 +3,12 @@
 pragma solidity ^0.8.2;
 
 interface IStaderValidatorRegistry {
-    event AddedToValidatorRegistry(bytes publicKey, uint256 count);
     event Initialized(uint8 version);
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
     );
+    event AddedToValidatorRegistry(bytes publicKey, uint256 count);
 
     function addToValidatorRegistry(
         bytes memory _pubKey,
@@ -16,15 +16,6 @@ interface IStaderValidatorRegistry {
         bytes memory _signature,
         bytes32 _depositDataRoot
     ) external;
-
-    function getPoRAddressList() external view returns (string[] memory);
-
-    function getPoRAddressListLength() external view returns (uint256);
-
-    function getValidatorIndexByPublicKey(bytes memory _publicKey)
-        external
-        view
-        returns (uint256);
 
     function initialize() external;
 
@@ -36,10 +27,6 @@ interface IStaderValidatorRegistry {
         external;
 
     function setStaderSSVStakePoolAddress(address _staderSSVStakePool) external;
-
-    function staderManagedStakePool() external view returns (address);
-
-    function staderSSVStakePool() external view returns (address);
 
     function transferOwnership(address newOwner) external;
 

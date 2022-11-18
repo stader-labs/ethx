@@ -27,7 +27,7 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
      * @param amount the amount of ethX to mint
      */
     function mint(address to, uint256 amount)
-        public
+        external
         onlyRole(MINTER_ROLE)
         whenNotPaused
     {
@@ -46,29 +46,6 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
         whenNotPaused
     {
         _burn(account, amount);
-    }
-
-    function transfer(address to, uint256 amount)
-        public
-        virtual
-        override
-        whenNotPaused
-        returns (bool)
-    {
-        address owner = _msgSender();
-        _transfer(owner, to, amount);
-        return true;
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) public virtual override whenNotPaused returns (bool) {
-        address spender = _msgSender();
-        _spendAllowance(from, spender, amount);
-        _transfer(from, to, amount);
-        return true;
     }
 
     function pause() public onlyRole(PAUSER_ROLE) whenNotPaused {
