@@ -21,9 +21,7 @@ async function main() {
 	console.log("StaderStakePoolsManager deployed to:", stakingManager.address);
 
     await ethX.setMinterRole(stakingManager.address);
-
 }
 
-
-
 main();
+"\r\n"

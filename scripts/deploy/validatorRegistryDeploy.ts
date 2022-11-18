@@ -12,3 +12,4 @@ async function main() {
 }
 
 main();
+"\r\n"
