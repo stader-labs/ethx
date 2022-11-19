@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.2;
 
-import "./interfaces/ISSVNetwork.sol";
-import "./interfaces/IDepositContract.sol";
-import "./interfaces/IStaderSSVStakePool.sol";
-import "./interfaces/IStaderValidatorRegistry.sol";
+import './interfaces/ISSVNetwork.sol';
+import './interfaces/IDepositContract.sol';
+import './interfaces/IStaderSSVStakePool.sol';
+import './interfaces/IStaderValidatorRegistry.sol';
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 /**
  * @notice Staking pool implementation on top of SSV Technology
@@ -16,11 +16,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
  * It is a unique protocol that enables the distributed operation of an Ethereum validator.
  */
 
-contract StaderSSVStakePool is
-    IStaderSSVStakePool,
-    Initializable,
-    AccessControlUpgradeable
-{
+contract StaderSSVStakePool is IStaderSSVStakePool, Initializable, AccessControlUpgradeable {
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     ISSVNetwork public ssvNetwork;
     IERC20 public ssvToken;
@@ -28,8 +24,7 @@ contract StaderSSVStakePool is
     IStaderValidatorRegistry public staderValidatorRegistry;
     uint256 public staderSSVRegistryCount;
 
-    bytes32 public constant SSV_POOL_ADMIN_ROLE =
-        keccak256("SSV_POOL_ADMIN_ROLE");
+    bytes32 public constant SSV_POOL_ADMIN_ROLE = keccak256('SSV_POOL_ADMIN_ROLE');
 
     /**
      * @dev Validator registry structure
@@ -47,7 +42,7 @@ contract StaderSSVStakePool is
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
-        require(_address != address(0), "Address cannot be zero");
+        require(_address != address(0), 'Address cannot be zero');
         _;
     }
 
@@ -77,9 +72,7 @@ contract StaderSSVStakePool is
         ssvNetwork = ISSVNetwork(_ssvNetwork);
         ssvToken = IERC20(_ssvToken);
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
-        staderValidatorRegistry = IStaderValidatorRegistry(
-            _staderValidatorRegistry
-        );
+        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
     }
 
     /**
@@ -138,24 +131,12 @@ contract StaderSSVStakePool is
         uint256 tokenFees
     ) external onlyRole(SSV_POOL_ADMIN_ROLE) {
         require(
-            _publicShares.length == _encryptedShares.length &&
-                _encryptedShares.length == _operatorIDs.length,
-            "invalid parameters"
+            _publicShares.length == _encryptedShares.length && _encryptedShares.length == _operatorIDs.length,
+            'invalid parameters'
         );
         ssvToken.approve(address(ssvNetwork), tokenFees);
-        ssvNetwork.registerValidator(
-            _pubKey,
-            _operatorIDs,
-            _publicShares,
-            _encryptedShares,
-            tokenFees
-        );
-        _addToStaderSSVRegistry(
-            _pubKey,
-            _publicShares,
-            _encryptedShares,
-            _operatorIDs
-        );
+        ssvNetwork.registerValidator(_pubKey, _operatorIDs, _publicShares, _encryptedShares, tokenFees);
+        _addToStaderSSVRegistry(_pubKey, _publicShares, _encryptedShares, _operatorIDs);
         emit RegisteredValidatorToSSVNetwork(_pubKey);
     }
 
@@ -167,37 +148,24 @@ contract StaderSSVStakePool is
         uint256 tokenFees
     ) external onlyRole(SSV_POOL_ADMIN_ROLE) {
         require(
-            _publicShares.length == _encryptedShares.length &&
-                _encryptedShares.length == _operatorIDs.length,
-            "invalid parameters"
+            _publicShares.length == _encryptedShares.length && _encryptedShares.length == _operatorIDs.length,
+            'invalid parameters'
         );
         ssvToken.approve(address(ssvNetwork), tokenFees);
         uint256 index = getValidatorIndexByPublicKey(_pubKey);
-        require(index < staderSSVRegistryCount, "validator not registered");
+        require(index < staderSSVRegistryCount, 'validator not registered');
 
-        ssvNetwork.updateValidator(
-            _pubKey,
-            _operatorIDs,
-            _publicShares,
-            _encryptedShares,
-            tokenFees
-        );
+        ssvNetwork.updateValidator(_pubKey, _operatorIDs, _publicShares, _encryptedShares, tokenFees);
         staderSSVRegistry[index].operatorIDs = _operatorIDs;
         staderSSVRegistry[index].publicShares = _publicShares;
         staderSSVRegistry[index].encryptedShares = _encryptedShares;
 
-        emit UpdatedValidatorToSSVNetwork(
-            staderSSVRegistry[index].pubKey,
-            index
-        );
+        emit UpdatedValidatorToSSVNetwork(staderSSVRegistry[index].pubKey, index);
     }
 
-    function removeValidatorFromSSVNetwork(bytes calldata publicKey)
-        external
-        onlyRole(SSV_POOL_ADMIN_ROLE)
-    {
+    function removeValidatorFromSSVNetwork(bytes calldata publicKey) external onlyRole(SSV_POOL_ADMIN_ROLE) {
         uint256 index = getValidatorIndexByPublicKey(publicKey);
-        require(index < staderSSVRegistryCount, "validator not registered");
+        require(index < staderSSVRegistryCount, 'validator not registered');
 
         ssvNetwork.removeValidator(publicKey);
         delete (staderSSVRegistry[index]);
@@ -213,33 +181,15 @@ contract StaderSSVStakePool is
         bytes calldata signature,
         bytes32 depositDataRoot
     ) external onlyRole(SSV_POOL_ADMIN_ROLE) {
-        require(
-            address(this).balance >= DEPOSIT_SIZE,
-            "not enough balance to deposit"
-        );
-        ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(
-            pubKey,
-            withdrawalCredentials,
-            signature,
-            depositDataRoot
-        );
-        staderValidatorRegistry.addToValidatorRegistry(
-            pubKey,
-            withdrawalCredentials,
-            signature,
-            depositDataRoot
-        );
+        require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
+        ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawalCredentials, signature, depositDataRoot);
+        staderValidatorRegistry.addToValidatorRegistry(pubKey, withdrawalCredentials, signature, depositDataRoot);
         emit DepositToDepositContract(pubKey);
     }
 
-    function getValidatorIndexByPublicKey(bytes memory _publicKey)
-        public
-        view
-        returns (uint256)
-    {
+    function getValidatorIndexByPublicKey(bytes memory _publicKey) public view returns (uint256) {
         uint256 index = ssvValidatorPubKeyIndex[_publicKey];
-        if (keccak256(_publicKey) == keccak256(staderSSVRegistry[index].pubKey))
-            return index;
+        if (keccak256(_publicKey) == keccak256(staderSSVRegistry[index].pubKey)) return index;
         return type(uint256).max;
     }
 
@@ -256,9 +206,7 @@ contract StaderSSVStakePool is
         bytes[] memory _encryptedShares,
         uint32[] memory _operatorIDs
     ) internal {
-        ValidatorShares storage _staderSSVRegistry = staderSSVRegistry[
-            staderSSVRegistryCount
-        ];
+        ValidatorShares storage _staderSSVRegistry = staderSSVRegistry[staderSSVRegistryCount];
         _staderSSVRegistry.pubKey = _pubKey;
         _staderSSVRegistry.publicShares = _publicShares;
         _staderSSVRegistry.encryptedShares = _encryptedShares;

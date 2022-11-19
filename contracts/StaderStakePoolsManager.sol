@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.2;
 
-import "./EthX.sol";
-import "./interfaces/IStaderValidatorRegistry.sol";
-import "./interfaces/IStaderStakePoolManager.sol";
-import "./interfaces/IExecutionLayerRewardContract.sol";
+import './EthX.sol';
+import './interfaces/IStaderValidatorRegistry.sol';
+import './interfaces/IStaderStakePoolManager.sol';
+import './interfaces/IExecutionLayerRewardContract.sol';
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
-import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 /**
  *  @title Liquid Staking Pool Implementation
@@ -19,11 +19,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
  *  We are building key staking middleware infra for multiple PoS networks
  * for retail crypto users, exchanges and custodians.
  */
-contract StaderStakePoolsManager is
-    IStaderStakePoolManager,
-    TimelockControllerUpgradeable,
-    PausableUpgradeable
-{
+contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
     ETHX public ethX;
     AggregatorV3Interface internal ethXFeed;
     IStaderValidatorRegistry validatorRegistry;
@@ -52,7 +48,7 @@ contract StaderStakePoolsManager is
     /// @dev Modifier
     /// @param _address the address to check
     modifier checkZeroAddress(address _address) {
-        require(_address != address(0), "Address cannot be zero");
+        require(_address != address(0), 'Address cannot be zero');
         _;
     }
 
@@ -86,17 +82,9 @@ contract StaderStakePoolsManager is
         checkZeroAddress(_staderSSVStakePoolAddress)
         checkZeroAddress(_staderManagedStakePoolAddress)
     {
-        require(
-            _staderSSVStakePoolWeight + _staderManagedStakePoolWeight == 100,
-            "Invalid pool weights"
-        );
+        require(_staderSSVStakePoolWeight + _staderManagedStakePoolWeight == 100, 'Invalid pool weights');
         __Pausable_init();
-        __TimelockController_init_unchained(
-            _minDelay,
-            _proposers,
-            _executors,
-            _timeLockOwner
-        );
+        __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         ethX = ETHX(_ethX);
         ethXFeed = AggregatorV3Interface(_ethXFeed);
         poolParameters[0].poolAddress = _staderSSVStakePoolAddress;
@@ -121,7 +109,7 @@ contract StaderStakePoolsManager is
      * protection against accidental submissions by calling non-existent function
      */
     fallback() external payable {
-        require(msg.value == 0, "Invalid Amount");
+        require(msg.value == 0, 'Invalid Amount');
         _deposit(address(0));
     }
 
@@ -140,29 +128,21 @@ contract StaderStakePoolsManager is
      * @notice update the pool to register validators
      * @dev update the pool weights
      */
-    function updatePoolWeights(
-        uint256 _staderSSVStakePoolWeight,
-        uint256 _staderManagedStakePoolWeight
-    ) external onlyRole(TIMELOCK_ADMIN_ROLE) {
-        require(
-            _staderSSVStakePoolWeight + _staderManagedStakePoolWeight == 100,
-            "Invalid weights"
-        );
+    function updatePoolWeights(uint256 _staderSSVStakePoolWeight, uint256 _staderManagedStakePoolWeight)
+        external
+        onlyRole(TIMELOCK_ADMIN_ROLE)
+    {
+        require(_staderSSVStakePoolWeight + _staderManagedStakePoolWeight == 100, 'Invalid weights');
         poolParameters[0].poolWeight = _staderSSVStakePoolWeight;
         poolParameters[1].poolWeight = _staderManagedStakePoolWeight;
-        emit UpdatedPoolWeights(
-            poolParameters[0].poolWeight,
-            poolParameters[1].poolWeight
-        );
+        emit UpdatedPoolWeights(poolParameters[0].poolWeight, poolParameters[1].poolWeight);
     }
 
     /**
      * @notice update the pool to register validators
      * @dev update the pool weights
      */
-    function updateSSVStakePoolAddresses(
-        address payable _staderSSVStakePoolAddress
-    )
+    function updateSSVStakePoolAddresses(address payable _staderSSVStakePoolAddress)
         external
         checkZeroAddress(_staderSSVStakePoolAddress)
         onlyRole(TIMELOCK_ADMIN_ROLE)
@@ -175,9 +155,7 @@ contract StaderStakePoolsManager is
      * @notice update the pool to register validators
      * @dev update the pool weights
      */
-    function updateStaderStakePoolAddresses(
-        address payable _staderManagedStakePoolAddress
-    )
+    function updateStaderStakePoolAddresses(address payable _staderManagedStakePoolAddress)
         external
         checkZeroAddress(_staderManagedStakePoolAddress)
         onlyRole(TIMELOCK_ADMIN_ROLE)
@@ -190,11 +168,8 @@ contract StaderStakePoolsManager is
      * @dev update the minimum stake amount
      * @param _minDeposit minimum deposit value
      */
-    function updateMinDeposit(uint256 _minDeposit)
-        external
-        onlyRole(EXECUTOR_ROLE)
-    {
-        require(_minDeposit > 0, "invalid minDeposit value");
+    function updateMinDeposit(uint256 _minDeposit) external onlyRole(EXECUTOR_ROLE) {
+        require(_minDeposit > 0, 'invalid minDeposit value');
         minDeposit = _minDeposit;
         emit UpdatedMinDeposit(minDeposit);
     }
@@ -203,11 +178,8 @@ contract StaderStakePoolsManager is
      * @dev update the maximum stake amount
      * @param _maxDeposit maximum deposit value
      */
-    function updateMaxDeposit(uint256 _maxDeposit)
-        external
-        onlyRole(EXECUTOR_ROLE)
-    {
-        require(_maxDeposit > minDeposit, "invalid maxDeposit value");
+    function updateMaxDeposit(uint256 _maxDeposit) external onlyRole(EXECUTOR_ROLE) {
+        require(_maxDeposit > minDeposit, 'invalid maxDeposit value');
         maxDeposit = _maxDeposit;
         emit UpdatedMaxDeposit(maxDeposit);
     }
@@ -216,11 +188,7 @@ contract StaderStakePoolsManager is
      * @dev update ethX feed
      * @param _ethXFeed ethX contract
      */
-    function updateEthXFeed(address _ethXFeed)
-        external
-        checkZeroAddress(_ethXFeed)
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
+    function updateEthXFeed(address _ethXFeed) external checkZeroAddress(_ethXFeed) onlyRole(TIMELOCK_ADMIN_ROLE) {
         ethXFeed = AggregatorV3Interface(_ethXFeed);
         emit UpdatedEthXFeed(address(_ethXFeed));
     }
@@ -229,11 +197,7 @@ contract StaderStakePoolsManager is
      * @dev update ethX address
      * @param _ethX ethX contract
      */
-    function updateEthXAddress(address _ethX)
-        external
-        checkZeroAddress(_ethX)
-        onlyRole(EXECUTOR_ROLE)
-    {
+    function updateEthXAddress(address _ethX) external checkZeroAddress(_ethX) onlyRole(EXECUTOR_ROLE) {
         ethX = ETHX(_ethX);
         emit UpdatedEthXAddress(address(ethX));
     }
@@ -281,10 +245,7 @@ contract StaderStakePoolsManager is
      * @dev update fee percentage
      * @param _feePercentage fee value
      */
-    function updateFeePercentage(uint256 _feePercentage)
-        external
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
+    function updateFeePercentage(uint256 _feePercentage) external onlyRole(TIMELOCK_ADMIN_ROLE) {
         feePercentage = _feePercentage;
         emit UpdatedFeePercentage(feePercentage);
     }
@@ -310,23 +271,13 @@ contract StaderStakePoolsManager is
      * @dev exchange rate determines of amount of ethX receive on staking eth
      */
     function getExchangeRate() public returns (uint256) {
-        (, int256 beaconValidatorBalance, , uint256 updatedAt, ) = ethXFeed
-            .latestRoundData();
+        (, int256 beaconValidatorBalance, , uint256 updatedAt, ) = ethXFeed.latestRoundData();
         if (oracleLastUpdatedAt >= updatedAt) return exchangeRate;
 
-        uint256 ELRewards = IExecutionLayerRewardContract(
-            executionLayerRewardContract
-        ).withdrawELRewards();
+        uint256 ELRewards = IExecutionLayerRewardContract(executionLayerRewardContract).withdrawELRewards();
         uint256 validatorCount = validatorRegistry.validatorCount();
-        if (
-            uint256(beaconValidatorBalance) >
-            DEPOSIT_SIZE * validatorCount + prevBeaconChainReward
-        ) {
-            _distributeFee(
-                uint256(beaconValidatorBalance),
-                ELRewards,
-                validatorCount
-            );
+        if (uint256(beaconValidatorBalance) > DEPOSIT_SIZE * validatorCount + prevBeaconChainReward) {
+            _distributeFee(uint256(beaconValidatorBalance), ELRewards, validatorCount);
         }
         bufferedEth += ELRewards;
         oracleLastUpdatedAt = updatedAt;
@@ -349,12 +300,9 @@ contract StaderStakePoolsManager is
      * @param _referral address of referral.
      */
     function _deposit(address _referral) internal whenNotPaused {
-        require(!isStakePaused, "Staking is paused");
+        require(!isStakePaused, 'Staking is paused');
         uint256 amount = msg.value;
-        require(
-            amount >= minDeposit && amount <= maxDeposit,
-            "invalid stake amount"
-        );
+        require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
         exchangeRate = getExchangeRate();
         uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
         bufferedEth += amount;
@@ -374,21 +322,15 @@ contract StaderStakePoolsManager is
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
             value: (amount * poolParameters[0].poolWeight) / 100
-        }(abi.encodeWithSignature("receive()"));
+        }(abi.encodeWithSignature('receive()'));
         (bool staderPoolSuccess, ) = (poolParameters[1].poolAddress).call{
             value: (amount * poolParameters[1].poolWeight) / 100
-        }(abi.encodeWithSignature("receive()"));
-        require(ssvPoolSuccess, "SSV Pool ETH transfer failed");
-        require(staderPoolSuccess, "Stader Pool ETH transfer failed");
+        }(abi.encodeWithSignature('receive()'));
+        require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
+        require(staderPoolSuccess, 'Stader Pool ETH transfer failed');
         bufferedEth -= (amount);
-        emit TransferredToSSVPool(
-            poolParameters[0].poolAddress,
-            (amount * poolParameters[0].poolWeight) / 100
-        );
-        emit TransferredToStaderPool(
-            poolParameters[1].poolAddress,
-            (amount * poolParameters[1].poolWeight) / 100
-        );
+        emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
+        emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
     }
 
     /**
@@ -400,14 +342,10 @@ contract StaderStakePoolsManager is
         uint256 _ELRewards,
         uint256 _validatorCount
     ) internal {
-        uint256 beaconChainRewards = _beaconValidatorBalance -
-            DEPOSIT_SIZE *
-            _validatorCount -
-            prevBeaconChainReward;
+        uint256 beaconChainRewards = _beaconValidatorBalance - DEPOSIT_SIZE * _validatorCount - prevBeaconChainReward;
         prevBeaconChainReward = beaconChainRewards;
         uint256 totalRewards = beaconChainRewards + _ELRewards;
-        uint256 ethXMintedAsFees = (totalRewards * DECIMALS * feePercentage) /
-            (exchangeRate * 100);
+        uint256 ethXMintedAsFees = (totalRewards * DECIMALS * feePercentage) / (exchangeRate * 100);
         ethX.mint(staderTreasury, ethXMintedAsFees);
     }
 

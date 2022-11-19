@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     address public staderSSVStakePool;
     address public staderManagedStakePool;
     uint256 public validatorCount;
 
-    bytes32 public constant POOL_OPERATOR = keccak256("POOL_OPERATOR");
-    bytes32 public constant VALIDATOR_REGISTRY_ADMIN_ROLE =
-        keccak256("VALIDATOR_REGISTRY_ADMIN_ROLE");
+    bytes32 public constant POOL_OPERATOR = keccak256('POOL_OPERATOR');
+    bytes32 public constant VALIDATOR_REGISTRY_ADMIN_ROLE = keccak256('VALIDATOR_REGISTRY_ADMIN_ROLE');
 
     /// @notice event emits after adding a validator to validatorRegistry
     event AddedToValidatorRegistry(bytes publicKey, uint256 count);
@@ -27,7 +26,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
-        require(_address != address(0), "Address cannot be zero");
+        require(_address != address(0), 'Address cannot be zero');
         _;
     }
 
@@ -48,8 +47,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         checkZeroAddress(_staderSSVStakePool)
         onlyRole(VALIDATOR_REGISTRY_ADMIN_ROLE)
     {
-        if (hasRole(POOL_OPERATOR, staderSSVStakePool))
-            _revokeRole(POOL_OPERATOR, staderSSVStakePool);
+        if (hasRole(POOL_OPERATOR, staderSSVStakePool)) _revokeRole(POOL_OPERATOR, staderSSVStakePool);
         staderSSVStakePool = _staderSSVStakePool;
         _grantRole(POOL_OPERATOR, staderSSVStakePool);
     }
@@ -63,8 +61,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         checkZeroAddress(_staderManagedStakePool)
         onlyRole(VALIDATOR_REGISTRY_ADMIN_ROLE)
     {
-        if (hasRole(POOL_OPERATOR, staderManagedStakePool))
-            _revokeRole(POOL_OPERATOR, staderManagedStakePool);
+        if (hasRole(POOL_OPERATOR, staderManagedStakePool)) _revokeRole(POOL_OPERATOR, staderManagedStakePool);
         staderManagedStakePool = _staderManagedStakePool;
         _grantRole(POOL_OPERATOR, staderManagedStakePool);
     }
@@ -82,9 +79,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         bytes memory _signature,
         bytes32 _depositDataRoot
     ) external onlyRole(POOL_OPERATOR) {
-        Validator storage _validatorRegistry = validatorRegistry[
-            validatorCount
-        ];
+        Validator storage _validatorRegistry = validatorRegistry[validatorCount];
         _validatorRegistry.pubKey = _pubKey;
         _validatorRegistry.withdrawalCredentials = _withdrawalCredentials;
         _validatorRegistry.signature = _signature;
@@ -98,49 +93,34 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         return validatorCount;
     }
 
-    function getPoRAddressList(uint256 startIndex, uint256 endIndex)
-        external
-        view
-        returns (string[] memory)
-    {
+    function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view returns (string[] memory) {
         if (startIndex > endIndex) {
             return new string[](0);
         }
-        endIndex = endIndex > validatorCount - 1
-            ? validatorCount - 1
-            : endIndex;
-        string[] memory stringAddresses = new string[](
-            endIndex - startIndex + 1
-        );
+        endIndex = endIndex > validatorCount - 1 ? validatorCount - 1 : endIndex;
+        string[] memory stringAddresses = new string[](endIndex - startIndex + 1);
         uint256 currIdx = startIndex;
         uint256 strAddrIdx = 0;
         while (currIdx <= endIndex) {
-            stringAddresses[strAddrIdx] = toString(
-                abi.encodePacked(validatorRegistry[currIdx].pubKey)
-            );
+            stringAddresses[strAddrIdx] = toString(abi.encodePacked(validatorRegistry[currIdx].pubKey));
             strAddrIdx++;
             currIdx++;
         }
         return stringAddresses;
     }
 
-    function getValidatorIndexByPublicKey(bytes memory _publicKey)
-        public
-        view
-        returns (uint256)
-    {
+    function getValidatorIndexByPublicKey(bytes memory _publicKey) public view returns (uint256) {
         uint256 index = validatorPubKeyIndex[_publicKey];
-        if (keccak256(_publicKey) == keccak256(validatorRegistry[index].pubKey))
-            return index;
+        if (keccak256(_publicKey) == keccak256(validatorRegistry[index].pubKey)) return index;
         return type(uint256).max;
     }
 
     function toString(bytes memory data) private pure returns (string memory) {
-        bytes memory alphabet = "0123456789abcdef";
+        bytes memory alphabet = '0123456789abcdef';
 
         bytes memory str = new bytes(2 + data.length * 2);
-        str[0] = "0";
-        str[1] = "x";
+        str[0] = '0';
+        str[1] = 'x';
         for (uint256 i = 0; i < data.length; i++) {
             str[2 + i * 2] = alphabet[uint256(uint8(data[i] >> 4))];
             str[3 + i * 2] = alphabet[uint256(uint8(data[i] & 0x0f))];

@@ -6,10 +6,7 @@ interface IStaderStakePoolManager {
     event Deposited(address indexed sender, uint256 amount, address referral);
     event TransferredToSSVPool(address indexed poolAddress, uint256 amount);
     event TransferredToStaderPool(address indexed poolAddress, uint256 amount);
-    event UpdatedPoolWeights(
-        uint256 staderSSVStakePoolWeight,
-        uint256 staderManagedStakePoolWeight
-    );
+    event UpdatedPoolWeights(uint256 staderSSVStakePoolWeight, uint256 staderManagedStakePoolWeight);
     event UpdatedSSVStakePoolAddress(address ssvStakePool);
     event UpdatedStaderStakePoolAddress(address staderStakePool);
     event UpdatedMinDeposit(uint256 amount);

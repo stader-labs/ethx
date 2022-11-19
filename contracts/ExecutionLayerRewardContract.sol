@@ -2,38 +2,29 @@
 
 pragma solidity ^0.8.2;
 
-import "./interfaces/IStaderStakePoolManager.sol";
-import "./interfaces/IExecutionLayerRewardContract.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import './interfaces/IStaderStakePoolManager.sol';
+import './interfaces/IExecutionLayerRewardContract.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract ExecutionLayerRewardContract is
-    IExecutionLayerRewardContract,
-    Initializable,
-    AccessControlUpgradeable
-{
+contract ExecutionLayerRewardContract is IExecutionLayerRewardContract, Initializable, AccessControlUpgradeable {
     IStaderStakePoolManager public staderStakePoolManager;
 
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
-        require(_address != address(0), "Address cannot be zero");
+        require(_address != address(0), 'Address cannot be zero');
         _;
     }
 
-    function initialize(
-        address _staderStakePoolManager,
-        address _elRewardContractOwner
-    )
+    function initialize(address _staderStakePoolManager, address _elRewardContractOwner)
         external
         initializer
         checkZeroAddress(_staderStakePoolManager)
         checkZeroAddress(_elRewardContractOwner)
     {
         __AccessControl_init_unchained();
-        staderStakePoolManager = IStaderStakePoolManager(
-            _staderStakePoolManager
-        );
+        staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
         _grantRole(ADMIN_ROLE, _elRewardContractOwner);
     }
 
@@ -50,16 +41,11 @@ contract ExecutionLayerRewardContract is
      * @dev Can be called only by the Stader contract
      */
     function withdrawELRewards() external override returns (uint256 amount) {
-        require(
-            msg.sender == address(staderStakePoolManager),
-            "ONLY_STADER_CAN_WITHDRAW"
-        );
+        require(msg.sender == address(staderStakePoolManager), 'ONLY_STADER_CAN_WITHDRAW');
 
         uint256 balance = address(this).balance;
         if (balance > 0) {
-            staderStakePoolManager.receiveExecutionLayerRewards{
-                value: balance
-            }();
+            staderStakePoolManager.receiveExecutionLayerRewards{value: balance}();
         }
         return balance;
     }
@@ -69,8 +55,6 @@ contract ExecutionLayerRewardContract is
         onlyRole(ADMIN_ROLE)
         checkZeroAddress(_staderStakePoolManager)
     {
-        staderStakePoolManager = IStaderStakePoolManager(
-            _staderStakePoolManager
-        );
+        staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
     }
 }

@@ -106,28 +106,19 @@ interface ISSVRegistry {
      * @dev Returns operators for owner.
      * @param ownerAddress Owner's address.
      */
-    function getOperatorsByOwnerAddress(address ownerAddress)
-        external
-        view
-        returns (uint32[] memory);
+    function getOperatorsByOwnerAddress(address ownerAddress) external view returns (uint32[] memory);
 
     /**
      * @dev Gets operators list which are in use by validator.
      * @param validatorPublicKey Validator's public key.
      */
-    function getOperatorsByValidator(bytes calldata validatorPublicKey)
-        external
-        view
-        returns (uint32[] memory);
+    function getOperatorsByValidator(bytes calldata validatorPublicKey) external view returns (uint32[] memory);
 
     /**
      * @dev Gets operator's owner.
      * @param operatorId Operator id.
      */
-    function getOperatorOwner(uint32 operatorId)
-        external
-        view
-        returns (address);
+    function getOperatorOwner(uint32 operatorId) external view returns (address);
 
     /**
      * @dev Gets operator current fee.
@@ -157,26 +148,17 @@ interface ISSVRegistry {
      * @dev Gets a validator public keys by owner's address.
      * @param ownerAddress Owner's Address.
      */
-    function getValidatorsByAddress(address ownerAddress)
-        external
-        view
-        returns (bytes[] memory);
+    function getValidatorsByAddress(address ownerAddress) external view returns (bytes[] memory);
 
     /**
      * @dev Get validator's owner.
      * @param publicKey Validator's public key.
      */
-    function getValidatorOwner(bytes calldata publicKey)
-        external
-        view
-        returns (address);
+    function getValidatorOwner(bytes calldata publicKey) external view returns (address);
 
     /**
      * @dev Get validators amount per operator.
      * @param operatorId Operator public key
      */
-    function validatorsPerOperatorCount(uint32 operatorId)
-        external
-        view
-        returns (uint32);
+    function validatorsPerOperatorCount(uint32 operatorId) external view returns (uint32);
 }

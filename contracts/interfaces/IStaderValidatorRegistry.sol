@@ -4,10 +4,7 @@ pragma solidity ^0.8.2;
 
 interface IStaderValidatorRegistry {
     event Initialized(uint8 version);
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event AddedToValidatorRegistry(bytes publicKey, uint256 count);
 
     function addToValidatorRegistry(
@@ -23,8 +20,7 @@ interface IStaderValidatorRegistry {
 
     function renounceOwnership() external;
 
-    function setStaderManagedStakePoolAddress(address _staderManagedStakePool)
-        external;
+    function setStaderManagedStakePoolAddress(address _staderManagedStakePool) external;
 
     function setStaderSSVStakePoolAddress(address _staderSSVStakePool) external;
 
