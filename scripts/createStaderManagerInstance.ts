@@ -8,4 +8,3 @@ export async function createStaderManagerInstance() {
 	console.log("Created contract instance");
 	return staderMangerInstance;
 } 
-"\n"

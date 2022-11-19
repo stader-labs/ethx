@@ -9,7 +9,7 @@ contract ExecutionLayerRewardContract is Initializable, AccessControlUpgradeable
 
     IStaderStakePoolManager public staderStakePoolManager;
 
-    bytes32 public constant EL_REWARD_CONTRACT_ADMIN_ROLE = keccak256("EL_REWARD_CONTRACT_ADMIN_ROLE");
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     event ETHReceived(uint256 amount);
 
@@ -29,7 +29,7 @@ contract ExecutionLayerRewardContract is Initializable, AccessControlUpgradeable
     {
         __AccessControl_init_unchained();
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
-        _grantRole(EL_REWARD_CONTRACT_ADMIN_ROLE,_elRewardContractOwner);
+        _grantRole(ADMIN_ROLE,_elRewardContractOwner);
     }
 
     /**
@@ -54,10 +54,9 @@ contract ExecutionLayerRewardContract is Initializable, AccessControlUpgradeable
         return balance;
     }
 
-    function updateStaderStakePoolManager(address _staderStakePoolManager) external onlyRole(EL_REWARD_CONTRACT_ADMIN_ROLE)
+    function updateStaderStakePoolManager(address _staderStakePoolManager) external onlyRole(ADMIN_ROLE)
     checkZeroAddress(_staderStakePoolManager)
     {
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
     }
-
 }

@@ -30,7 +30,7 @@ const config: HardhatUserConfig = {
   networks: {
     goerli: {
       url: process.env.PROVIDER_URL,
-      accounts: [process.env.GOERLI_OWNER_PRIVATE_KEY??''],
+      accounts: [process.env.OWNER_PRIVATE_KEY??''],
     },
   },
   etherscan: {
