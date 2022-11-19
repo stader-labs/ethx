@@ -3,7 +3,7 @@
 ```shell
 npx hardhat help
 npx hardhat test
-GAS_REPORT=true 
+GAS_REPORT=true
 npx hardhat test
 npx hardhat node
 npx hardhat run scripts/deploy.ts
@@ -21,7 +21,6 @@ npx hardhat run scripts/deploy.ts
 
 ### Branches
 
-
 #### Naming
 
 ```
@@ -34,7 +33,7 @@ e.g. 'fix/add-natspec-comments'
 - The description portion must be in present tense
 - Once the branch has been merged via PR it must be closed
 
-#### Commits 
+#### Commits
 
 ```
 {type}: {description}
