@@ -25,3 +25,4 @@ interface IStaderStakePoolManager {
 
     function receiveExecutionLayerRewards() external payable;
 }
+

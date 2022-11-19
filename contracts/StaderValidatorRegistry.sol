@@ -102,16 +102,30 @@ contract StaderValidatorRegistry is
         return validatorCount;
     }
 
-    function getPoRAddressList()
+    function getPoRAddressList(uint256 startIndex, uint256 endIndex)
         external
         view
         returns (string[] memory)
     {
-        string[] memory bytesAddresses = new string[](validatorCount);
-        for (uint256 i = 0; i < validatorCount; i++) {
-            bytesAddresses[i] = toString(validatorRegistry[i].pubKey);
+        if (startIndex > endIndex) {
+            return new string[](0);
         }
-        return bytesAddresses;
+        endIndex = endIndex > validatorCount - 1
+            ? validatorCount - 1
+            : endIndex;
+        string[] memory stringAddresses = new string[](
+            endIndex - startIndex + 1
+        );
+        uint256 currIdx = startIndex;
+        uint256 strAddrIdx = 0;
+        while (currIdx <= endIndex) {
+            stringAddresses[strAddrIdx] = toString(
+                abi.encodePacked(validatorRegistry[currIdx].pubKey)
+            );
+            strAddrIdx++;
+            currIdx++;
+        }
+        return stringAddresses;
     }
 
     function getValidatorIndexByPublicKey(bytes memory _publicKey)

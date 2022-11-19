@@ -3,15 +3,14 @@
 pragma solidity ^0.8.2;
 
 import "./interfaces/IStaderStakePoolManager.sol";
+import "./interfaces/IExecutionLayerRewardContract.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract ExecutionLayerRewardContract is Initializable, AccessControlUpgradeable{
+contract ExecutionLayerRewardContract is IExecutionLayerRewardContract, Initializable, AccessControlUpgradeable{
 
     IStaderStakePoolManager public staderStakePoolManager;
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-
-    event ETHReceived(uint256 amount);
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -44,7 +43,7 @@ contract ExecutionLayerRewardContract is Initializable, AccessControlUpgradeable
       * @notice Withdraw all accumulated rewards to Stader contract
       * @dev Can be called only by the Stader contract
       */
-    function withdrawELRewards() external returns (uint256 amount) {
+    function withdrawELRewards() external override returns (uint256 amount) {
         require(msg.sender == address(staderStakePoolManager), "ONLY_STADER_CAN_WITHDRAW");
 
         uint256 balance = address(this).balance;
