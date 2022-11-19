@@ -4,7 +4,10 @@ pragma solidity ^0.8.2;
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
+contract StaderValidatorRegistry is 
+    Initializable, 
+    AccessControlUpgradeable 
+{
     address public staderSSVStakePool;
     address public staderManagedStakePool;
     uint256 public validatorCount;
