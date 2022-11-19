@@ -1,12 +1,11 @@
 {
-    "pubkey": "8cd2726ccd034cf023840c2f76f7bfd4f2e8dbe79ff0e43d2908d1124450ed1c954966a42113787bc930c0e2d73524c0",
-    "withdrawal_credentials": "00b333c470187d25080fdcef6f3c47c1c0494329ae56d462a455c47e76d9d22e",
-    "amount": 32000000000,
-    "signature": "99f9070456f9ee80c7ae5fe3f53f1e49926cb4729212072a17ca983cbaa4c67a447cc0a19ad586870dcc288ab2a59ba0037cc24c5ef8e4330d265131f7352ecbeb9fbdfd458f4cf424ab87b40ec5ed0d72eb69a615516379a562683c1de0ba8c",
-    "deposit_message_root": "39eb93bffc835c230a67244263acfb7cac1ad2c23f3c8bef832b9682399f46d3",
-    "deposit_data_root": "7ac4bdb04e9b91a2a19a6876ad39050f57c41ed574da86b234d9a1f12ec841d5",
-    "fork_version": "00001020",
-    "network_name": "prater",
-    "deposit_cli_version": "2.2.0"
-    
-  }
+  "pubkey": "8cd2726ccd034cf023840c2f76f7bfd4f2e8dbe79ff0e43d2908d1124450ed1c954966a42113787bc930c0e2d73524c0",
+  "withdrawal_credentials": "00b333c470187d25080fdcef6f3c47c1c0494329ae56d462a455c47e76d9d22e",
+  "amount": 32000000000,
+  "signature": "99f9070456f9ee80c7ae5fe3f53f1e49926cb4729212072a17ca983cbaa4c67a447cc0a19ad586870dcc288ab2a59ba0037cc24c5ef8e4330d265131f7352ecbeb9fbdfd458f4cf424ab87b40ec5ed0d72eb69a615516379a562683c1de0ba8c",
+  "deposit_message_root": "39eb93bffc835c230a67244263acfb7cac1ad2c23f3c8bef832b9682399f46d3",
+  "deposit_data_root": "7ac4bdb04e9b91a2a19a6876ad39050f57c41ed574da86b234d9a1f12ec841d5",
+  "fork_version": "00001020",
+  "network_name": "prater",
+  "deposit_cli_version": "2.2.0"
+}
