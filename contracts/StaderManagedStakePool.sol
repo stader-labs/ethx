@@ -15,12 +15,12 @@ contract StaderManagedStakePool is
     AccessControlUpgradeable,
     PausableUpgradeable
 {
-    
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     IDepositContract public ethValidatorDeposit;
     IStaderValidatorRegistry public staderValidatorRegistry;
 
-    bytes32 public constant STADER_POOL_ADMIN_ROLE = keccak256("STADER_POOL_ADMIN_ROLE");
+    bytes32 public constant STADER_POOL_ADMIN_ROLE =
+        keccak256("STADER_POOL_ADMIN_ROLE");
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -35,8 +35,9 @@ contract StaderManagedStakePool is
         address _ethValidatorDeposit,
         address _staderValidatorRegistry,
         address _staderPoolAdmin
-    ) 
-        external initializer 
+    )
+        external
+        initializer
         checkZeroAddress(_ethValidatorDeposit)
         checkZeroAddress(_staderValidatorRegistry)
         checkZeroAddress(_staderPoolAdmin)
@@ -44,8 +45,10 @@ contract StaderManagedStakePool is
         __Pausable_init();
         __AccessControl_init_unchained();
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
-        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        _grantRole(STADER_POOL_ADMIN_ROLE,_staderPoolAdmin);
+        staderValidatorRegistry = IStaderValidatorRegistry(
+            _staderValidatorRegistry
+        );
+        _grantRole(STADER_POOL_ADMIN_ROLE, _staderPoolAdmin);
     }
 
     /**
@@ -81,5 +84,4 @@ contract StaderManagedStakePool is
         );
         emit DepositToDepositContract(pubKey);
     }
-
 }

@@ -19,8 +19,11 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
  *  We are building key staking middleware infra for multiple PoS networks
  * for retail crypto users, exchanges and custodians.
  */
-contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
-
+contract StaderStakePoolsManager is
+    IStaderStakePoolManager,
+    TimelockControllerUpgradeable,
+    PausableUpgradeable
+{
     ETHX public ethX;
     AggregatorV3Interface internal ethXFeed;
     IStaderValidatorRegistry validatorRegistry;
@@ -39,7 +42,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public feePercentage;
     bool public isStakePaused;
 
-    struct pool{
+    struct pool {
         address poolAddress;
         uint256 poolWeight;
     }
@@ -88,7 +91,12 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             "Invalid pool weights"
         );
         __Pausable_init();
-        __TimelockController_init_unchained(_minDelay, _proposers,_executors,_timeLockOwner);        
+        __TimelockController_init_unchained(
+            _minDelay,
+            _proposers,
+            _executors,
+            _timeLockOwner
+        );
         ethX = ETHX(_ethX);
         ethXFeed = AggregatorV3Interface(_ethXFeed);
         poolParameters[0].poolAddress = _staderSSVStakePoolAddress;
@@ -118,11 +126,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /**
-    * @notice A payable function for execution layer rewards. Can be called only by executionLayerReward Contract
-    * @dev We need a dedicated function because funds received by the default payable function
-    * are treated as a user deposit
-    */
-    function receiveExecutionLayerRewards() external payable override{
+     * @notice A payable function for execution layer rewards. Can be called only by executionLayerReward Contract
+     * @dev We need a dedicated function because funds received by the default payable function
+     * are treated as a user deposit
+     */
+    function receiveExecutionLayerRewards() external payable override {
         require(msg.sender == executionLayerRewardContract);
         totalELRewardsCollected += msg.value;
         emit ExecutionLayerRewardsReceived(msg.value);
@@ -135,14 +143,17 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function updatePoolWeights(
         uint256 _staderSSVStakePoolWeight,
         uint256 _staderManagedStakePoolWeight
-    ) external  onlyRole(TIMELOCK_ADMIN_ROLE) {
+    ) external onlyRole(TIMELOCK_ADMIN_ROLE) {
         require(
             _staderSSVStakePoolWeight + _staderManagedStakePoolWeight == 100,
             "Invalid weights"
         );
         poolParameters[0].poolWeight = _staderSSVStakePoolWeight;
         poolParameters[1].poolWeight = _staderManagedStakePoolWeight;
-        emit UpdatedPoolWeights(poolParameters[0].poolWeight,  poolParameters[1].poolWeight);
+        emit UpdatedPoolWeights(
+            poolParameters[0].poolWeight,
+            poolParameters[1].poolWeight
+        );
     }
 
     /**
@@ -151,7 +162,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function updateSSVStakePoolAddresses(
         address payable _staderSSVStakePoolAddress
-    ) external checkZeroAddress(_staderSSVStakePoolAddress)  onlyRole(TIMELOCK_ADMIN_ROLE) {
+    )
+        external
+        checkZeroAddress(_staderSSVStakePoolAddress)
+        onlyRole(TIMELOCK_ADMIN_ROLE)
+    {
         poolParameters[0].poolAddress = _staderSSVStakePoolAddress;
         emit UpdatedSSVStakePoolAddress(poolParameters[0].poolAddress);
     }
@@ -175,7 +190,10 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update the minimum stake amount
      * @param _minDeposit minimum deposit value
      */
-    function updateMinDeposit(uint256 _minDeposit) external onlyRole(EXECUTOR_ROLE){
+    function updateMinDeposit(uint256 _minDeposit)
+        external
+        onlyRole(EXECUTOR_ROLE)
+    {
         require(_minDeposit > 0, "invalid minDeposit value");
         minDeposit = _minDeposit;
         emit UpdatedMinDeposit(minDeposit);
@@ -185,7 +203,10 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update the maximum stake amount
      * @param _maxDeposit maximum deposit value
      */
-    function updateMaxDeposit(uint256 _maxDeposit) external onlyRole(EXECUTOR_ROLE) {
+    function updateMaxDeposit(uint256 _maxDeposit)
+        external
+        onlyRole(EXECUTOR_ROLE)
+    {
         require(_maxDeposit > minDeposit, "invalid maxDeposit value");
         maxDeposit = _maxDeposit;
         emit UpdatedMaxDeposit(maxDeposit);
@@ -271,10 +292,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     /**
      * @dev update isStakePaused flag
      */
-    function toggleIsStakePaused()
-        external
-        onlyRole(EXECUTOR_ROLE)
-    {
+    function toggleIsStakePaused() external onlyRole(EXECUTOR_ROLE) {
         isStakePaused = !isStakePaused;
         emit ToggledIsStakePaused(isStakePaused);
     }
@@ -292,13 +310,23 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev exchange rate determines of amount of ethX receive on staking eth
      */
     function getExchangeRate() public returns (uint256) {
-        (, int256 beaconValidatorBalance, , uint256 updatedAt, ) = ethXFeed.latestRoundData();
-        if(oracleLastUpdatedAt>=updatedAt) return exchangeRate;
+        (, int256 beaconValidatorBalance, , uint256 updatedAt, ) = ethXFeed
+            .latestRoundData();
+        if (oracleLastUpdatedAt >= updatedAt) return exchangeRate;
 
-        uint256 ELRewards = IExecutionLayerRewardContract(executionLayerRewardContract).withdrawELRewards();
+        uint256 ELRewards = IExecutionLayerRewardContract(
+            executionLayerRewardContract
+        ).withdrawELRewards();
         uint256 validatorCount = validatorRegistry.validatorCount();
-        if(uint256(beaconValidatorBalance) > DEPOSIT_SIZE*validatorCount + prevBeaconChainReward){
-            _distributeFee(uint256(beaconValidatorBalance), ELRewards, validatorCount);
+        if (
+            uint256(beaconValidatorBalance) >
+            DEPOSIT_SIZE * validatorCount + prevBeaconChainReward
+        ) {
+            _distributeFee(
+                uint256(beaconValidatorBalance),
+                ELRewards,
+                validatorCount
+            );
         }
         bufferedEth += ELRewards;
         oracleLastUpdatedAt = updatedAt;
@@ -367,11 +395,19 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice fee distribution logic on rewards
      * @dev only run when chainlink oracle update beaconChain balance
      */
-    function _distributeFee(uint256 _beaconValidatorBalance, uint256 _ELRewards, uint256 _validatorCount) internal{
-        uint256 beaconChainRewards = _beaconValidatorBalance - DEPOSIT_SIZE*_validatorCount -prevBeaconChainReward ;
+    function _distributeFee(
+        uint256 _beaconValidatorBalance,
+        uint256 _ELRewards,
+        uint256 _validatorCount
+    ) internal {
+        uint256 beaconChainRewards = _beaconValidatorBalance -
+            DEPOSIT_SIZE *
+            _validatorCount -
+            prevBeaconChainReward;
         prevBeaconChainReward = beaconChainRewards;
-        uint256 totalRewards = beaconChainRewards + _ELRewards ;
-        uint256 ethXMintedAsFees = (totalRewards * DECIMALS * feePercentage) / (exchangeRate *100) ;
+        uint256 totalRewards = beaconChainRewards + _ELRewards;
+        uint256 ethXMintedAsFees = (totalRewards * DECIMALS * feePercentage) /
+            (exchangeRate * 100);
         ethX.mint(staderTreasury, ethXMintedAsFees);
     }
 
@@ -381,6 +417,4 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         feePercentage = 10;
         exchangeRate = 1 * DECIMALS;
     }
-
-
 }

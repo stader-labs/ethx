@@ -4,16 +4,14 @@ pragma solidity ^0.8.2;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract StaderValidatorRegistry is
-    Initializable,
-    AccessControlUpgradeable
-{
+contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     address public staderSSVStakePool;
     address public staderManagedStakePool;
     uint256 public validatorCount;
 
     bytes32 public constant POOL_OPERATOR = keccak256("POOL_OPERATOR");
-    bytes32 public constant VALIDATOR_REGISTRY_ADMIN_ROLE = keccak256("VALIDATOR_REGISTRY_ADMIN_ROLE");
+    bytes32 public constant VALIDATOR_REGISTRY_ADMIN_ROLE =
+        keccak256("VALIDATOR_REGISTRY_ADMIN_ROLE");
 
     /// @notice event emits after adding a validator to validatorRegistry
     event AddedToValidatorRegistry(bytes publicKey, uint256 count);
@@ -38,7 +36,7 @@ contract StaderValidatorRegistry is
      */
     function initialize() external initializer {
         __AccessControl_init_unchained();
-        _grantRole(VALIDATOR_REGISTRY_ADMIN_ROLE,msg.sender);
+        _grantRole(VALIDATOR_REGISTRY_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -50,9 +48,10 @@ contract StaderValidatorRegistry is
         checkZeroAddress(_staderSSVStakePool)
         onlyRole(VALIDATOR_REGISTRY_ADMIN_ROLE)
     {
-        if(hasRole(POOL_OPERATOR,staderSSVStakePool)) _revokeRole(POOL_OPERATOR,staderSSVStakePool);
+        if (hasRole(POOL_OPERATOR, staderSSVStakePool))
+            _revokeRole(POOL_OPERATOR, staderSSVStakePool);
         staderSSVStakePool = _staderSSVStakePool;
-        _grantRole(POOL_OPERATOR,staderSSVStakePool);
+        _grantRole(POOL_OPERATOR, staderSSVStakePool);
     }
 
     /**
@@ -64,9 +63,10 @@ contract StaderValidatorRegistry is
         checkZeroAddress(_staderManagedStakePool)
         onlyRole(VALIDATOR_REGISTRY_ADMIN_ROLE)
     {
-        if(hasRole(POOL_OPERATOR,staderManagedStakePool)) _revokeRole(POOL_OPERATOR,staderManagedStakePool);
+        if (hasRole(POOL_OPERATOR, staderManagedStakePool))
+            _revokeRole(POOL_OPERATOR, staderManagedStakePool);
         staderManagedStakePool = _staderManagedStakePool;
-        _grantRole(POOL_OPERATOR,staderManagedStakePool);
+        _grantRole(POOL_OPERATOR, staderManagedStakePool);
     }
 
     /**
@@ -94,11 +94,7 @@ contract StaderValidatorRegistry is
         emit AddedToValidatorRegistry(_pubKey, validatorCount);
     }
 
-    function getPoRAddressListLength()
-        external
-        view
-        returns (uint256)
-    {
+    function getPoRAddressListLength() external view returns (uint256) {
         return validatorCount;
     }
 

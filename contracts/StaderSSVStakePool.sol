@@ -28,7 +28,8 @@ contract StaderSSVStakePool is
     IStaderValidatorRegistry public staderValidatorRegistry;
     uint256 public staderSSVRegistryCount;
 
-    bytes32 public constant SSV_POOL_ADMIN_ROLE = keccak256("SSV_POOL_ADMIN_ROLE");
+    bytes32 public constant SSV_POOL_ADMIN_ROLE =
+        keccak256("SSV_POOL_ADMIN_ROLE");
 
     /**
      * @dev Validator registry structure
@@ -72,7 +73,7 @@ contract StaderSSVStakePool is
         checkZeroAddress(_ssvPoolAdmin)
     {
         __AccessControl_init_unchained();
-        _grantRole(SSV_POOL_ADMIN_ROLE,_ssvPoolAdmin);
+        _grantRole(SSV_POOL_ADMIN_ROLE, _ssvPoolAdmin);
         ssvNetwork = ISSVNetwork(_ssvNetwork);
         ssvToken = IERC20(_ssvToken);
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
