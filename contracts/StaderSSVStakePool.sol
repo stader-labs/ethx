@@ -16,11 +16,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
  * It is a unique protocol that enables the distributed operation of an Ethereum validator.
  */
 
-contract StaderSSVStakePool is 
-    IStaderSSVStakePool, 
-    Initializable, 
-    AccessControlUpgradeable 
-{
+contract StaderSSVStakePool is IStaderSSVStakePool, Initializable, AccessControlUpgradeable {
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     ISSVNetwork public ssvNetwork;
     IERC20 public ssvToken;

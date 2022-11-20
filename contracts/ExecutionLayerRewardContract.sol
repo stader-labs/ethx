@@ -6,11 +6,7 @@ import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IExecutionLayerRewardContract.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract ExecutionLayerRewardContract is 
-    IExecutionLayerRewardContract, 
-    Initializable, 
-    AccessControlUpgradeable 
-{
+contract ExecutionLayerRewardContract is IExecutionLayerRewardContract, Initializable, AccessControlUpgradeable {
     IStaderStakePoolManager public staderStakePoolManager;
 
     bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');

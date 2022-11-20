@@ -19,11 +19,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  *  We are building key staking middleware infra for multiple PoS networks
  * for retail crypto users, exchanges and custodians.
  */
-contract StaderStakePoolsManager is 
-    IStaderStakePoolManager, 
-    TimelockControllerUpgradeable, 
-    PausableUpgradeable 
-{
+contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
     ETHX public ethX;
     AggregatorV3Interface internal ethXFeed;
     IStaderValidatorRegistry validatorRegistry;
