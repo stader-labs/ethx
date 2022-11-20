@@ -1,8 +1,40 @@
-import { HardhatUserConfig } from 'hardhat/config'
-import '@nomicfoundation/hardhat-toolbox'
+import 'dotenv/config'
+import { ethers } from 'ethers'
+import { HardhatUserConfig, task } from 'hardhat/config'
+import '@nomiclabs/hardhat-ethers'
+import '@nomiclabs/hardhat-etherscan'
+import '@openzeppelin/hardhat-upgrades'
+import 'hardhat-gas-reporter'
+import 'solidity-coverage'
+import '@nomiclabs/hardhat-solhint'
+import '@nomicfoundation/hardhat-chai-matchers'
 
 const config: HardhatUserConfig = {
-  solidity: '0.8.9',
+  // Your type-safe config goes here
+  solidity: {
+    compilers: [
+      {
+        version: '0.8.4',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
+  },
+  networks: {
+    goerli: {
+      url: process.env.PROVIDER_URL ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+    },
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: process.env.API_KEY,
+  },
 }
 
 export default config
