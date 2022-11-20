@@ -1,4 +1,4 @@
-# ethx
+# ethx liquid staking
 
 ```shell
 npx hardhat help
