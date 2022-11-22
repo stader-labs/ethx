@@ -38,11 +38,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public feePercentage;
     bool public isStakePaused;
 
-    struct pool {
+    struct Pool {
         address poolAddress;
         uint256 poolWeight;
     }
-    pool[] public poolParameters;
+    Pool[] public poolParameters;
 
     /// @notice Check for zero address
     /// @dev Modifier
@@ -55,17 +55,18 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     /**
      * @dev Stader initialized with following variables
      * @param _ethX ethX contract
-     * @param _ethXFeed chainlink POR contract
      * @param _staderSSVStakePoolAddress stader SSV Managed Pool, validator are assigned to operator through SSV
      * @param _staderManagedStakePoolAddress validator are assigned to operator, managed by stader
      * @param _staderSSVStakePoolWeight weight of stader SSV pool, if it is 1 then validator gets operator via SSV
      * @param _staderManagedStakePoolWeight weight of stader managed pool
+     * @param _minDelay initial minimum delay for operations
+     * @param _proposers accounts to be granted proposer and canceller roles
+     * @param _executors  accounts to be granted executor role
      * @param _timeLockOwner multi sig owner of the contract
 
      */
     function initialize(
         address _ethX,
-        address _ethXFeed,
         address _staderSSVStakePoolAddress,
         address _staderManagedStakePoolAddress,
         uint256 _staderSSVStakePoolWeight,
@@ -78,19 +79,17 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         external
         initializer
         checkZeroAddress(_ethX)
-        checkZeroAddress(_ethXFeed)
         checkZeroAddress(_staderSSVStakePoolAddress)
         checkZeroAddress(_staderManagedStakePoolAddress)
     {
         require(_staderSSVStakePoolWeight + _staderManagedStakePoolWeight == 100, 'Invalid pool weights');
-        __Pausable_init();
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
+        __Pausable_init();
+        Pool memory _ssvPool = Pool(_staderSSVStakePoolAddress, _staderSSVStakePoolWeight);
+        Pool memory _staderPool = Pool(_staderManagedStakePoolAddress, _staderManagedStakePoolWeight);
         ethX = ETHX(_ethX);
-        ethXFeed = AggregatorV3Interface(_ethXFeed);
-        poolParameters[0].poolAddress = _staderSSVStakePoolAddress;
-        poolParameters[0].poolWeight = _staderSSVStakePoolWeight;
-        poolParameters[1].poolAddress = _staderManagedStakePoolAddress;
-        poolParameters[1].poolWeight = _staderManagedStakePoolWeight;
+        poolParameters.push(_ssvPool);
+        poolParameters.push(_staderPool);
         _initialSetup();
     }
 
@@ -275,10 +274,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         if (oracleLastUpdatedAt >= updatedAt) return exchangeRate;
 
         uint256 ELRewards = IExecutionLayerRewardContract(executionLayerRewardContract).withdrawELRewards();
-        uint256 validatorCount = validatorRegistry.validatorCount();
-        if (uint256(beaconValidatorBalance) > DEPOSIT_SIZE * validatorCount + prevBeaconChainReward) {
-            _distributeFee(uint256(beaconValidatorBalance), ELRewards, validatorCount);
-        }
         bufferedEth += ELRewards;
         oracleLastUpdatedAt = updatedAt;
         totalTVL =
@@ -287,11 +282,18 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             address(poolParameters[0].poolAddress).balance +
             address(poolParameters[1].poolAddress).balance;
         uint256 totalSupply = ethX.totalSupply();
+
         if (totalSupply == 0 || totalTVL == 0) {
             return 1 * DECIMALS;
         } else {
             exchangeRate = (totalTVL * DECIMALS) / totalSupply;
         }
+
+        uint256 validatorCount = validatorRegistry.validatorCount();
+        if (uint256(beaconValidatorBalance) > DEPOSIT_SIZE * validatorCount + prevBeaconChainReward) {
+            _distributeFee(uint256(beaconValidatorBalance), ELRewards, validatorCount);
+        }
+
         return exchangeRate;
     }
 
@@ -343,7 +345,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 _validatorCount
     ) internal {
         uint256 beaconChainRewards = _beaconValidatorBalance - DEPOSIT_SIZE * _validatorCount - prevBeaconChainReward;
-        prevBeaconChainReward = beaconChainRewards;
+        prevBeaconChainReward += beaconChainRewards;
         uint256 totalRewards = beaconChainRewards + _ELRewards;
         uint256 ethXMintedAsFees = (totalRewards * DECIMALS * feePercentage) / (exchangeRate * 100);
         ethX.mint(staderTreasury, ethXMintedAsFees);
