@@ -27,6 +27,6 @@ jobs:
           fail-on: high
 
       - if: failure()
-        uses: Ayrx/sarif_to_github_annotations:latest
+        uses: Ayrx/sarif_to_github_annotations@v0.2.2
         with:
           sarif_file: ${{ steps.slither.outputs.sarif }}
