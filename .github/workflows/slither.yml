@@ -10,8 +10,11 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      actions: read
+      id-token: write
+      contents: write
       security-events: write
+      statuses: write
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v2
