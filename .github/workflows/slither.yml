@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 16
           sarif: results.sarif
-          fail-on: none
+          fail-on: config
 
       - if: failure()
         uses: Ayrx/sarif_to_github_annotations@v0.2.2
