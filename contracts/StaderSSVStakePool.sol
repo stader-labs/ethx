@@ -182,6 +182,8 @@ contract StaderSSVStakePool is IStaderSSVStakePool, Initializable, AccessControl
         bytes32 depositDataRoot
     ) external onlyRole(SSV_POOL_ADMIN_ROLE) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
+
+        //slither-disable-next-line arbitrary-send-eth
         ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawalCredentials, signature, depositDataRoot);
         staderValidatorRegistry.addToValidatorRegistry(pubKey, withdrawalCredentials, signature, depositDataRoot);
         emit DepositToDepositContract(pubKey);
