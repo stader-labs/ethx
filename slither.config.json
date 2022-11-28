@@ -1,0 +1,9 @@
+{
+  "exclude_informational": true,
+  "exclude_low": true,
+  "exclude_medium": true,
+  "exclude_high": false,
+  "json": "",
+  "disable_color": false,
+  "legacy_ast": false
+}
