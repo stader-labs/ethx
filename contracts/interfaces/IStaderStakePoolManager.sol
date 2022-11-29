@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.16;
 
 interface IStaderStakePoolManager {
     event Deposited(address indexed sender, uint256 amount, address referral);
