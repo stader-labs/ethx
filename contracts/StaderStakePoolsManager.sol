@@ -301,16 +301,16 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function _deposit(address _referral) internal whenNotPaused {
         require(!isStakePaused, 'Staking is paused');
+        require(address(this).balance >= DEPOSIT_SIZE, 'Not enough balance');
         uint256 amount = msg.value;
         require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
         exchangeRate = getExchangeRate();
         uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
         bufferedEth += amount;
         ethX.mint(msg.sender, amountToSend);
-        if (address(this).balance >= 32 ether) {
-            _selectPool();
-        }
         emit Deposited(msg.sender, amount, _referral);
+
+        _selectPool();
     }
 
     /**
