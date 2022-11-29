@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.16;
 
 import './EthX.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
@@ -301,16 +301,16 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function _deposit(address _referral) internal whenNotPaused {
         require(!isStakePaused, 'Staking is paused');
+        require(address(this).balance >= DEPOSIT_SIZE, 'Not enough balance');
         uint256 amount = msg.value;
         require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
         exchangeRate = getExchangeRate();
         uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
         bufferedEth += amount;
         ethX.mint(msg.sender, amountToSend);
-        if (address(this).balance >= 32 ether) {
-            _selectPool();
-        }
         emit Deposited(msg.sender, amount, _referral);
+
+        _selectPool();
     }
 
     /**
@@ -320,17 +320,15 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function _selectPool() internal {
         uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
-        (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
-            value: (amount * poolParameters[0].poolWeight) / 100
-        }(abi.encodeWithSignature('receive()'));
-        (bool staderPoolSuccess, ) = (poolParameters[1].poolAddress).call{
-            value: (amount * poolParameters[1].poolWeight) / 100
-        }(abi.encodeWithSignature('receive()'));
-        require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
-        require(staderPoolSuccess, 'Stader Pool ETH transfer failed');
         bufferedEth -= (amount);
+        address payable ssvPool = payable(poolParameters[0].poolAddress);
+        address payable staderPool = payable(poolParameters[1].poolAddress);
+
         emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
         emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
+
+        require(ssvPool.send((amount * poolParameters[0].poolWeight) / 100), 'SSV Pool ETH transfer failed');
+        require(staderPool.send((amount * poolParameters[1].poolWeight) / 100), 'Stader Pool ETH transfer failed');
     }
 
     /**

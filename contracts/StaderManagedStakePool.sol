@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.2;
+pragma solidity ^0.8.16;
 
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
@@ -64,6 +64,8 @@ contract StaderManagedStakePool is
         bytes32 depositDataRoot
     ) external onlyRole(STADER_POOL_ADMIN_ROLE) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
+
+        //slither-disable-next-line arbitrary-send-eth
         ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawalCredentials, signature, depositDataRoot);
         staderValidatorRegistry.addToValidatorRegistry(pubKey, withdrawalCredentials, signature, depositDataRoot);
         emit DepositToDepositContract(pubKey);

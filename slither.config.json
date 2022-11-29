@@ -1,0 +1,10 @@
+{
+  "exclude_informational": true,
+  "exclude_low": true,
+  "exclude_medium": true,
+  "exclude_high": false,
+  "disable_color": false,
+  "legacy_ast": false,
+  "filter_paths": "node_modules",
+  "detectors_to_exclude": "naming-convention"
+}
