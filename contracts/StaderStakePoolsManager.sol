@@ -11,6 +11,7 @@ import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
 import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 /**
  *  @title Liquid Staking Pool Implementation
@@ -19,7 +20,12 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  *  We are building key staking middleware infra for multiple PoS networks
  * for retail crypto users, exchanges and custodians.
  */
-contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
+contract StaderStakePoolsManager is
+    IStaderStakePoolManager,
+    TimelockControllerUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     ETHX public ethX;
     AggregatorV3Interface internal ethXFeed;
     IStaderValidatorRegistry validatorRegistry;
@@ -84,6 +90,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     {
         require(_staderSSVStakePoolWeight + _staderManagedStakePoolWeight == 100, 'Invalid pool weights');
         __Pausable_init();
+        __ReentrancyGuard_init();
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         ethX = ETHX(_ethX);
         ethXFeed = AggregatorV3Interface(_ethXFeed);
@@ -299,7 +306,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev Process user deposit, mints liquid tokens ethX based on exchange Rate
      * @param _referral address of referral.
      */
-    function _deposit(address _referral) internal whenNotPaused {
+    function _deposit(address _referral) internal whenNotPaused nonReentrant {
         require(!isStakePaused, 'Staking is paused');
         uint256 amount = msg.value;
         require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
