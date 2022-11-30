@@ -28,3 +28,8 @@ jobs:
         env:
           NODE_OPTIONS: --max_old_space_size=4096
       - uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage,./coverage.json
+          fail_ci_if_error: true
+          verbose: true
