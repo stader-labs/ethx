@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "coverage": "env COVERAGE=true hardhat coverage",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -29,6 +30,7 @@
     "@chainlink/contracts": "^0.5.1",
     "@openzeppelin/contracts": "^4.7.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.0-rc.1",
-    "dotenv": "^16.0.3"
+    "dotenv": "^16.0.3",
+    "solidity-coverage": "^0.8.2"
   }
 }
