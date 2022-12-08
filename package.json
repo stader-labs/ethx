@@ -20,15 +20,24 @@
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-solhint": "^2.0.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/hardhat-upgrades": "^1.21.0",
-    "hardhat": "^2.10.1",
+    "@typechain/ethers-v5": "^10.1.1",
+    "@typechain/hardhat": "^6.1.4",
+    "axios": "^0.27.2",
+    "chai": "^4.3.7",
+    "hardhat": "2.9.9",
     "prettier": "^2.7.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.24"
+    "prettier-plugin-solidity": "^1.0.0-beta.24",
+    "typechain": "^8.1.1"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.5.1",
     "@openzeppelin/contracts": "^4.7.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.0-rc.1",
-    "dotenv": "^16.0.3"
+    "bytes32": "^0.0.3",
+    "dotenv": "^16.0.3",
+    "ssv": "^4.1.1",
+    "ssv-keys": "github:bloxapp/ssv-keys"
   }
 }

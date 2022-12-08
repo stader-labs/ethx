@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.2;
 
-import './EthX.sol';
+import './ETHX.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IExecutionLayerRewardContract.sol';
@@ -22,7 +22,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
     ETHX public ethX;
     AggregatorV3Interface internal ethXFeed;
-    IStaderValidatorRegistry validatorRegistry;
+    IStaderValidatorRegistry public validatorRegistry;
     address public executionLayerRewardContract;
     address public staderTreasury;
     uint256 public constant DECIMALS = 10**18;
@@ -269,18 +269,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice calculation of exchange Rate
      * @dev exchange rate determines of amount of ethX receive on staking eth
      */
-    function getExchangeRate() public returns (uint256) {
-        (, int256 beaconValidatorBalance, , uint256 updatedAt, ) = ethXFeed.latestRoundData();
-        if (oracleLastUpdatedAt >= updatedAt) return exchangeRate;
-
+    function updateExchangeRate(uint256 _tvlValue, uint256 _beaconChainBalance)
+        external
+        onlyRole(EXECUTOR_ROLE)
+        returns (uint256)
+    {
         uint256 ELRewards = IExecutionLayerRewardContract(executionLayerRewardContract).withdrawELRewards();
-        bufferedEth += ELRewards;
-        oracleLastUpdatedAt = updatedAt;
-        totalTVL =
-            bufferedEth +
-            uint256(beaconValidatorBalance) +
-            address(poolParameters[0].poolAddress).balance +
-            address(poolParameters[1].poolAddress).balance;
+        totalTVL = _tvlValue + ELRewards;
         uint256 totalSupply = ethX.totalSupply();
 
         if (totalSupply == 0 || totalTVL == 0) {
@@ -290,8 +285,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         }
 
         uint256 validatorCount = validatorRegistry.validatorCount();
-        if (uint256(beaconValidatorBalance) > DEPOSIT_SIZE * validatorCount + prevBeaconChainReward) {
-            _distributeFee(uint256(beaconValidatorBalance), ELRewards, validatorCount);
+        if (_beaconChainBalance > DEPOSIT_SIZE * validatorCount + prevBeaconChainReward) {
+            _distributeFee(_beaconChainBalance, ELRewards, validatorCount);
         }
 
         return exchangeRate;
@@ -305,7 +300,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         require(!isStakePaused, 'Staking is paused');
         uint256 amount = msg.value;
         require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
-        exchangeRate = getExchangeRate();
         uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
         bufferedEth += amount;
         ethX.mint(msg.sender, amountToSend);
@@ -324,15 +318,16 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
             value: (amount * poolParameters[0].poolWeight) / 100
-        }(abi.encodeWithSignature('receive()'));
-        (bool staderPoolSuccess, ) = (poolParameters[1].poolAddress).call{
-            value: (amount * poolParameters[1].poolWeight) / 100
-        }(abi.encodeWithSignature('receive()'));
+        }('');
         require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
+        (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
+            value: (amount * poolParameters[1].poolWeight) / 100
+        }('');
         require(staderPoolSuccess, 'Stader Pool ETH transfer failed');
         bufferedEth -= (amount);
         emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
         emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
+        
     }
 
     /**
