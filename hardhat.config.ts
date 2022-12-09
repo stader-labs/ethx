@@ -30,8 +30,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {},
     goerli: {
-      url: process.env.PROVIDER_URL,
-      accounts: [process.env.OWNER_PRIVATE_KEY ?? ''],
+      url: process.env.PROVIDER_URL ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
     },
   },
   etherscan: {
