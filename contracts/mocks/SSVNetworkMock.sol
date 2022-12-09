@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./utils/VersionedContract.sol";
-import "./utils/Types.sol";
-import "../interfaces/ISSVNetwork.sol";
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
+import './utils/VersionedContract.sol';
+import './utils/Types.sol';
+import '../interfaces/ISSVNetwork.sol';
 
 contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     using Types256 for uint256;
@@ -65,9 +65,9 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     uint64 private _executeOperatorFeePeriod;
     mapping(uint32 => FeeChangeRequest) private _feeChangeRequests;
 
-    uint16 constant private MINIMAL_OPERATOR_FEE = 1000;
-    uint16 constant private MANAGING_OPERATORS_PER_ACCOUNT_LIMIT = 50;
-    uint16 constant private MINIMAL_LIQUIDATION_THRESHOLD = 6570;
+    uint16 private constant MINIMAL_OPERATOR_FEE = 1000;
+    uint16 private constant MANAGING_OPERATORS_PER_ACCOUNT_LIMIT = 50;
+    uint16 private constant MINIMAL_LIQUIDATION_THRESHOLD = 6570;
 
     function initialize(
         ISSVRegistry registryAddress_,
@@ -76,8 +76,15 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         uint64 operatorMaxFeeIncrease_,
         uint64 declareOperatorFeePeriod_,
         uint64 executeOperatorFeePeriod_
-    ) external initializer override {
-        __SSVNetwork_init(registryAddress_, token_, minimumBlocksBeforeLiquidation_, operatorMaxFeeIncrease_, declareOperatorFeePeriod_, executeOperatorFeePeriod_);
+    ) external override initializer {
+        __SSVNetwork_init(
+            registryAddress_,
+            token_,
+            minimumBlocksBeforeLiquidation_,
+            operatorMaxFeeIncrease_,
+            declareOperatorFeePeriod_,
+            executeOperatorFeePeriod_
+        );
     }
 
     function __SSVNetwork_init(
@@ -89,7 +96,14 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         uint64 executeOperatorFeePeriod_
     ) internal initializer {
         __Ownable_init_unchained();
-        __SSVNetwork_init_unchained(registryAddress_, token_, minimumBlocksBeforeLiquidation_, operatorMaxFeeIncrease_, declareOperatorFeePeriod_, executeOperatorFeePeriod_);
+        __SSVNetwork_init_unchained(
+            registryAddress_,
+            token_,
+            minimumBlocksBeforeLiquidation_,
+            operatorMaxFeeIncrease_,
+            declareOperatorFeePeriod_,
+            executeOperatorFeePeriod_
+        );
     }
 
     function __SSVNetwork_init_unchained(
@@ -131,22 +145,23 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         string calldata name,
         bytes calldata publicKey,
         uint256 fee
-    ) ensureMinimalOperatorFee(fee) external override returns (uint32 operatorId) {
-        operatorId = _ssvRegistryContract.registerOperator(
-            name,
-            msg.sender,
-            publicKey,
-            fee.shrink()
-        );
+    ) external override ensureMinimalOperatorFee(fee) returns (uint32 operatorId) {
+        operatorId = _ssvRegistryContract.registerOperator(name, msg.sender, publicKey, fee.shrink());
 
-        _operatorDatas[operatorId] = OperatorData({ blockNumber: block.number, earnings: 0, index: 0, indexBlockNumber: block.number, activeValidatorCount: 0 });
+        _operatorDatas[operatorId] = OperatorData({
+            blockNumber: block.number,
+            earnings: 0,
+            index: 0,
+            indexBlockNumber: block.number,
+            activeValidatorCount: 0
+        });
         emit OperatorRegistration(operatorId, name, msg.sender, publicKey, fee.shrink().expand());
     }
 
     /**
      * @dev See {ISSVNetwork-removeOperator}.
      */
-    function removeOperator(uint32 operatorId) onlyOperatorOwnerOrContractOwner(operatorId) external override {
+    function removeOperator(uint32 operatorId) external override onlyOperatorOwnerOrContractOwner(operatorId) {
         address owner = _ssvRegistryContract.getOperatorOwner(operatorId);
 
         _updateOperatorFeeUnsafe(operatorId, 0);
@@ -155,28 +170,46 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         emit OperatorRemoval(operatorId, owner);
     }
 
-    function declareOperatorFee(uint32 operatorId, uint256 operatorFee) onlyOperatorOwnerOrContractOwner(operatorId) ensureMinimalOperatorFee(operatorFee) external override {
-        if (operatorFee.shrink() > _ssvRegistryContract.getOperatorFee(operatorId) * (10000 + _operatorMaxFeeIncrease) / 10000) {
+    function declareOperatorFee(uint32 operatorId, uint256 operatorFee)
+        external
+        override
+        onlyOperatorOwnerOrContractOwner(operatorId)
+        ensureMinimalOperatorFee(operatorFee)
+    {
+        if (
+            operatorFee.shrink() >
+            (_ssvRegistryContract.getOperatorFee(operatorId) * (10000 + _operatorMaxFeeIncrease)) / 10000
+        ) {
             revert FeeExceedsIncreaseLimit();
         }
-        _feeChangeRequests[operatorId] = FeeChangeRequest(operatorFee.shrink(), block.timestamp + _declareOperatorFeePeriod, block.timestamp + _declareOperatorFeePeriod + _executeOperatorFeePeriod);
+        _feeChangeRequests[operatorId] = FeeChangeRequest(
+            operatorFee.shrink(),
+            block.timestamp + _declareOperatorFeePeriod,
+            block.timestamp + _declareOperatorFeePeriod + _executeOperatorFeePeriod
+        );
 
         emit OperatorFeeDeclaration(msg.sender, operatorId, block.number, operatorFee);
     }
 
-    function cancelDeclaredOperatorFee(uint32 operatorId) onlyOperatorOwnerOrContractOwner(operatorId) external override {
+    function cancelDeclaredOperatorFee(uint32 operatorId)
+        external
+        override
+        onlyOperatorOwnerOrContractOwner(operatorId)
+    {
         delete _feeChangeRequests[operatorId];
 
         emit DeclaredOperatorFeeCancelation(msg.sender, operatorId);
     }
 
-    function executeOperatorFee(uint32 operatorId) onlyOperatorOwnerOrContractOwner(operatorId) external override {
+    function executeOperatorFee(uint32 operatorId) external override onlyOperatorOwnerOrContractOwner(operatorId) {
         FeeChangeRequest storage feeChangeRequest = _feeChangeRequests[operatorId];
 
-        if(feeChangeRequest.fee == 0) {
+        if (feeChangeRequest.fee == 0) {
             revert NoPendingFeeChangeRequest();
         }
-        if(block.timestamp < feeChangeRequest.approvalBeginTime || block.timestamp > feeChangeRequest.approvalEndTime) {
+        if (
+            block.timestamp < feeChangeRequest.approvalBeginTime || block.timestamp > feeChangeRequest.approvalEndTime
+        ) {
             revert ApprovalNotWithinTimeframe();
         }
 
@@ -187,7 +220,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         delete _feeChangeRequests[operatorId];
     }
 
-    function updateOperatorScore(uint32 operatorId, uint32 score) onlyOwner external override {
+    function updateOperatorScore(uint32 operatorId, uint32 score) external override onlyOwner {
         _ssvRegistryContract.updateOperatorScore(operatorId, score);
 
         emit OperatorScoreUpdate(operatorId, msg.sender, block.number, score);
@@ -217,7 +250,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         bytes[] calldata sharesPublicKeys,
         bytes[] calldata sharesEncrypted,
         uint256 amount
-    ) onlyValidatorOwnerOrContractOwner(publicKey) external override {
+    ) external override onlyValidatorOwnerOrContractOwner(publicKey) {
         _removeValidatorUnsafe(msg.sender, publicKey);
         _registerValidatorUnsafe(msg.sender, publicKey, operatorIds, sharesPublicKeys, sharesEncrypted, amount);
     }
@@ -225,7 +258,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     /**
      * @dev See {ISSVNetwork-removeValidator}.
      */
-    function removeValidator(bytes calldata publicKey) onlyValidatorOwnerOrContractOwner(publicKey) external override {
+    function removeValidator(bytes calldata publicKey) external override onlyValidatorOwnerOrContractOwner(publicKey) {
         _updateNetworkEarnings();
         _updateAddressNetworkFee(msg.sender);
         _removeValidatorUnsafe(msg.sender, publicKey);
@@ -237,19 +270,19 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     }
 
     function withdraw(uint256 amount) external override {
-        if(_totalBalanceOf(msg.sender) < amount.shrink()) {
+        if (_totalBalanceOf(msg.sender) < amount.shrink()) {
             revert NotEnoughBalance();
         }
 
         _withdrawUnsafe(amount.shrink());
 
-        if(_liquidatable(msg.sender)) {
+        if (_liquidatable(msg.sender)) {
             revert NotEnoughBalance();
         }
     }
 
     function withdrawAll() external override {
-        if(_burnRate(msg.sender) > 0) {
+        if (_burnRate(msg.sender) > 0) {
             revert BurnRatePositive();
         }
 
@@ -277,45 +310,45 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
 
         _enableOwnerValidatorsUnsafe(msg.sender);
 
-        if(_liquidatable(msg.sender)) {
+        if (_liquidatable(msg.sender)) {
             revert NotEnoughBalance();
         }
 
         emit AccountEnable(msg.sender);
     }
 
-    function updateLiquidationThresholdPeriod(uint64 blocks) external onlyOwner override {
-        if(blocks < MINIMAL_LIQUIDATION_THRESHOLD) {
+    function updateLiquidationThresholdPeriod(uint64 blocks) external override onlyOwner {
+        if (blocks < MINIMAL_LIQUIDATION_THRESHOLD) {
             revert BelowMinimumBlockPeriod();
         }
 
         _updateLiquidationThresholdPeriod(blocks);
     }
 
-    function updateOperatorFeeIncreaseLimit(uint64 newOperatorMaxFeeIncrease) external onlyOwner override {
+    function updateOperatorFeeIncreaseLimit(uint64 newOperatorMaxFeeIncrease) external override onlyOwner {
         _updateOperatorFeeIncreaseLimit(newOperatorMaxFeeIncrease);
     }
 
-    function updateDeclareOperatorFeePeriod(uint64 newDeclareOperatorFeePeriod) external onlyOwner override {
+    function updateDeclareOperatorFeePeriod(uint64 newDeclareOperatorFeePeriod) external override onlyOwner {
         _updateDeclareOperatorFeePeriod(newDeclareOperatorFeePeriod);
     }
 
-    function updateExecuteOperatorFeePeriod(uint64 newExecuteOperatorFeePeriod) external onlyOwner override {
+    function updateExecuteOperatorFeePeriod(uint64 newExecuteOperatorFeePeriod) external override onlyOwner {
         _updateExecuteOperatorFeePeriod(newExecuteOperatorFeePeriod);
     }
 
     /**
      * @dev See {ISSVNetwork-updateNetworkFee}.
      */
-    function updateNetworkFee(uint256 fee) external onlyOwner override {
+    function updateNetworkFee(uint256 fee) external override onlyOwner {
         emit NetworkFeeUpdate(_networkFee.expand(), fee);
         _updateNetworkEarnings();
         _updateNetworkFeeIndex();
         _networkFee = fee.shrink();
     }
 
-    function withdrawNetworkEarnings(uint256 amount) external onlyOwner override {
-        if(amount.shrink() > _getNetworkEarnings()) {
+    function withdrawNetworkEarnings(uint256 amount) external override onlyOwner {
+        if (amount.shrink() > _getNetworkEarnings()) {
             revert NotEnoughBalance();
         }
 
@@ -325,7 +358,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         emit NetworkFeesWithdrawal(amount, msg.sender);
     }
 
-    function getAddressBalance(address ownerAddress) external override view returns (uint256) {
+    function getAddressBalance(address ownerAddress) external view override returns (uint256) {
         return _totalBalanceOf(ownerAddress).expand();
     }
 
@@ -336,11 +369,33 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     /**
      * @dev See {ISSVNetwork-getOperatorById}.
      */
-    function getOperatorById(uint32 operatorId) external view override returns (string memory, address, bytes memory, uint256, uint256, uint256, bool) {
+    function getOperatorById(uint32 operatorId)
+        external
+        view
+        override
+        returns (
+            string memory,
+            address,
+            bytes memory,
+            uint256,
+            uint256,
+            uint256,
+            bool
+        )
+    {
         return _ssvRegistryContract.getOperatorById(operatorId);
     }
 
-    function getOperatorDeclaredFee(uint32 operatorId) external view override returns (uint256, uint256, uint256) {
+    function getOperatorDeclaredFee(uint32 operatorId)
+        external
+        view
+        override
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
         FeeChangeRequest storage feeChangeRequest = _feeChangeRequests[operatorId];
 
         return (feeChangeRequest.fee.expand(), feeChangeRequest.approvalBeginTime, feeChangeRequest.approvalEndTime);
@@ -406,7 +461,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         return _declareOperatorFeePeriod;
     }
 
-    function validatorsPerOperatorCount(uint32 operatorId) external override view returns (uint32) {
+    function validatorsPerOperatorCount(uint32 operatorId) external view override returns (uint32) {
         return _ssvRegistryContract.validatorsPerOperatorCount(operatorId);
     }
 
@@ -474,15 +529,9 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         uint32[] calldata operatorIds,
         bytes[] calldata sharesPublicKeys,
         bytes[] calldata encryptedKeys,
-        uint256 tokenAmount) private {
-
-        _ssvRegistryContract.registerValidator(
-            ownerAddress,
-            publicKey,
-            operatorIds,
-            sharesPublicKeys,
-            encryptedKeys
-        );
+        uint256 tokenAmount
+    ) private {
+        _ssvRegistryContract.registerValidator(ownerAddress, publicKey, operatorIds, sharesPublicKeys, encryptedKeys);
 
         OwnerData storage owner = _owners[ownerAddress];
 
@@ -504,7 +553,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
             _deposit(msg.sender, tokenAmount);
         }
 
-        if(_liquidatable(ownerAddress)) {
+        if (_liquidatable(ownerAddress)) {
             revert NotEnoughBalance();
         }
 
@@ -558,7 +607,11 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
      * @param ownerAddress Owner address.
      * @param increase Change value for validators amount.
      */
-    function _updateUsingOperatorByOwner(address ownerAddress, uint32 operatorId, bool increase) private {
+    function _updateUsingOperatorByOwner(
+        address ownerAddress,
+        uint32 operatorId,
+        bool increase
+    ) private {
         OperatorInUse storage operatorInUseData = _operatorsInUseByAddress[ownerAddress][operatorId];
 
         if (operatorInUseData.exists) {
@@ -572,8 +625,12 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
 
                     // remove from mapping and list;
 
-                    _operatorsInUseList[ownerAddress][operatorInUseData.indexInArray] = _operatorsInUseList[ownerAddress][_operatorsInUseList[ownerAddress].length - 1];
-                    _operatorsInUseByAddress[ownerAddress][_operatorsInUseList[ownerAddress][operatorInUseData.indexInArray]].indexInArray = operatorInUseData.indexInArray;
+                    _operatorsInUseList[ownerAddress][operatorInUseData.indexInArray] = _operatorsInUseList[
+                        ownerAddress
+                    ][_operatorsInUseList[ownerAddress].length - 1];
+                    _operatorsInUseByAddress[ownerAddress][
+                        _operatorsInUseList[ownerAddress][operatorInUseData.indexInArray]
+                    ].indexInArray = operatorInUseData.indexInArray;
                     _operatorsInUseList[ownerAddress].pop();
 
                     delete _operatorsInUseByAddress[ownerAddress][operatorId];
@@ -584,7 +641,13 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
                 revert ExceedManagingOperatorsPerAccountLimit();
             }
 
-            _operatorsInUseByAddress[ownerAddress][operatorId] = OperatorInUse({ index: _operatorIndexOf(operatorId), validatorCount: 1, used: 0, exists: true, indexInArray: uint32(_operatorsInUseList[ownerAddress].length) });
+            _operatorsInUseByAddress[ownerAddress][operatorId] = OperatorInUse({
+                index: _operatorIndexOf(operatorId),
+                validatorCount: 1,
+                used: 0,
+                exists: true,
+                indexInArray: uint32(_operatorsInUseList[ownerAddress].length)
+            });
             _operatorsInUseList[ownerAddress].push(operatorId);
         }
     }
@@ -623,7 +686,11 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         _owners[ownerAddress].validatorsDisabled = false;
     }
 
-    function _updateOperatorUsageByOwner(OperatorInUse storage operatorInUseData, address ownerAddress, uint32 operatorId) private {
+    function _updateOperatorUsageByOwner(
+        OperatorInUse storage operatorInUseData,
+        address ownerAddress,
+        uint32 operatorId
+    ) private {
         operatorInUseData.used = _operatorInUseUsageOf(operatorInUseData, ownerAddress, operatorId);
         operatorInUseData.index = _operatorIndexOf(operatorId);
     }
@@ -638,7 +705,6 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         _operatorMaxFeeIncrease = newOperatorMaxFeeIncrease;
 
         emit OperatorFeeIncreaseLimitUpdate(_operatorMaxFeeIncrease);
-
     }
 
     function _updateDeclareOperatorFeePeriod(uint64 newDeclareOperatorFeePeriod) private {
@@ -653,10 +719,12 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         emit ExecuteOperatorFeePeriodUpdate(newExecuteOperatorFeePeriod);
     }
 
-    function _expensesOf(address ownerAddress) private view returns(uint64) {
-        uint64 usage =  _owners[ownerAddress].used + _addressNetworkFee(ownerAddress);
+    function _expensesOf(address ownerAddress) private view returns (uint64) {
+        uint64 usage = _owners[ownerAddress].used + _addressNetworkFee(ownerAddress);
         for (uint32 index = 0; index < _operatorsInUseList[ownerAddress].length; ++index) {
-            OperatorInUse storage operatorInUseData = _operatorsInUseByAddress[ownerAddress][_operatorsInUseList[ownerAddress][index]];
+            OperatorInUse storage operatorInUseData = _operatorsInUseByAddress[ownerAddress][
+                _operatorsInUseList[ownerAddress][index]
+            ];
             usage += _operatorInUseUsageOf(operatorInUseData, ownerAddress, _operatorsInUseList[ownerAddress][index]);
         }
 
@@ -678,7 +746,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
 
         uint64 usage = _owners[ownerAddress].withdrawn + _expensesOf(ownerAddress);
 
-        if(balance < usage) {
+        if (balance < usage) {
             revert NegativeBalance();
         }
 
@@ -693,15 +761,17 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
      * @dev See {ISSVNetwork-operatorEarningsOf}.
      */
     function _operatorEarningsOf(uint32 operatorId) private view returns (uint64) {
-        return _operatorDatas[operatorId].earnings +
-               uint64(block.number - _operatorDatas[operatorId].blockNumber) *
-               _operatorEarnRate(operatorId);
+        return
+            _operatorDatas[operatorId].earnings +
+            uint64(block.number - _operatorDatas[operatorId].blockNumber) *
+            _operatorEarnRate(operatorId);
     }
 
     function _addressNetworkFee(address ownerAddress) private view returns (uint64) {
-        return _owners[ownerAddress].networkFee +
-              uint64(_currentNetworkFeeIndex() - _owners[ownerAddress].networkFeeIndex) *
-              _owners[ownerAddress].activeValidatorCount;
+        return
+            _owners[ownerAddress].networkFee +
+            uint64(_currentNetworkFeeIndex() - _owners[ownerAddress].networkFeeIndex) *
+            _owners[ownerAddress].activeValidatorCount;
     }
 
     function _burnRate(address ownerAddress) private view returns (uint64 ownerBurnRate) {
@@ -710,7 +780,10 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
         }
 
         for (uint32 index = 0; index < _operatorsInUseList[ownerAddress].length; ++index) {
-            ownerBurnRate += _operatorInUseBurnRateWithNetworkFeeUnsafe(ownerAddress, _operatorsInUseList[ownerAddress][index]);
+            ownerBurnRate += _operatorInUseBurnRateWithNetworkFeeUnsafe(
+                ownerAddress,
+                _operatorsInUseList[ownerAddress][index]
+            );
         }
 
         ownerBurnRate += _owners[ownerAddress].activeValidatorCount * _networkFee;
@@ -739,7 +812,10 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     }
 
     function _getTotalNetworkEarnings() private view returns (uint64) {
-        uint256 result = _networkEarnings + (block.number - _networkEarningsBlockNumber) * _networkFee * _ssvRegistryContract.activeValidatorCount();
+        uint256 result = _networkEarnings +
+            (block.number - _networkEarningsBlockNumber) *
+            _networkFee *
+            _ssvRegistryContract.activeValidatorCount();
         return uint64(result);
     }
 
@@ -751,19 +827,31 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
      * @dev Get operator index by address.
      */
     function _operatorIndexOf(uint32 operatorId) private view returns (uint64) {
-        return _operatorDatas[operatorId].index +
-               _ssvRegistryContract.getOperatorFee(operatorId) *
-               uint64(block.number - _operatorDatas[operatorId].indexBlockNumber);
+        return
+            _operatorDatas[operatorId].index +
+            _ssvRegistryContract.getOperatorFee(operatorId) *
+            uint64(block.number - _operatorDatas[operatorId].indexBlockNumber);
     }
 
-    function _operatorInUseUsageOf(OperatorInUse storage operatorInUseData, address ownerAddress, uint32 operatorId) private view returns (uint64) {
-        return operatorInUseData.used + (
-                _owners[ownerAddress].validatorsDisabled ? 0 :
-                uint64(_operatorIndexOf(operatorId) - operatorInUseData.index) * operatorInUseData.validatorCount
-               );
+    function _operatorInUseUsageOf(
+        OperatorInUse storage operatorInUseData,
+        address ownerAddress,
+        uint32 operatorId
+    ) private view returns (uint64) {
+        return
+            operatorInUseData.used +
+            (
+                _owners[ownerAddress].validatorsDisabled
+                    ? 0
+                    : uint64(_operatorIndexOf(operatorId) - operatorInUseData.index) * operatorInUseData.validatorCount
+            );
     }
 
-    function _operatorInUseBurnRateWithNetworkFeeUnsafe(address ownerAddress, uint32 operatorId) private view returns (uint64) {
+    function _operatorInUseBurnRateWithNetworkFeeUnsafe(address ownerAddress, uint32 operatorId)
+        private
+        view
+        returns (uint64)
+    {
         OperatorInUse storage operatorInUseData = _operatorsInUseByAddress[ownerAddress][operatorId];
         return _ssvRegistryContract.getOperatorFee(operatorId) * operatorInUseData.validatorCount;
     }
@@ -771,7 +859,7 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     /**
      * @dev Returns the current network fee index
      */
-    function _currentNetworkFeeIndex() private view returns(uint64) {
+    function _currentNetworkFeeIndex() private view returns (uint64) {
         return _networkFeeIndex + uint64(block.number - _networkFeeIndexBlockNumber) * _networkFee;
     }
 
@@ -788,11 +876,11 @@ contract SSVNetworkMock is OwnableUpgradeable, ISSVNetwork, VersionedContract {
     function _onlyOperatorOwnerOrContractOwner(uint32 operatorId) private view {
         address operatorOwner = _ssvRegistryContract.getOperatorOwner(operatorId);
 
-        if(operatorOwner == address(0)) {
+        if (operatorOwner == address(0)) {
             revert OperatorWithPublicKeyNotExist();
         }
 
-        if(msg.sender != operatorOwner && msg.sender != owner()) {
+        if (msg.sender != operatorOwner && msg.sender != owner()) {
             revert CallerNotOperatorOwner();
         }
     }

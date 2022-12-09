@@ -86,44 +86,30 @@ describe.only('stader pool manager tests', () => {
   })
 
   it('revert while updating ethX feed', async () => {
-    expect(
-      env.staderStakingPoolManager
-        .connect(adr.staker1)
-        .updateEthXFeed(env.StaderManagedStakePool.address)
-    ).to.be.reverted
-    expect(env.staderStakingPoolManager.updateEthXFeed(adr.ZERO_ADDRESS)).to.be.revertedWith(
-      'Address cannot be zero'
-    )
+    expect(env.staderStakingPoolManager.connect(adr.staker1).updateEthXFeed(env.StaderManagedStakePool.address)).to.be
+      .reverted
+    expect(env.staderStakingPoolManager.updateEthXFeed(adr.ZERO_ADDRESS)).to.be.revertedWith('Address cannot be zero')
   })
 
   it('revert while updating ethX address', async () => {
-    expect(
-      env.staderStakingPoolManager
-        .connect(adr.staker1)
-        .updateEthXAddress(env.StaderManagedStakePool.address)
-    ).to.be.reverted
+    expect(env.staderStakingPoolManager.connect(adr.staker1).updateEthXAddress(env.StaderManagedStakePool.address)).to
+      .be.reverted
     expect(env.staderStakingPoolManager.updateEthXAddress(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )
   })
 
   it('revert while updating EL reward contract address', async () => {
-    expect(
-      env.staderStakingPoolManager
-        .connect(adr.staker1)
-        .updateELRewardContract(env.StaderManagedStakePool.address)
-    ).to.be.reverted
+    expect(env.staderStakingPoolManager.connect(adr.staker1).updateELRewardContract(env.StaderManagedStakePool.address))
+      .to.be.reverted
     expect(env.staderStakingPoolManager.updateELRewardContract(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )
   })
 
   it('revert while updating stader treasury address', async () => {
-    expect(
-      env.staderStakingPoolManager
-        .connect(adr.staker1)
-        .updateStaderTreasury(env.StaderManagedStakePool.address)
-    ).to.be.reverted
+    expect(env.staderStakingPoolManager.connect(adr.staker1).updateStaderTreasury(env.StaderManagedStakePool.address))
+      .to.be.reverted
     expect(env.staderStakingPoolManager.updateStaderTreasury(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )

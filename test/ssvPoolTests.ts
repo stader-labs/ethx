@@ -62,14 +62,14 @@ describe('ssv pool test', () => {
   it('should register validator to network', async () => {
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(1)
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(0)
-    console.log("ssv pool instance ", env.staderSSVPool.address)
+    console.log('ssv pool instance ', env.staderSSVPool.address)
     await expect(
       startWorkflow('hardhat', KEYSTORE_PASSWORD, OPERATOR_INDEX, 1, env.staderSSVPool.address, SSV_POOL_CONTRACT_ABI)
     ).to.not.be.reverted
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(1)
   })
-  it('check validator index in ssvRegistry and validator registry', async()=>{
-    expect(await env.validatorRegistry.getValidatorIndexByPublicKey('0x'+ deposit.pubkey)).to.be.equal(0);
-    expect(await env.staderSSVPool.getValidatorIndexByPublicKey('0x'+ deposit.pubkey)).to.be.equal(0);
+  it('check validator index in ssvRegistry and validator registry', async () => {
+    expect(await env.validatorRegistry.getValidatorIndexByPublicKey('0x' + deposit.pubkey)).to.be.equal(0)
+    expect(await env.staderSSVPool.getValidatorIndexByPublicKey('0x' + deposit.pubkey)).to.be.equal(0)
   })
 })

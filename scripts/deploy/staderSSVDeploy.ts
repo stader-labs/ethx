@@ -14,7 +14,7 @@ async function main() {
     ssvToken,
     ethDepositContract,
     validatorRegistry,
-    owner.address
+    owner.address,
   ])
 
   await stakingManager.deployed()

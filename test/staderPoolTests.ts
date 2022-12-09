@@ -17,7 +17,7 @@ describe('stader pool tests', () => {
   })
 
   it('when more than 32 ETH have been staked', async () => {
-    await env.staderStakingPoolManager.updatePoolWeights(0,100);
+    await env.staderStakingPoolManager.updatePoolWeights(0, 100)
     await env.staderStakingPoolManager
       .connect(adr.staker1)
       .deposit(adr.staker1.address, { value: ethers.utils.parseEther('10') })

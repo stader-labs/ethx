@@ -3,11 +3,11 @@
 pragma solidity ^0.8.2;
 
 contract Utils {
-  function blockNumber() external view returns (uint256) {
-    return block.number;
-  }
+    function blockNumber() external view returns (uint256) {
+        return block.number;
+    }
 
-  function blockTimestamp() external view returns (uint256) {
-    return block.timestamp;
-  }
+    function blockTimestamp() external view returns (uint256) {
+        return block.timestamp;
+    }
 }

@@ -4,5 +4,5 @@
 pragma solidity ^0.8.2;
 
 interface VersionedContract {
-  function version() external pure returns (uint32);
+    function version() external pure returns (uint32);
 }
