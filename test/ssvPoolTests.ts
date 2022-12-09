@@ -64,7 +64,7 @@ describe('ssv pool test', () => {
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(0)
     console.log('ssv pool instance ', env.staderSSVPool.address)
     await expect(
-      startWorkflow('hardhat', KEYSTORE_PASSWORD, OPERATOR_INDEX, 1, env.staderSSVPool.address, SSV_POOL_CONTRACT_ABI)
+      startWorkflow(KEYSTORE_PASSWORD, OPERATOR_INDEX, 1)
     ).to.not.be.reverted
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(1)
   })
