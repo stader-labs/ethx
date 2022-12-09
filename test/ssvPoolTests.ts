@@ -63,9 +63,7 @@ describe('ssv pool test', () => {
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(1)
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(0)
     console.log('ssv pool instance ', env.staderSSVPool.address)
-    await expect(
-      startWorkflow(KEYSTORE_PASSWORD, OPERATOR_INDEX, 1)
-    ).to.not.be.reverted
+    await expect(startWorkflow(KEYSTORE_PASSWORD, OPERATOR_INDEX, 1)).to.not.be.reverted
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(1)
   })
   it('check validator index in ssvRegistry and validator registry', async () => {
