@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import './ETHX.sol';
+import './EthX.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IExecutionLayerRewardContract.sol';

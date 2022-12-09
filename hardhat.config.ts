@@ -1,5 +1,5 @@
 import 'dotenv/config'
-
+import { ethers } from 'ethers'
 import { HardhatUserConfig, task } from 'hardhat/config'
 import '@typechain/hardhat'
 import '@nomiclabs/hardhat-ethers'
