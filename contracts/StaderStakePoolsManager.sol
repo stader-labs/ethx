@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import './EthX.sol';
+import './ETHxVault.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IExecutionLayerRewardContract.sol';
@@ -20,7 +20,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  * for retail crypto users, exchanges and custodians.
  */
 contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
-    ETHX public ethX;
+    ETHxVault public ethX;
     AggregatorV3Interface internal ethXFeed;
     IStaderValidatorRegistry public validatorRegistry;
     address public executionLayerRewardContract;
@@ -87,7 +87,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         __Pausable_init();
         Pool memory _ssvPool = Pool(_staderSSVStakePoolAddress, _staderSSVStakePoolWeight);
         Pool memory _staderPool = Pool(_staderManagedStakePoolAddress, _staderManagedStakePoolWeight);
-        ethX = ETHX(_ethX);
+        ethX = ETHxVault(_ethX);
         poolParameters.push(_ssvPool);
         poolParameters.push(_staderPool);
         _initialSetup();
@@ -197,7 +197,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @param _ethX ethX contract
      */
     function updateEthXAddress(address _ethX) external checkZeroAddress(_ethX) onlyRole(EXECUTOR_ROLE) {
-        ethX = ETHX(_ethX);
+        ethX = ETHxVault(_ethX);
         emit UpdatedEthXAddress(address(ethX));
     }
 
