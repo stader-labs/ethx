@@ -15,7 +15,7 @@ const OPERATOR_INDEX = 0
 let adr: any
 let env: any
 
-describe('ssv pool test', () => {
+describe.only('ssv pool test', () => {
   before(async () => {
     adr = await setupAddresses()
     env = await setupEnvironment(adr.staderOwner, adr.ssvOwner)

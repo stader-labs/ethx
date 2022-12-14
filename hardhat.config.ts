@@ -1,5 +1,5 @@
-import 'dotenv/config'
-import { ethers } from 'ethers'
+import "dotenv/config";
+
 import { HardhatUserConfig, task } from 'hardhat/config'
 import '@typechain/hardhat'
 import '@nomiclabs/hardhat-ethers'
@@ -31,7 +31,7 @@ const config: HardhatUserConfig = {
     hardhat: {},
     goerli: {
       url: process.env.PROVIDER_URL ?? '',
-      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+      accounts: [process.env.OWNER_PRIVATE_KEY??''],
     },
   },
   etherscan: {

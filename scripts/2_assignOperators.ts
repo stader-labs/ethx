@@ -1,7 +1,7 @@
-import { encode } from 'js-base64'
+// import { encode } from 'js-base64'
 
 export async function assignOperators() {
-  const axios = require('axios').default
+  // const axios = require('axios').default
 
   // const operatorReq =
   //   "https://api.ssv.network/api/v1/operators?page=1&perPage=5&ordering=id%3Aasc";

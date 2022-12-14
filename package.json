@@ -26,14 +26,14 @@
     "@typechain/hardhat": "^6.1.4",
     "axios": "^0.27.2",
     "chai": "^4.3.7",
-    "hardhat": "2.9.9",
+    "hardhat": "^2.9.9",
     "prettier": "^2.7.1",
     "prettier-plugin-solidity": "^1.0.0-beta.24",
     "typechain": "^8.1.1"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.5.1",
-    "@openzeppelin/contracts": "^4.7.3",
+    "@openzeppelin/contracts": "^4.8.0",
     "@openzeppelin/contracts-upgradeable": "^4.8.0-rc.1",
     "bytes32": "^0.0.3",
     "dotenv": "^16.0.3",
