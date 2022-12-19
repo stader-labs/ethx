@@ -9,7 +9,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
-    
     ETHxVault public staderVault;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     IDepositContract public ethValidatorDeposit;
@@ -51,9 +50,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         withdrawCredential = _withdrawCredential;
         staderVault = ETHxVault(_staderVault);
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
-        validatorRegistry = IStaderPermissionLessValidatorRegistry(
-            _validatorRegistry
-        );
+        validatorRegistry = IStaderPermissionLessValidatorRegistry(_validatorRegistry);
         _grantRole(STADER_PERMISSION_LESS_POOL_ADMIN, _staderPermissionLessPoolAdmin);
     }
 
@@ -69,9 +66,14 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     function depositEthToDepositContract() external onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
         uint256 validatorCount = validatorRegistry.validatorCount();
-        require(registeredValidatorCount<=validatorCount,'not enough validator to register');
+        require(registeredValidatorCount <= validatorCount, 'not enough validator to register');
         validatorRegistry.validatorRegistry[registeredValidatorCount];
-        ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(validatorRegistry.validatorRegistry[registeredValidatorCount].pubKey, withdrawCredential, validatorRegistry.validatorRegistry[registeredValidatorCount].signature, validatorRegistry.validatorRegistry[registeredValidatorCount].depositDataRoot);
+        ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(
+            validatorRegistry.validatorRegistry[registeredValidatorCount].pubKey,
+            withdrawCredential,
+            validatorRegistry.validatorRegistry[registeredValidatorCount].signature,
+            validatorRegistry.validatorRegistry[registeredValidatorCount].depositDataRoot
+        );
         registeredValidatorCount++;
         emit DepositToDepositContract(validatorRegistry.validatorRegistry[registeredValidatorCount].pubKey);
     }

@@ -5,7 +5,6 @@ pragma solidity ^0.8.16;
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderPermissionLessValidatorRegistry is Initializable, AccessControlUpgradeable {
-    
     address public staderPermissionLessPool;
     uint256 public validatorCount;
 
