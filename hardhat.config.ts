@@ -1,4 +1,4 @@
-import "dotenv/config";
+import 'dotenv/config'
 
 import { HardhatUserConfig, task } from 'hardhat/config'
 import '@typechain/hardhat'
@@ -26,12 +26,12 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  defaultNetwork: 'goerli',
+  defaultNetwork: 'hardhat',
   networks: {
     hardhat: {},
     goerli: {
       url: process.env.PROVIDER_URL ?? '',
-      accounts: [process.env.OWNER_PRIVATE_KEY??''],
+      accounts: [process.env.OWNER_PRIVATE_KEY ?? ''],
     },
   },
   etherscan: {

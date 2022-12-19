@@ -19,7 +19,7 @@ contract StaderManagedStakePool is
     IDepositContract public ethValidatorDeposit;
     IStaderValidatorRegistry public staderValidatorRegistry;
 
-    bytes32 public constant STADER_POOL_ADMIN_ROLE = keccak256('STADER_POOL_ADMIN_ROLE');
+    bytes32 public constant STADER_PERMISSION_POOL_ADMIN = keccak256('STADER_PERMISSION_POOL_ADMIN');
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -45,7 +45,7 @@ contract StaderManagedStakePool is
         __AccessControl_init_unchained();
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        _grantRole(STADER_POOL_ADMIN_ROLE, _staderPoolAdmin);
+        _grantRole(STADER_PERMISSION_POOL_ADMIN, _staderPoolAdmin);
     }
 
     /**
@@ -62,7 +62,7 @@ contract StaderManagedStakePool is
         bytes calldata withdrawalCredentials,
         bytes calldata signature,
         bytes32 depositDataRoot
-    ) external onlyRole(STADER_POOL_ADMIN_ROLE) {
+    ) external onlyRole(STADER_PERMISSION_POOL_ADMIN) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
 
         //slither-disable-next-line arbitrary-send-eth

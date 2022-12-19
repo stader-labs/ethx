@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 
 import './interfaces/IETHxVaultWithdrawer.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
@@ -13,7 +14,7 @@ import '@openzeppelin/contracts/security/Pausable.sol';
  * @author Stader Labs
  * @notice The ERC20 contract for the ethX token and Vault
  */
-contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
+abstract contract ETHxVault is ERC20, ERC20Burnable, ERC4626, AccessControl, Pausable {
     using SafeMath for uint256;
 
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
@@ -29,6 +30,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
+        ERC4626(address(this));
     }
 
     /**

@@ -5,8 +5,6 @@ const { setupAddresses, setupEnvironment } = require('./utils')
 let adr
 let env: any
 
-const scriptName = path.basename(__filename, '.js')
-
 describe('environmentSetupTest', () => {
   beforeEach(async () => {
     adr = await setupAddresses()

@@ -38,7 +38,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   // console.log("ssv network is ", ssvNetwork.address);
 
-  const ETHxToken = await ethers.getContractFactory('ETHX')
+  const ETHxToken = await ethers.getContractFactory('ETHxVault')
 
   const ethxToken = await ETHxToken.connect(staderOwner).deploy()
 
@@ -61,7 +61,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     staderOwner.address,
   ])
 
-  // console.log("StaderManagedStakePool is ", StaderManagedStakePool.address);
+  console.log('StaderManagedStakePool is ', StaderManagedStakePool.address)
 
   const StaderSSVStakePoolFactory = await ethers.getContractFactory('StaderSSVStakePool')
   const staderSSVPool = await upgrades.deployProxy(StaderSSVStakePoolFactory, [
@@ -72,7 +72,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     staderOwner.address,
   ])
 
-  // console.log("staderSSVPool is ", staderSSVPool.address);
+  console.log('staderSSVPool is ', staderSSVPool.address)
 
   const stakingManagerFactory = await ethers.getContractFactory('StaderStakePoolsManager')
   const staderStakingPoolManager = await upgrades.deployProxy(stakingManagerFactory, [

@@ -1,9 +1,8 @@
 import '@nomicfoundation/hardhat-chai-matchers'
 import 'dotenv/config'
 import { ethers, waffle } from 'hardhat'
-import { startWorkflow } from '../scripts/1_workflowManager'
-import deposit from '../scripts/deposits/deposit0.json'
-import SSV_POOL_CONTRACT_ABI from '../artifacts/contracts/StaderSSVStakePool.sol/StaderSSVStakePool.json'
+import { startWorkflow } from './helper/validatorRegistrationSSVPool'
+import deposit from '../scripts/deposits/deposit5.json'
 
 const { expect } = require('chai')
 const { setupAddresses, setupEnvironment } = require('./utils')
@@ -15,7 +14,7 @@ const OPERATOR_INDEX = 0
 let adr: any
 let env: any
 
-describe.only('ssv pool test', () => {
+describe('ssv pool test', () => {
   before(async () => {
     adr = await setupAddresses()
     env = await setupEnvironment(adr.staderOwner, adr.ssvOwner)
@@ -63,7 +62,7 @@ describe.only('ssv pool test', () => {
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(1)
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(0)
     console.log('ssv pool instance ', env.staderSSVPool.address)
-    await expect(startWorkflow(KEYSTORE_PASSWORD, OPERATOR_INDEX, 1)).to.not.be.reverted
+    await expect(startWorkflow(KEYSTORE_PASSWORD, OPERATOR_INDEX, 1, env.staderSSVPool.address)).to.not.be.reverted
     expect(await env.staderSSVPool.staderSSVRegistryCount()).to.be.equal(1)
   })
   it('check validator index in ssvRegistry and validator registry', async () => {
