@@ -1,7 +1,9 @@
 import 'dotenv/config'
 import { ethers } from 'ethers'
 import { HardhatUserConfig, task } from 'hardhat/config'
+import '@typechain/hardhat'
 import '@nomiclabs/hardhat-ethers'
+import '@nomiclabs/hardhat-waffle'
 import '@nomiclabs/hardhat-etherscan'
 import '@openzeppelin/hardhat-upgrades'
 import 'hardhat-gas-reporter'
@@ -24,7 +26,9 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  defaultNetwork: 'goerli',
   networks: {
+    hardhat: {},
     goerli: {
       url: process.env.PROVIDER_URL ?? '',
       accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],

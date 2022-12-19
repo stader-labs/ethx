@@ -9,6 +9,8 @@ typechain-types
 cache
 artifacts
 .openzeppelin
+keystores
+deposits
 
 
 
