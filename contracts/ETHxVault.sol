@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './interfaces/IETHxVaultWithdrawer.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
+import '@openzeppelin/contracts/utils/math/Math.sol';
+
 
 /**
  * @title ethXVault Contract
  * @author Stader Labs
  * @notice The ERC20 contract for the ethX token and Vault
  */
-abstract contract ETHxVault is ERC20, ERC20Burnable, ERC4626, AccessControl, Pausable {
-    using SafeMath for uint256;
+contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
+    using Math for uint256;
 
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
@@ -23,14 +22,13 @@ abstract contract ETHxVault is ERC20, ERC20Burnable, ERC4626, AccessControl, Pau
 
     mapping(address => uint256) contractEthBalances;
 
-    event DepositedEthToVault(address indexed by, uint256 amount, uint256 time);
-    event WithdrawnEthFromVault(address indexed by, uint256 amount, uint256 time);
+    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
 
     constructor() ERC20('ETHX', 'ETHX') {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
-        ERC4626(address(this));
     }
 
     /**
@@ -59,27 +57,221 @@ abstract contract ETHxVault is ERC20, ERC20Burnable, ERC4626, AccessControl, Pau
         _unpause();
     }
 
-    // Get a contract's ETH balance in the vault by address
-    function balanceOfContract(address _contractName) external view returns (uint256) {
-        return contractEthBalances[_contractName];
+    // // Get a contract's ETH balance in the vault by address
+    // function balanceOfContract(address _contractName) external view returns (uint256) {
+    //     return contractEthBalances[_contractName];
+    // }
+
+    // // Accept an ETH deposit from a pool manager
+    // // Require Vault Access Role to access this
+    // function depositEthToVault() external payable onlyRole(VAULT_ACCESS_ROLE) {
+    //     require(msg.value > 0, 'No valid amount of ETH given to deposit');
+    //     contractEthBalances[msg.sender] = contractEthBalances[msg.sender].add(msg.value);
+    //     emit DepositedEthToVault(msg.sender, msg.value, block.timestamp);
+    // }
+
+    // // Withdraw an amount of ETH from vault
+    // // Require Vault Access Role to access this
+    // function withdrawEthFromVault(uint256 _amount) external onlyRole(VAULT_ACCESS_ROLE) {
+    //     require(_amount > 0, 'No valid amount of ETH given to withdraw');
+    //     require(contractEthBalances[msg.sender] >= _amount, 'Insufficient contract ETH balance');
+    //     contractEthBalances[msg.sender] = contractEthBalances[msg.sender].sub(_amount);
+    //     IETHxVaultWithdrawer withdrawer = IETHxVaultWithdrawer(msg.sender);
+    //     withdrawer.receiveVaultWithdrawalETH{value: _amount}();
+    //     emit WithdrawnEthFromVault(msg.sender, _amount, block.timestamp);
+    // }
+
+    /** @dev See {IERC4626-totalAssets}. */
+    function totalAssets() public view virtual  returns (uint256) {
+        return address(this).balance;
     }
 
-    // Accept an ETH deposit from a pool manager
-    // Require Vault Access Role to access this
-    function depositEthToVault() external payable onlyRole(VAULT_ACCESS_ROLE) {
-        require(msg.value > 0, 'No valid amount of ETH given to deposit');
-        contractEthBalances[msg.sender] = contractEthBalances[msg.sender].add(msg.value);
-        emit DepositedEthToVault(msg.sender, msg.value, block.timestamp);
+    /** @dev See {IERC4626-convertToShares}. */
+    function convertToShares(uint256 assets) public view virtual  returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Down);
     }
 
-    // Withdraw an amount of ETH from vault
-    // Require Vault Access Role to access this
-    function withdrawEthFromVault(uint256 _amount) external onlyRole(VAULT_ACCESS_ROLE) {
-        require(_amount > 0, 'No valid amount of ETH given to withdraw');
-        require(contractEthBalances[msg.sender] >= _amount, 'Insufficient contract ETH balance');
-        contractEthBalances[msg.sender] = contractEthBalances[msg.sender].sub(_amount);
-        IETHxVaultWithdrawer withdrawer = IETHxVaultWithdrawer(msg.sender);
-        withdrawer.receiveVaultWithdrawalETH{value: _amount}();
-        emit WithdrawnEthFromVault(msg.sender, _amount, block.timestamp);
+    /** @dev See {IERC4626-convertToAssets}. */
+    function convertToAssets(uint256 shares) public view virtual  returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-maxDeposit}. */
+    function maxDeposit(address) public view virtual  returns (uint256) {
+        return _isVaultHealthy() ? type(uint256).max : 0;
+    }
+
+    /** @dev See {IERC4626-maxMint}. */
+    function maxMint(address) public view virtual  returns (uint256) {
+        return type(uint256).max;
+    }
+
+    /** @dev See {IERC4626-maxWithdraw}. */
+    function maxWithdraw(address owner) public view virtual  returns (uint256) {
+        return _convertToAssets(balanceOf(owner), Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-maxRedeem}. */
+    function maxRedeem(address owner) public view virtual  returns (uint256) {
+        return balanceOf(owner);
+    }
+
+    /** @dev See {IERC4626-previewDeposit}. */
+    function previewDeposit(uint256 assets) public view virtual  returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-previewMint}. */
+    function previewMint(uint256 shares) public view virtual  returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Up);
+    }
+
+    /** @dev See {IERC4626-previewWithdraw}. */
+    function previewWithdraw(uint256 assets) public view virtual  returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Up);
+    }
+
+    /** @dev See {IERC4626-previewRedeem}. */
+    function previewRedeem(uint256 shares) public view virtual  returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-deposit}. */
+    function deposit(address receiver) public payable returns (uint256) {
+        uint256 assets = msg.value ;
+        require(assets <= maxDeposit(receiver), "ERC4626: deposit more than max");
+
+        uint256 shares = previewDeposit(assets);
+        _deposit(_msgSender(), receiver, assets, shares);
+
+        return shares;
+    }
+
+    /** @dev See {IERC4626-mint}.
+     *
+     * As opposed to {deposit}, minting is allowed even if the vault is in a state where the price of a share is zero.
+     * In this case, the shares will be minted without requiring any assets to be deposited.
+     */
+    function mint(uint256 shares, address receiver) public payable  returns (uint256) {
+        require(shares <= maxMint(receiver), "ERC4626: mint more than max");
+
+        uint256 assets = previewMint(shares);
+        require(msg.value == assets, 'inValid eth sent according to shares');
+        _deposit(_msgSender(), receiver, assets, shares);
+
+        return assets;
+    }
+
+    /** @dev See {IERC4626-withdraw}. */
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public virtual  returns (uint256) {
+        require(assets <= maxWithdraw(owner), "ERC4626: withdraw more than max");
+
+        uint256 shares = previewWithdraw(assets);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return shares;
+    }
+
+    /** @dev See {IERC4626-redeem}. */
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public virtual returns (uint256) {
+        require(shares <= maxRedeem(owner), "ERC4626: redeem more than max");
+
+        uint256 assets = previewRedeem(shares);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return assets;
+    }
+
+    /**
+     * @dev Internal conversion function (from assets to shares) with support for rounding direction.
+     *
+     * Will revert if assets > 0, totalSupply > 0 and totalAssets = 0. That corresponds to a case where any asset
+     * would represent an infinite amount of shares.
+     */
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
+        uint256 supply = totalSupply();
+        return
+            (assets == 0 || supply == 0)
+                ? _initialConvertToShares(assets, rounding)
+                : assets.mulDiv(supply, totalAssets(), rounding);
+    }
+
+    /**
+     * @dev Internal conversion function (from assets to shares) to apply when the vault is empty.
+     *
+     * NOTE: Make sure to keep this function consistent with {_initialConvertToAssets} when overriding it.
+     */
+    function _initialConvertToShares(
+        uint256 assets,
+        Math.Rounding /*rounding*/
+    ) internal view virtual returns (uint256 shares) {
+        return assets;
+    }
+
+    /**
+     * @dev Internal conversion function (from shares to assets) with support for rounding direction.
+     */
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual returns (uint256) {
+        uint256 supply = totalSupply();
+        return
+            (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
+    }
+
+    /**
+     * @dev Internal conversion function (from shares to assets) to apply when the vault is empty.
+     *
+     * NOTE: Make sure to keep this function consistent with {_initialConvertToShares} when overriding it.
+     */
+    function _initialConvertToAssets(
+        uint256 shares,
+        Math.Rounding /*rounding*/
+    ) internal view virtual returns (uint256) {
+        return shares;
+    }
+
+    /**
+     * @dev Deposit/mint common workflow.
+     */
+    function _deposit(
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        _mint(receiver, shares);
+        emit Deposit(caller, receiver, assets, shares);
+    }
+
+    /**
+     * @dev Withdraw/redeem common workflow.
+     */
+    function _withdraw(
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
+        _burn(owner, shares);
+        payable(receiver).transfer(assets);
+        emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    /**
+     * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
+     */
+    function _isVaultHealthy() private view returns (bool) {
+        return totalAssets() > 0 || totalSupply() == 0;
     }
 }
