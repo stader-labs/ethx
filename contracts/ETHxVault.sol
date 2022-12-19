@@ -7,7 +7,6 @@ import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 
-
 /**
  * @title ethXVault Contract
  * @author Stader Labs
@@ -23,7 +22,13 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
     mapping(address => uint256) contractEthBalances;
 
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed caller,
+        address indexed receiver,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares
+    );
 
     constructor() ERC20('ETHX', 'ETHX') {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -82,64 +87,64 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
     // }
 
     /** @dev See {IERC4626-totalAssets}. */
-    function totalAssets() public view virtual  returns (uint256) {
+    function totalAssets() public view virtual returns (uint256) {
         return address(this).balance;
     }
 
     /** @dev See {IERC4626-convertToShares}. */
-    function convertToShares(uint256 assets) public view virtual  returns (uint256) {
+    function convertToShares(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-convertToAssets}. */
-    function convertToAssets(uint256 shares) public view virtual  returns (uint256) {
+    function convertToAssets(uint256 shares) public view virtual returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-maxDeposit}. */
-    function maxDeposit(address) public view virtual  returns (uint256) {
+    function maxDeposit(address) public view virtual returns (uint256) {
         return _isVaultHealthy() ? type(uint256).max : 0;
     }
 
     /** @dev See {IERC4626-maxMint}. */
-    function maxMint(address) public view virtual  returns (uint256) {
+    function maxMint(address) public view virtual returns (uint256) {
         return type(uint256).max;
     }
 
     /** @dev See {IERC4626-maxWithdraw}. */
-    function maxWithdraw(address owner) public view virtual  returns (uint256) {
+    function maxWithdraw(address owner) public view virtual returns (uint256) {
         return _convertToAssets(balanceOf(owner), Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-maxRedeem}. */
-    function maxRedeem(address owner) public view virtual  returns (uint256) {
+    function maxRedeem(address owner) public view virtual returns (uint256) {
         return balanceOf(owner);
     }
 
     /** @dev See {IERC4626-previewDeposit}. */
-    function previewDeposit(uint256 assets) public view virtual  returns (uint256) {
+    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-previewMint}. */
-    function previewMint(uint256 shares) public view virtual  returns (uint256) {
+    function previewMint(uint256 shares) public view virtual returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Up);
     }
 
     /** @dev See {IERC4626-previewWithdraw}. */
-    function previewWithdraw(uint256 assets) public view virtual  returns (uint256) {
+    function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Up);
     }
 
     /** @dev See {IERC4626-previewRedeem}. */
-    function previewRedeem(uint256 shares) public view virtual  returns (uint256) {
+    function previewRedeem(uint256 shares) public view virtual returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-deposit}. */
     function deposit(address receiver) public payable returns (uint256) {
-        uint256 assets = msg.value ;
-        require(assets <= maxDeposit(receiver), "ERC4626: deposit more than max");
+        uint256 assets = msg.value;
+        require(assets <= maxDeposit(receiver), 'ERC4626: deposit more than max');
 
         uint256 shares = previewDeposit(assets);
         _deposit(_msgSender(), receiver, assets, shares);
@@ -152,8 +157,8 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
      * As opposed to {deposit}, minting is allowed even if the vault is in a state where the price of a share is zero.
      * In this case, the shares will be minted without requiring any assets to be deposited.
      */
-    function mint(uint256 shares, address receiver) public payable  returns (uint256) {
-        require(shares <= maxMint(receiver), "ERC4626: mint more than max");
+    function mint(uint256 shares, address receiver) public payable returns (uint256) {
+        require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
 
         uint256 assets = previewMint(shares);
         require(msg.value == assets, 'inValid eth sent according to shares');
@@ -167,8 +172,8 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         uint256 assets,
         address receiver,
         address owner
-    ) public virtual  returns (uint256) {
-        require(assets <= maxWithdraw(owner), "ERC4626: withdraw more than max");
+    ) public virtual returns (uint256) {
+        require(assets <= maxWithdraw(owner), 'ERC4626: withdraw more than max');
 
         uint256 shares = previewWithdraw(assets);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
@@ -182,7 +187,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         address receiver,
         address owner
     ) public virtual returns (uint256) {
-        require(shares <= maxRedeem(owner), "ERC4626: redeem more than max");
+        require(shares <= maxRedeem(owner), 'ERC4626: redeem more than max');
 
         uint256 assets = previewRedeem(shares);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
