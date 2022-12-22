@@ -318,17 +318,20 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         bufferedEth -= (amount);
 
-        emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
-        emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
-
+        //slither-disable-next-line low-level-call
         (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
             value: (amount * poolParameters[0].poolWeight) / 100
         }('');
         require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
+
+        //slither-disable-next-line low-level-call
         (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
             value: (amount * poolParameters[1].poolWeight) / 100
         }('');
         require(staderPoolSuccess, 'Stader Pool ETH transfer failed');
+
+        emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
+        emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
     }
 
     /**

@@ -231,6 +231,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         emit Deposit(caller, receiver, assets, shares);
     }
 
+    //slither-disable-next-line DETECTOR_NAME
     /**
      * @dev Withdraw/redeem common workflow.
      */
