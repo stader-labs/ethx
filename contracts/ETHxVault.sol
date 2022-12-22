@@ -231,7 +231,6 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         emit Deposit(caller, receiver, assets, shares);
     }
 
-    //slither-disable-next-line DETECTOR_NAME
     /**
      * @dev Withdraw/redeem common workflow.
      */
@@ -246,6 +245,8 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
             _spendAllowance(owner, caller, shares);
         }
         _burn(owner, shares);
+
+        //slither-disable-next-line low-level-calls
         (bool success, ) = payable(receiver).call{value: assets}('');
         require(success, 'withdraw failed');
         emit Withdrawn(caller, receiver, owner, assets, shares);
