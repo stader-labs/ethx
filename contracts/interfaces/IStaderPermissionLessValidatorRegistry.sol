@@ -26,6 +26,8 @@ interface IStaderPermissionLessValidatorRegistry {
         uint256 _bondEth
     ) external;
 
+    function incrementRegisteredValidatorCount() external;
+
     function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view returns (string[] memory);
 
     function getPoRAddressListLength() external view returns (uint256);
@@ -52,6 +54,8 @@ interface IStaderPermissionLessValidatorRegistry {
 
     function validatorCount() external view returns (uint256);
 
+    function registeredValidatorCount() external view returns (uint256);
+
     function validatorPubKeyIndex(bytes calldata) external view returns (uint256);
 
     function validatorRegistry(uint256)
@@ -59,11 +63,11 @@ interface IStaderPermissionLessValidatorRegistry {
         view
         returns (
             bool validatorDepositStatus,
-            bytes calldata pubKey,
-            bytes calldata signature,
+            bytes memory pubKey,
+            bytes memory signature,
             bytes32 depositDataRoot,
             address nodeRewardAddress,
-            string calldata nodeName,
+            string memory nodeName,
             uint256 nodeFees,
             uint256 bondEth
         );
