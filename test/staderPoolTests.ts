@@ -17,7 +17,6 @@ describe('stader pool tests', () => {
   })
 
   it('when more than 32 ETH have been staked', async () => {
-    console.log('Stader PoolManager is ', env.staderStakingPoolManager.address);
     await env.staderStakingPoolManager.updatePoolWeights(0, 100)
     await env.staderStakingPoolManager
       .connect(adr.staker1)

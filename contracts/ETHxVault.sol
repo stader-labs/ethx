@@ -135,7 +135,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
      * As opposed to {deposit}, minting is allowed even if the vault is in a state where the price of a share is zero.
      * In this case, the shares will be minted without requiring any assets to be deposited.
      */
-    function mint(uint256 shares, address receiver) public payable whenNotPaused returns (uint256) {
+    function mintShares(uint256 shares, address receiver) public payable whenNotPaused returns (uint256) {
         require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
 
         uint256 assets = previewMint(shares);

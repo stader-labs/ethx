@@ -302,7 +302,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
         uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
         bufferedEth += amount;
-        ethX.mint(msg.sender,amountToSend);
+        ethX.mint(msg.sender, amountToSend);
         if (address(this).balance >= 32 ether) {
             _selectPool();
         }

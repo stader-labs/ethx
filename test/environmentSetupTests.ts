@@ -14,7 +14,6 @@ describe('environmentSetupTest', () => {
   describe('when setting up the environment', () => {
     describe('when deploying the ssvNetwork', () => {
       it('should not revert', async () => {
-        console.log('env.ssvNetwork.address ', env.ssvNetwork.address);
         await expect(env.ssvNetwork.address).to.not.be.empty
       })
 
