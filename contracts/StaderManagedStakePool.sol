@@ -97,7 +97,7 @@ contract StaderManagedStakePool is
         require(registeredValidatorCount <= validatorCount, 'not enough validator to register');
         (, bytes memory pubKey, bytes memory signature, bytes32 depositDataRoot, , , , , ) = staderValidatorRegistry
             .validatorRegistry(registeredValidatorCount);
-            
+
         //slither-disable-next-line arbitrary-send-eth
         ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCredential, signature, depositDataRoot);
         staderValidatorRegistry.incrementRegisteredValidatorCount();
