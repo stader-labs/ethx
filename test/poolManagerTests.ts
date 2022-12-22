@@ -17,6 +17,7 @@ describe('stader pool manager tests', () => {
   })
 
   it('stake eth with 1:1 exchange rate', async () => {
+    console.log('poolManager is ', env.staderStakingPoolManager.address);
     await env.staderStakingPoolManager
       .connect(adr.staker1)
       .deposit(adr.staker1.address, { value: ethers.utils.parseEther('10') })
