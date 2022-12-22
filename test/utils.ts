@@ -115,10 +115,10 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
   setValidatorRegistryTxn.wait()
   // console.log("validator registry updated");
 
-  const ethXFeed = process.env.ETHX_FEED
+  // const ethXFeed = process.env.ETHX_FEED
 
-  const setETHXFeedTxn = await staderStakingPoolManager.updateEthXFeed(ethXFeed)
-  setETHXFeedTxn.wait()
+  // const setETHXFeedTxn = await staderStakingPoolManager.updateEthXFeed(ethXFeed)
+  // setETHXFeedTxn.wait()
   // console.log("ethX feed updated");
 
   const setStaderTreasuryTxn = await staderStakingPoolManager.updateStaderTreasury(staderOwner.address)
