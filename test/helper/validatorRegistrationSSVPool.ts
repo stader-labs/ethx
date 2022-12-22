@@ -12,7 +12,6 @@ export async function startWorkflow(
 ): Promise<Array<object>> {
   const newRegistries = []
 
-  console.log('coming here')
   let newOperators
   let newKeysDistribution
 

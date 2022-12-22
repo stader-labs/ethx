@@ -302,7 +302,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
         uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
         bufferedEth += amount;
-        ethX.mint(amountToSend, msg.sender);
+        ethX.mint(msg.sender,amountToSend);
         if (address(this).balance >= 32 ether) {
             _selectPool();
         }
@@ -344,7 +344,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         prevBeaconChainReward += beaconChainRewards;
         uint256 totalRewards = beaconChainRewards + _ELRewards;
         uint256 ethXMintedAsFees = (totalRewards * DECIMALS * feePercentage) / (exchangeRate * 100);
-        ethX.mint(ethXMintedAsFees, staderTreasury);
+        ethX.mint(staderTreasury, ethXMintedAsFees);
     }
 
     function _initialSetup() internal {

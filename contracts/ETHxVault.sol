@@ -38,14 +38,22 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         _grantRole(PAUSER_ROLE, msg.sender);
     }
 
-    function moveEthToPool(uint256 amount) external onlyRole(STADER_POOL_ROLE) whenNotPaused {
-        require(amount < address(this).balance, 'insufficient balance to move');
-        payable(_msgSender()).transfer(amount);
+    /**
+     * @notice Mints ethX when called by an authorized caller
+     * @param to the account to mint to
+     * @param amount the amount of ethX to mint
+     */
+    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) whenNotPaused {
+        _mint(to, amount);
     }
 
-    function nodeDeposit() external payable onlyRole(STADER_PERMISSION_LESS_POOL) whenNotPaused {
-        require(msg.value == 4 ether, 'invalid collateral value');
-        emit ReceivedNodeDeposit(_msgSender(), msg.value);
+    /**
+     * @notice Burns ethX when called by an authorized caller
+     * @param account the account to burn from
+     * @param amount the amount of ethX to burn
+     */
+    function burnFrom(address account, uint256 amount) public override onlyRole(MINTER_ROLE) whenNotPaused {
+        _burn(account, amount);
     }
 
     function pause() public onlyRole(PAUSER_ROLE) whenNotPaused {
