@@ -136,7 +136,7 @@ contract StaderSSVStakePool is IStaderSSVStakePool, Initializable, AccessControl
         );
         ssvToken.approve(address(ssvNetwork), tokenFees);
         ssvNetwork.registerValidator(_pubKey, _operatorIDs, _publicShares, _encryptedShares, tokenFees);
-        _addToStaderSSVRegistry(_pubKey, _publicShares, _encryptedShares, _operatorIDs);
+        // _addToStaderSSVRegistry(_pubKey, _publicShares, _encryptedShares, _operatorIDs);
         emit RegisteredValidatorToSSVNetwork(_pubKey);
     }
 
@@ -185,7 +185,7 @@ contract StaderSSVStakePool is IStaderSSVStakePool, Initializable, AccessControl
 
         //slither-disable-next-line arbitrary-send-eth
         ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawalCredentials, signature, depositDataRoot);
-        staderValidatorRegistry.addToValidatorRegistry(pubKey, withdrawalCredentials, signature, depositDataRoot);
+        // staderValidatorRegistry.addToValidatorRegistry(pubKey, withdrawalCredentials, signature, depositDataRoot);
         emit DepositToDepositContract(pubKey);
     }
 
@@ -202,7 +202,7 @@ contract StaderSSVStakePool is IStaderSSVStakePool, Initializable, AccessControl
      * @param _encryptedShares encrypt shares for operators of a validator
      * @param _operatorIDs operator IDs of operator assigned to a validator
      */
-    function _addToStaderSSVRegistry(
+    function _addToStaderVRegistry(
         bytes memory _pubKey,
         bytes[] memory _publicShares,
         bytes[] memory _encryptedShares,

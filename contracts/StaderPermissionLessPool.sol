@@ -2,9 +2,7 @@ pragma solidity ^0.8.16;
 
 import './ETHxVault.sol';
 import './interfaces/IDepositContract.sol';
-import './interfaces/IStaderPermissionLessValidatorRegistry.sol';
-// import './interfaces/IStaderManagedStakePool.sol';
-
+import './interfaces/IStaderValidatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
@@ -13,7 +11,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     IDepositContract public ethValidatorDeposit;
     bytes public withdrawCredential;
-    IStaderPermissionLessValidatorRegistry public validatorRegistry;
+    IStaderValidatorRegistry public staderValidatorRegistry;
 
     bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
     bytes32 public constant PERMISSION_LESS_OPERATOR = keccak256('PERMISSION_LESS_OPERATOR');
@@ -49,7 +47,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         withdrawCredential = _withdrawCredential;
         staderVault = ETHxVault(_staderVault);
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
-        validatorRegistry = IStaderPermissionLessValidatorRegistry(_validatorRegistry);
+        staderValidatorRegistry = IStaderValidatorRegistry(_validatorRegistry);
         _grantRole(STADER_PERMISSION_LESS_POOL_ADMIN, _staderPermissionLessPoolAdmin);
     }
 
@@ -64,21 +62,13 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     /// @dev deposit 32 ETH in ethereum deposit contract
     function depositEthToDepositContract() external onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
-        uint256 validatorCount = validatorRegistry.validatorCount();
-        uint256 registeredValidatorCount = validatorRegistry.registeredValidatorCount();
+        uint256 validatorCount = staderValidatorRegistry.validatorCount();
+        uint256 registeredValidatorCount = staderValidatorRegistry.registeredValidatorCount();
         require(registeredValidatorCount <= validatorCount, 'not enough validator to register');
-        (
-            bool validatorDepositStatus,
-            bytes memory pubKey,
-            bytes memory signature,
-            bytes32 depositDataRoot,
-            address nodeRewardAddress,
-            string memory nodeName,
-            uint256 nodeFees,
-            uint256 bondEth
-        ) = validatorRegistry.validatorRegistry(registeredValidatorCount);
+        (, bytes memory pubKey, bytes memory signature, bytes32 depositDataRoot, , , , , ) = staderValidatorRegistry
+            .validatorRegistry(registeredValidatorCount);
         ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCredential, signature, depositDataRoot);
-        validatorRegistry.incrementRegisteredValidatorCount();
+        staderValidatorRegistry.incrementRegisteredValidatorCount();
         emit DepositToDepositContract(pubKey);
     }
 
@@ -92,14 +82,15 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     ) external payable onlyRole(PERMISSION_LESS_OPERATOR) {
         require(msg.value == 4 ether, 'insufficient collateral');
         require(
-            validatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
+            staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
             'validator already in use'
         );
-        validatorRegistry.addToValidatorRegistry(
+        staderValidatorRegistry.addToValidatorRegistry(
             false,
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
+            'staderPermissionLessPool',
             _nodeName,
             _nodeRewardAddress,
             _nodeFees,

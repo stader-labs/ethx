@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 /* eslint-disable arrow-body-style */
 /* eslint-disable no-await-in-loop */
+import deposit from '../scripts/deposits/deposit0.json'
 import { ethers, upgrades } from 'hardhat'
 
 const setupAddresses = async () => {
@@ -25,43 +26,44 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   const ssvRegistry = await SSVRegistry.connect(ssvOwner).deploy()
 
-  // console.log("ssv registry is ", ssvRegistry.address);
+  //console.log("ssv registry is ", ssvRegistry.address);
 
   const SSVToken = await ethers.getContractFactory('SSVTokenMock')
 
   const ssvToken = await SSVToken.connect(ssvOwner).deploy()
-  // console.log("ssv token is ", ssvToken.address);
+  //console.log("ssv token is ", ssvToken.address);
 
   const SSVNetwork = await ethers.getContractFactory('SSVNetworkMock')
 
   const ssvNetwork = await upgrades.deployProxy(SSVNetwork, [ssvRegistry.address, ssvToken.address, 0, 1000, 0, 0])
 
-  // console.log("ssv network is ", ssvNetwork.address);
+  //console.log("ssv network is ", ssvNetwork.address);
 
   const ETHxToken = await ethers.getContractFactory('ETHxVault')
 
   const ethxToken = await ETHxToken.connect(staderOwner).deploy()
 
-  // console.log("ethx is ", ethxToken.address);
+  //console.log("ethx is ", ethxToken.address);
 
   const ETHDeposit = await ethers.getContractFactory('DepositContract')
   const ethDeposit = await ETHDeposit.deploy()
 
-  // console.log("ethDeposit is ", ethDeposit.address);
+  //console.log("ethDeposit is ", ethDeposit.address);
 
   const validatorRegistryFactory = await ethers.getContractFactory('StaderValidatorRegistry')
   const validatorRegistry = await upgrades.deployProxy(validatorRegistryFactory)
 
-  // console.log("validatorRegistry is ", validatorRegistry.address);
+  //console.log("validatorRegistry is ", validatorRegistry.address);
 
   const StaderManagedPoolFactory = await ethers.getContractFactory('StaderManagedStakePool')
   const StaderManagedStakePool = await upgrades.deployProxy(StaderManagedPoolFactory, [
     ethDeposit.address,
+    '0x' + deposit.withdrawal_credentials,
     validatorRegistry.address,
     staderOwner.address,
   ])
 
-  // console.log('StaderManagedStakePool is ', StaderManagedStakePool.address)
+  //console.log('StaderManagedStakePool is ', StaderManagedStakePool.address)
 
   const StaderSSVStakePoolFactory = await ethers.getContractFactory('StaderSSVStakePool')
   const staderSSVPool = await upgrades.deployProxy(StaderSSVStakePoolFactory, [
@@ -72,7 +74,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     staderOwner.address,
   ])
 
-  // console.log('staderSSVPool is ', staderSSVPool.address)
+  //console.log('staderSSVPool is ', staderSSVPool.address)
 
   const stakingManagerFactory = await ethers.getContractFactory('StaderStakePoolsManager')
   const staderStakingPoolManager = await upgrades.deployProxy(stakingManagerFactory, [
@@ -87,7 +89,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     staderOwner.address,
   ])
 
-  // console.log("staderStakingPoolManager is ", staderStakingPoolManager.address);
+  //console.log("staderStakingPoolManager is ", staderStakingPoolManager.address);
 
   const ELRewardFactory = await ethers.getContractFactory('ExecutionLayerRewardContract')
   const ELRewardContract = await upgrades.deployProxy(ELRewardFactory, [
@@ -95,35 +97,33 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     staderOwner.address,
   ])
 
-  // console.log("ELRewardContract is ", ELRewardContract.address);
+  //console.log("ELRewardContract is ", ELRewardContract.address);
 
-  const setSSVPoolTxn = await validatorRegistry.setStaderSSVStakePoolAddress(staderSSVPool.address)
-  setSSVPoolTxn.wait()
-  // console.log("ssv pool address updated");
+  const staderNetworkPool = await validatorRegistry.STADER_NETWORK_POOL()
 
-  const staderPoolTxn = await validatorRegistry.setStaderManagedStakePoolAddress(StaderManagedStakePool.address)
-  staderPoolTxn.wait()
-  // console.log("stader pool updated");
+  //console.log('staderNetwork Pool ', staderNetworkPool);
+  //  await validatorRegistry.grantRole(staderNetworkPool, StaderManagedStakePool.address);
+  //  await validatorRegistry.grantRole(staderNetworkPool, staderSSVPool.address);
 
-  const setELRewardTxn = await staderStakingPoolManager.updateELRewardContract(ELRewardContract.address)
+  //console.log('granted network pool access');
+
+  const setELRewardTxn = await staderStakingPoolManager
+    .connect(staderOwner)
+    .updateELRewardContract(ELRewardContract.address)
   setELRewardTxn.wait()
-  // console.log("EL Rewards Address updated");
+  //console.log("EL Rewards Address updated");
 
-  const setValidatorRegistryTxn = await staderStakingPoolManager.updateStaderValidatorRegistry(
-    validatorRegistry.address
-  )
+  const setValidatorRegistryTxn = await staderStakingPoolManager
+    .connect(staderOwner)
+    .updateStaderValidatorRegistry(validatorRegistry.address)
   setValidatorRegistryTxn.wait()
-  // console.log("validator registry updated");
+  //console.log("validator registry updated");
 
-  // const ethXFeed = process.env.ETHX_FEED
-
-  // const setETHXFeedTxn = await staderStakingPoolManager.updateEthXFeed(ethXFeed)
-  // setETHXFeedTxn.wait()
-  // console.log("ethX feed updated");
-
-  const setStaderTreasuryTxn = await staderStakingPoolManager.updateStaderTreasury(staderOwner.address)
+  const setStaderTreasuryTxn = await staderStakingPoolManager
+    .connect(staderOwner)
+    .updateStaderTreasury(staderOwner.address)
   setStaderTreasuryTxn.wait()
-  // console.log("stader treasury updated");
+  //  console.log("stader treasury updated");
 
   await ssvNetwork.registerOperator(
     'Test0',
