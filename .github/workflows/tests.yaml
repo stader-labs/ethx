@@ -32,8 +32,5 @@ jobs:
       - name: Compile
         run: npx hardhat compile
 
-      - name: Hardhat node
-        run: npx hardhat node
-
       - name: Run unit tests
-        run: npx hardhat test
+        run: npx hardhat node & npx hardhat test
