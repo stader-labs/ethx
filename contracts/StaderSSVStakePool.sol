@@ -195,26 +195,26 @@ contract StaderSSVStakePool is IStaderSSVStakePool, Initializable, AccessControl
         return type(uint256).max;
     }
 
-    // /**
-    //  * @dev add a validator to the registry
-    //  * @param _pubKey public Key of the validator
-    //  * @param _publicShares public shares for operators of a validator
-    //  * @param _encryptedShares encrypt shares for operators of a validator
-    //  * @param _operatorIDs operator IDs of operator assigned to a validator
-    //  */
-    // function _addToStaderVRegistry(
-    //     bytes memory _pubKey,
-    //     bytes[] memory _publicShares,
-    //     bytes[] memory _encryptedShares,
-    //     uint32[] memory _operatorIDs
-    // ) internal {
-    //     ValidatorShares storage _staderSSVRegistry = staderSSVRegistry[staderSSVRegistryCount];
-    //     _staderSSVRegistry.pubKey = _pubKey;
-    //     _staderSSVRegistry.publicShares = _publicShares;
-    //     _staderSSVRegistry.encryptedShares = _encryptedShares;
-    //     _staderSSVRegistry.operatorIDs = _operatorIDs;
-    //     ssvValidatorPubKeyIndex[_pubKey] = staderSSVRegistryCount;
-    //     staderSSVRegistryCount++;
-    //     emit AddedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
-    // }
+    /**
+     * @dev add a validator to the registry
+     * @param _pubKey public Key of the validator
+     * @param _publicShares public shares for operators of a validator
+     * @param _encryptedShares encrypt shares for operators of a validator
+     * @param _operatorIDs operator IDs of operator assigned to a validator
+     */
+    function _addToStaderSSVRegistry(
+        bytes memory _pubKey,
+        bytes[] memory _publicShares,
+        bytes[] memory _encryptedShares,
+        uint32[] memory _operatorIDs
+    ) external onlyRole(SSV_POOL_ADMIN_ROLE) {
+        ValidatorShares storage _staderSSVRegistry = staderSSVRegistry[staderSSVRegistryCount];
+        _staderSSVRegistry.pubKey = _pubKey;
+        _staderSSVRegistry.publicShares = _publicShares;
+        _staderSSVRegistry.encryptedShares = _encryptedShares;
+        _staderSSVRegistry.operatorIDs = _operatorIDs;
+        ssvValidatorPubKeyIndex[_pubKey] = staderSSVRegistryCount;
+        staderSSVRegistryCount++;
+        emit AddedToStaderSSVRegistry(_pubKey, staderSSVRegistryCount);
+    }
 }

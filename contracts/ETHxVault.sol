@@ -245,7 +245,8 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
             _spendAllowance(owner, caller, shares);
         }
         _burn(owner, shares);
-        payable(receiver).transfer(assets);
+        (bool success, ) = payable(receiver).call{value: assets}('');
+        require(success, 'withdraw failed');
         emit Withdrawn(caller, receiver, owner, assets, shares);
     }
 
