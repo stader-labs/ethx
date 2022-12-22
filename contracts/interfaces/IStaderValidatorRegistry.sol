@@ -3,39 +3,72 @@
 pragma solidity ^0.8.16;
 
 interface IStaderValidatorRegistry {
+    event AddedToPermissionLessValidatorRegistry(bytes publicKey, string poolType, uint256 count);
     event Initialized(uint8 version);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event AddedToValidatorRegistry(bytes publicKey, uint256 count);
+    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
+
+    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+
+    function STADER_NETWORK_POOL() external view returns (bytes32);
+
+    function VALIDATOR_REGISTRY_ADMIN() external view returns (bytes32);
 
     function addToValidatorRegistry(
+        bool _validatorDepositStatus,
         bytes memory _pubKey,
-        bytes memory _withdrawalCredentials,
         bytes memory _signature,
-        bytes32 _depositDataRoot
+        bytes32 _depositDataRoot,
+        string memory _poolType,
+        string memory _nodeName,
+        address _nodeRewardAddress,
+        uint256 _nodeFees,
+        uint256 _bondEth
     ) external;
+
+    function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view returns (string[] memory);
+
+    function getPoRAddressListLength() external view returns (uint256);
+
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+
+    function getValidatorIndexByPublicKey(bytes memory _publicKey) external view returns (uint256);
+
+    function grantRole(bytes32 role, address account) external;
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
+
+    function incrementRegisteredValidatorCount() external;
 
     function initialize() external;
 
-    function owner() external view returns (address);
+    function registeredValidatorCount() external view returns (uint256);
 
-    function renounceOwnership() external;
+    function renounceRole(bytes32 role, address account) external;
 
-    function setStaderManagedStakePoolAddress(address _staderManagedStakePool) external;
+    function revokeRole(bytes32 role, address account) external;
 
-    function setStaderSSVStakePoolAddress(address _staderSSVStakePool) external;
+    function staderPermissionLessPool() external view returns (address);
 
-    function transferOwnership(address newOwner) external;
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
     function validatorCount() external view returns (uint256);
+
+    function validatorPubKeyIndex(bytes memory) external view returns (uint256);
 
     function validatorRegistry(uint256)
         external
         view
         returns (
+            bool validatorDepositStatus,
             bytes memory pubKey,
-            bytes memory withdrawalCredentials,
             bytes memory signature,
             bytes32 depositDataRoot,
-            bool depositStatus
+            address nodeRewardAddress,
+            string memory poolType,
+            string memory nodeName,
+            uint256 nodeFees,
+            uint256 bondEth
         );
 }

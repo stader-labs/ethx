@@ -1,7 +1,7 @@
 import '@nomicfoundation/hardhat-chai-matchers'
 import 'dotenv/config'
 import { ethers, waffle } from 'hardhat'
-import { registerValidator } from './helper/validatorRegistrationStaderPool'
+import { onboardPermissionedValidator } from './helper/validatorRegistrationStaderPool'
 
 const { expect } = require('chai')
 const { setupAddresses, setupEnvironment } = require('./utils')
@@ -43,9 +43,17 @@ describe('stader pool tests', () => {
     expect(staderPoolBalance.div('32')).to.be.within(ethers.utils.parseEther('1'), ethers.utils.parseEther('2'))
   })
 
-  it('should register a new validator ', async () => {
-    await registerValidator(env.StaderManagedStakePool)
+  it('should onboard a permissioned validator ', async function () {
+    const staderNetworkPool = await env.validatorRegistry.STADER_NETWORK_POOL()
+    console.log('staderNetwork Pool ', staderNetworkPool)
+    await env.validatorRegistry.grantRole(staderNetworkPool, env.StaderManagedStakePool.address)
+    await onboardPermissionedValidator(env.StaderManagedStakePool)
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(1)
+  })
+
+  it('should depositETh for a new validator ', async () => {
+    await env.StaderManagedStakePool.depositEthToDepositContract()
+    expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(1)
     expect(await provider.getBalance(env.StaderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
   })
 })

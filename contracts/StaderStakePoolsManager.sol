@@ -33,7 +33,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public prevBeaconChainReward;
     uint256 public exchangeRate;
     uint256 public totalTVL;
-    uint256 public oracleLastUpdatedAt;
+    // uint256 public oracleLastUpdatedAt;
     uint256 public totalELRewardsCollected;
     uint256 public feePercentage;
     bool public isStakePaused;
@@ -318,17 +318,20 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         bufferedEth -= (amount);
 
-        emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
-        emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
-
+        //slither-disable-next-line low-level-calls
         (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
             value: (amount * poolParameters[0].poolWeight) / 100
         }('');
         require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
+
+        //slither-disable-next-line low-level-calls
         (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
             value: (amount * poolParameters[1].poolWeight) / 100
         }('');
         require(staderPoolSuccess, 'Stader Pool ETH transfer failed');
+
+        emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
+        emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
     }
 
     /**

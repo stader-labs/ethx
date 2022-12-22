@@ -17,12 +17,12 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
 
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
-    bytes32 public constant VAULT_ACCESS_ROLE = keccak256('VAULT_ACCESS_ROLE');
+    bytes32 public constant STADER_POOL_ROLE = keccak256('STADER_POOL_ROLE');
+    bytes32 public constant STADER_PERMISSION_LESS_POOL = keccak256('STADER_PERMISSION_LESS_POOL');
 
-    mapping(address => uint256) contractEthBalances;
-
+    event ReceivedNodeDeposit(address indexed from, uint256 amount);
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(
+    event Withdrawn(
         address indexed caller,
         address indexed receiver,
         address indexed owner,
@@ -61,30 +61,6 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
     }
-
-    // // Get a contract's ETH balance in the vault by address
-    // function balanceOfContract(address _contractName) external view returns (uint256) {
-    //     return contractEthBalances[_contractName];
-    // }
-
-    // // Accept an ETH deposit from a pool manager
-    // // Require Vault Access Role to access this
-    // function depositEthToVault() external payable onlyRole(VAULT_ACCESS_ROLE) {
-    //     require(msg.value > 0, 'No valid amount of ETH given to deposit');
-    //     contractEthBalances[msg.sender] = contractEthBalances[msg.sender].add(msg.value);
-    //     emit DepositedEthToVault(msg.sender, msg.value, block.timestamp);
-    // }
-
-    // // Withdraw an amount of ETH from vault
-    // // Require Vault Access Role to access this
-    // function withdrawEthFromVault(uint256 _amount) external onlyRole(VAULT_ACCESS_ROLE) {
-    //     require(_amount > 0, 'No valid amount of ETH given to withdraw');
-    //     require(contractEthBalances[msg.sender] >= _amount, 'Insufficient contract ETH balance');
-    //     contractEthBalances[msg.sender] = contractEthBalances[msg.sender].sub(_amount);
-    //     IETHxVaultWithdrawer withdrawer = IETHxVaultWithdrawer(msg.sender);
-    //     withdrawer.receiveVaultWithdrawalETH{value: _amount}();
-    //     emit WithdrawnEthFromVault(msg.sender, _amount, block.timestamp);
-    // }
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view virtual returns (uint256) {
@@ -142,7 +118,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
     }
 
     /** @dev See {IERC4626-deposit}. */
-    function deposit(address receiver) public payable returns (uint256) {
+    function deposit(address receiver) public payable whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         require(assets <= maxDeposit(receiver), 'ERC4626: deposit more than max');
 
@@ -157,7 +133,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
      * As opposed to {deposit}, minting is allowed even if the vault is in a state where the price of a share is zero.
      * In this case, the shares will be minted without requiring any assets to be deposited.
      */
-    function mint(uint256 shares, address receiver) public payable returns (uint256) {
+    function mintShares(uint256 shares, address receiver) public payable whenNotPaused returns (uint256) {
         require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
 
         uint256 assets = previewMint(shares);
@@ -172,7 +148,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         uint256 assets,
         address receiver,
         address owner
-    ) public virtual returns (uint256) {
+    ) public virtual whenNotPaused returns (uint256) {
         require(assets <= maxWithdraw(owner), 'ERC4626: withdraw more than max');
 
         uint256 shares = previewWithdraw(assets);
@@ -186,7 +162,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         uint256 shares,
         address receiver,
         address owner
-    ) public virtual returns (uint256) {
+    ) public virtual whenNotPaused returns (uint256) {
         require(shares <= maxRedeem(owner), 'ERC4626: redeem more than max');
 
         uint256 assets = previewRedeem(shares);
@@ -269,8 +245,11 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
             _spendAllowance(owner, caller, shares);
         }
         _burn(owner, shares);
-        payable(receiver).transfer(assets);
-        emit Withdraw(caller, receiver, owner, assets, shares);
+
+        //slither-disable-next-line low-level-calls
+        (bool success, ) = payable(receiver).call{value: assets}('');
+        require(success, 'withdraw failed');
+        emit Withdrawn(caller, receiver, owner, assets, shares);
     }
 
     /**

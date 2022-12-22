@@ -33,4 +33,4 @@ jobs:
         run: npx hardhat compile
 
       - name: Run unit tests
-        run: npx hardhat test
+        run: npx hardhat node & npx hardhat test
