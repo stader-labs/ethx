@@ -33,7 +33,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public prevBeaconChainReward;
     uint256 public exchangeRate;
     uint256 public totalTVL;
-    uint256 public oracleLastUpdatedAt;
+    // uint256 public oracleLastUpdatedAt;
     uint256 public totalELRewardsCollected;
     uint256 public feePercentage;
     bool public isStakePaused;

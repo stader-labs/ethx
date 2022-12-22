@@ -20,11 +20,9 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant STADER_POOL_ROLE = keccak256('STADER_POOL_ROLE');
     bytes32 public constant STADER_PERMISSION_LESS_POOL = keccak256('STADER_PERMISSION_LESS_POOL');
 
-    mapping(address => uint256) contractEthBalances;
-
     event ReceivedNodeDeposit(address indexed from, uint256 amount);
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-    event Withdraw(
+    event Withdrawn(
         address indexed caller,
         address indexed receiver,
         address indexed owner,
@@ -248,7 +246,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         }
         _burn(owner, shares);
         payable(receiver).transfer(assets);
-        emit Withdraw(caller, receiver, owner, assets, shares);
+        emit Withdrawn(caller, receiver, owner, assets, shares);
     }
 
     /**
