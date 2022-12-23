@@ -16,7 +16,7 @@ interface IStaderOperatorRegistry {
 
     function OPERATOR_REGISTRY_ADMIN() external view returns (bytes32);
 
-    function OperatorCount() external view returns (uint256);
+    function operatorCount() external view returns (uint256);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
 
