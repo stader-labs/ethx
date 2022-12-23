@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-interface IExecutionLayerRewardContract {
+interface ISocializingPoolContract {
     event ETHReceived(uint256 amount);
 
     /**

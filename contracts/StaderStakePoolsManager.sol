@@ -5,7 +5,7 @@ pragma solidity ^0.8.16;
 import './ETHxVault.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IExecutionLayerRewardContract.sol';
+import './interfaces/ISocializingPoolContract.sol';
 
 import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
@@ -274,7 +274,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         onlyRole(EXECUTOR_ROLE)
         returns (uint256)
     {
-        uint256 ELRewards = IExecutionLayerRewardContract(executionLayerRewardContract).withdrawELRewards();
+        uint256 ELRewards = ISocializingPoolContract(executionLayerRewardContract).withdrawELRewards();
         totalTVL = _tvlValue + ELRewards;
         uint256 totalSupply = ethX.totalSupply();
 

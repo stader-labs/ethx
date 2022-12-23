@@ -91,7 +91,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("staderStakingPoolManager is ", staderStakingPoolManager.address);
 
-  const ELRewardFactory = await ethers.getContractFactory('ExecutionLayerRewardContract')
+  const ELRewardFactory = await ethers.getContractFactory('SocializingPoolContract')
   const ELRewardContract = await upgrades.deployProxy(ELRewardFactory, [
     staderStakingPoolManager.address,
     staderOwner.address,
