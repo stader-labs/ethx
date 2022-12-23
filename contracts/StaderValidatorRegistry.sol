@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.16;
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -12,7 +11,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     bytes32 public constant VALIDATOR_REGISTRY_ADMIN = keccak256('VALIDATOR_REGISTRY_ADMIN');
 
     /// @notice event emits after adding a validator to validatorRegistry
-    event AddedToPermissionLessValidatorRegistry(bytes publicKey, string poolType, uint256 count);
+    event AddedToValidatorRegistry(bytes publicKey, string poolType, uint256 count);
 
     struct Validator {
         bool validatorDepositStatus; // state of validator
@@ -45,7 +44,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     }
 
     /**
-     * @dev add a permission-less validator to the registry
+     * @dev add a validator to the registry
      * @param _validatorDepositStatus status of validator
      * @param _pubKey public Key of the validator
      * @param _signature signature for deposit to Ethereum Deposit contract
@@ -78,7 +77,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         _validatorRegistry.bondEth = _bondEth;
         validatorPubKeyIndex[_pubKey] = validatorCount;
         validatorCount++;
-        emit AddedToPermissionLessValidatorRegistry(_pubKey, _poolType, validatorCount);
+        emit AddedToValidatorRegistry(_pubKey, _poolType, validatorCount);
     }
 
     function incrementRegisteredValidatorCount() external onlyRole(STADER_NETWORK_POOL) {

@@ -3,10 +3,10 @@
 pragma solidity ^0.8.16;
 
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IExecutionLayerRewardContract.sol';
+import './interfaces/ISocializingPoolContract.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract ExecutionLayerRewardContract is IExecutionLayerRewardContract, Initializable, AccessControlUpgradeable {
+contract SocializingPoolContract is ISocializingPoolContract, Initializable, AccessControlUpgradeable {
     IStaderStakePoolManager public staderStakePoolManager;
 
     bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
