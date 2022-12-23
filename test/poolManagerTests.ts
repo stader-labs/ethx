@@ -85,12 +85,6 @@ describe('stader pool manager tests', () => {
     expect(env.staderStakingPoolManager.updateMaxDeposit(0.5)).to.be.revertedWith('invalid maxDeposit value')
   })
 
-  it('revert while updating ethX feed', async () => {
-    expect(env.staderStakingPoolManager.connect(adr.staker1).updateEthXFeed(env.StaderManagedStakePool.address)).to.be
-      .reverted
-    expect(env.staderStakingPoolManager.updateEthXFeed(adr.ZERO_ADDRESS)).to.be.revertedWith('Address cannot be zero')
-  })
-
   it('revert while updating ethX address', async () => {
     expect(env.staderStakingPoolManager.connect(adr.staker1).updateEthXAddress(env.StaderManagedStakePool.address)).to
       .be.reverted
@@ -99,10 +93,11 @@ describe('stader pool manager tests', () => {
     )
   })
 
-  it('revert while updating EL reward contract address', async () => {
-    expect(env.staderStakingPoolManager.connect(adr.staker1).updateELRewardContract(env.StaderManagedStakePool.address))
-      .to.be.reverted
-    expect(env.staderStakingPoolManager.updateELRewardContract(adr.ZERO_ADDRESS)).to.be.revertedWith(
+  it('revert while updating Socializing Pool address', async () => {
+    expect(
+      env.staderStakingPoolManager.connect(adr.staker1).updateSocializingPoolAddress(env.StaderManagedStakePool.address)
+    ).to.be.reverted
+    expect(env.staderStakingPoolManager.updateSocializingPoolAddress(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )
   })

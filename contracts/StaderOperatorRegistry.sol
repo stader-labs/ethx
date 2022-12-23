@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
-    uint256 public OperatorCount;
+    uint256 public operatorCount;
 
     bytes32 public constant STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant OPERATOR_REGISTRY_ADMIN = keccak256('OPERATOR_REGISTRY_ADMIN');
@@ -62,16 +62,16 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
         uint256 _activeValidatorCount,
         uint256 _penaltyScore
     ) external onlyRole(STADER_NETWORK_POOL) {
-        Operator storage _operatorRegistry = operatorRegistry[OperatorCount];
+        Operator storage _operatorRegistry = operatorRegistry[operatorCount];
         _operatorRegistry.operatorRewardAddress = _operatorRewardAddress;
         _operatorRegistry.operatorId = _operatorId;
         _operatorRegistry.operatorName = _operatorName;
         _operatorRegistry.validatorCount = _validatorCount;
         _operatorRegistry.activeValidatorCount = _activeValidatorCount;
         _operatorRegistry.penaltyScore = _penaltyScore;
-        operatorIdIndex[_operatorId] = OperatorCount;
-        OperatorCount++;
-        emit AddedToOperatorRegistry(_operatorId, OperatorCount);
+        operatorIdIndex[_operatorId] = operatorCount;
+        operatorCount++;
+        emit AddedToOperatorRegistry(_operatorId, operatorCount);
     }
 
     /**

@@ -109,7 +109,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   const setELRewardTxn = await staderStakingPoolManager
     .connect(staderOwner)
-    .updateELRewardContract(ELRewardContract.address)
+    .updateSocializingPoolAddress(ELRewardContract.address)
   setELRewardTxn.wait()
   //console.log("EL Rewards Address updated");
 

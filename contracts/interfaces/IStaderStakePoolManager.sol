@@ -15,10 +15,11 @@ interface IStaderStakePoolManager {
     event UpdatedEthXFeed(address account);
     event ToggledIsStakePaused(bool isStakePaused);
     event ExecutionLayerRewardsReceived(uint256 amount);
-    event UpdatedELRewardContract(address executionLayerRewardContract);
+    event UpdatedSocializingPoolAddress(address executionLayerRewardContract);
     event UpdatedFeePercentage(uint256 fee);
     event UpdatedStaderTreasury(address staderTreasury);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
+    event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
 
     function receiveExecutionLayerRewards() external payable;
 }
