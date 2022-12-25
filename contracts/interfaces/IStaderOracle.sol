@@ -3,8 +3,23 @@ pragma solidity ^0.8.16;
 
 interface IStaderOracle {
     // Events
-    event BalancesSubmitted(address indexed from, uint256 block, uint256 totalEth, uint256 stakingEth, uint256 rethSupply, uint256 _protocolFee, uint256 time);
-    event BalancesUpdated(uint256 block, uint256 totalEth, uint256 stakingEth, uint256 rethSupply, uint256 _protocolFee, uint256 time);
+    event BalancesSubmitted(
+        address indexed from,
+        uint256 block,
+        uint256 totalEth,
+        uint256 stakingEth,
+        uint256 ethxSupply,
+        uint256 protocolFee,
+        uint256 time
+    );
+    event BalancesUpdated(
+        uint256 block,
+        uint256 totalEth,
+        uint256 stakingEth,
+        uint256 ethxSupply,
+        uint256 protocolFee,
+        uint256 time
+    );
 
     // The block number which balances are current for
     function lastBlockNumber() external view returns (uint256);
@@ -22,10 +37,18 @@ interface IStaderOracle {
     function balanceUpdateFrequency() external view returns (uint256);
 
     function protocolFee() external view returns (uint256);
+
     function trustedNodesCount() external view returns (uint256);
+
     function isTrustedNode(address) external view returns (bool);
 
-    function submitBalances(uint256 _block, uint256 _totalEth, uint256 _stakingEth, uint256 _ethxSupply, uint256 _protocolFee) external;
+    function submitBalances(
+        uint256 _block,
+        uint256 _totalEth,
+        uint256 _stakingEth,
+        uint256 _ethxSupply,
+        uint256 _protocolFee
+    ) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }
