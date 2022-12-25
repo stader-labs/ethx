@@ -7,6 +7,8 @@ import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 
+import './interfaces/IStaderOracle.sol';
+
 /**
  * @title ethXVault Contract
  * @author Stader Labs
@@ -19,6 +21,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
     bytes32 public constant STADER_POOL_ROLE = keccak256('STADER_POOL_ROLE');
     bytes32 public constant STADER_PERMISSION_LESS_POOL = keccak256('STADER_PERMISSION_LESS_POOL');
+    IStaderOracle public oracle;
 
     event ReceivedNodeDeposit(address indexed from, uint256 amount);
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
@@ -30,7 +33,9 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
         uint256 shares
     );
 
-    constructor() ERC20('ETHX', 'ETHX') {
+    constructor(address _oracle) ERC20('ETHX', 'ETHX') {
+        oracle = IStaderOracle(_oracle);
+
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
         _grantRole(PAUSER_ROLE, msg.sender);
@@ -64,7 +69,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view virtual returns (uint256) {
-        return address(this).balance;
+        return oracle.totalETHBalance();
     }
 
     /** @dev See {IERC4626-convertToShares}. */
@@ -178,7 +183,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
      * would represent an infinite amount of shares.
      */
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
-        uint256 supply = totalSupply();
+        uint256 supply = oracle.totalETHXSupply();
         return
             (assets == 0 || supply == 0)
                 ? _initialConvertToShares(assets, rounding)
@@ -201,7 +206,7 @@ contract ETHxVault is ERC20, ERC20Burnable, AccessControl, Pausable {
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual returns (uint256) {
-        uint256 supply = totalSupply();
+        uint256 supply = oracle.totalETHXSupply();
         return
             (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
     }
