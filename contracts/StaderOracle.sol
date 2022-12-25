@@ -26,6 +26,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     function initialize() external initializer {
         __AccessControl_init_unchained();
+
+        balanceUpdateFrequency = 7200;  // 24 hours
+        isTrustedNode[msg.sender] = true;
+        trustedNodesCount = 1;
     }
 
     // Submit network balances for a block
