@@ -36,6 +36,7 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
      * @param amount the amount of ethX to burn
      */
     function burnFrom(address account, uint256 amount) public override onlyRole(MINTER_ROLE) whenNotPaused {
+        _spendAllowance(account, _msgSender(), amount);
         _burn(account, amount);
     }
 
