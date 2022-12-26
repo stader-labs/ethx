@@ -35,8 +35,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public maxDepositLimit;
     uint256 public bufferedEth;
     uint256 public exchangeRate;
-    uint256 public totalTVL;
-    uint256 public userTVL;
     uint256 public totalELRewardsCollected;
     uint256 public feePercentage;
     bool public isStakePaused;
@@ -384,7 +382,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice selecting a pool from SSSP and SMSP
      * @dev select a pool based on poolWeight
      */
-    function _selectPool() internal {
+    function _selectPool() external {
         uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         bufferedEth -= (amount);
@@ -409,7 +407,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice fee distribution logic on rewards
      * @dev only run when chainlink oracle update beaconChain balance
      */
-    function _distributeELRewardFee(uint256 _ELRewards) internal {
+    function _distributeELRewardFee(uint256 _ELRewards) external {
         uint256 totalELFee = (_ELRewards * feePercentage) / 100;
         uint256 staderELFee = totalELFee / 2;
         uint256 totalOperatorELFee;
