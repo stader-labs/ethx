@@ -2,6 +2,7 @@ pragma solidity ^0.8.16;
 
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
+import './interfaces/IStaderOperatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
@@ -9,6 +10,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     IDepositContract public ethValidatorDeposit;
     bytes public withdrawCredential;
+    IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
 
     bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
@@ -31,21 +33,24 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         bytes calldata _withdrawCredential,
         address _staderVault,
         address _ethValidatorDeposit,
-        address _validatorRegistry,
+        address _staderOperatorRegistry,
+        address _staderValidatorRegistry,
         address _staderPermissionLessPoolAdmin
     )
         external
         initializer
         checkZeroAddress(_staderVault)
         checkZeroAddress(_ethValidatorDeposit)
-        checkZeroAddress(_validatorRegistry)
+        checkZeroAddress(_staderOperatorRegistry)
+        checkZeroAddress(_staderValidatorRegistry)
         checkZeroAddress(_staderPermissionLessPoolAdmin)
     {
         __Pausable_init();
         __AccessControl_init_unchained();
         withdrawCredential = _withdrawCredential;
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
-        staderValidatorRegistry = IStaderValidatorRegistry(_validatorRegistry);
+        staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
+        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
         _grantRole(STADER_PERMISSION_LESS_POOL_ADMIN, _staderPermissionLessPoolAdmin);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -64,12 +69,20 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         uint256 validatorCount = staderValidatorRegistry.validatorCount();
         uint256 registeredValidatorCount = staderValidatorRegistry.registeredValidatorCount();
         require(registeredValidatorCount <= validatorCount, 'not enough validator to register');
-        (, bytes memory pubKey, bytes memory signature, bytes32 depositDataRoot, , , , , ) = staderValidatorRegistry
-            .validatorRegistry(registeredValidatorCount);
+        (
+            ,
+            bytes memory pubKey,
+            bytes memory signature,
+            bytes32 depositDataRoot,
+            ,
+            uint256 operatorId,
+
+        ) = staderValidatorRegistry.validatorRegistry(registeredValidatorCount);
 
         //slither-disable-next-line arbitrary-send-eth
         ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCredential, signature, depositDataRoot);
         staderValidatorRegistry.incrementRegisteredValidatorCount();
+        staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
         emit DepositToDepositContract(pubKey);
     }
 
@@ -77,24 +90,28 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         bytes calldata _validatorPubkey,
         bytes calldata _validatorSignature,
         bytes32 _depositDataRoot,
-        address _nodeRewardAddress,
-        string calldata _nodeName,
-        uint256 _nodeFees
+        address _operatorRewardAddress,
+        string calldata _operatorName,
+        uint256 _operatorId
     ) external payable onlyRole(PERMISSION_LESS_OPERATOR) {
         require(msg.value == 4 ether, 'insufficient collateral');
         require(
             staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
             'validator already in use'
         );
+        uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
+        if (operatorIndex == type(uint256).max) {
+            staderOperatorRegistry.addToOperatorRegistry(_operatorRewardAddress, _operatorName, _operatorId, 1, 0, 0);
+        } else {
+            staderOperatorRegistry.incrementValidatorCount(_operatorId);
+        }
         staderValidatorRegistry.addToValidatorRegistry(
             false,
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
             'staderPermissionLessPool',
-            _nodeName,
-            _nodeRewardAddress,
-            _nodeFees,
+            _operatorId,
             msg.value
         );
     }

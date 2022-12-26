@@ -3,7 +3,7 @@
 pragma solidity ^0.8.16;
 
 interface IStaderValidatorRegistry {
-    event AddedToPermissionLessValidatorRegistry(bytes publicKey, string poolType, uint256 count);
+    event AddedToValidatorRegistry(bytes publicKey, string poolType, uint256 count);
     event Initialized(uint8 version);
     event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
     event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
@@ -21,9 +21,7 @@ interface IStaderValidatorRegistry {
         bytes memory _signature,
         bytes32 _depositDataRoot,
         string memory _poolType,
-        string memory _nodeName,
-        address _nodeRewardAddress,
-        uint256 _nodeFees,
+        uint256 _operatorId,
         uint256 _bondEth
     ) external;
 
@@ -49,8 +47,6 @@ interface IStaderValidatorRegistry {
 
     function revokeRole(bytes32 role, address account) external;
 
-    function staderPermissionLessPool() external view returns (address);
-
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
     function validatorCount() external view returns (uint256);
@@ -65,10 +61,8 @@ interface IStaderValidatorRegistry {
             bytes memory pubKey,
             bytes memory signature,
             bytes32 depositDataRoot,
-            address nodeRewardAddress,
             string memory poolType,
-            string memory nodeName,
-            uint256 nodeFees,
+            uint256 operatorId,
             uint256 bondEth
         );
 }
