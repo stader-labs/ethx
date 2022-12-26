@@ -503,8 +503,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 shares
     ) internal virtual {
         ethX.burnFrom(owner, shares);
-        payable(receiver).transfer(assets);
         emit Withdrawn(caller, receiver, owner, assets, shares);
+        //slither-disable-next-line arbitrary-send-eth
+        payable(receiver).transfer(assets);
     }
 
     /**
