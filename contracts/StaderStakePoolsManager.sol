@@ -3,6 +3,7 @@
 pragma solidity ^0.8.16;
 
 import './ETHX.sol';
+import './interfaces/IPoolDeposit.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/ISocializingPoolContract.sol';
@@ -382,23 +383,17 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice selecting a pool from SSSP and SMSP
      * @dev select a pool based on poolWeight
      */
-    function _selectPool() external {
+    function selectPool() external {
+        require(address(this).balance > DEPOSIT_SIZE, 'insufficient balance');
         uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         bufferedEth -= (amount);
-
-        //slither-disable-next-line low-level-calls
-        (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
+        IPoolDeposit(poolParameters[0].poolAddress).depositEthToDepositContract{
             value: (amount * poolParameters[0].poolWeight) / 100
-        }('');
-        require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
-
-        //slither-disable-next-line low-level-calls
-        (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
+        }();
+        IPoolDeposit(poolParameters[1].poolAddress).depositEthToDepositContract{
             value: (amount * poolParameters[1].poolWeight) / 100
-        }('');
-        require(staderPoolSuccess, 'Stader Pool ETH transfer failed');
-
+        }();
         emit TransferredToSSVPool(poolParameters[0].poolAddress, (amount * poolParameters[0].poolWeight) / 100);
         emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
     }
@@ -407,8 +402,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice fee distribution logic on rewards
      * @dev only run when chainlink oracle update beaconChain balance
      */
-    function _distributeELRewardFee(uint256 _ELRewards) external {
-        uint256 totalELFee = (_ELRewards * feePercentage) / 100;
+    function _distributeELRewardFee() external {
+        uint256 ELRewards = ISocializingPoolContract(socializingPoolAddress).withdrawELRewards();
+        uint256 totalELFee = (ELRewards * feePercentage) / 100;
         uint256 staderELFee = totalELFee / 2;
         uint256 totalOperatorELFee;
         uint256 totalValidatorRegistered = staderValidatorRegistry.registeredValidatorCount();

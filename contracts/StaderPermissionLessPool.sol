@@ -13,6 +13,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
 
     bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
     bytes32 public constant PERMISSION_LESS_OPERATOR = keccak256('PERMISSION_LESS_OPERATOR');
+    bytes32 public constant STADER_POOL_MANAGER = keccak256('STADER_POOL_MANAGER');
 
     event DepositToDepositContract(bytes indexed pubKey);
     event ReceivedETH(address indexed from, uint256 amount);
@@ -46,6 +47,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderValidatorRegistry = IStaderValidatorRegistry(_validatorRegistry);
         _grantRole(STADER_PERMISSION_LESS_POOL_ADMIN, _staderPermissionLessPoolAdmin);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -57,7 +59,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract() external onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
+    function depositEthToDepositContract() external payable onlyRole(STADER_POOL_MANAGER) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
         uint256 validatorCount = staderValidatorRegistry.validatorCount();
         uint256 registeredValidatorCount = staderValidatorRegistry.registeredValidatorCount();
