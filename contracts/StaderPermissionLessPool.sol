@@ -1,13 +1,11 @@
 pragma solidity ^0.8.16;
 
-import './ETHxVault.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
-    ETHxVault public staderVault;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     IDepositContract public ethValidatorDeposit;
     bytes public withdrawCredential;
@@ -45,7 +43,6 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         __Pausable_init();
         __AccessControl_init_unchained();
         withdrawCredential = _withdrawCredential;
-        staderVault = ETHxVault(_staderVault);
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderValidatorRegistry = IStaderValidatorRegistry(_validatorRegistry);
         _grantRole(STADER_PERMISSION_LESS_POOL_ADMIN, _staderPermissionLessPoolAdmin);
