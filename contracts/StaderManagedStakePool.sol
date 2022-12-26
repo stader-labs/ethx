@@ -21,6 +21,7 @@ contract StaderManagedStakePool is
     IStaderValidatorRegistry public staderValidatorRegistry;
 
     bytes32 public constant STADER_PERMISSION_POOL_ADMIN = keccak256('STADER_PERMISSION_POOL_ADMIN');
+    bytes32 public constant STADER_POOL_MANAGER = keccak256('STADER_POOL_MANAGER');
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -49,6 +50,7 @@ contract StaderManagedStakePool is
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
         _grantRole(STADER_PERMISSION_POOL_ADMIN, _staderPoolAdmin);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -90,7 +92,7 @@ contract StaderManagedStakePool is
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract() external onlyRole(STADER_PERMISSION_POOL_ADMIN) {
+    function depositEthToDepositContract() external payable onlyRole(STADER_POOL_MANAGER) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
         uint256 validatorCount = staderValidatorRegistry.validatorCount();
         uint256 registeredValidatorCount = staderValidatorRegistry.registeredValidatorCount();
