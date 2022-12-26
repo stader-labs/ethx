@@ -42,8 +42,8 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
   const StaderOracle = await ethers.getContractFactory('StaderOracle')
   const staderOracle = await StaderOracle.connect(staderOwner).deploy()
 
-  const ETHxToken = await ethers.getContractFactory('ETHxVault')
-  const ethxToken = await ETHxToken.connect(staderOwner).deploy(staderOracle.address)
+  const ETHxToken = await ethers.getContractFactory('ETHX')
+  const ethxToken = await ETHxToken.connect(staderOwner).deploy()
 
   //console.log("ethx is ", ethxToken.address);
 

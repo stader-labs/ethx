@@ -2,12 +2,14 @@
 
 pragma solidity ^0.8.16;
 
-import './ETHxVault.sol';
+import './ETHX.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/ISocializingPoolContract.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
+import './interfaces/IStaderOracle.sol';
 
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
@@ -19,19 +21,20 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  * for retail crypto users, exchanges and custodians.
  */
 contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
-    ETHxVault public ethX;
+    using Math for uint256;
+
+    ETHX public ethX;
+    IStaderOracle public oracle;
     IStaderValidatorRegistry public staderValidatorRegistry;
     IStaderOperatorRegistry public staderOperatorRegistry;
     address public socializingPoolAddress;
     address public staderTreasury;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
-    uint256 public minDeposit;
-    uint256 public maxDeposit;
+    uint256 public minDepositLimit;
+    uint256 public maxDepositLimit;
     uint256 public bufferedEth;
     uint256 public exchangeRate;
-    uint256 public totalTVL;
-    uint256 public userTVL;
     uint256 public totalELRewardsCollected;
     uint256 public feePercentage;
     bool public isStakePaused;
@@ -85,20 +88,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         __Pausable_init();
         Pool memory _ssvPool = Pool(_staderSSVStakePoolAddress, _staderSSVStakePoolWeight);
         Pool memory _staderPool = Pool(_staderManagedStakePoolAddress, _staderManagedStakePoolWeight);
-        ethX = ETHxVault(_ethX);
+        ethX = ETHX(_ethX);
         poolParameters.push(_ssvPool);
         poolParameters.push(_staderPool);
         _initialSetup();
     }
-
-    // /**
-    //  * @notice Send funds to the pool
-    //  * @dev Users are able to deposit their funds by transacting to the receive function.
-    //  */
-    // receive() external payable override{
-    //     require(msg.value == 0, "Invalid Amount");
-    //     _deposit(address(0));
-    // }
 
     /**
      * @notice Send funds to the pool
@@ -106,8 +100,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * protection against accidental submissions by calling non-existent function
      */
     fallback() external payable {
-        require(msg.value == 0, 'Invalid Amount');
-        _deposit(address(0));
+        require(msg.value > minDepositLimit, 'Invalid Deposit amount');
+        uint256 assets = msg.value;
+        require(assets <= maxDeposit(_msgSender()), 'ERC4626: deposit more than max');
+        uint256 shares = previewDeposit(assets);
+        _deposit(_msgSender(), _msgSender(), assets, shares);
     }
 
     /**
@@ -163,30 +160,30 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     /**
      * @dev update the minimum stake amount
-     * @param _minDeposit minimum deposit value
+     * @param _minDepositLimit minimum deposit value
      */
-    function updateMinDeposit(uint256 _minDeposit) external onlyRole(EXECUTOR_ROLE) {
-        require(_minDeposit > 0, 'invalid minDeposit value');
-        minDeposit = _minDeposit;
-        emit UpdatedMinDeposit(minDeposit);
+    function updateMinDepositLimit(uint256 _minDepositLimit) external onlyRole(EXECUTOR_ROLE) {
+        require(_minDepositLimit > 0, 'invalid minDeposit value');
+        minDepositLimit = _minDepositLimit;
+        emit UpdatedMinDepositLimit(minDepositLimit);
     }
 
     /**
      * @dev update the maximum stake amount
-     * @param _maxDeposit maximum deposit value
+     * @param _maxDepositLimit maximum deposit value
      */
-    function updateMaxDeposit(uint256 _maxDeposit) external onlyRole(EXECUTOR_ROLE) {
-        require(_maxDeposit > minDeposit, 'invalid maxDeposit value');
-        maxDeposit = _maxDeposit;
-        emit UpdatedMaxDeposit(maxDeposit);
+    function updateMaxDepositLimit(uint256 _maxDepositLimit) external onlyRole(EXECUTOR_ROLE) {
+        require(_maxDepositLimit > minDepositLimit, 'invalid maxDeposit value');
+        maxDepositLimit = _maxDepositLimit;
+        emit UpdatedMaxDepositLimit(maxDepositLimit);
     }
 
     /**
      * @dev update ethX address
      * @param _ethX ethX contract
      */
-    function updateEthXAddress(address _ethX) external checkZeroAddress(_ethX) onlyRole(EXECUTOR_ROLE) {
-        ethX = ETHxVault(_ethX);
+    function updateEthXAddress(address _ethX) external checkZeroAddress(_ethX) onlyRole(TIMELOCK_ADMIN_ROLE) {
+        ethX = ETHX(_ethX);
         emit UpdatedEthXAddress(address(ethX));
     }
 
@@ -243,6 +240,19 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /**
+     * @dev update stader oracle address
+     * @param _staderOracle stader oracle contract
+     */
+    function updateStaderOracle(address _staderOracle)
+        external
+        checkZeroAddress(_staderOracle)
+        onlyRole(TIMELOCK_ADMIN_ROLE)
+    {
+        oracle = IStaderOracle(_staderOracle);
+        emit UpdatedStaderOracle(address(oracle));
+    }
+
+    /**
      * @dev update fee percentage
      * @param _feePercentage fee value
      */
@@ -259,77 +269,132 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         emit ToggledIsStakePaused(isStakePaused);
     }
 
-    /**
-     * @notice Alternate way to send funds to pool apart from fallback function
-     * @dev user deposit their funds with an optional _referral parameter
-     */
-    function deposit(address _referral) external payable {
-        _deposit(_referral);
+    /** @dev See {IERC4626-totalAssets}. */
+    function totalAssets() public view virtual returns (uint256) {
+        return oracle.totalETHBalance();
     }
 
-    /**
-     * @notice calculation of exchange Rate
-     * @dev exchange rate determines of amount of ethX receive on staking eth
-     */
-    function updateExchangeRate(
-        uint256 _userTVL,
-        uint256 _totalTVL,
-        uint256 _protocolFee
-    ) external onlyRole(EXECUTOR_ROLE) returns (uint256) {
-        uint256 ELRewards = ISocializingPoolContract(socializingPoolAddress).withdrawELRewards();
-        totalTVL = _totalTVL + ELRewards;
-        userTVL = _userTVL + ELRewards;
-        uint256 totalSupply = ethX.totalSupply();
-
-        if (totalSupply == 0 || totalTVL == 0) {
-            return 1 * DECIMALS;
-        } else {
-            exchangeRate = (userTVL * DECIMALS) / totalSupply;
-        }
-
-        if (_protocolFee > 0) {
-            uint256 beaconRewardFeeShares = (_protocolFee * DECIMALS) / exchangeRate;
-            ethX.mint(staderTreasury, beaconRewardFeeShares);
-        }
-        if (ELRewards > 0) {
-            _distributeELRewardFee(ELRewards);
-        }
-        return exchangeRate;
+    /** @dev See {IERC4626-convertToShares}. */
+    function convertToShares(uint256 assets) public view virtual returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Down);
     }
 
-    /**
-     * @dev Process user deposit, mints liquid tokens ethX based on exchange Rate
-     * @param _referral address of referral.
+    /** @dev See {IERC4626-convertToAssets}. */
+    function convertToAssets(uint256 shares) public view virtual returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-maxDeposit}. */
+    function maxDeposit(address) public view virtual returns (uint256) {
+        return _isVaultHealthy() ? maxDepositLimit : 0;
+    }
+
+    /** @dev See {IERC4626-maxMint}. */
+    function maxMint(address) public view virtual returns (uint256) {
+        return type(uint256).max;
+    }
+
+    /** @dev See {IERC4626-maxWithdraw}. */
+    function maxWithdraw(address owner) public view virtual returns (uint256) {
+        return _convertToAssets(ethX.balanceOf(owner), Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-maxRedeem}. */
+    function maxRedeem(address owner) public view virtual returns (uint256) {
+        return ethX.balanceOf(owner);
+    }
+
+    /** @dev See {IERC4626-previewDeposit}. */
+    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-previewMint}. */
+    function previewMint(uint256 shares) public view virtual returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Up);
+    }
+
+    /** @dev See {IERC4626-previewWithdraw}. */
+    function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Up);
+    }
+
+    /** @dev See {IERC4626-previewRedeem}. */
+    function previewRedeem(uint256 shares) public view virtual returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Down);
+    }
+
+    /** @dev See {IERC4626-deposit}. */
+    function deposit(address receiver) public payable whenNotPaused returns (uint256) {
+        uint256 assets = msg.value;
+        require(assets <= maxDeposit(receiver), 'ERC4626: deposit more than max');
+
+        uint256 shares = previewDeposit(assets);
+        _deposit(_msgSender(), receiver, assets, shares);
+
+        return shares;
+    }
+
+    /** @dev See {IERC4626-mint}.
+     *
+     * As opposed to {deposit}, minting is allowed even if the vault is in a state where the price of a share is zero.
+     * In this case, the shares will be minted without requiring any assets to be deposited.
      */
-    function _deposit(address _referral) internal whenNotPaused {
-        require(!isStakePaused, 'Staking is paused');
-        uint256 amount = msg.value;
-        require(amount >= minDeposit && amount <= maxDeposit, 'invalid stake amount');
-        uint256 amountToSend = (amount * DECIMALS) / exchangeRate;
-        bufferedEth += amount;
-        ethX.mint(msg.sender, amountToSend);
-        if (address(this).balance >= 32 ether) {
-            _selectPool();
-        }
-        emit Deposited(msg.sender, amount, _referral);
+    function mint(uint256 shares, address receiver) public payable whenNotPaused returns (uint256) {
+        require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
+
+        uint256 assets = previewMint(shares);
+        require(msg.value == assets, 'Invalid eth sent according to shares');
+        _deposit(_msgSender(), receiver, assets, shares);
+
+        return assets;
+    }
+
+    /** @dev See {IERC4626-withdraw}. */
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public virtual whenNotPaused returns (uint256) {
+        require(assets <= maxWithdraw(owner), 'ERC4626: withdraw more than max');
+
+        uint256 shares = previewWithdraw(assets);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return shares;
+    }
+
+    /** @dev See {IERC4626-redeem}. */
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public virtual whenNotPaused returns (uint256) {
+        require(shares <= maxRedeem(owner), 'ERC4626: redeem more than max');
+
+        uint256 assets = previewRedeem(shares);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return assets;
     }
 
     /**
      * @notice selecting a pool from SSSP and SMSP
      * @dev select a pool based on poolWeight
      */
-    function _selectPool() internal {
+    function _selectPool() external {
         uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         bufferedEth -= (amount);
 
-        //slither-disable-next-line low-level-calls
+        //slither-disable-next-line low-level-calls arbitrary-send-eth
         (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
             value: (amount * poolParameters[0].poolWeight) / 100
         }('');
         require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
 
         //slither-disable-next-line low-level-calls
+        //slither-disable-next-line arbitrary-send-eth
         (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
             value: (amount * poolParameters[1].poolWeight) / 100
         }('');
@@ -343,7 +408,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice fee distribution logic on rewards
      * @dev only run when chainlink oracle update beaconChain balance
      */
-    function _distributeELRewardFee(uint256 _ELRewards) internal {
+    function _distributeELRewardFee(uint256 _ELRewards) external {
         uint256 totalELFee = (_ELRewards * feePercentage) / 100;
         uint256 staderELFee = totalELFee / 2;
         uint256 totalOperatorELFee;
@@ -363,9 +428,93 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     function _initialSetup() internal {
-        minDeposit = 1;
-        maxDeposit = 32 ether;
+        minDepositLimit = 1;
+        maxDepositLimit = 32 ether;
         feePercentage = 10;
         exchangeRate = 1 * DECIMALS;
+    }
+
+    /**
+     * @dev Internal conversion function (from assets to shares) with support for rounding direction.
+     *
+     * Will revert if assets > 0, totalSupply > 0 and totalAssets = 0. That corresponds to a case where any asset
+     * would represent an infinite amount of shares.
+     */
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
+        uint256 supply = oracle.totalETHXSupply();
+        return
+            (assets == 0 || supply == 0)
+                ? _initialConvertToShares(assets, rounding)
+                : assets.mulDiv(supply, totalAssets(), rounding);
+    }
+
+    /**
+     * @dev Internal conversion function (from assets to shares) to apply when the vault is empty.
+     *
+     * NOTE: Make sure to keep this function consistent with {_initialConvertToAssets} when overriding it.
+     */
+    function _initialConvertToShares(
+        uint256 assets,
+        Math.Rounding /*rounding*/
+    ) internal view virtual returns (uint256 shares) {
+        return assets;
+    }
+
+    /**
+     * @dev Internal conversion function (from shares to assets) with support for rounding direction.
+     */
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual returns (uint256) {
+        uint256 supply = oracle.totalETHXSupply();
+        return
+            (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
+    }
+
+    /**
+     * @dev Internal conversion function (from shares to assets) to apply when the vault is empty.
+     *
+     * NOTE: Make sure to keep this function consistent with {_initialConvertToShares} when overriding it.
+     */
+    function _initialConvertToAssets(
+        uint256 shares,
+        Math.Rounding /*rounding*/
+    ) internal view virtual returns (uint256) {
+        return shares;
+    }
+
+    /**
+     * @dev Deposit/mint common workflow.
+     */
+    function _deposit(
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        ethX.mint(receiver, shares);
+        emit Deposit(caller, receiver, assets, shares);
+    }
+
+    /**
+     * @dev Withdraw/redeem common workflow.
+     */
+    function _withdraw(
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        ethX.burnFrom(owner, shares);
+        //slither-disable-next-line low-level-calls,arbitrary-send-eth
+        (bool success, ) = payable(receiver).call{value: assets}('');
+        require(success, 'withdraw failed');
+        emit Withdrawn(caller, receiver, owner, assets, shares);
+    }
+
+    /**
+     * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
+     */
+    function _isVaultHealthy() private view returns (bool) {
+        return totalAssets() > 0 || oracle.totalETHXSupply() == 0;
     }
 }
