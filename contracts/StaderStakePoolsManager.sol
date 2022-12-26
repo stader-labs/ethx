@@ -388,9 +388,12 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         bufferedEth -= (amount);
+        //slither-disable-next-line arbitrary-send-eth
         IPoolDeposit(poolParameters[0].poolAddress).depositEthToDepositContract{
             value: (amount * poolParameters[0].poolWeight) / 100
         }();
+
+        //slither-disable-next-line arbitrary-send-eth
         IPoolDeposit(poolParameters[1].poolAddress).depositEthToDepositContract{
             value: (amount * poolParameters[1].poolWeight) / 100
         }();
