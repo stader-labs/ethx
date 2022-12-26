@@ -387,11 +387,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
         bufferedEth -= (amount);
 
+        //slither-disable-next-line low-level-calls,functions-that-send-ether-to-arbitrary-destinations
         (bool ssvPoolSuccess, ) = (poolParameters[0].poolAddress).call{
             value: (amount * poolParameters[0].poolWeight) / 100
         }('');
         require(ssvPoolSuccess, 'SSV Pool ETH transfer failed');
 
+        //slither-disable-next-line low-level-calls,functions-that-send-ether-to-arbitrary-destinations
         (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
             value: (amount * poolParameters[1].poolWeight) / 100
         }('');
@@ -502,6 +504,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 shares
     ) internal virtual {
         ethX.burnFrom(owner, shares);
+        //slither-disable-next-line low-level-calls,functions-that-send-ether-to-arbitrary-destinations
         (bool success, ) = payable(receiver).call{value: assets}('');
         require(success, 'withdraw failed');
         emit Withdrawn(caller, receiver, owner, assets, shares);
