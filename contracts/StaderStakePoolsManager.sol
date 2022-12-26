@@ -9,7 +9,9 @@ import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/ISocializingPoolContract.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import './interfaces/IStaderOracle.sol';
+import './interfaces/IStaderOracle.sol';
 
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
@@ -383,7 +385,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice selecting a pool from SSSP and SMSP
      * @dev select a pool based on poolWeight
      */
-    function selectPool() external {
+    function selectPool() external onlyRole(EXECUTOR_ROLE) {
         require(address(this).balance > DEPOSIT_SIZE, 'insufficient balance');
         uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
@@ -405,7 +407,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice fee distribution logic on rewards
      * @dev only run when chainlink oracle update beaconChain balance
      */
-    function _distributeELRewardFee() external {
+    function distributeELRewardFee() external onlyRole(EXECUTOR_ROLE) {
         uint256 ELRewards = ISocializingPoolContract(socializingPoolAddress).withdrawELRewards();
         uint256 totalELFee = (ELRewards * feePercentage) / 100;
         uint256 staderELFee = totalELFee / 2;
