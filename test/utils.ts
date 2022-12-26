@@ -52,6 +52,9 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("ethDeposit is ", ethDeposit.address);
 
+  const operatorRegistryFactory = await ethers.getContractFactory('StaderOperatorRegistry')
+  const operatorRegistry = await upgrades.deployProxy(operatorRegistryFactory)
+
   const validatorRegistryFactory = await ethers.getContractFactory('StaderValidatorRegistry')
   const validatorRegistry = await upgrades.deployProxy(validatorRegistryFactory)
 
@@ -61,6 +64,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
   const StaderManagedStakePool = await upgrades.deployProxy(StaderManagedPoolFactory, [
     ethDeposit.address,
     '0x' + deposit.withdrawal_credentials,
+    operatorRegistry.address,
     validatorRegistry.address,
     staderOwner.address,
   ])
