@@ -76,10 +76,16 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
                 .operatorRegistry(index);
             uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
             totalOperatorELFee += operatorELFee;
+
+            //slither-disable-next-line arbitrary-send-eth
             staderStakePoolManager.deposit{value: operatorELFee}(operatorRewardAddress);
         }
         staderELFee = totalELFee - totalOperatorELFee;
+
+        //slither-disable-next-line arbitrary-send-eth
         staderStakePoolManager.deposit{value: staderELFee}(staderTreasury);
+
+        //slither-disable-next-line arbitrary-send-eth
         staderStakePoolManager.receiveExecutionLayerRewards{value: address(this).balance}();
     }
 
