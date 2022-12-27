@@ -118,7 +118,7 @@ contract StaderManagedStakePool is
 
         //slither-disable-next-line arbitrary-send-eth
         ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCredential, signature, depositDataRoot);
-        staderValidatorRegistry.incrementRegisteredValidatorCount();
+        staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
         staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
         emit DepositToDepositContract(pubKey);
     }

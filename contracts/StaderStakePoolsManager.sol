@@ -31,7 +31,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minDepositLimit;
     uint256 public maxDepositLimit;
-    uint256 public bufferedEth;
     uint256 public totalELRewardsCollected;
 
     struct Pool {
@@ -322,10 +321,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev select a pool based on poolWeight
      */
     function selectPool() external onlyRole(EXECUTOR_ROLE) {
-        require(address(this).balance > DEPOSIT_SIZE, 'insufficient balance');
-        uint256 numberOfDeposits = bufferedEth / DEPOSIT_SIZE;
+        uint256 balance = address(this).balance;
+        require(balance > DEPOSIT_SIZE, 'insufficient balance');
+        uint256 numberOfDeposits = balance / DEPOSIT_SIZE;
         uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
-        bufferedEth -= (amount);
+
         //slither-disable-next-line arbitrary-send-eth
         IPoolDeposit(poolParameters[0].poolAddress).depositEthToDepositContract{
             value: (amount * poolParameters[0].poolWeight) / 100
