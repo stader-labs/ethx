@@ -4,9 +4,10 @@ pragma solidity ^0.8.16;
 
 interface IStaderStakePoolManager {
     event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    event NodeDepositReceived(uint256 operatorId, uint256 amount);
     event ExecutionLayerRewardsReceived(uint256 amount);
-    event TransferredToSSVPool(address indexed poolAddress, uint256 amount);
-    event TransferredToStaderPool(address indexed poolAddress, uint256 amount);
+    event TransferredToPermissionLessPool(address indexed poolAddress, uint256 amount);
+    event TransferredToStaderManagedPool(address indexed poolAddress, uint256 amount);
     event UpdatedEthXAddress(address account);
     event UpdatedFeePercentage(uint256 fee);
     event UpdatedMaxDepositLimit(uint256 amount);

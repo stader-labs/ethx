@@ -30,7 +30,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
         address _staderOperatorRegistry,
         address _staderValidatorRegistry,
         address _staderStakePoolManager,
-        address _elRewardContractOwner,
+        address _socializingPoolOwner,
         address _staderTreasury
     )
         external
@@ -38,7 +38,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
         checkZeroAddress(_staderOperatorRegistry)
         checkZeroAddress(_staderValidatorRegistry)
         checkZeroAddress(_staderStakePoolManager)
-        checkZeroAddress(_elRewardContractOwner)
+        checkZeroAddress(_socializingPoolOwner)
         checkZeroAddress(_staderTreasury)
     {
         __AccessControl_init_unchained();
@@ -47,7 +47,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
         staderTreasury = _staderTreasury;
         feePercentage = 10;
-        _grantRole(ADMIN_ROLE, _elRewardContractOwner);
+        _grantRole(ADMIN_ROLE, _socializingPoolOwner);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 

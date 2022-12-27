@@ -35,8 +35,8 @@ contract StaderManagedStakePool is
      * @dev Stader managed stake Pool is initialized with following variables
      */
     function initialize(
-        address _ethValidatorDeposit,
         bytes calldata _withdrawCredential,
+        address _ethValidatorDeposit,
         address _staderOperatorRegistry,
         address _staderValidatorRegistry,
         address _staderPoolAdmin
@@ -121,5 +121,42 @@ contract StaderManagedStakePool is
         staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
         staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
         emit DepositToDepositContract(pubKey);
+    }
+
+    /**
+     * @notice update the withdraw credential
+     * @dev only permission less pool admin can update
+     */
+    function updateWithdrawCredential(bytes calldata _withdrawCredential)
+        external
+        onlyRole(STADER_PERMISSION_POOL_ADMIN)
+    {
+        withdrawCredential = _withdrawCredential;
+    }
+
+    /**
+     * @dev update stader validator registry address
+     * @param _staderValidatorRegistry staderValidator Registry address
+     */
+    function updateStaderValidatorRegistry(address _staderValidatorRegistry)
+        external
+        checkZeroAddress(_staderValidatorRegistry)
+        onlyRole(STADER_PERMISSION_POOL_ADMIN)
+    {
+        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
+        emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
+    }
+
+    /**
+     * @dev update stader operator registry address
+     * @param _staderOperatorRegistry stader operator Registry address
+     */
+    function updateStaderOperatorRegistry(address _staderOperatorRegistry)
+        external
+        checkZeroAddress(_staderOperatorRegistry)
+        onlyRole(STADER_PERMISSION_POOL_ADMIN)
+    {
+        staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
+        emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
     }
 }
