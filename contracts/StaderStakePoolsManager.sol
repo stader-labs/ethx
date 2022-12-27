@@ -26,19 +26,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     ETHX public ethX;
     IStaderOracle public oracle;
-    IStaderValidatorRegistry public staderValidatorRegistry;
-    IStaderOperatorRegistry public staderOperatorRegistry;
     address public socializingPoolAddress;
-    address public staderTreasury;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minDepositLimit;
     uint256 public maxDepositLimit;
     uint256 public bufferedEth;
-    uint256 public exchangeRate;
     uint256 public totalELRewardsCollected;
-    uint256 public feePercentage;
-    bool public isStakePaused;
 
     struct Pool {
         address poolAddress;
@@ -202,45 +196,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /**
-     * @dev update stader treasury address
-     * @param _staderTreasury staderTreasury address
-     */
-    function updateStaderTreasury(address _staderTreasury)
-        external
-        checkZeroAddress(_staderTreasury)
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
-        staderTreasury = _staderTreasury;
-        emit UpdatedStaderTreasury(staderTreasury);
-    }
-
-    /**
-     * @dev update stader validator registry address
-     * @param _staderValidatorRegistry staderValidator Registry address
-     */
-    function updateStaderValidatorRegistry(address _staderValidatorRegistry)
-        external
-        checkZeroAddress(_staderValidatorRegistry)
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
-        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
-    }
-
-    /**
-     * @dev update stader operator registry address
-     * @param _staderOperatorRegistry stader operator Registry address
-     */
-    function updateStaderOperatorRegistry(address _staderOperatorRegistry)
-        external
-        checkZeroAddress(_staderOperatorRegistry)
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
-        staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
-        emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
-    }
-
-    /**
      * @dev update stader oracle address
      * @param _staderOracle stader oracle contract
      */
@@ -253,80 +208,63 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         emit UpdatedStaderOracle(address(oracle));
     }
 
-    /**
-     * @dev update fee percentage
-     * @param _feePercentage fee value
-     */
-    function updateFeePercentage(uint256 _feePercentage) external onlyRole(TIMELOCK_ADMIN_ROLE) {
-        feePercentage = _feePercentage;
-        emit UpdatedFeePercentage(feePercentage);
-    }
-
-    /**
-     * @dev update isStakePaused flag
-     */
-    function toggleIsStakePaused() external onlyRole(EXECUTOR_ROLE) {
-        isStakePaused = !isStakePaused;
-        emit ToggledIsStakePaused(isStakePaused);
-    }
-
     /** @dev See {IERC4626-totalAssets}. */
-    function totalAssets() public view virtual returns (uint256) {
+    function totalAssets() public view override returns (uint256) {
         return oracle.totalETHBalance();
     }
 
     /** @dev See {IERC4626-convertToShares}. */
-    function convertToShares(uint256 assets) public view virtual returns (uint256) {
+    function convertToShares(uint256 assets) public view returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-convertToAssets}. */
-    function convertToAssets(uint256 shares) public view virtual returns (uint256) {
+    function convertToAssets(uint256 shares) public view returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-maxDeposit}. */
-    function maxDeposit(address) public view virtual returns (uint256) {
+    function maxDeposit(address) public view returns (uint256) {
         return _isVaultHealthy() ? maxDepositLimit : 0;
     }
 
     /** @dev See {IERC4626-maxMint}. */
-    function maxMint(address) public view virtual returns (uint256) {
+    function maxMint(address) public view returns (uint256) {
         return type(uint256).max;
     }
 
     /** @dev See {IERC4626-maxWithdraw}. */
-    function maxWithdraw(address owner) public view virtual returns (uint256) {
+    function maxWithdraw(address owner) public view returns (uint256) {
         return _convertToAssets(ethX.balanceOf(owner), Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-maxRedeem}. */
-    function maxRedeem(address owner) public view virtual returns (uint256) {
+    function maxRedeem(address owner) public view returns (uint256) {
         return ethX.balanceOf(owner);
     }
 
     /** @dev See {IERC4626-previewDeposit}. */
-    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
+    function previewDeposit(uint256 assets) public view override returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-previewMint}. */
-    function previewMint(uint256 shares) public view virtual returns (uint256) {
+    function previewMint(uint256 shares) public view override returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Up);
     }
 
     /** @dev See {IERC4626-previewWithdraw}. */
-    function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
+    function previewWithdraw(uint256 assets) public view override returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Up);
     }
 
     /** @dev See {IERC4626-previewRedeem}. */
-    function previewRedeem(uint256 shares) public view virtual returns (uint256) {
+    function previewRedeem(uint256 shares) public view override returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-deposit}. */
-    function deposit(address receiver) public payable whenNotPaused returns (uint256) {
+    function deposit(address receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         require(assets <= maxDeposit(receiver), 'ERC4626: deposit more than max');
 
@@ -341,7 +279,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * As opposed to {deposit}, minting is allowed even if the vault is in a state where the price of a share is zero.
      * In this case, the shares will be minted without requiring any assets to be deposited.
      */
-    function mint(uint256 shares, address receiver) public payable whenNotPaused returns (uint256) {
+    function mint(uint256 shares, address receiver) public payable override whenNotPaused returns (uint256) {
         require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
 
         uint256 assets = previewMint(shares);
@@ -356,7 +294,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 assets,
         address receiver,
         address owner
-    ) public virtual whenNotPaused returns (uint256) {
+    ) public override whenNotPaused returns (uint256) {
         require(assets <= maxWithdraw(owner), 'ERC4626: withdraw more than max');
 
         uint256 shares = previewWithdraw(assets);
@@ -370,7 +308,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 shares,
         address receiver,
         address owner
-    ) public virtual whenNotPaused returns (uint256) {
+    ) public override whenNotPaused returns (uint256) {
         require(shares <= maxRedeem(owner), 'ERC4626: redeem more than max');
 
         uint256 assets = previewRedeem(shares);
@@ -401,35 +339,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         emit TransferredToStaderPool(poolParameters[1].poolAddress, (amount * poolParameters[1].poolWeight) / 100);
     }
 
-    /**
-     * @notice fee distribution logic on rewards
-     * @dev only run when chainlink oracle update beaconChain balance
-     */
-    function distributeELRewardFee() external onlyRole(EXECUTOR_ROLE) {
-        uint256 ELRewards = ISocializingPoolContract(socializingPoolAddress).withdrawELRewards();
-        uint256 totalELFee = (ELRewards * feePercentage) / 100;
-        uint256 staderELFee = totalELFee / 2;
-        uint256 totalOperatorELFee;
-        uint256 totalValidatorRegistered = staderValidatorRegistry.registeredValidatorCount();
-        uint256 operatorCount = staderOperatorRegistry.operatorCount();
-        for (uint256 index = 0; index < operatorCount; index++) {
-            (address operatorRewardAddress, , , , uint256 activeValidatorCount, ) = staderOperatorRegistry
-                .operatorRegistry(index);
-            uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
-            totalOperatorELFee += operatorELFee;
-            uint256 operatorELFeeShare = (operatorELFee * DECIMALS) / exchangeRate;
-            ethX.mint(operatorRewardAddress, operatorELFeeShare);
-        }
-        staderELFee = totalELFee - totalOperatorELFee;
-        uint256 staderELFeeShare = (staderELFee * DECIMALS) / exchangeRate;
-        ethX.mint(staderTreasury, staderELFeeShare);
-    }
-
     function _initialSetup() internal {
         minDepositLimit = 1;
         maxDepositLimit = 32 ether;
-        feePercentage = 10;
-        exchangeRate = 1 * DECIMALS;
     }
 
     /**
@@ -438,7 +350,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * Will revert if assets > 0, totalSupply > 0 and totalAssets = 0. That corresponds to a case where any asset
      * would represent an infinite amount of shares.
      */
-    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
         uint256 supply = oracle.totalETHXSupply();
         return
             (assets == 0 || supply == 0)
@@ -454,14 +366,14 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function _initialConvertToShares(
         uint256 assets,
         Math.Rounding /*rounding*/
-    ) internal view virtual returns (uint256 shares) {
+    ) internal pure returns (uint256 shares) {
         return assets;
     }
 
     /**
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
-    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view virtual returns (uint256) {
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
         uint256 supply = oracle.totalETHXSupply();
         return
             (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
@@ -475,7 +387,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function _initialConvertToAssets(
         uint256 shares,
         Math.Rounding /*rounding*/
-    ) internal view virtual returns (uint256) {
+    ) internal pure returns (uint256) {
         return shares;
     }
 
@@ -487,7 +399,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         address receiver,
         uint256 assets,
         uint256 shares
-    ) internal virtual {
+    ) internal {
         ethX.mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
     }
@@ -501,7 +413,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         address owner,
         uint256 assets,
         uint256 shares
-    ) internal virtual {
+    ) internal {
         ethX.burnFrom(owner, shares);
         emit Withdrawn(caller, receiver, owner, assets, shares);
         //slither-disable-next-line arbitrary-send-eth

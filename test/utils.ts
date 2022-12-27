@@ -99,7 +99,10 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   const ELRewardFactory = await ethers.getContractFactory('SocializingPoolContract')
   const ELRewardContract = await upgrades.deployProxy(ELRewardFactory, [
+    operatorRegistry.address,
+    validatorRegistry.address,
     staderStakingPoolManager.address,
+    staderOwner.address,
     staderOwner.address,
   ])
 
@@ -118,18 +121,6 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     .updateSocializingPoolAddress(ELRewardContract.address)
   setELRewardTxn.wait()
   //console.log("EL Rewards Address updated");
-
-  const setValidatorRegistryTxn = await staderStakingPoolManager
-    .connect(staderOwner)
-    .updateStaderValidatorRegistry(validatorRegistry.address)
-  setValidatorRegistryTxn.wait()
-  //console.log("validator registry updated");
-
-  const setStaderTreasuryTxn = await staderStakingPoolManager
-    .connect(staderOwner)
-    .updateStaderTreasury(staderOwner.address)
-  setStaderTreasuryTxn.wait()
-  //  console.log("stader treasury updated");
 
   await ssvNetwork.registerOperator(
     'Test0',
