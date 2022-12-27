@@ -73,7 +73,10 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         emit AddedToValidatorRegistry(_pubKey, _poolType, validatorCount);
     }
 
-    function incrementRegisteredValidatorCount() external onlyRole(STADER_NETWORK_POOL) {
+    function incrementRegisteredValidatorCount(bytes memory _pubKey) external onlyRole(STADER_NETWORK_POOL) {
+        uint256 index = validatorPubKeyIndex[_pubKey];
+        require(index != type(uint256).max, 'pubKey does not exist on registry');
+        validatorRegistry[index].validatorDepositStatus = true;
         registeredValidatorCount++;
     }
 

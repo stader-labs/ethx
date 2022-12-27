@@ -37,7 +37,7 @@ interface IStaderValidatorRegistry {
 
     function hasRole(bytes32 role, address account) external view returns (bool);
 
-    function incrementRegisteredValidatorCount() external;
+    function incrementRegisteredValidatorCount(bytes memory _publicKey) external;
 
     function initialize() external;
 
