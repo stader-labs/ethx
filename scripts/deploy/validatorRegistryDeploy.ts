@@ -6,7 +6,7 @@ async function main() {
   const validatorRegistry = await upgrades.deployProxy(validatorRegistryFactory)
 
   await validatorRegistry.deployed()
-  console.log('StaderValidatorRegistry deployed to:', validatorRegistry.address)
+  console.log('Stader Validator Registry deployed to:', validatorRegistry.address)
 }
 
 main()

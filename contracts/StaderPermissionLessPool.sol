@@ -19,6 +19,8 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
 
     event DepositToDepositContract(bytes indexed pubKey);
     event ReceivedETH(address indexed from, uint256 amount);
+    event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
+    event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -31,7 +33,6 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
      */
     function initialize(
         bytes calldata _withdrawCredential,
-        address _staderVault,
         address _ethValidatorDeposit,
         address _staderOperatorRegistry,
         address _staderValidatorRegistry,
@@ -39,7 +40,6 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     )
         external
         initializer
-        checkZeroAddress(_staderVault)
         checkZeroAddress(_ethValidatorDeposit)
         checkZeroAddress(_staderOperatorRegistry)
         checkZeroAddress(_staderValidatorRegistry)
@@ -114,5 +114,42 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             _operatorId,
             msg.value
         );
+    }
+
+    /**
+     * @notice update the withdraw credential
+     * @dev only permission less pool admin can update
+     */
+    function updateWithdrawCredential(bytes calldata _withdrawCredential)
+        external
+        onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
+    {
+        withdrawCredential = _withdrawCredential;
+    }
+
+    /**
+     * @dev update stader validator registry address
+     * @param _staderValidatorRegistry staderValidator Registry address
+     */
+    function updateStaderValidatorRegistry(address _staderValidatorRegistry)
+        external
+        checkZeroAddress(_staderValidatorRegistry)
+        onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
+    {
+        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
+        emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
+    }
+
+    /**
+     * @dev update stader operator registry address
+     * @param _staderOperatorRegistry stader operator Registry address
+     */
+    function updateStaderOperatorRegistry(address _staderOperatorRegistry)
+        external
+        checkZeroAddress(_staderOperatorRegistry)
+        onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
+    {
+        staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
+        emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
     }
 }

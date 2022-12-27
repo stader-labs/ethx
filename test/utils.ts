@@ -62,8 +62,8 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   const StaderManagedPoolFactory = await ethers.getContractFactory('StaderManagedStakePool')
   const StaderManagedStakePool = await upgrades.deployProxy(StaderManagedPoolFactory, [
-    ethDeposit.address,
     '0x' + deposit.withdrawal_credentials,
+    ethDeposit.address,
     operatorRegistry.address,
     validatorRegistry.address,
     staderOwner.address,
