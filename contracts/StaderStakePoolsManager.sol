@@ -328,14 +328,14 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 balance = address(this).balance;
 
         if (poolParameters[0].poolWeight == 100) {
-            require(balance > PERMISSION_LESS_DEPOSIT_SIZE, 'insufficient balance');
+            require(balance >= PERMISSION_LESS_DEPOSIT_SIZE, 'insufficient balance');
             uint256 numberOfDeposits = balance / PERMISSION_LESS_DEPOSIT_SIZE;
             uint256 amount = numberOfDeposits * PERMISSION_LESS_DEPOSIT_SIZE;
             //slither-disable-next-line arbitrary-send-eth
             IPoolDeposit(poolParameters[0].poolAddress).depositEthToDepositContract{value: amount}();
             emit TransferredToPermissionLessPool(poolParameters[0].poolAddress, amount);
         } else {
-            require(balance > DEPOSIT_SIZE, 'insufficient balance');
+            require(balance >= DEPOSIT_SIZE, 'insufficient balance');
             uint256 numberOfDeposits = balance / DEPOSIT_SIZE;
             uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
             //slither-disable-next-line arbitrary-send-eth
