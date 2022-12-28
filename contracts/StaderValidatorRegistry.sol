@@ -6,6 +6,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     uint256 public validatorCount;
     uint256 public registeredValidatorCount;
+    uint256 public constant collateralETH = 4 ether;
 
     bytes32 public constant STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant VALIDATOR_REGISTRY_ADMIN = keccak256('VALIDATOR_REGISTRY_ADMIN');
@@ -78,6 +79,31 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         require(index != type(uint256).max, 'pubKey does not exist on registry');
         validatorRegistry[index].validatorDepositStatus = true;
         registeredValidatorCount++;
+    }
+
+    function getNextPermissionLessValidator() external view returns (uint256) {
+        uint256 index = 0;
+        while (index < validatorCount) {
+            if (
+                validatorRegistry[index].validatorDepositStatus == false &&
+                validatorRegistry[index].bondEth == collateralETH
+            ) {
+                return index;
+            }
+            index++;
+        }
+        return type(uint256).max;
+    }
+
+    function getNextPermissionValidator() external view returns (uint256) {
+        uint256 index = 0;
+        while (index < validatorCount) {
+            if (validatorRegistry[index].validatorDepositStatus == false && validatorRegistry[index].bondEth == 0) {
+                return index;
+            }
+            index++;
+        }
+        return type(uint256).max;
     }
 
     function getPoRAddressListLength() external view returns (uint256) {

@@ -78,20 +78,24 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
      * @notice update the validator count for a operator
      * @dev only accept call from stader network pools
      */
-    function incrementValidatorCount(uint256 _index) external onlyRole(STADER_NETWORK_POOL) {
-        operatorRegistry[_index].validatorCount++;
-        emit IncrementedValidatorCount(operatorRegistry[_index].operatorId, operatorRegistry[_index].validatorCount);
+    function incrementValidatorCount(uint256 operatorId) external onlyRole(STADER_NETWORK_POOL) {
+        uint256 index = getOperatorIndexById(operatorId);
+        require(index != type(uint256).max, 'invalid operatorId');
+        operatorRegistry[index].validatorCount++;
+        emit IncrementedValidatorCount(operatorRegistry[index].operatorId, operatorRegistry[index].validatorCount);
     }
 
     /**
      * @notice update the active validator count for a operator
      * @dev only accept call from stader network pools
      */
-    function incrementActiveValidatorCount(uint256 _index) external onlyRole(STADER_NETWORK_POOL) {
-        operatorRegistry[_index].activeValidatorCount++;
+    function incrementActiveValidatorCount(uint256 operatorId) external onlyRole(STADER_NETWORK_POOL) {
+        uint256 index = getOperatorIndexById(operatorId);
+        require(index != type(uint256).max, 'invalid operatorId');
+        operatorRegistry[index].activeValidatorCount++;
         emit IncrementedActiveValidatorCount(
-            operatorRegistry[_index].operatorId,
-            operatorRegistry[_index].activeValidatorCount
+            operatorRegistry[index].operatorId,
+            operatorRegistry[index].activeValidatorCount
         );
     }
 

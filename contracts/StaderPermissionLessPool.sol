@@ -66,24 +66,28 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     /// @dev deposit 32 ETH in ethereum deposit contract
     function depositEthToDepositContract() external payable onlyRole(STADER_POOL_MANAGER) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
-        uint256 validatorCount = staderValidatorRegistry.validatorCount();
-        uint256 registeredValidatorCount = staderValidatorRegistry.registeredValidatorCount();
-        require(registeredValidatorCount <= validatorCount, 'not enough validator to register');
-        (
-            ,
-            bytes memory pubKey,
-            bytes memory signature,
-            bytes32 depositDataRoot,
-            ,
-            uint256 operatorId,
+        uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
+        uint256 counter = 0;
+        while (counter < depositCount) {
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionLessValidator();
+            require(validatorIndex != type(uint256).max, 'permissionLess validator not available');
+            (
+                ,
+                bytes memory pubKey,
+                bytes memory signature,
+                bytes32 depositDataRoot,
+                ,
+                uint256 operatorId,
 
-        ) = staderValidatorRegistry.validatorRegistry(registeredValidatorCount);
+            ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
-        //slither-disable-next-line arbitrary-send-eth
-        ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCredential, signature, depositDataRoot);
-        staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
-        staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
-        emit DepositToDepositContract(pubKey);
+            //slither-disable-next-line arbitrary-send-eth
+            ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCredential, signature, depositDataRoot);
+            staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
+            staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
+            emit DepositToDepositContract(pubKey);
+            counter++;
+        }
     }
 
     function nodeDeposit(
@@ -94,7 +98,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         string calldata _operatorName,
         uint256 _operatorId
     ) external payable onlyRole(PERMISSION_LESS_OPERATOR) {
-        require(msg.value == 4 ether, 'insufficient collateral');
+        require(msg.value == 4 ether, 'invalid collateral');
         require(
             staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
             'validator already in use'
