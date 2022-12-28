@@ -40,7 +40,7 @@ describe('environmentSetupTest', () => {
       })
 
       it('should not revert', async () => {
-        await expect(env.StaderManagedStakePool.address).to.not.be.empty
+        await expect(env.staderManagedStakePool.address).to.not.be.empty
       })
 
       it('should not revert', async () => {
@@ -48,7 +48,7 @@ describe('environmentSetupTest', () => {
       })
 
       it('should not revert', async () => {
-        await expect(env.ELRewardContract.address).to.not.be.empty
+        await expect(env.socializePool.address).to.not.be.empty
       })
     })
   })
