@@ -85,6 +85,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         uint256 index = 0;
         while (index < validatorCount) {
             if (
+                //slither-disable-next-line boolean-equal
                 validatorRegistry[index].validatorDepositStatus == false &&
                 validatorRegistry[index].bondEth == collateralETH
             ) {
@@ -98,6 +99,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     function getNextPermissionValidator() external view returns (uint256) {
         uint256 index = 0;
         while (index < validatorCount) {
+            //slither-disable-next-line boolean-equal
             if (validatorRegistry[index].validatorDepositStatus == false && validatorRegistry[index].bondEth == 0) {
                 return index;
             }
