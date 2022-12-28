@@ -1,11 +1,11 @@
 {
-  "pubkey": "a19cd900ffb8050c0928fcbf9de8cbcf585f3b262b5f1b634e750610f8d9ea4bde63326ec7988b3ac4a9686fcc9b2a7c",
-  "withdrawal_credentials": "00d19b6ac845b29df6062790f7a804e54e725239fa7cc26b30a402606ac7e0fd",
+  "pubkey": "b234b6325681a3217539348a6dcea3253e3da3aebeda98b0d94f3f36e03625948c43ebfb38db65ebe1b1db57b03d9671",
+  "withdrawal_credentials": "0100000000000000000000003cb673783b7f383afc87d9e39e9b44f86cfd1b08",
   "amount": 32000000000,
-  "signature": "939c53ee17f973220fbccbd4f32ea018f05bcc74ef17309e701b1d5d9820747631d5939be688dc163c99f917232b4f87061471a8c0a86bbc94d475e9f4bd93b7d0a181b1760942aebaa50fc893d6a1671cc37cbc844d98c73509ab8c3fa2d8aa",
-  "deposit_message_root": "d2e8fe14e126669baed8d4c6db21910dee962dbe901db8d6aea8da5a51010bb2",
-  "deposit_data_root": "9236fa8f5f20fff6068fb0ea093d6a1933b94f75df17f7860a08b8256777bca4",
+  "signature": "8128607c0f5c23f0a4b6045f17a9ba259de8e1e271095ecf324a38683969452c80845c54242d00e30fdd13410bb8aa2b1080d8694aee0ef223630102e43c7c64b21f9dbd10691f3c25ec18477451af3d5d1e10696b3bb02a52ce6ac221e15b84",
+  "deposit_message_root": "eaaa610ca5b9f06f29bd1c7db5a6f95e09ffb3d26c2a5f541263c830eea0d70f",
+  "deposit_data_root": "75c4f29ff35781249879b31b25e423fd584f3fbe9d561cd8c551fc4811bea43f",
   "fork_version": "00001020",
-  "network_name": "prater",
-  "deposit_cli_version": "2.2.0"
+  "network_name": "goerli",
+  "deposit_cli_version": "2.3.0"
 }

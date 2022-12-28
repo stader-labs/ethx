@@ -39,8 +39,8 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("ssv network is ", ssvNetwork.address);
 
-  const StaderOracle = await ethers.getContractFactory('StaderOracle')
-  const staderOracle = await StaderOracle.connect(staderOwner).deploy()
+  const StaderOracleFactory = await ethers.getContractFactory('StaderOracle')
+  const staderOracle = await StaderOracleFactory.connect(staderOwner).deploy()
 
   const ETHxToken = await ethers.getContractFactory('ETHX')
   const ethxToken = await ETHxToken.connect(staderOwner).deploy()
@@ -60,16 +60,15 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("validatorRegistry is ", validatorRegistry.address);
 
-  const StaderManagedPoolFactory = await ethers.getContractFactory('StaderManagedStakePool')
-  const StaderManagedStakePool = await upgrades.deployProxy(StaderManagedPoolFactory, [
+  const staderManagedPoolFactory = await ethers.getContractFactory('StaderManagedStakePool')
+  const staderManagedStakePool = await upgrades.deployProxy(staderManagedPoolFactory, [
     '0x' + deposit.withdrawal_credentials,
     ethDeposit.address,
     operatorRegistry.address,
     validatorRegistry.address,
     staderOwner.address,
   ])
-
-  //console.log('StaderManagedStakePool is ', StaderManagedStakePool.address)
+  console.log('staderManagedStakePool is ', staderManagedStakePool.address)
 
   const StaderSSVStakePoolFactory = await ethers.getContractFactory('StaderSSVStakePool')
   const staderSSVPool = await upgrades.deployProxy(StaderSSVStakePoolFactory, [
@@ -79,16 +78,27 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     validatorRegistry.address,
     staderOwner.address,
   ])
-
   //console.log('staderSSVPool is ', staderSSVPool.address)
+
+  const staderPermissionLessPoolFactory = await ethers.getContractFactory('StaderPermissionLessStakePool')
+  const staderPermissionLessPool = await upgrades.deployProxy(staderPermissionLessPoolFactory, [
+    '0x' + deposit.withdrawal_credentials,
+    ethDeposit.address,
+    operatorRegistry.address,
+    validatorRegistry.address,
+    staderOwner.address,
+  ])
+
+  const permissionLessOperator = await staderPermissionLessPool.PERMISSION_LESS_OPERATOR()
+  await staderPermissionLessPool.grantRole(permissionLessOperator, staderOwner.address)
 
   const stakingManagerFactory = await ethers.getContractFactory('StaderStakePoolsManager')
   const staderStakingPoolManager = await upgrades.deployProxy(stakingManagerFactory, [
     ethxToken.address,
-    staderSSVPool.address,
-    StaderManagedStakePool.address,
-    100,
+    staderPermissionLessPool.address,
+    staderManagedStakePool.address,
     0,
+    100,
     10,
     [staderOwner.address, staderOwner.address],
     [staderOwner.address, staderOwner.address],
@@ -97,8 +107,14 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("staderStakingPoolManager is ", staderStakingPoolManager.address);
 
-  const ELRewardFactory = await ethers.getContractFactory('SocializingPoolContract')
-  const ELRewardContract = await upgrades.deployProxy(ELRewardFactory, [
+  const poolManagerRole = await staderManagedStakePool.STADER_POOL_MANAGER()
+  await staderManagedStakePool.grantRole(poolManagerRole, staderStakingPoolManager.address)
+
+  const poolManagerRolePermissionLessPool = await staderPermissionLessPool.STADER_POOL_MANAGER()
+  await staderPermissionLessPool.grantRole(poolManagerRolePermissionLessPool, staderStakingPoolManager.address)
+
+  const socializePoolFactory = await ethers.getContractFactory('SocializingPoolContract')
+  const socializePool = await upgrades.deployProxy(socializePoolFactory, [
     operatorRegistry.address,
     validatorRegistry.address,
     staderStakingPoolManager.address,
@@ -108,19 +124,32 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("ELRewardContract is ", ELRewardContract.address);
 
+  const rewardDistributor = await socializePool.REWARD_DISTRIBUTOR()
+  await socializePool.grantRole(rewardDistributor, staderOwner.address)
+
   const staderNetworkPool = await validatorRegistry.STADER_NETWORK_POOL()
 
-  //console.log('staderNetwork Pool ', staderNetworkPool);
-  //  await validatorRegistry.grantRole(staderNetworkPool, StaderManagedStakePool.address);
-  //  await validatorRegistry.grantRole(staderNetworkPool, staderSSVPool.address);
+  await validatorRegistry.grantRole(staderNetworkPool, staderManagedStakePool.address)
+  await validatorRegistry.grantRole(staderNetworkPool, staderPermissionLessPool.address)
 
-  //console.log('granted network pool access');
+  console.log('granted network pool access to validator registry')
+
+  const staderNetworkPoolOperatorRegistry = await operatorRegistry.STADER_NETWORK_POOL()
+
+  await operatorRegistry.grantRole(staderNetworkPoolOperatorRegistry, staderManagedStakePool.address)
+  await operatorRegistry.grantRole(staderNetworkPoolOperatorRegistry, staderPermissionLessPool.address)
+
+  console.log('granted network pool access to operator registry')
 
   const setELRewardTxn = await staderStakingPoolManager
     .connect(staderOwner)
-    .updateSocializingPoolAddress(ELRewardContract.address)
+    .updateSocializingPoolAddress(socializePool.address)
   setELRewardTxn.wait()
   //console.log("EL Rewards Address updated");
+
+  const setOracleTxn = await staderStakingPoolManager.updateStaderOracle(staderOracle.address)
+  setOracleTxn.wait()
+  console.log('stader oracle address updated')
 
   await ssvNetwork.registerOperator(
     'Test0',
@@ -157,11 +186,14 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     ssvToken,
     ethDeposit,
     ethxToken,
+    staderOracle,
     validatorRegistry,
-    StaderManagedStakePool,
+    operatorRegistry,
+    staderManagedStakePool,
+    staderPermissionLessPool,
     staderSSVPool,
     staderStakingPoolManager,
-    ELRewardContract,
+    socializePool,
   }
 }
 
