@@ -55,7 +55,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply, _protocolFee)
         );
         // Check & update node submission status
-        require(nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
         nodeSubmissionKeys[nodeSubmissionKey] = true;
         submissionCountKeys[submissionCountKey]++;
         uint8 submissionCount = submissionCountKeys[submissionCountKey];

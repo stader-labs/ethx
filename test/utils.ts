@@ -39,8 +39,8 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("ssv network is ", ssvNetwork.address);
 
-  const StaderOracleFactory = await ethers.getContractFactory('StaderOracle')
-  const staderOracle = await StaderOracleFactory.connect(staderOwner).deploy()
+  const staderOracleFactory = await ethers.getContractFactory('StaderOracle')
+  const staderOracle = await upgrades.deployProxy(staderOracleFactory)
 
   const ETHxToken = await ethers.getContractFactory('ETHX')
   const ethxToken = await ETHxToken.connect(staderOwner).deploy()

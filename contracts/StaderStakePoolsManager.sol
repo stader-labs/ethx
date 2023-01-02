@@ -210,6 +210,19 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         oracle = IStaderOracle(_staderOracle);
         emit UpdatedStaderOracle(address(oracle));
     }
+        
+    /**
+     * @notice Returns the amount of ETHER equivalent 1 ETHX (with 18 decimals)
+     */
+    function getExchangeRate() public view returns (uint256) {
+        uint256 totalETH = totalAssets();
+        uint256 totalETHx = oracle.totalETHXSupply();
+
+        if (totalETH == 0 || totalETHx == 0) {
+            return 1 * DECIMALS;
+        }
+        return (totalETH * DECIMALS) / totalETHx;
+    }
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view returns (uint256) {
