@@ -6,7 +6,10 @@ async function main() {
   const staderPermissionLessPoolFactory = await ethers.getContractFactory('StaderPermissionLessStakePool')
   const staderPermissionLessPoolInstance = await staderPermissionLessPoolFactory.attach(staderPermissionLessPool)
 
-  const staderContractUpgraded = await upgrades.upgradeProxy(staderPermissionLessPoolInstance, staderPermissionLessPoolFactory)
+  const staderContractUpgraded = await upgrades.upgradeProxy(
+    staderPermissionLessPoolInstance,
+    staderPermissionLessPoolFactory
+  )
 
   console.log('new implementation address ', staderContractUpgraded.address)
 

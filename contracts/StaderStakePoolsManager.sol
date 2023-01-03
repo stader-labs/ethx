@@ -210,7 +210,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         oracle = IStaderOracle(_staderOracle);
         emit UpdatedStaderOracle(address(oracle));
     }
-        
+
     /**
      * @notice Returns the amount of ETHER equivalent 1 ETHX (with 18 decimals)
      */
