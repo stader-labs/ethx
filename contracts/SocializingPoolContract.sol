@@ -64,21 +64,25 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
      * @dev run once in 24 hour
      */
     function distributeELRewardFee() external onlyRole(REWARD_DISTRIBUTOR) {
-        totalELRewardsCollected += address(this).balance;
         uint256 ELRewards = address(this).balance;
+        require(ELRewards > 0, 'not enough execution layer rewards');
+        totalELRewardsCollected += ELRewards;
         uint256 totalELFee = (ELRewards * feePercentage) / 100;
         uint256 staderELFee = totalELFee / 2;
         uint256 totalOperatorELFee;
         uint256 totalValidatorRegistered = staderValidatorRegistry.registeredValidatorCount();
+        require(totalValidatorRegistered > 0, 'No active validator on beacon chain');
         uint256 operatorCount = staderOperatorRegistry.operatorCount();
         for (uint256 index = 0; index < operatorCount; index++) {
             (address operatorRewardAddress, , , , uint256 activeValidatorCount, ) = staderOperatorRegistry
                 .operatorRegistry(index);
-            uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
-            totalOperatorELFee += operatorELFee;
+            if (activeValidatorCount > 0) {
+                uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
+                totalOperatorELFee += operatorELFee;
 
-            //slither-disable-next-line arbitrary-send-eth
-            staderStakePoolManager.deposit{value: operatorELFee}(operatorRewardAddress);
+                //slither-disable-next-line arbitrary-send-eth
+                staderStakePoolManager.deposit{value: operatorELFee}(operatorRewardAddress);
+            }
         }
         staderELFee = totalELFee - totalOperatorELFee;
 
