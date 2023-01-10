@@ -35,7 +35,7 @@ interface IStaderValidatorRegistry {
 
     function getNextPermissionLessValidator() external view returns (uint256);
 
-    function getNextPermissionValidator() external view returns (uint256);
+    function getNextPermissionedValidator() external view returns (uint256);
 
     function grantRole(bytes32 role, address account) external;
 

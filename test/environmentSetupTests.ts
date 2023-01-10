@@ -12,20 +12,6 @@ describe('environmentSetupTest', () => {
   })
 
   describe('when setting up the environment', () => {
-    describe('when deploying the ssvNetwork', () => {
-      it('should not revert', async () => {
-        await expect(env.ssvNetwork.address).to.not.be.empty
-      })
-
-      it('should not revert', async () => {
-        await expect(env.ssvRegistry.address).to.not.be.empty
-      })
-
-      it('should not revert', async () => {
-        await expect(env.ssvToken.address).to.not.be.empty
-      })
-    })
-
     describe('when deploying stader contracts', () => {
       it('should not revert', async () => {
         await expect(env.ethxToken.address).to.not.be.empty
@@ -36,7 +22,7 @@ describe('environmentSetupTest', () => {
       })
 
       it('should not revert', async () => {
-        await expect(env.staderSSVPool.address).to.not.be.empty
+        await expect(env.staderPermissionLessPool.address).to.not.be.empty
       })
 
       it('should not revert', async () => {

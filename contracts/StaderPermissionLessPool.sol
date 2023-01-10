@@ -1,5 +1,6 @@
 pragma solidity ^0.8.16;
 
+import './types/StaderPoolType.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
@@ -105,7 +106,14 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         );
         uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
         if (operatorIndex == type(uint256).max) {
-            staderOperatorRegistry.addToOperatorRegistry(_operatorRewardAddress, _operatorName, _operatorId, 1, 0, 0);
+            staderOperatorRegistry.addToOperatorRegistry(
+                _operatorRewardAddress,
+                _operatorName,
+                StaderPoolType.PermissionLess,
+                _operatorId,
+                1,
+                0
+            );
         } else {
             staderOperatorRegistry.incrementValidatorCount(_operatorId);
         }

@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.16;
 
+import './types/StaderPoolType.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderManagedStakePool.sol';
@@ -71,7 +72,7 @@ contract StaderManagedStakePool is
      * @dev register the permission pool validators in stader validator registry
      *
      */
-    function registerPermissionValidator(
+    function registerPermissionedValidator(
         bytes calldata _validatorPubkey,
         bytes calldata _validatorSignature,
         bytes32 _depositDataRoot,
@@ -85,7 +86,14 @@ contract StaderManagedStakePool is
         );
         uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
         if (operatorIndex == type(uint256).max) {
-            staderOperatorRegistry.addToOperatorRegistry(_operatorRewardAddress, _operatorName, _operatorId, 1, 0, 0);
+            staderOperatorRegistry.addToOperatorRegistry(
+                _operatorRewardAddress,
+                _operatorName,
+                StaderPoolType.Permissioned,
+                _operatorId,
+                1,
+                0
+            );
         } else {
             staderOperatorRegistry.incrementValidatorCount(_operatorId);
         }
@@ -106,7 +114,7 @@ contract StaderManagedStakePool is
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionValidator();
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator();
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
             (
                 ,

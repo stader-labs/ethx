@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import './types/StaderPoolType.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
@@ -21,10 +22,10 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
     struct Operator {
         address operatorRewardAddress; //Eth1 address of node for reward
         string operatorName; // name of the operator
+        StaderPoolType staderPoolType; // pool to which the operator belong
         uint256 operatorId; // unique ID given by stader network
         uint256 validatorCount; // validator registered with stader
         uint256 activeValidatorCount; // active validator on beacon chain
-        uint256 penaltyScore; // penalty count for misbehaving
     }
     mapping(uint256 => Operator) public operatorRegistry;
     mapping(uint256 => uint256) public operatorIdIndex;
@@ -50,25 +51,25 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
      * @dev only accept call from stader network pool
      * @param _operatorRewardAddress eth1 wallet of node for reward
      * @param _operatorName node operator name
+     * @param _staderPoolType penalty count for misbehaving
      * @param _validatorCount validator registered with stader
      * @param _activeValidatorCount active validator on beacon chain
-     * @param _penaltyScore penalty count for misbehaving
      */
     function addToOperatorRegistry(
         address _operatorRewardAddress,
         string memory _operatorName,
+        StaderPoolType _staderPoolType,
         uint256 _operatorId,
         uint256 _validatorCount,
-        uint256 _activeValidatorCount,
-        uint256 _penaltyScore
+        uint256 _activeValidatorCount
     ) external onlyRole(STADER_NETWORK_POOL) {
         Operator storage _operatorRegistry = operatorRegistry[operatorCount];
         _operatorRegistry.operatorRewardAddress = _operatorRewardAddress;
         _operatorRegistry.operatorId = _operatorId;
         _operatorRegistry.operatorName = _operatorName;
+        _operatorRegistry.staderPoolType = _staderPoolType;
         _operatorRegistry.validatorCount = _validatorCount;
         _operatorRegistry.activeValidatorCount = _activeValidatorCount;
-        _operatorRegistry.penaltyScore = _penaltyScore;
         operatorIdIndex[_operatorId] = operatorCount;
         operatorCount++;
         emit AddedToOperatorRegistry(_operatorId, operatorCount);

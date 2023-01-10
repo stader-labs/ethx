@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.16;
 
+import '../types/StaderPoolType.sol';
+
 interface IStaderOperatorRegistry {
     event AddedToOperatorRegistry(uint256 operatorId, uint256 operatorCount);
     event IncrementedValidatorCount(uint256 operatorId, uint256 validatorCount);
@@ -23,10 +25,10 @@ interface IStaderOperatorRegistry {
     function addToOperatorRegistry(
         address _operatorRewardAddress,
         string memory _operatorName,
+        StaderPoolType _staderPoolType,
         uint256 _operatorId,
         uint256 _validatorCount,
-        uint256 _activeValidatorCount,
-        uint256 _penaltyScore
+        uint256 _activeValidatorCount
     ) external;
 
     function getOperatorIndexById(uint256 _operatorId) external view returns (uint256);
@@ -51,10 +53,10 @@ interface IStaderOperatorRegistry {
         returns (
             address operatorRewardAddress,
             string memory operatorName,
+            StaderPoolType staderPoolType,
             uint256 operatorId,
             uint256 validatorCount,
-            uint256 activeValidatorCount,
-            uint256 penaltyScore
+            uint256 activeValidatorCount
         );
 
     function renounceRole(bytes32 role, address account) external;
