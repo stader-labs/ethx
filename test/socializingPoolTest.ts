@@ -54,7 +54,7 @@ describe('socializing pool tests', () => {
     await env.staderStakingPoolManager
       .connect(adr.staker3)
       .deposit(adr.staker3.address, { value: ethers.utils.parseEther('32') })
-    await env.staderStakingPoolManager.selectPool()
+    await env.staderStakingPoolManager.selectPool(0, 1)
     const poolManagerBalance = await provider.getBalance(env.staderStakingPoolManager.address)
 
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('32'))
@@ -80,7 +80,7 @@ describe('socializing pool tests', () => {
     await env.staderStakingPoolManager
       .connect(adr.staker3)
       .deposit(adr.staker3.address, { value: ethers.utils.parseEther('28') })
-    await env.staderStakingPoolManager.selectPool()
+    await env.staderStakingPoolManager.selectPool(0, 1)
     const poolManagerBalance = await provider.getBalance(env.staderStakingPoolManager.address)
 
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))

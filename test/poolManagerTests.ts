@@ -56,7 +56,7 @@ describe('stader pool manager tests', () => {
     await env.staderStakingPoolManager
       .connect(adr.staker3)
       .deposit(adr.staker3.address, { value: ethers.utils.parseEther('12') })
-    await env.staderStakingPoolManager.selectPool()
+    await env.staderStakingPoolManager.selectPool(0, 1)
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('32'))
@@ -75,7 +75,7 @@ describe('stader pool manager tests', () => {
     await env.staderStakingPoolManager
       .connect(adr.staker5)
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('16') })
-    await env.staderStakingPoolManager.selectPool()
+    await env.staderStakingPoolManager.selectPool(0, 1)
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('4'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))
@@ -94,7 +94,7 @@ describe('stader pool manager tests', () => {
     await env.staderStakingPoolManager
       .connect(adr.staker5)
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('20') })
-    await env.staderStakingPoolManager.selectPool()
+    await env.staderStakingPoolManager.selectPool(0, 1)
 
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('96'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(3)
@@ -111,7 +111,7 @@ describe('stader pool manager tests', () => {
     await env.staderStakingPoolManager
       .connect(adr.staker5)
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('20') })
-    expect(env.staderStakingPoolManager.selectPool()).to.be.revertedWith('permissioned validator not available')
+    expect(env.staderStakingPoolManager.selectPool(0, 1)).to.be.revertedWith('permissioned validator not available')
   })
 
   it('revert while updating pool weights', async () => {

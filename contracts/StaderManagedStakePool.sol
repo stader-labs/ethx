@@ -109,12 +109,12 @@ contract StaderManagedStakePool is
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract() external payable onlyRole(STADER_POOL_MANAGER) {
+    function depositEthToDepositContract(uint256 _operatorId) external payable onlyRole(STADER_POOL_MANAGER) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator();
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(_operatorId);
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
             (
                 ,

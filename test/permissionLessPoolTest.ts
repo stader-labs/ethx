@@ -61,7 +61,7 @@ describe('permission less pool tests', () => {
 
   it('call select pool, 2 validator should get register via stader permission less pool', async () => {
     await env.staderStakingPoolManager.updatePoolWeights(100, 0)
-    await env.staderStakingPoolManager.selectPool()
+    await env.staderStakingPoolManager.selectPool(0, 1)
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('14'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))

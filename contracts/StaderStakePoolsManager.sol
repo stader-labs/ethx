@@ -285,6 +285,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         require(assets <= maxDeposit(receiver), 'ERC4626: deposit more than max');
 
         uint256 shares = previewDeposit(assets);
+        require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
         _deposit(_msgSender(), receiver, assets, shares);
 
         return shares;
@@ -337,7 +338,10 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice selecting a pool from SSSP and SMSP
      * @dev select a pool based on poolWeight
      */
-    function selectPool() external onlyRole(EXECUTOR_ROLE) {
+    function selectPool(uint256 _permissionLessOperatorId, uint256 _permissionedOperatorId)
+        external
+        onlyRole(EXECUTOR_ROLE)
+    {
         uint256 balance = address(this).balance;
 
         if (poolParameters[0].poolWeight == 100) {
@@ -345,7 +349,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             uint256 numberOfDeposits = balance / PERMISSION_LESS_DEPOSIT_SIZE;
             uint256 amount = numberOfDeposits * PERMISSION_LESS_DEPOSIT_SIZE;
             //slither-disable-next-line arbitrary-send-eth
-            IPoolDeposit(poolParameters[0].poolAddress).depositEthToDepositContract{value: amount}();
+            IPoolDeposit(poolParameters[0].poolAddress).depositEthToDepositContract{value: amount}(
+                _permissionLessOperatorId
+            );
             emit TransferredToPermissionLessPool(poolParameters[0].poolAddress, amount);
         } else {
             require(balance >= DEPOSIT_SIZE, 'insufficient balance');
@@ -354,7 +360,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             //slither-disable-next-line arbitrary-send-eth
             IPoolDeposit(poolParameters[1].poolAddress).depositEthToDepositContract{
                 value: (amount * poolParameters[1].poolWeight) / 100
-            }();
+            }(_permissionedOperatorId);
             emit TransferredToStaderManagedPool(poolParameters[1].poolAddress, amount);
         }
     }
