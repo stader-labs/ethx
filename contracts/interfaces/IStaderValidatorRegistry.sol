@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.16;
 
+import '../types/StaderPoolType.sol';
+
 interface IStaderValidatorRegistry {
     event AddedToValidatorRegistry(bytes publicKey, string poolType, uint256 count);
     event Initialized(uint8 version);
@@ -20,7 +22,7 @@ interface IStaderValidatorRegistry {
         bytes memory _pubKey,
         bytes memory _signature,
         bytes32 _depositDataRoot,
-        string memory _poolType,
+        StaderPoolType _staderPoolType,
         uint256 _operatorId,
         uint256 _bondEth
     ) external;
@@ -65,7 +67,7 @@ interface IStaderValidatorRegistry {
             bytes memory pubKey,
             bytes memory signature,
             bytes32 depositDataRoot,
-            string memory poolType,
+            StaderPoolType staderPoolType,
             uint256 operatorId,
             uint256 bondEth
         );

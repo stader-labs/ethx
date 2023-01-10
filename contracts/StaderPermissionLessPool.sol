@@ -122,7 +122,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
-            'staderPermissionLessPool',
+            StaderPoolType.PermissionLess,
             _operatorId,
             msg.value
         );
