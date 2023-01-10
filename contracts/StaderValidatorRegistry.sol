@@ -101,8 +101,8 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     function getNextPermissionedValidator(uint256 _permissionedOperatorId) external view returns (uint256) {
         uint256 index = 0;
         while (index < validatorCount) {
-            //slither-disable-next-line boolean-equal
             if (
+                //slither-disable-next-line boolean-equal
                 validatorRegistry[index].validatorDepositStatus == false &&
                 validatorRegistry[index].staderPoolType == StaderPoolType.Permissioned &&
                 validatorRegistry[index].operatorId == _permissionedOperatorId
