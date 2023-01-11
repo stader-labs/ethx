@@ -338,15 +338,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function selectPool() external onlyRole(EXECUTOR_ROLE) {
         uint256 balance = address(this).balance;
-        //slither-disable-next-line low-level-calls
-        //slither-disable-next-line arbitrary-send-eth
+        //slither-disable-next-line low-level-calls arbitrary-send-eth
         (bool permissionLessPoolSuccess, ) = (poolParameters[0].poolAddress).call{
             value: (balance * poolParameters[0].poolWeight) / 100
         }('');
         require(permissionLessPoolSuccess, 'Stader PermissionLess Pool ETH transfer failed');
 
-        //slither-disable-next-line low-level-calls
-        //slither-disable-next-line arbitrary-send-eth
+        //slither-disable-next-line low-level-calls arbitrary-send-eth
         (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
             value: (balance * poolParameters[1].poolWeight) / 100
         }('');
