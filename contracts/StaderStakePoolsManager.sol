@@ -3,7 +3,6 @@
 pragma solidity ^0.8.16;
 
 import './ETHX.sol';
-import './interfaces/IPoolDeposit.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/ISocializingPoolContract.sol';
@@ -29,7 +28,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     address public socializingPoolAddress;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
-    uint256 public constant PERMISSION_LESS_DEPOSIT_SIZE = 28 ether;
     uint256 public minDepositLimit;
     uint256 public maxDepositLimit;
     uint256 public totalELRewardsCollected;
@@ -338,31 +336,28 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice selecting a pool from SSSP and SMSP
      * @dev select a pool based on poolWeight
      */
-    function selectPool(uint256 _permissionLessOperatorId, uint256 _permissionedOperatorId)
-        external
-        onlyRole(EXECUTOR_ROLE)
-    {
+    function selectPool() external onlyRole(EXECUTOR_ROLE) {
         uint256 balance = address(this).balance;
+        //slither-disable-next-line low-level-calls
+        (bool permissionLessPoolSuccess, ) = (poolParameters[0].poolAddress).call{
+            value: (balance * poolParameters[0].poolWeight) / 100
+        }('');
+        require(permissionLessPoolSuccess, 'Stader PermissionLess Pool ETH transfer failed');
 
-        if (poolParameters[0].poolWeight == 100) {
-            require(balance >= PERMISSION_LESS_DEPOSIT_SIZE, 'insufficient balance');
-            uint256 numberOfDeposits = balance / PERMISSION_LESS_DEPOSIT_SIZE;
-            uint256 amount = numberOfDeposits * PERMISSION_LESS_DEPOSIT_SIZE;
-            //slither-disable-next-line arbitrary-send-eth
-            IPoolDeposit(poolParameters[0].poolAddress).depositEthToDepositContract{value: amount}(
-                _permissionLessOperatorId
-            );
-            emit TransferredToPermissionLessPool(poolParameters[0].poolAddress, amount);
-        } else {
-            require(balance >= DEPOSIT_SIZE, 'insufficient balance');
-            uint256 numberOfDeposits = balance / DEPOSIT_SIZE;
-            uint256 amount = numberOfDeposits * DEPOSIT_SIZE;
-            //slither-disable-next-line arbitrary-send-eth
-            IPoolDeposit(poolParameters[1].poolAddress).depositEthToDepositContract{
-                value: (amount * poolParameters[1].poolWeight) / 100
-            }(_permissionedOperatorId);
-            emit TransferredToStaderManagedPool(poolParameters[1].poolAddress, amount);
-        }
+        //slither-disable-next-line low-level-calls
+        (bool staderPoolSuccess, ) = payable(poolParameters[1].poolAddress).call{
+            value: (balance * poolParameters[1].poolWeight) / 100
+        }('');
+        require(staderPoolSuccess, 'Stader Permissioned Pool ETH transfer failed');
+
+        emit TransferredToPermissionLessPool(
+            poolParameters[0].poolAddress,
+            (balance * poolParameters[0].poolWeight) / 100
+        );
+        emit TransferredToStaderManagedPool(
+            poolParameters[1].poolAddress,
+            (balance * poolParameters[1].poolWeight) / 100
+        );
     }
 
     function _initialSetup() internal {

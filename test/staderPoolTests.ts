@@ -51,9 +51,11 @@ describe('stader managed pool tests', () => {
   })
 
   it('call select pool, 2 validator should get register via stader managed pool', async () => {
-    await env.staderStakingPoolManager.selectPool(0, 1)
-    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
-    expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('6'))
+    await env.staderStakingPoolManager.selectPool()
+    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('70'))
+    await env.staderManagedStakePool.depositEthToDepositContract([1, 1])
+    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('6'))
+    expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(2)
     const permissionedOperatorIndex = await env.operatorRegistry.getOperatorIndexById(1)
@@ -65,7 +67,10 @@ describe('stader managed pool tests', () => {
     await env.staderStakingPoolManager
       .connect(adr.staker5)
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('30') })
-    expect(env.staderStakingPoolManager.selectPool()).to.be.revertedWith('permissioned validator not available')
+    await env.staderStakingPoolManager.selectPool()
+    expect(env.staderManagedStakePool.depositEthToDepositContract([1])).to.be.revertedWith(
+      'permissioned validator not available'
+    )
   })
 
   it('revert while updating withdraw credential', async () => {

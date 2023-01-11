@@ -23,8 +23,7 @@ contract StaderManagedStakePool is
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
 
-    bytes32 public constant STADER_PERMISSION_POOL_ADMIN = keccak256('STADER_PERMISSION_POOL_ADMIN');
-    bytes32 public constant STADER_POOL_MANAGER = keccak256('STADER_POOL_MANAGER');
+    bytes32 public constant STADER_PERMISSIONED_POOL_ADMIN = keccak256('STADER_PERMISSIONED_POOL_ADMIN');
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -55,7 +54,7 @@ contract StaderManagedStakePool is
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        _grantRole(STADER_PERMISSION_POOL_ADMIN, _staderPoolAdmin);
+        _grantRole(STADER_PERMISSIONED_POOL_ADMIN, _staderPoolAdmin);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -79,7 +78,7 @@ contract StaderManagedStakePool is
         address _operatorRewardAddress,
         string calldata _operatorName,
         uint256 _operatorId
-    ) external onlyRole(STADER_PERMISSION_POOL_ADMIN) {
+    ) external onlyRole(STADER_PERMISSIONED_POOL_ADMIN) {
         require(
             staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
             'validator already in use'
@@ -109,12 +108,17 @@ contract StaderManagedStakePool is
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract(uint256 _operatorId) external payable onlyRole(STADER_POOL_MANAGER) {
+    function depositEthToDepositContract(uint256[] memory _operatorIds)
+        external
+        payable
+        onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
+    {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
+        require(depositCount == _operatorIds.length, 'Invalid input of operator Ids');
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(_operatorId);
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(_operatorIds[counter]);
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
             (
                 ,
@@ -141,7 +145,7 @@ contract StaderManagedStakePool is
      */
     function updateWithdrawCredential(bytes calldata _withdrawCredential)
         external
-        onlyRole(STADER_PERMISSION_POOL_ADMIN)
+        onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
     {
         withdrawCredential = _withdrawCredential;
     }
@@ -153,7 +157,7 @@ contract StaderManagedStakePool is
     function updateStaderValidatorRegistry(address _staderValidatorRegistry)
         external
         checkZeroAddress(_staderValidatorRegistry)
-        onlyRole(STADER_PERMISSION_POOL_ADMIN)
+        onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
     {
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
         emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
@@ -166,7 +170,7 @@ contract StaderManagedStakePool is
     function updateStaderOperatorRegistry(address _staderOperatorRegistry)
         external
         checkZeroAddress(_staderOperatorRegistry)
-        onlyRole(STADER_PERMISSION_POOL_ADMIN)
+        onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
     {
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
