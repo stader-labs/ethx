@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import './types/StaderPoolType.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
@@ -12,14 +13,14 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
     bytes32 public constant VALIDATOR_REGISTRY_ADMIN = keccak256('VALIDATOR_REGISTRY_ADMIN');
 
     /// @notice event emits after adding a validator to validatorRegistry
-    event AddedToValidatorRegistry(bytes publicKey, string poolType, uint256 count);
+    event AddedToValidatorRegistry(bytes publicKey, StaderPoolType staderPoolType, uint256 count);
 
     struct Validator {
         bool validatorDepositStatus; // state of validator
         bytes pubKey; //public Key of the validator
         bytes signature; //signature for deposit to Ethereum Deposit contract
         bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
-        string poolType; // validator pool type
+        StaderPoolType staderPoolType; // validator pool type
         uint256 operatorId; // stader network assigned Id
         uint256 bondEth; // amount of bond eth in gwei
     }
@@ -48,7 +49,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
      * @param _pubKey public Key of the validator
      * @param _signature signature for deposit to Ethereum Deposit contract
      * @param _depositDataRoot deposit data root for deposit to Ethereum Deposit contract
-     * @param _poolType stader network pool type
+     * @param _staderPoolType stader network pool type
      * @param _operatorId stader network assigned operator ID
      * @param _bondEth amount of bond eth in gwei
      */
@@ -57,7 +58,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         bytes memory _pubKey,
         bytes memory _signature,
         bytes32 _depositDataRoot,
-        string memory _poolType,
+        StaderPoolType _staderPoolType,
         uint256 _operatorId,
         uint256 _bondEth
     ) external onlyRole(STADER_NETWORK_POOL) {
@@ -66,12 +67,12 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         _validatorRegistry.pubKey = _pubKey;
         _validatorRegistry.signature = _signature;
         _validatorRegistry.depositDataRoot = _depositDataRoot;
-        _validatorRegistry.poolType = _poolType;
+        _validatorRegistry.staderPoolType = _staderPoolType;
         _validatorRegistry.operatorId = _operatorId;
         _validatorRegistry.bondEth = _bondEth;
         validatorPubKeyIndex[_pubKey] = validatorCount;
         validatorCount++;
-        emit AddedToValidatorRegistry(_pubKey, _poolType, validatorCount);
+        emit AddedToValidatorRegistry(_pubKey, _staderPoolType, validatorCount);
     }
 
     function incrementRegisteredValidatorCount(bytes memory _pubKey) external onlyRole(STADER_NETWORK_POOL) {

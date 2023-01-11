@@ -102,7 +102,7 @@ contract StaderManagedStakePool is
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
-            'staderPermissionedPool',
+            StaderPoolType.Permissioned,
             _operatorId,
             0
         );
