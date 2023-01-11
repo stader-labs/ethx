@@ -96,7 +96,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         return type(uint256).max;
     }
 
-    function getNextPermissionValidator() external view returns (uint256) {
+    function getNextPermissionedValidator() external view returns (uint256) {
         uint256 index = 0;
         while (index < validatorCount) {
             //slither-disable-next-line boolean-equal

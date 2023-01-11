@@ -13,7 +13,7 @@ const provider = waffle.provider
 let adr: any
 let env: any
 
-describe.only('socializing pool tests', () => {
+describe('socializing pool tests', () => {
   before(async () => {
     adr = await setupAddresses()
     env = await setupEnvironment(adr.staderOwner, adr.ssvOwner)

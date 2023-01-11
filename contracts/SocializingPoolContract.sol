@@ -74,7 +74,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
         require(totalValidatorRegistered > 0, 'No active validator on beacon chain');
         uint256 operatorCount = staderOperatorRegistry.operatorCount();
         for (uint256 index = 0; index < operatorCount; index++) {
-            (address operatorRewardAddress, , , , uint256 activeValidatorCount, ) = staderOperatorRegistry
+            (address operatorRewardAddress, , , , , uint256 activeValidatorCount) = staderOperatorRegistry
                 .operatorRegistry(index);
             if (activeValidatorCount > 0) {
                 uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
