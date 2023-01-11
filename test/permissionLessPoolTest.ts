@@ -27,9 +27,9 @@ describe('permission less pool tests', () => {
   })
 
   it('onboard permission and permission less validators', async function () {
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staderOwner.address, 0)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 0)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staderOwner.address, 1, '4')
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staderOwner.address, 2)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 2)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staderOwner.address, 3, '4')
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(4)
     expect(await env.operatorRegistry.operatorCount()).to.be.equal(2)
@@ -92,7 +92,9 @@ describe('permission less pool tests', () => {
 
   it('revert while updating withdraw credential', async () => {
     expect(
-      env.staderPermissionLessPool.connect(adr.staker1).updateWithdrawCredential(env.staderManagedStakePool.address)
+      env.staderPermissionLessPool
+        .connect(adr.staker1)
+        .updateWithdrawCredential(env.staderPermissionedStakePool.address)
     ).to.be.reverted
   })
 
@@ -100,7 +102,7 @@ describe('permission less pool tests', () => {
     expect(
       env.staderPermissionLessPool
         .connect(adr.staker1)
-        .updateStaderValidatorRegistry(env.staderManagedStakePool.address)
+        .updateStaderValidatorRegistry(env.staderPermissionedStakePool.address)
     ).to.be.reverted
     expect(env.staderPermissionLessPool.updateStaderValidatorRegistry(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
@@ -109,7 +111,9 @@ describe('permission less pool tests', () => {
 
   it('revert while updating operator registry ', async () => {
     expect(
-      env.staderPermissionLessPool.connect(adr.staker1).updateStaderOperatorRegistry(env.staderManagedStakePool.address)
+      env.staderPermissionLessPool
+        .connect(adr.staker1)
+        .updateStaderOperatorRegistry(env.staderPermissionedStakePool.address)
     ).to.be.reverted
     expect(env.staderPermissionLessPool.updateStaderOperatorRegistry(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'

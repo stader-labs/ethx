@@ -43,15 +43,15 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("validatorRegistry is ", validatorRegistry.address);
 
-  const staderManagedPoolFactory = await ethers.getContractFactory('StaderManagedStakePool')
-  const staderManagedStakePool = await upgrades.deployProxy(staderManagedPoolFactory, [
+  const staderPermissionedStakePoolFactory = await ethers.getContractFactory('StaderPermissionedStakePool')
+  const staderPermissionedStakePool = await upgrades.deployProxy(staderPermissionedStakePoolFactory, [
     '0x' + deposit.withdrawal_credentials,
     ethDeposit.address,
     operatorRegistry.address,
     validatorRegistry.address,
     staderOwner.address,
   ])
-  console.log('staderManagedStakePool is ', staderManagedStakePool.address)
+  console.log('staderPermissionedStakePool is ', staderPermissionedStakePool.address)
 
   const staderPermissionLessPoolFactory = await ethers.getContractFactory('StaderPermissionLessStakePool')
   const staderPermissionLessPool = await upgrades.deployProxy(staderPermissionLessPoolFactory, [
@@ -69,7 +69,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
   const staderStakingPoolManager = await upgrades.deployProxy(stakingManagerFactory, [
     ethxToken.address,
     staderPermissionLessPool.address,
-    staderManagedStakePool.address,
+    staderPermissionedStakePool.address,
     0,
     100,
     10,
@@ -102,14 +102,14 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   const staderNetworkPool = await validatorRegistry.STADER_NETWORK_POOL()
 
-  await validatorRegistry.grantRole(staderNetworkPool, staderManagedStakePool.address)
+  await validatorRegistry.grantRole(staderNetworkPool, staderPermissionedStakePool.address)
   await validatorRegistry.grantRole(staderNetworkPool, staderPermissionLessPool.address)
 
   console.log('granted network pool access to validator registry')
 
   const staderNetworkPoolOperatorRegistry = await operatorRegistry.STADER_NETWORK_POOL()
 
-  await operatorRegistry.grantRole(staderNetworkPoolOperatorRegistry, staderManagedStakePool.address)
+  await operatorRegistry.grantRole(staderNetworkPoolOperatorRegistry, staderPermissionedStakePool.address)
   await operatorRegistry.grantRole(staderNetworkPoolOperatorRegistry, staderPermissionLessPool.address)
 
   console.log('granted network pool access to operator registry')
@@ -134,7 +134,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
     staderOracle,
     validatorRegistry,
     operatorRegistry,
-    staderManagedStakePool,
+    staderPermissionedStakePool,
     staderPermissionLessPool,
     staderStakingPoolManager,
     socializePool,

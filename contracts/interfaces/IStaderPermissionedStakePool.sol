@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-interface IStaderManagedStakePool {
+interface IStaderPermissionedStakePool {
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
     event DepositToDepositContract(bytes indexed pubKey);

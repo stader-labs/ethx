@@ -5,14 +5,14 @@ pragma solidity ^0.8.16;
 import './types/StaderPoolType.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
-import './interfaces/IStaderManagedStakePool.sol';
+import './interfaces/IStaderPermissionedStakePool.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract StaderManagedStakePool is
-    IStaderManagedStakePool,
+contract StaderPermissionedStakePool is
+    IStaderPermissionedStakePool,
     Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable
