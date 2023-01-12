@@ -2,19 +2,16 @@ pragma solidity ^0.8.16;
 
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
+import './interfaces/IStaderSlashingManager.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract StaderSlashingManager is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
 
-    bytes32 public constant STADER_DAO = keccak256('STADER_DAO');
-    bytes32 public constant SLASHING_MANAGER_OWNER = keccak256('SLASHING_MANAGER_OWNER');
-
-    event SubmittedMisbehavePenalties(uint256 operatorsCount);
-    event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
-    event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
+    bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
+    bytes32 public constant override SLASHING_MANAGER_OWNER = keccak256('SLASHING_MANAGER_OWNER');
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -42,6 +39,7 @@ contract StaderSlashingManager is Initializable, AccessControlUpgradeable, Pausa
 
     function processVoluntaryExitValidators(bytes[] calldata _pubKeys, uint256[] calldata _currentBondETH)
         external
+        override
         onlyRole(STADER_DAO)
     {
         require(_pubKeys.length == _currentBondETH.length, 'incorrect slashingPenalty data');
@@ -63,6 +61,7 @@ contract StaderSlashingManager is Initializable, AccessControlUpgradeable, Pausa
      */
     function updateStaderValidatorRegistry(address _staderValidatorRegistry)
         external
+        override
         checkZeroAddress(_staderValidatorRegistry)
         onlyRole(SLASHING_MANAGER_OWNER)
     {
@@ -76,6 +75,7 @@ contract StaderSlashingManager is Initializable, AccessControlUpgradeable, Pausa
      */
     function updateStaderOperatorRegistry(address _staderOperatorRegistry)
         external
+        override
         checkZeroAddress(_staderOperatorRegistry)
         onlyRole(SLASHING_MANAGER_OWNER)
     {
