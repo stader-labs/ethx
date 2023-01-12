@@ -12,7 +12,6 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
 
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
-    bytes32 public constant override VALIDATOR_REGISTRY_ADMIN = keccak256('VALIDATOR_REGISTRY_ADMIN');
 
     struct Validator {
         bool validatorDepositStatus; // state of validator
@@ -26,24 +25,12 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     mapping(uint256 => Validator) public override validatorRegistry;
     mapping(bytes => uint256) public override validatorPubKeyIndex;
 
-    /// @notice zero address check modifier
-    modifier checkZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
-
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
-     * @param _validatorRegistryAdmin admin operator for operator registry
      */
-    function initialize(address _validatorRegistryAdmin)
-        external
-        checkZeroAddress(_validatorRegistryAdmin)
-        initializer
-    {
+    function initialize() external initializer {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(VALIDATOR_REGISTRY_ADMIN, _validatorRegistryAdmin);
     }
 
     /**

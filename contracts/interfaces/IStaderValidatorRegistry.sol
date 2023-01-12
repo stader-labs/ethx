@@ -15,8 +15,6 @@ interface IStaderValidatorRegistry {
 
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
-    function VALIDATOR_REGISTRY_ADMIN() external view returns (bytes32);
-
     function addToValidatorRegistry(
         bool _validatorDepositStatus,
         bytes memory _pubKey,

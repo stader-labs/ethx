@@ -17,8 +17,6 @@ interface IStaderOperatorRegistry {
     /// @notice event emits after increasing the penalty score of a operator for misbehaving
     event ReducedValidatorCount(uint256 operatorId, uint256 validatorCount, uint256 activeActiveCount);
 
-    function OPERATOR_REGISTRY_ADMIN() external view returns (bytes32);
-
     function operatorCount() external view returns (uint256);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);

@@ -10,7 +10,6 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
 
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
-    bytes32 public constant override OPERATOR_REGISTRY_ADMIN = keccak256('OPERATOR_REGISTRY_ADMIN');
 
     struct Operator {
         address operatorRewardAddress; //Eth1 address of node for reward
@@ -23,20 +22,12 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     mapping(uint256 => Operator) public override operatorRegistry;
     mapping(uint256 => uint256) public override operatorIdIndex;
 
-    /// @notice zero address check modifier
-    modifier checkZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
-
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
-     * @param _operatorRegistryAdmin admin operator for operator registry
      */
-    function initialize(address _operatorRegistryAdmin) external checkZeroAddress(_operatorRegistryAdmin) initializer {
+    function initialize() external initializer {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(OPERATOR_REGISTRY_ADMIN, _operatorRegistryAdmin);
     }
 
     /**
@@ -103,13 +94,15 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     function reduceOperatorValidatorsCount(uint256 _operatorId) external override onlyRole(STADER_SLASHING_MANAGER) {
         uint256 index = getOperatorIndexById(_operatorId);
         require(index != type(uint256).max, 'invalid operatorId');
-        operatorRegistry[index].validatorCount--;
-        operatorRegistry[index].activeValidatorCount--;
-        emit ReducedValidatorCount(
-            operatorRegistry[index].operatorId,
-            operatorRegistry[index].validatorCount,
-            operatorRegistry[index].activeValidatorCount
-        );
+        if (operatorRegistry[index].validatorCount > 0) {
+            operatorRegistry[index].validatorCount--;
+            operatorRegistry[index].activeValidatorCount--;
+            emit ReducedValidatorCount(
+                operatorRegistry[index].operatorId,
+                operatorRegistry[index].validatorCount,
+                operatorRegistry[index].activeValidatorCount
+            );
+        }
     }
 
     /**
