@@ -50,9 +50,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev Stader initialized with following variables
      * @param _ethX ethX contract
      * @param _staderPermissionLessStakePoolAddress stader SSV Managed Pool, validator are assigned to operator through SSV
-     * @param _staderManagedStakePoolAddress validator are assigned to operator, managed by stader
+     * @param _staderPermissionedStakePoolAddress validator are assigned to operator, managed by stader
      * @param _staderPermissionLessStakePoolWeight weight of stader SSV pool, if it is 1 then validator gets operator via SSV
-     * @param _staderManagedStakePoolWeight weight of stader managed pool
+     * @param _staderPermissionedStakePoolWeight weight of stader managed pool
      * @param _minDelay initial minimum delay for operations
      * @param _proposers accounts to be granted proposer and canceller roles
      * @param _executors  accounts to be granted executor role
@@ -62,9 +62,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function initialize(
         address _ethX,
         address _staderPermissionLessStakePoolAddress,
-        address _staderManagedStakePoolAddress,
+        address _staderPermissionedStakePoolAddress,
         uint256 _staderPermissionLessStakePoolWeight,
-        uint256 _staderManagedStakePoolWeight,
+        uint256 _staderPermissionedStakePoolWeight,
         uint256 _minDelay,
         address[] memory _proposers,
         address[] memory _executors,
@@ -74,19 +74,25 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         initializer
         checkZeroAddress(_ethX)
         checkZeroAddress(_staderPermissionLessStakePoolAddress)
-        checkZeroAddress(_staderManagedStakePoolAddress)
+        checkZeroAddress(_staderPermissionedStakePoolAddress)
     {
-        require(_staderPermissionLessStakePoolWeight + _staderManagedStakePoolWeight == 100, 'Invalid pool weights');
+        require(
+            _staderPermissionLessStakePoolWeight + _staderPermissionedStakePoolWeight == 100,
+            'Invalid pool weights'
+        );
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         __Pausable_init();
-        Pool memory _staderPermissionLessPool = Pool(
+        Pool memory _staderPermissionLessStakePool = Pool(
             _staderPermissionLessStakePoolAddress,
             _staderPermissionLessStakePoolWeight
         );
-        Pool memory _staderManagedPool = Pool(_staderManagedStakePoolAddress, _staderManagedStakePoolWeight);
+        Pool memory _staderPermissionedStakePool = Pool(
+            _staderPermissionedStakePoolAddress,
+            _staderPermissionedStakePoolWeight
+        );
         ethX = ETHX(_ethX);
-        poolParameters.push(_staderPermissionLessPool);
-        poolParameters.push(_staderManagedPool);
+        poolParameters.push(_staderPermissionLessStakePool);
+        poolParameters.push(_staderPermissionedStakePool);
         _initialSetup();
     }
 
@@ -118,13 +124,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice update the pool to register validators
      * @dev update the pool weights
      */
-    function updatePoolWeights(uint256 _staderPermissionLessStakePoolWeight, uint256 _staderManagedStakePoolWeight)
+    function updatePoolWeights(uint256 _staderPermissionLessStakePoolWeight, uint256 _staderPermissionedStakePoolWeight)
         external
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        require(_staderPermissionLessStakePoolWeight + _staderManagedStakePoolWeight == 100, 'Invalid weights');
+        require(_staderPermissionLessStakePoolWeight + _staderPermissionedStakePoolWeight == 100, 'Invalid weights');
         poolParameters[0].poolWeight = _staderPermissionLessStakePoolWeight;
-        poolParameters[1].poolWeight = _staderManagedStakePoolWeight;
+        poolParameters[1].poolWeight = _staderPermissionedStakePoolWeight;
         emit UpdatedPoolWeights(poolParameters[0].poolWeight, poolParameters[1].poolWeight);
     }
 
@@ -138,20 +144,20 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
         poolParameters[0].poolAddress = _staderPermissionLessStakePoolAddress;
-        emit UpdatedSSVStakePoolAddress(poolParameters[0].poolAddress);
+        emit UpdatedPermissionLessPoolAddress(poolParameters[0].poolAddress);
     }
 
     /**
      * @notice update the pool to register validators
      * @dev update the pool weights
      */
-    function updateStaderStakePoolAddresses(address payable _staderManagedStakePoolAddress)
+    function updateStaderPermissionedPoolAddresses(address payable _staderPermissionedStakePoolAddress)
         external
-        checkZeroAddress(_staderManagedStakePoolAddress)
+        checkZeroAddress(_staderPermissionedStakePoolAddress)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        poolParameters[1].poolAddress = _staderManagedStakePoolAddress;
-        emit UpdatedStaderStakePoolAddress(poolParameters[1].poolAddress);
+        poolParameters[1].poolAddress = _staderPermissionedStakePoolAddress;
+        emit UpdatedPermissionedPoolAddresses(poolParameters[1].poolAddress);
     }
 
     /**
@@ -355,7 +361,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             poolParameters[0].poolAddress,
             (balance * poolParameters[0].poolWeight) / 100
         );
-        emit TransferredToStaderManagedPool(
+        emit TransferredToStaderPermissionedPool(
             poolParameters[1].poolAddress,
             (balance * poolParameters[1].poolWeight) / 100
         );

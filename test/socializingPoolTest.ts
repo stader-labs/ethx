@@ -20,9 +20,9 @@ describe('socializing pool tests', () => {
   })
 
   it('onboard validators both permissioned and permissionLess', async function () {
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staker1.address, 0)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staker1.address, 0)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staker2.address, 1, '4')
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staker1.address, 2)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staker1.address, 2)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staker2.address, 3, '4')
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(4)
     expect(await env.operatorRegistry.operatorCount()).to.be.equal(2)
@@ -55,7 +55,7 @@ describe('socializing pool tests', () => {
       .connect(adr.staker3)
       .deposit(adr.staker3.address, { value: ethers.utils.parseEther('32') })
     await env.staderStakingPoolManager.selectPool()
-    await env.staderManagedStakePool.depositEthToDepositContract([1])
+    await env.staderPermissionedStakePool.depositEthToDepositContract([1])
 
     const poolManagerBalance = await provider.getBalance(env.staderStakingPoolManager.address)
 

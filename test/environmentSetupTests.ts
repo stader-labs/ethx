@@ -26,7 +26,7 @@ describe('environmentSetupTest', () => {
       })
 
       it('should not revert', async () => {
-        await expect(env.staderManagedStakePool.address).to.not.be.empty
+        await expect(env.staderPermissionedStakePool.address).to.not.be.empty
       })
 
       it('should not revert', async () => {

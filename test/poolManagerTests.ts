@@ -32,9 +32,9 @@ describe('stader pool manager tests', () => {
   })
 
   it('onboard validators both permissioned and permissionLess', async function () {
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staderOwner.address, 0)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 0)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staderOwner.address, 1, '4')
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staderOwner.address, 2)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 2)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staderOwner.address, 3, '4')
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(4)
     expect(await env.operatorRegistry.operatorCount()).to.be.equal(2)
@@ -57,10 +57,12 @@ describe('stader pool manager tests', () => {
       .connect(adr.staker3)
       .deposit(adr.staker3.address, { value: ethers.utils.parseEther('12') })
     await env.staderStakingPoolManager.selectPool()
-    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('32'))
-    await env.staderManagedStakePool.depositEthToDepositContract([1])
+    expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(
+      ethers.utils.parseEther('32')
+    )
+    await env.staderPermissionedStakePool.depositEthToDepositContract([1])
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
-    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
+    expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('32'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(1)
     const permissionedOperatorIndex = await env.operatorRegistry.getOperatorIndexById(1)
@@ -100,10 +102,12 @@ describe('stader pool manager tests', () => {
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('20') })
     await env.staderStakingPoolManager.selectPool()
 
-    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('32'))
-    await env.staderManagedStakePool.depositEthToDepositContract([1])
+    expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(
+      ethers.utils.parseEther('32')
+    )
+    await env.staderPermissionedStakePool.depositEthToDepositContract([1])
 
-    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
+    expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('96'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(3)
     const permissionedOperatorIndex = await env.operatorRegistry.getOperatorIndexById(1)
@@ -120,7 +124,7 @@ describe('stader pool manager tests', () => {
       .connect(adr.staker5)
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('20') })
     await env.staderStakingPoolManager.selectPool()
-    expect(env.staderManagedStakePool.depositEthToDepositContract([1])).to.be.revertedWith(
+    expect(env.staderPermissionedStakePool.depositEthToDepositContract([1])).to.be.revertedWith(
       'permissioned validator not available'
     )
   })
@@ -141,13 +145,13 @@ describe('stader pool manager tests', () => {
     ).to.be.revertedWith('Address cannot be zero')
   })
 
-  it('revert while updating stader managed pool address', async () => {
+  it('revert while updating stader permissioned pool address', async () => {
     expect(
       env.staderStakingPoolManager
         .connect(adr.staker1)
-        .updateStaderStakePoolAddresses(env.staderManagedStakePool.address)
+        .updateStaderPermissionedPoolAddresses(env.staderPermissionedStakePool.address)
     ).to.be.reverted
-    expect(env.staderStakingPoolManager.updateStaderStakePoolAddresses(adr.ZERO_ADDRESS)).to.be.revertedWith(
+    expect(env.staderStakingPoolManager.updateStaderPermissionedPoolAddresses(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )
   })
@@ -163,8 +167,8 @@ describe('stader pool manager tests', () => {
   })
 
   it('revert while updating ethX address', async () => {
-    expect(env.staderStakingPoolManager.connect(adr.staker1).updateEthXAddress(env.staderManagedStakePool.address)).to
-      .be.reverted
+    expect(env.staderStakingPoolManager.connect(adr.staker1).updateEthXAddress(env.staderPermissionedStakePool.address))
+      .to.be.reverted
     expect(env.staderStakingPoolManager.updateEthXAddress(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )
@@ -172,7 +176,9 @@ describe('stader pool manager tests', () => {
 
   it('revert while updating Socializing Pool address', async () => {
     expect(
-      env.staderStakingPoolManager.connect(adr.staker1).updateSocializingPoolAddress(env.staderManagedStakePool.address)
+      env.staderStakingPoolManager
+        .connect(adr.staker1)
+        .updateSocializingPoolAddress(env.staderPermissionedStakePool.address)
     ).to.be.reverted
     expect(env.staderStakingPoolManager.updateSocializingPoolAddress(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'

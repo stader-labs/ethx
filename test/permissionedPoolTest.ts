@@ -18,18 +18,18 @@ describe('stader managed pool tests', () => {
   })
 
   it('onboard permission and permission less validators', async function () {
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staderOwner.address, 0)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 0)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staderOwner.address, 1, '4')
-    await onboardPermissionedValidator(env.staderManagedStakePool, adr.staderOwner.address, 2)
+    await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 2)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staderOwner.address, 3, '4')
     expect(await env.validatorRegistry.validatorCount()).to.be.equal(4)
     expect(await env.operatorRegistry.operatorCount()).to.be.equal(2)
   })
 
   it('revert when registering same validator again', async function () {
-    expect(onboardPermissionedValidator(env.staderManagedStakePool, adr.staderOwner.address, 2)).to.be.revertedWith(
-      'validator already in use'
-    )
+    expect(
+      onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 2)
+    ).to.be.revertedWith('validator already in use')
   })
 
   it('when more than 32 ETH have been staked', async () => {
@@ -52,9 +52,11 @@ describe('stader managed pool tests', () => {
 
   it('call select pool, 2 validator should get register via stader managed pool', async () => {
     await env.staderStakingPoolManager.selectPool()
-    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('70'))
-    await env.staderManagedStakePool.depositEthToDepositContract([1, 1])
-    expect(await provider.getBalance(env.staderManagedStakePool.address)).to.be.equal(ethers.utils.parseEther('6'))
+    expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(
+      ethers.utils.parseEther('70')
+    )
+    await env.staderPermissionedStakePool.depositEthToDepositContract([1, 1])
+    expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(ethers.utils.parseEther('6'))
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(2)
@@ -68,30 +70,37 @@ describe('stader managed pool tests', () => {
       .connect(adr.staker5)
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('30') })
     await env.staderStakingPoolManager.selectPool()
-    expect(env.staderManagedStakePool.depositEthToDepositContract([1])).to.be.revertedWith(
+    expect(env.staderPermissionedStakePool.depositEthToDepositContract([1])).to.be.revertedWith(
       'permissioned validator not available'
     )
   })
 
   it('revert while updating withdraw credential', async () => {
-    expect(env.staderManagedStakePool.connect(adr.staker1).updateWithdrawCredential(env.staderManagedStakePool.address))
-      .to.be.reverted
+    expect(
+      env.staderPermissionedStakePool
+        .connect(adr.staker1)
+        .updateWithdrawCredential(env.staderPermissionedStakePool.address)
+    ).to.be.reverted
   })
 
   it('revert while updating validator registry ', async () => {
     expect(
-      env.staderManagedStakePool.connect(adr.staker1).updateStaderValidatorRegistry(env.staderManagedStakePool.address)
+      env.staderPermissionedStakePool
+        .connect(adr.staker1)
+        .updateStaderValidatorRegistry(env.staderPermissionedStakePool.address)
     ).to.be.reverted
-    expect(env.staderManagedStakePool.updateStaderValidatorRegistry(adr.ZERO_ADDRESS)).to.be.revertedWith(
+    expect(env.staderPermissionedStakePool.updateStaderValidatorRegistry(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )
   })
 
   it('revert while updating operator registry ', async () => {
     expect(
-      env.staderManagedStakePool.connect(adr.staker1).updateStaderOperatorRegistry(env.staderManagedStakePool.address)
+      env.staderPermissionedStakePool
+        .connect(adr.staker1)
+        .updateStaderOperatorRegistry(env.staderPermissionedStakePool.address)
     ).to.be.reverted
-    expect(env.staderManagedStakePool.updateStaderOperatorRegistry(adr.ZERO_ADDRESS)).to.be.revertedWith(
+    expect(env.staderPermissionedStakePool.updateStaderOperatorRegistry(adr.ZERO_ADDRESS)).to.be.revertedWith(
       'Address cannot be zero'
     )
   })

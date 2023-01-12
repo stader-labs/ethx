@@ -7,17 +7,17 @@ interface IStaderStakePoolManager {
     event NodeDepositReceived(uint256 operatorId, uint256 amount);
     event ExecutionLayerRewardsReceived(uint256 amount);
     event TransferredToPermissionLessPool(address indexed poolAddress, uint256 amount);
-    event TransferredToStaderManagedPool(address indexed poolAddress, uint256 amount);
+    event TransferredToStaderPermissionedPool(address indexed poolAddress, uint256 amount);
     event UpdatedEthXAddress(address account);
     event UpdatedFeePercentage(uint256 fee);
     event UpdatedMaxDepositLimit(uint256 amount);
     event UpdatedMinDepositLimit(uint256 amount);
     event UpdatedPoolWeights(uint256 staderSSVStakePoolWeight, uint256 staderManagedStakePoolWeight);
-    event UpdatedSSVStakePoolAddress(address ssvStakePool);
+    event UpdatedPermissionLessPoolAddress(address ssvStakePool);
     event UpdatedSocializingPoolAddress(address executionLayerRewardContract);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
     event UpdatedStaderOracle(address oracle);
-    event UpdatedStaderStakePoolAddress(address staderStakePool);
+    event UpdatedPermissionedPoolAddresses(address staderStakePool);
     event UpdatedStaderTreasury(address staderTreasury);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event Withdrawn(
