@@ -5,15 +5,15 @@ pragma solidity ^0.8.16;
 import '../types/StaderPoolType.sol';
 
 interface IStaderValidatorRegistry {
-    event AddedToValidatorRegistry(bytes publicKey, string poolType, uint256 count);
-    event Initialized(uint8 version);
-    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
+    event AddedToValidatorRegistry(bytes publicKey, StaderPoolType poolType, uint256 count);
 
-    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+    event RemovedValidatorFromRegistry(bytes publicKey);
+
+    function collateralETH() external view returns (uint256);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
+
+    function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
     function VALIDATOR_REGISTRY_ADMIN() external view returns (bytes32);
 
@@ -31,29 +31,17 @@ interface IStaderValidatorRegistry {
 
     function getPoRAddressListLength() external view returns (uint256);
 
-    function getRoleAdmin(bytes32 role) external view returns (bytes32);
-
     function getValidatorIndexByPublicKey(bytes memory _publicKey) external view returns (uint256);
 
     function getNextPermissionLessValidator(uint256 _permissionLessOperatorId) external view returns (uint256);
 
     function getNextPermissionedValidator(uint256 _permissionedOperatorId) external view returns (uint256);
 
-    function grantRole(bytes32 role, address account) external;
-
-    function hasRole(bytes32 role, address account) external view returns (bool);
+    function handleVoluntaryExitValidators(bytes memory _pubKey) external;
 
     function incrementRegisteredValidatorCount(bytes memory _publicKey) external;
 
-    function initialize() external;
-
     function registeredValidatorCount() external view returns (uint256);
-
-    function renounceRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool);
 
     function validatorCount() external view returns (uint256);
 
