@@ -80,11 +80,11 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
 
   //console.log("staderStakingPoolManager is ", staderStakingPoolManager.address);
 
-  const poolManagerRole = await staderManagedStakePool.STADER_POOL_MANAGER()
-  await staderManagedStakePool.grantRole(poolManagerRole, staderStakingPoolManager.address)
+  // const poolManagerRole = await staderManagedStakePool.STADER_POOL_MANAGER()
+  // await staderManagedStakePool.grantRole(poolManagerRole, staderStakingPoolManager.address)
 
-  const poolManagerRolePermissionLessPool = await staderPermissionLessPool.STADER_POOL_MANAGER()
-  await staderPermissionLessPool.grantRole(poolManagerRolePermissionLessPool, staderStakingPoolManager.address)
+  // const poolManagerRolePermissionLessPool = await staderPermissionLessPool.STADER_POOL_MANAGER()
+  // await staderPermissionLessPool.grantRole(poolManagerRolePermissionLessPool, staderStakingPoolManager.address)
 
   const socializePoolFactory = await ethers.getContractFactory('SocializingPoolContract')
   const socializePool = await upgrades.deployProxy(socializePoolFactory, [

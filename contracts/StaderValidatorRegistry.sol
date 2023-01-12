@@ -82,13 +82,14 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         registeredValidatorCount++;
     }
 
-    function getNextPermissionLessValidator() external view returns (uint256) {
+    function getNextPermissionLessValidator(uint256 _permissionLessOperatorId) external view returns (uint256) {
         uint256 index = 0;
         while (index < validatorCount) {
             if (
                 //slither-disable-next-line boolean-equal
                 validatorRegistry[index].validatorDepositStatus == false &&
-                validatorRegistry[index].bondEth == collateralETH
+                validatorRegistry[index].staderPoolType == StaderPoolType.PermissionLess &&
+                validatorRegistry[index].operatorId == _permissionLessOperatorId
             ) {
                 return index;
             }
@@ -97,11 +98,15 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         return type(uint256).max;
     }
 
-    function getNextPermissionedValidator() external view returns (uint256) {
+    function getNextPermissionedValidator(uint256 _permissionedOperatorId) external view returns (uint256) {
         uint256 index = 0;
         while (index < validatorCount) {
-            //slither-disable-next-line boolean-equal
-            if (validatorRegistry[index].validatorDepositStatus == false && validatorRegistry[index].bondEth == 0) {
+            if (
+                //slither-disable-next-line boolean-equal
+                validatorRegistry[index].validatorDepositStatus == false &&
+                validatorRegistry[index].staderPoolType == StaderPoolType.Permissioned &&
+                validatorRegistry[index].operatorId == _permissionedOperatorId
+            ) {
                 return index;
             }
             index++;
