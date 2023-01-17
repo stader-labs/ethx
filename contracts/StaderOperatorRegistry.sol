@@ -117,14 +117,14 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
         StaderPoolType _poolType
     ) external view override returns (uint256[] memory, uint256) {
         uint256 counter;
-        uint256[] memory operatorIds = new uint256[](_requiredOperatorCount);
+        uint256[] memory outputOperatorIds = new uint256[](_requiredOperatorCount);
         while (_operatorStartIndex < operatorCount) {
             if (
                 operatorRegistry[_operatorStartIndex].staderPoolType == _poolType &&
                 operatorRegistry[_operatorStartIndex].validatorCount >
                 operatorRegistry[_operatorStartIndex].activeValidatorCount
             ) {
-                operatorIds[counter] = (operatorRegistry[_operatorStartIndex].operatorId);
+                outputOperatorIds[counter] = (operatorRegistry[_operatorStartIndex].operatorId);
                 counter++;
             }
             _operatorStartIndex++;
@@ -132,7 +132,7 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
                 _operatorStartIndex = 0;
             }
             if (counter == _requiredOperatorCount) {
-                return (operatorIds, _operatorStartIndex);
+                return (outputOperatorIds, _operatorStartIndex);
             }
         }
     }

@@ -58,5 +58,5 @@ interface IStaderOperatorRegistry {
         uint256 _requiredOperatorCount,
         uint256 _operatorStartIndex,
         StaderPoolType _poolType
-    ) external view returns (uint256[] memory operatorIds, uint256 operatorEndIndex);
+    ) external view returns (uint256[] memory outputOperatorIds, uint256 operatorEndIndex);
 }
