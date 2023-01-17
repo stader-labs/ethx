@@ -117,7 +117,7 @@ contract StaderPermissionedStakePool is
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
         depositCount = depositCount > standByPermissionedValidators ? standByPermissionedValidators : depositCount;
         standByPermissionedValidators -= depositCount;
-        (uint256[] memory operatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
+        (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
             depositCount,
             permissionedOperatorIndex,
             StaderPoolType.Permissioned
@@ -125,7 +125,7 @@ contract StaderPermissionedStakePool is
         permissionedOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(operatorIds[counter]);
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(selectedOperatorIds[counter]);
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
             (
                 ,

@@ -72,7 +72,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
         depositCount = depositCount > standByPermissionLessValidators ? standByPermissionLessValidators : depositCount;
         standByPermissionLessValidators -= depositCount;
-        (uint256[] memory operatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
+        (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
             depositCount,
             permissionLessOperatorIndex,
             StaderPoolType.PermissionLess
@@ -80,7 +80,9 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         permissionLessOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionLessValidator(operatorIds[counter]);
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionLessValidator(
+                selectedOperatorIds[counter]
+            );
             require(validatorIndex != type(uint256).max, 'permissionLess validator not available');
             (
                 ,
