@@ -106,6 +106,38 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     }
 
     /**
+     * @notice pick the next set of operator to register validator
+     * @param _requiredOperatorCount number of operator require
+     * @param _operatorStartIndex starting index of operatorID to scan registry
+     * @param _poolType pool type of next operators
+     */
+    function selectOperators(
+        uint256 _requiredOperatorCount,
+        uint256 _operatorStartIndex,
+        StaderPoolType _poolType
+    ) external view override returns (uint256[] memory, uint256) {
+        uint256 counter;
+        uint256[] memory operatorIds = new uint256[](_requiredOperatorCount);
+        while (_operatorStartIndex < operatorCount) {
+            if (
+                operatorRegistry[_operatorStartIndex].staderPoolType == _poolType &&
+                operatorRegistry[_operatorStartIndex].validatorCount >
+                operatorRegistry[_operatorStartIndex].activeValidatorCount
+            ) {
+                operatorIds[counter] = (operatorRegistry[_operatorStartIndex].operatorId);
+                counter++;
+            }
+            _operatorStartIndex++;
+            if (_operatorStartIndex == operatorCount) {
+                _operatorStartIndex = 0;
+            }
+            if (counter == _requiredOperatorCount) {
+                return (operatorIds, _operatorStartIndex);
+            }
+        }
+    }
+
+    /**
      * @notice fetch operator index in registry using operatorId
      * @dev public view method
      * @param _operatorId operator ID

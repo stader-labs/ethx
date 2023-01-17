@@ -60,7 +60,7 @@ describe('stader pool manager tests', () => {
     expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(
       ethers.utils.parseEther('32')
     )
-    await env.staderPermissionedStakePool.depositEthToDepositContract([1])
+    await env.staderPermissionedStakePool.depositEthToDepositContract()
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('32'))
@@ -81,7 +81,7 @@ describe('stader pool manager tests', () => {
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('16') })
     await env.staderStakingPoolManager.selectPool()
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('36'))
-    await env.staderPermissionLessPool.depositEthToDepositContract([0])
+    await env.staderPermissionLessPool.depositEthToDepositContract()
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('4'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))
@@ -105,7 +105,7 @@ describe('stader pool manager tests', () => {
     expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(
       ethers.utils.parseEther('32')
     )
-    await env.staderPermissionedStakePool.depositEthToDepositContract([1])
+    await env.staderPermissionedStakePool.depositEthToDepositContract()
 
     expect(await provider.getBalance(env.staderPermissionedStakePool.address)).to.be.equal(ethers.utils.parseEther('0'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('96'))
@@ -124,8 +124,8 @@ describe('stader pool manager tests', () => {
       .connect(adr.staker5)
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('20') })
     await env.staderStakingPoolManager.selectPool()
-    expect(env.staderPermissionedStakePool.depositEthToDepositContract([1])).to.be.revertedWith(
-      'permissioned validator not available'
+    expect(env.staderPermissionedStakePool.depositEthToDepositContract()).to.be.revertedWith(
+      'stand by permissioned validator not available'
     )
   })
 

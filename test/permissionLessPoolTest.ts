@@ -64,7 +64,7 @@ describe('permission less pool tests', () => {
     await env.staderStakingPoolManager.selectPool()
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('78'))
     expect(await provider.getBalance(env.staderStakingPoolManager.address)).to.be.equal(ethers.utils.parseEther('0'))
-    await env.staderPermissionLessPool.depositEthToDepositContract([0, 0])
+    await env.staderPermissionLessPool.depositEthToDepositContract()
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('14'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(2)
@@ -74,7 +74,7 @@ describe('permission less pool tests', () => {
   })
 
   it('revert if permission less pool balance less than 32 eth', async function () {
-    expect(env.staderPermissionLessPool.depositEthToDepositContract([0])).to.be.revertedWith(
+    expect(env.staderPermissionLessPool.depositEthToDepositContract()).to.be.revertedWith(
       'not enough balance to deposit'
     )
   })
@@ -85,8 +85,8 @@ describe('permission less pool tests', () => {
       .deposit(adr.staker5.address, { value: ethers.utils.parseEther('18') })
     await env.staderStakingPoolManager.selectPool()
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('32'))
-    expect(env.staderPermissionLessPool.depositEthToDepositContract([0])).to.be.revertedWith(
-      'permissionLess validator not available'
+    expect(env.staderPermissionLessPool.depositEthToDepositContract()).to.be.revertedWith(
+      'stand by permissionLess validator not available'
     )
   })
 
