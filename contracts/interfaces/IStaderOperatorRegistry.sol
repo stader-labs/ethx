@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.16;
 
-import '../types/StaderPoolType.sol';
-
 interface IStaderOperatorRegistry {
     /// @notice event emits after adding a operator to operatorRegistry
     event AddedToOperatorRegistry(uint256 operatorId, uint256 operatorCount);
@@ -25,8 +23,8 @@ interface IStaderOperatorRegistry {
 
     function addToOperatorRegistry(
         address _operatorRewardAddress,
+        bytes32 _staderPoolType,
         string memory _operatorName,
-        StaderPoolType _staderPoolType,
         uint256 _operatorId,
         uint256 _validatorCount,
         uint256 _activeValidatorCount
@@ -45,8 +43,8 @@ interface IStaderOperatorRegistry {
         view
         returns (
             address operatorRewardAddress,
+            bytes32 staderPoolType,
             string memory operatorName,
-            StaderPoolType staderPoolType,
             uint256 operatorId,
             uint256 validatorCount,
             uint256 activeValidatorCount
@@ -57,6 +55,6 @@ interface IStaderOperatorRegistry {
     function selectOperators(
         uint256 _requiredOperatorCount,
         uint256 _operatorStartIndex,
-        StaderPoolType _poolType
+        bytes32 _poolType
     ) external view returns (uint256[] memory outputOperatorIds, uint256 operatorEndIndex);
 }

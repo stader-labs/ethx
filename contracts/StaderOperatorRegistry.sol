@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './types/StaderPoolType.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
@@ -13,8 +12,8 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
 
     struct Operator {
         address operatorRewardAddress; //Eth1 address of node for reward
+        bytes32 staderPoolType; // pool to which the operator belong
         string operatorName; // name of the operator
-        StaderPoolType staderPoolType; // pool to which the operator belong
         uint256 operatorId; // unique ID given by stader network
         uint256 validatorCount; // validator registered with stader
         uint256 activeValidatorCount; // active validator on beacon chain
@@ -41,8 +40,8 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
      */
     function addToOperatorRegistry(
         address _operatorRewardAddress,
+        bytes32 _staderPoolType,
         string memory _operatorName,
-        StaderPoolType _staderPoolType,
         uint256 _operatorId,
         uint256 _validatorCount,
         uint256 _activeValidatorCount
@@ -114,7 +113,7 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     function selectOperators(
         uint256 _requiredOperatorCount,
         uint256 _operatorStartIndex,
-        StaderPoolType _poolType
+        bytes32 _poolType
     ) external view override returns (uint256[] memory, uint256) {
         uint256 counter;
         uint256[] memory outputOperatorIds = new uint256[](_requiredOperatorCount);

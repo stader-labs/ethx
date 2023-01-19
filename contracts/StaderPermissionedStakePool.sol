@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.16;
 
-import './types/StaderPoolType.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderPermissionedStakePool.sol';
@@ -26,6 +25,7 @@ contract StaderPermissionedStakePool is
     IStaderValidatorRegistry public staderValidatorRegistry;
 
     bytes32 public constant STADER_PERMISSIONED_POOL_ADMIN = keccak256('STADER_PERMISSIONED_POOL_ADMIN');
+    bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -89,8 +89,8 @@ contract StaderPermissionedStakePool is
         if (operatorIndex == type(uint256).max) {
             staderOperatorRegistry.addToOperatorRegistry(
                 _operatorRewardAddress,
+                PERMISSIONED_POOL,
                 _operatorName,
-                StaderPoolType.Permissioned,
                 _operatorId,
                 1,
                 0
@@ -103,7 +103,7 @@ contract StaderPermissionedStakePool is
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
-            StaderPoolType.Permissioned,
+            PERMISSIONED_POOL,
             _operatorId,
             0
         );
@@ -120,12 +120,15 @@ contract StaderPermissionedStakePool is
         (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
             depositCount,
             permissionedOperatorIndex,
-            StaderPoolType.Permissioned
+            PERMISSIONED_POOL
         );
         permissionedOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(selectedOperatorIds[counter]);
+            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexForOperatorId(
+                PERMISSIONED_POOL,
+                selectedOperatorIds[counter]
+            );
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
             (
                 ,

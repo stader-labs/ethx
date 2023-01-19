@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './types/StaderPoolType.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
@@ -18,7 +17,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         bytes pubKey; //public Key of the validator
         bytes signature; //signature for deposit to Ethereum Deposit contract
         bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
-        StaderPoolType staderPoolType; // validator pool type
+        bytes32 staderPoolType; // validator pool type
         uint256 operatorId; // stader network assigned Id
         uint256 bondEth; // amount of bond eth in gwei
     }
@@ -48,7 +47,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         bytes memory _pubKey,
         bytes memory _signature,
         bytes32 _depositDataRoot,
-        StaderPoolType _staderPoolType,
+        bytes32 _staderPoolType,
         uint256 _operatorId,
         uint256 _bondEth
     ) external override onlyRole(STADER_NETWORK_POOL) {
@@ -80,9 +79,10 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     /**
      * @notice return the index of next permission less validator available for the deposit
      * @dev return uint256 max if no permission less validator is available
-     * @param _permissionLessOperatorId operatorID of a permissionLess operator
+     * @param _poolType stader pool type of the validator
+     * @param _inputOperatorId operatorID of a permissionLess operator
      */
-    function getNextPermissionLessValidator(uint256 _permissionLessOperatorId)
+    function getValidatorIndexForOperatorId(bytes32 _poolType, uint256 _inputOperatorId)
         external
         view
         override
@@ -93,29 +93,8 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
             if (
                 //slither-disable-next-line boolean-equal
                 validatorRegistry[index].validatorDepositStatus == false &&
-                validatorRegistry[index].staderPoolType == StaderPoolType.PermissionLess &&
-                validatorRegistry[index].operatorId == _permissionLessOperatorId
-            ) {
-                return index;
-            }
-            index++;
-        }
-        return type(uint256).max;
-    }
-
-    /**
-     * @notice return the index of next permission validator available for the deposit
-     * @dev return uint256 max if no permission validator is available
-     * @param _permissionedOperatorId operatorID of a permissioned operator
-     */
-    function getNextPermissionedValidator(uint256 _permissionedOperatorId) external view override returns (uint256) {
-        uint256 index = 0;
-        while (index < validatorCount) {
-            if (
-                //slither-disable-next-line boolean-equal
-                validatorRegistry[index].validatorDepositStatus == false &&
-                validatorRegistry[index].staderPoolType == StaderPoolType.Permissioned &&
-                validatorRegistry[index].operatorId == _permissionedOperatorId
+                validatorRegistry[index].staderPoolType == _poolType &&
+                validatorRegistry[index].operatorId == _inputOperatorId
             ) {
                 return index;
             }

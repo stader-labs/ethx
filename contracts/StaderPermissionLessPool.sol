@@ -1,6 +1,5 @@
 pragma solidity ^0.8.16;
 
-import './types/StaderPoolType.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
@@ -18,6 +17,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
 
     bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
     bytes32 public constant PERMISSION_LESS_OPERATOR = keccak256('PERMISSION_LESS_OPERATOR');
+    bytes32 public constant PERMISSION_LESS_POOL = keccak256('PERMISSION_LESS_POOL');
 
     event DepositToDepositContract(bytes indexed pubKey);
     event ReceivedETH(address indexed from, uint256 amount);
@@ -75,12 +75,13 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
             depositCount,
             permissionLessOperatorIndex,
-            StaderPoolType.PermissionLess
+            PERMISSION_LESS_POOL
         );
         permissionLessOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionLessValidator(
+            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexForOperatorId(
+                PERMISSION_LESS_POOL,
                 selectedOperatorIds[counter]
             );
             require(validatorIndex != type(uint256).max, 'permissionLess validator not available');
@@ -120,8 +121,8 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         if (operatorIndex == type(uint256).max) {
             staderOperatorRegistry.addToOperatorRegistry(
                 _operatorRewardAddress,
+                PERMISSION_LESS_POOL,
                 _operatorName,
-                StaderPoolType.PermissionLess,
                 _operatorId,
                 1,
                 0
@@ -134,7 +135,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
-            StaderPoolType.PermissionLess,
+            PERMISSION_LESS_POOL,
             _operatorId,
             msg.value
         );
