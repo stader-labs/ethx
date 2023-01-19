@@ -9,6 +9,8 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
+    uint256 public bondEthThreshold;
+    uint256 public penaltyThreshold = 3;
 
     bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
     bytes32 public constant override SLASHING_MANAGER_OWNER = keccak256('SLASHING_MANAGER_OWNER');
@@ -37,20 +39,57 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function processVoluntaryExitValidators(bytes[] calldata _pubKeys, uint256[] calldata _currentBondETH)
+    function updateMisbehavePenaltyScore(bytes[] calldata _pubKeys) external override onlyRole(STADER_DAO) {
+        for (uint256 index; index < _pubKeys.length; index++) {
+            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
+            require(validatorIndex != type(uint256).max, 'validator not available');
+            (, , , , , , , , uint256 penaltyCount) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            penaltyCount++;
+            staderValidatorRegistry.increasePenaltyCount(validatorIndex);
+            if (penaltyCount >= penaltyThreshold) {
+                staderValidatorRegistry.markValidatorReadyForWithdrawal(validatorIndex);
+            }
+        }
+    }
+
+    function updateBondEthWithPenalties(bytes[] calldata _pubKeys, uint256[] calldata _validatorPenalties)
         external
         override
         onlyRole(STADER_DAO)
     {
-        require(_pubKeys.length == _currentBondETH.length, 'incorrect slashingPenalty data');
+        require(_pubKeys.length == _validatorPenalties.length, 'incorrect validatorPenalties data');
         for (uint256 index; index < _pubKeys.length; index++) {
             uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
             require(validatorIndex != type(uint256).max, 'validator not available');
-            (, , , , , uint256 operatorId, ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
-            if (_currentBondETH[index] > 0) {
+            (, , , , , , , uint256 bondEth, ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            bondEth = bondEth >= _validatorPenalties[index] ? bondEth - _validatorPenalties[index] : 0;
+            staderValidatorRegistry.updateBondEth(validatorIndex, bondEth);
+            if (bondEth <= bondEthThreshold) {
+                staderValidatorRegistry.markValidatorReadyForWithdrawal(validatorIndex);
+            }
+        }
+    }
+
+    function processWithdrawnValidators(bytes[] calldata _pubKeys, uint256[] calldata _nodeShare)
+        external
+        override
+        onlyRole(STADER_DAO)
+    {
+        require(_pubKeys.length == _nodeShare.length, 'incorrect slashingPenalty data');
+        for (uint256 index; index < _pubKeys.length; index++) {
+            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
+            require(validatorIndex != type(uint256).max, 'validator not available');
+            (, , , , , , uint256 operatorId, , ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+
+            uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(operatorId);
+            require(operatorIndex != type(uint256).max, 'operator does not exit');
+
+            (address operatorRewardAddress, , , , , ) = staderOperatorRegistry.operatorRegistry(operatorIndex);
+            if (_nodeShare[index] > 0) {
+                //permission less operator
                 //write withdraw balance logic for node operator
             }
-            staderValidatorRegistry.handleVoluntaryExitValidators(_pubKeys[index]);
+            staderValidatorRegistry.handleWithdrawnValidators(_pubKeys[index]);
             staderOperatorRegistry.reduceOperatorValidatorsCount(operatorId);
         }
     }
@@ -81,5 +120,21 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
     {
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
+    }
+
+    /**
+     * @dev update bond Eth threshold to trigger voluntary exit
+     * @param _newBondEthThreshold new bondEth threshold limit
+     */
+    function updateBondEthThreshold(uint256 _newBondEthThreshold) external override onlyRole(STADER_DAO) {
+        bondEthThreshold = _newBondEthThreshold;
+    }
+
+    /**
+     * @dev update penalty threshold to trigger voluntary exit
+     * @param _newPenaltyThreshold new penalty threshold limit
+     */
+    function updatePenaltyThreshold(uint256 _newPenaltyThreshold) external override onlyRole(STADER_DAO) {
+        penaltyThreshold = _newPenaltyThreshold;
     }
 }

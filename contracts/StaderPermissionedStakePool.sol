@@ -99,7 +99,6 @@ contract StaderPermissionedStakePool is
             staderOperatorRegistry.incrementValidatorCount(_operatorId);
         }
         staderValidatorRegistry.addToValidatorRegistry(
-            false,
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
@@ -132,11 +131,13 @@ contract StaderPermissionedStakePool is
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
             (
                 ,
+                ,
                 bytes memory pubKey,
                 bytes memory signature,
                 bytes32 depositDataRoot,
                 ,
                 uint256 operatorId,
+                ,
 
             ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 

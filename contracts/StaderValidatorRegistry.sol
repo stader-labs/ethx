@@ -14,12 +14,14 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
 
     struct Validator {
         bool validatorDepositStatus; // state of validator
+        bool isWithdrawal; //status of validator readiness to withdraw
         bytes pubKey; //public Key of the validator
         bytes signature; //signature for deposit to Ethereum Deposit contract
         bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
         bytes32 staderPoolType; // validator pool type
         uint256 operatorId; // stader network assigned Id
         uint256 bondEth; // amount of bond eth in gwei
+        uint256 penaltyCount; // penalty for MEV theft or any other wrong doing
     }
     mapping(uint256 => Validator) public override validatorRegistry;
     mapping(bytes => uint256) public override validatorPubKeyIndex;
@@ -34,7 +36,6 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
 
     /**
      * @dev add a validator to the registry
-     * @param _validatorDepositStatus status of validator
      * @param _pubKey public Key of the validator
      * @param _signature signature for deposit to Ethereum Deposit contract
      * @param _depositDataRoot deposit data root for deposit to Ethereum Deposit contract
@@ -43,7 +44,6 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
      * @param _bondEth amount of bond eth in gwei
      */
     function addToValidatorRegistry(
-        bool _validatorDepositStatus,
         bytes memory _pubKey,
         bytes memory _signature,
         bytes32 _depositDataRoot,
@@ -52,13 +52,15 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         uint256 _bondEth
     ) external override onlyRole(STADER_NETWORK_POOL) {
         Validator storage _validatorRegistry = validatorRegistry[validatorCount];
-        _validatorRegistry.validatorDepositStatus = _validatorDepositStatus;
+        _validatorRegistry.validatorDepositStatus = false;
+        _validatorRegistry.isWithdrawal = false;
         _validatorRegistry.pubKey = _pubKey;
         _validatorRegistry.signature = _signature;
         _validatorRegistry.depositDataRoot = _depositDataRoot;
         _validatorRegistry.staderPoolType = _staderPoolType;
         _validatorRegistry.operatorId = _operatorId;
         _validatorRegistry.bondEth = _bondEth;
+        _validatorRegistry.penaltyCount = 0;
         validatorPubKeyIndex[_pubKey] = validatorCount;
         validatorCount++;
         emit AddedToValidatorRegistry(_pubKey, _staderPoolType, validatorCount);
@@ -130,7 +132,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
      * @dev return uint256 max if no index is not found
      * @param _publicKey public key of the validator
      */
-    function getValidatorIndexByPublicKey(bytes calldata _publicKey) public view override returns (uint256) {
+    function getValidatorIndexByPublicKey(bytes calldata _publicKey) external view override returns (uint256) {
         uint256 index = validatorPubKeyIndex[_publicKey];
         if (keccak256(_publicKey) == keccak256(validatorRegistry[index].pubKey)) return index;
         return type(uint256).max;
@@ -141,10 +143,30 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
      * @dev only accept call from stader slashing manager contract
      * @param _pubKey public key of the validator
      */
-    function handleVoluntaryExitValidators(bytes memory _pubKey) external override onlyRole(STADER_SLASHING_MANAGER) {
+    function handleWithdrawnValidators(bytes memory _pubKey) external override onlyRole(STADER_SLASHING_MANAGER) {
         uint256 index = validatorPubKeyIndex[_pubKey];
         require(index != type(uint256).max, 'pubKey does not exist on registry');
         _removeValidatorFromRegistry(_pubKey, index);
+    }
+
+    function increasePenaltyCount(uint256 validatorIndex) external override onlyRole(STADER_SLASHING_MANAGER) {
+        validatorRegistry[validatorIndex].penaltyCount++;
+    }
+
+    function updateBondEth(uint256 validatorIndex, uint256 currentBondEth)
+        external
+        override
+        onlyRole(STADER_SLASHING_MANAGER)
+    {
+        validatorRegistry[validatorIndex].bondEth = currentBondEth;
+    }
+
+    function markValidatorReadyForWithdrawal(uint256 validatorIndex)
+        external
+        override
+        onlyRole(STADER_SLASHING_MANAGER)
+    {
+        validatorRegistry[validatorIndex].isWithdrawal = true;
     }
 
     function toString(bytes memory data) private pure returns (string memory) {

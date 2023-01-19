@@ -14,7 +14,6 @@ interface IStaderValidatorRegistry {
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
     function addToValidatorRegistry(
-        bool _validatorDepositStatus,
         bytes memory _pubKey,
         bytes memory _signature,
         bytes32 _depositDataRoot,
@@ -34,11 +33,17 @@ interface IStaderValidatorRegistry {
         view
         returns (uint256);
 
-    function handleVoluntaryExitValidators(bytes memory _pubKey) external;
+    function handleWithdrawnValidators(bytes memory _pubKey) external;
+
+    function increasePenaltyCount(uint256 validatorIndex) external;
 
     function incrementRegisteredValidatorCount(bytes memory _publicKey) external;
 
+    function markValidatorReadyForWithdrawal(uint256 validatorIndex) external;
+
     function registeredValidatorCount() external view returns (uint256);
+
+    function updateBondEth(uint256 validatorIndex, uint256 currentBondEth) external;
 
     function validatorCount() external view returns (uint256);
 
@@ -49,11 +54,13 @@ interface IStaderValidatorRegistry {
         view
         returns (
             bool validatorDepositStatus,
+            bool isWithdrawal,
             bytes memory pubKey,
             bytes memory signature,
             bytes32 depositDataRoot,
             bytes32 staderPoolType,
             uint256 operatorId,
-            uint256 bondEth
+            uint256 bondEth,
+            uint256 penaltyCount
         );
 }

@@ -87,11 +87,13 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             require(validatorIndex != type(uint256).max, 'permissionLess validator not available');
             (
                 ,
+                ,
                 bytes memory pubKey,
                 bytes memory signature,
                 bytes32 depositDataRoot,
                 ,
                 uint256 operatorId,
+                ,
 
             ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
@@ -131,7 +133,6 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             staderOperatorRegistry.incrementValidatorCount(_operatorId);
         }
         staderValidatorRegistry.addToValidatorRegistry(
-            false,
             _validatorPubkey,
             _validatorSignature,
             _depositDataRoot,
