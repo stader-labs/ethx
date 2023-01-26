@@ -5,11 +5,12 @@ pragma solidity ^0.8.16;
 import './ETHX.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/ISocializingPoolContract.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import './interfaces/IStaderOracle.sol';
+import './interfaces/IStaderWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
@@ -25,12 +26,16 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     ETHX public ethX;
     IStaderOracle public oracle;
+    IStaderWithdrawalManager public withdrawalManager;
     address public socializingPoolAddress;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minDepositLimit;
     uint256 public maxDepositLimit;
+    uint256 public requiredETHForWithdrawal;
     uint256 public totalELRewardsCollected;
+    uint256 public pendingValidatorsToExit;
+    uint256 public totalWRETH;
 
     struct Pool {
         address poolAddress;
@@ -216,6 +221,19 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /**
+     * @dev update stader withdrawal manager address
+     * @param _withdrawalManager stader withdrawal Manager contract
+     */
+    function updateWithdrawalManager(address _withdrawalManager)
+        external
+        checkZeroAddress(_withdrawalManager)
+        onlyRole(TIMELOCK_ADMIN_ROLE)
+    {
+        withdrawalManager = IStaderWithdrawalManager(_withdrawalManager);
+        emit UpdatedWithdrawalManagerAddress(address(withdrawalManager));
+    }
+
+    /**
      * @notice Returns the amount of ETHER equivalent 1 ETHX (with 18 decimals)
      */
     function getExchangeRate() public view returns (uint256) {
@@ -248,11 +266,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         return _isVaultHealthy() ? maxDepositLimit : 0;
     }
 
-    /** @dev See {IERC4626-maxMint}. */
-    function maxMint(address) public pure returns (uint256) {
-        return type(uint256).max;
-    }
-
     /** @dev See {IERC4626-maxWithdraw}. */
     function maxWithdraw(address owner) public view returns (uint256) {
         return _convertToAssets(ethX.balanceOf(owner), Math.Rounding.Down);
@@ -266,11 +279,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     /** @dev See {IERC4626-previewDeposit}. */
     function previewDeposit(uint256 assets) public view override returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Down);
-    }
-
-    /** @dev See {IERC4626-previewMint}. */
-    function previewMint(uint256 shares) public view override returns (uint256) {
-        return _convertToAssets(shares, Math.Rounding.Up);
     }
 
     /** @dev See {IERC4626-previewWithdraw}. */
@@ -289,53 +297,78 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         require(assets <= maxDeposit(receiver), 'ERC4626: deposit more than max');
 
         uint256 shares = previewDeposit(assets);
-        require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
         _deposit(_msgSender(), receiver, assets, shares);
 
         return shares;
-    }
-
-    /** @dev See {IERC4626-mint}.
-     *
-     * As opposed to {deposit}, minting is allowed even if the vault is in a state where the price of a share is zero.
-     * In this case, the shares will be minted without requiring any assets to be deposited.
-     */
-    function mint(uint256 shares, address receiver) public payable override whenNotPaused returns (uint256) {
-        require(shares <= maxMint(receiver), 'ERC4626: mint more than max');
-
-        uint256 assets = previewMint(shares);
-        require(msg.value == assets, 'Invalid eth sent according to shares');
-        _deposit(_msgSender(), receiver, assets, shares);
-
-        return assets;
     }
 
     /** @dev See {IERC4626-withdraw}. */
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) public override whenNotPaused returns (uint256) {
-        require(assets <= maxWithdraw(owner), 'ERC4626: withdraw more than max');
+    function withdraw(uint256 _ethXAmount) public whenNotPaused returns (uint256 requestId) {
+        require(address(withdrawalManager) != address(0), 'ZERO_WITHDRAWAL_ADDRESS');
+        uint256 shares = previewWithdraw(_ethXAmount); //fix this
+        requiredETHForWithdrawal += shares;
 
-        uint256 shares = previewWithdraw(assets);
-        _withdraw(_msgSender(), receiver, owner, assets, shares);
-
-        return shares;
+        // lock StETH to withdrawal contract
+        ethX.transferFrom(msg.sender, (address(withdrawalManager)), _ethXAmount);
+        requestId = IStaderWithdrawalManager(withdrawalManager).withdraw(msg.sender, shares, _ethXAmount);
+        emit WithdrawalRequested(msg.sender, shares, _ethXAmount, requestId);
     }
 
     /** @dev See {IERC4626-redeem}. */
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) public override whenNotPaused returns (uint256) {
-        require(shares <= maxRedeem(owner), 'ERC4626: redeem more than max');
+    function redeem(uint256 _requestId) external whenNotPaused {
+        require(address(withdrawalManager) != address(0), 'ZERO_WITHDRAWAL_ADDRESS');
 
-        uint256 assets = previewRedeem(shares);
-        _withdraw(_msgSender(), receiver, owner, assets, shares);
+        address recipient = IStaderWithdrawalManager(withdrawalManager).redeem(_requestId);
 
-        return assets;
+        emit WithdrawalClaimed(_requestId, recipient, msg.sender);
+    }
+
+    function processUserWithdrawalRequest() external whenNotPaused{
+        uint256 latestRequestId = withdrawalManager.getLatestRequestId();
+        uint256 finalizedRequestIndex = withdrawalManager.finalizedRequestsCounter();
+        uint256 processedRequestIndex = withdrawalManager.processedRequestCounter();
+        uint256 index = processedRequestIndex;
+        uint256 ethRequiredToProcessRequest;
+        ( , , uint256 cumulativeEther, , ) = withdrawalManager.withdrawRequest(processedRequestIndex);
+        for(uint256 i = processedRequestIndex+1;i<latestRequestId;i++){
+        ( , , uint256 cumulativeEtherForIndex, , ) = withdrawalManager.withdrawRequest(i);
+            ethRequiredToProcessRequest = cumulativeEtherForIndex- cumulativeEther;
+            if(ethRequiredToProcessRequest<= address(this).balance){
+                index = i;
+            }
+        }
+        ( , , uint256 latestCumulativeEther, , ) = withdrawalManager.withdrawRequest(latestRequestId);
+        ( , , uint256 indexCumulativeEther, , ) = withdrawalManager.withdrawRequest(index);
+        ( , , uint256 finalizeCumulativeEther, , ) = withdrawalManager.withdrawRequest(finalizedRequestIndex);
+
+        withdrawalManager.finalize{value:ethRequiredToProcessRequest}(index,ethRequiredToProcessRequest,oracle.totalETHBalance(),oracle.totalETHXSupply());
+        totalWRETH -= ethRequiredToProcessRequest;
+        requiredETHForWithdrawal = Math.min(latestCumulativeEther-indexCumulativeEther, latestCumulativeEther-finalizeCumulativeEther);
+        uint256 exitValidatorCount = SafeMath.div(requiredETHForWithdrawal - address(this).balance - pendingValidatorsToExit*DEPOSIT_SIZE- totalWRETH, DEPOSIT_SIZE);
+        totalWRETH += requiredETHForWithdrawal; 
+    }
+
+
+    function withdrawalRequestStatus(uint256 _requestId)
+        external
+        view
+        returns (
+            address recipient,
+            uint256 requestBlockNumber,
+            uint256 etherToWithdraw,
+            bool isFinalized,
+            bool isClaimed
+        )
+    {
+        IStaderWithdrawalManager withdrawal = IStaderWithdrawalManager(withdrawalManager);
+
+        (isClaimed, recipient, etherToWithdraw, , requestBlockNumber) = withdrawal.withdrawRequest(_requestId);
+        if (_requestId > 0) {
+            // there is cumulative ether values in the queue so we need to subtract previous on
+            ( , , uint256 previousCumulativeEther, , ) = withdrawal.withdrawRequest(_requestId - 1);
+            etherToWithdraw = etherToWithdraw - previousCumulativeEther;
+        }
+        isFinalized = _requestId < withdrawal.finalizedRequestsCounter();
     }
 
     /**
@@ -430,22 +463,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     ) internal {
         ethX.mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
-    }
-
-    /**
-     * @dev Withdraw/redeem common workflow.
-     */
-    function _withdraw(
-        address caller,
-        address receiver,
-        address owner,
-        uint256 assets,
-        uint256 shares
-    ) internal {
-        ethX.burnFrom(owner, shares);
-        emit Withdrawn(caller, receiver, owner, assets, shares);
-        //slither-disable-next-line arbitrary-send-eth
-        payable(receiver).transfer(assets);
     }
 
     /**

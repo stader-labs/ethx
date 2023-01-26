@@ -86,7 +86,7 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
   // const poolManagerRolePermissionLessPool = await staderPermissionLessPool.STADER_POOL_MANAGER()
   // await staderPermissionLessPool.grantRole(poolManagerRolePermissionLessPool, staderStakingPoolManager.address)
 
-  const socializePoolFactory = await ethers.getContractFactory('SocializingPoolContract')
+  const socializePoolFactory = await ethers.getContractFactory('SocializingPool')
   const socializePool = await upgrades.deployProxy(socializePoolFactory, [
     operatorRegistry.address,
     validatorRegistry.address,

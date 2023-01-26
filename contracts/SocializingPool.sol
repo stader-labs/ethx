@@ -3,13 +3,13 @@
 pragma solidity ^0.8.16;
 
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/ISocializingPoolContract.sol';
+import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract SocializingPoolContract is ISocializingPoolContract, Initializable, AccessControlUpgradeable {
+contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable {
     IStaderValidatorRegistry public staderValidatorRegistry;
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderStakePoolManager public staderStakePoolManager;

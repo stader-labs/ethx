@@ -17,6 +17,7 @@ interface IStaderStakePoolManager {
     event UpdatedSocializingPoolAddress(address executionLayerRewardContract);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
     event UpdatedStaderOracle(address oracle);
+    event UpdatedWithdrawalManagerAddress(address withdrawalManager);
     event UpdatedPermissionedPoolAddresses(address staderStakePool);
     event UpdatedStaderTreasury(address staderTreasury);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
@@ -27,6 +28,10 @@ interface IStaderStakePoolManager {
         uint256 assets,
         uint256 shares
     );
+
+    event WithdrawalRequested(address indexed recipient, uint256 ethAmount, uint256 sharesAmount, uint256 requestId);
+
+    event WithdrawalClaimed(uint256 indexed requestId, address indexed receiver, address initiator);
 
     function deposit(address receiver) external payable returns (uint256);
 
@@ -42,11 +47,7 @@ interface IStaderStakePoolManager {
         address _timeLockOwner
     ) external;
 
-    function mint(uint256 shares, address receiver) external payable returns (uint256);
-
     function previewDeposit(uint256 assets) external view returns (uint256);
-
-    function previewMint(uint256 shares) external view returns (uint256);
 
     function previewRedeem(uint256 shares) external view returns (uint256);
 
@@ -54,15 +55,15 @@ interface IStaderStakePoolManager {
 
     function receiveExecutionLayerRewards() external payable;
 
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external returns (uint256);
+    // function redeem(
+    //     uint256 shares,
+    //     address receiver,
+    //     address owner
+    // ) external returns (uint256);
 
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external returns (uint256);
+    // function withdraw(
+    //     uint256 assets,
+    //     address receiver,
+    //     address owner
+    // ) external returns (uint256);
 }
