@@ -2,18 +2,17 @@
 pragma solidity ^0.8.16;
 
 import './types/StaderPoolType.sol';
+import './interfaces/IStaderValidatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
-    uint256 public validatorCount;
-    uint256 public registeredValidatorCount;
-    uint256 public constant collateralETH = 4 ether;
+contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, AccessControlUpgradeable {
+    uint256 public override validatorCount;
+    uint256 public override registeredValidatorCount;
+    uint256 public constant override collateralETH = 4 ether;
 
-    bytes32 public constant STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
-    bytes32 public constant VALIDATOR_REGISTRY_ADMIN = keccak256('VALIDATOR_REGISTRY_ADMIN');
-
-    /// @notice event emits after adding a validator to validatorRegistry
-    event AddedToValidatorRegistry(bytes publicKey, StaderPoolType staderPoolType, uint256 count);
+    bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
+    bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
+    bytes32 public constant override VALIDATOR_REGISTRY_ADMIN = keccak256('VALIDATOR_REGISTRY_ADMIN');
 
     struct Validator {
         bool validatorDepositStatus; // state of validator
@@ -24,8 +23,8 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         uint256 operatorId; // stader network assigned Id
         uint256 bondEth; // amount of bond eth in gwei
     }
-    mapping(uint256 => Validator) public validatorRegistry;
-    mapping(bytes => uint256) public validatorPubKeyIndex;
+    mapping(uint256 => Validator) public override validatorRegistry;
+    mapping(bytes => uint256) public override validatorPubKeyIndex;
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -35,12 +34,16 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
+     * @param _validatorRegistryAdmin admin operator for operator registry
      */
-    function initialize() external initializer {
+    function initialize(address _validatorRegistryAdmin)
+        external
+        checkZeroAddress(_validatorRegistryAdmin)
+        initializer
+    {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(STADER_NETWORK_POOL, msg.sender);
-        _grantRole(VALIDATOR_REGISTRY_ADMIN, msg.sender);
+        _grantRole(VALIDATOR_REGISTRY_ADMIN, _validatorRegistryAdmin);
     }
 
     /**
@@ -61,7 +64,7 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         StaderPoolType _staderPoolType,
         uint256 _operatorId,
         uint256 _bondEth
-    ) external onlyRole(STADER_NETWORK_POOL) {
+    ) external override onlyRole(STADER_NETWORK_POOL) {
         Validator storage _validatorRegistry = validatorRegistry[validatorCount];
         _validatorRegistry.validatorDepositStatus = _validatorDepositStatus;
         _validatorRegistry.pubKey = _pubKey;
@@ -75,14 +78,29 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         emit AddedToValidatorRegistry(_pubKey, _staderPoolType, validatorCount);
     }
 
-    function incrementRegisteredValidatorCount(bytes memory _pubKey) external onlyRole(STADER_NETWORK_POOL) {
+    /**
+     * @notice update the count of total registered validator on beacon chain
+     * @dev only accept call from stader network pools
+     * @param _pubKey public key of the validator
+     */
+    function incrementRegisteredValidatorCount(bytes memory _pubKey) external override onlyRole(STADER_NETWORK_POOL) {
         uint256 index = validatorPubKeyIndex[_pubKey];
         require(index != type(uint256).max, 'pubKey does not exist on registry');
         validatorRegistry[index].validatorDepositStatus = true;
         registeredValidatorCount++;
     }
 
-    function getNextPermissionLessValidator(uint256 _permissionLessOperatorId) external view returns (uint256) {
+    /**
+     * @notice return the index of next permission less validator available for the deposit
+     * @dev return uint256 max if no permission less validator is available
+     * @param _permissionLessOperatorId operatorID of a permissionLess operator
+     */
+    function getNextPermissionLessValidator(uint256 _permissionLessOperatorId)
+        external
+        view
+        override
+        returns (uint256)
+    {
         uint256 index = 0;
         while (index < validatorCount) {
             if (
@@ -98,7 +116,12 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         return type(uint256).max;
     }
 
-    function getNextPermissionedValidator(uint256 _permissionedOperatorId) external view returns (uint256) {
+    /**
+     * @notice return the index of next permission validator available for the deposit
+     * @dev return uint256 max if no permission validator is available
+     * @param _permissionedOperatorId operatorID of a permissioned operator
+     */
+    function getNextPermissionedValidator(uint256 _permissionedOperatorId) external view override returns (uint256) {
         uint256 index = 0;
         while (index < validatorCount) {
             if (
@@ -114,11 +137,11 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         return type(uint256).max;
     }
 
-    function getPoRAddressListLength() external view returns (uint256) {
+    function getPoRAddressListLength() external view override returns (uint256) {
         return validatorCount;
     }
 
-    function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view returns (string[] memory) {
+    function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view override returns (string[] memory) {
         if (startIndex > endIndex) {
             return new string[](0);
         }
@@ -136,10 +159,26 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
         return stringAddresses;
     }
 
-    function getValidatorIndexByPublicKey(bytes calldata _publicKey) public view returns (uint256) {
+    /**
+     * @notice fetch validator index in the registry based on public key
+     * @dev return uint256 max if no index is not found
+     * @param _publicKey public key of the validator
+     */
+    function getValidatorIndexByPublicKey(bytes calldata _publicKey) public view override returns (uint256) {
         uint256 index = validatorPubKeyIndex[_publicKey];
         if (keccak256(_publicKey) == keccak256(validatorRegistry[index].pubKey)) return index;
         return type(uint256).max;
+    }
+
+    /**
+     * @notice update the value of bond eth in case of permission less pool validators
+     * @dev only accept call from stader slashing manager contract
+     * @param _pubKey public key of the validator
+     */
+    function handleVoluntaryExitValidators(bytes memory _pubKey) external override onlyRole(STADER_SLASHING_MANAGER) {
+        uint256 index = validatorPubKeyIndex[_pubKey];
+        require(index != type(uint256).max, 'pubKey does not exist on registry');
+        _removeValidatorFromRegistry(_pubKey, index);
     }
 
     function toString(bytes memory data) private pure returns (string memory) {
@@ -153,5 +192,13 @@ contract StaderValidatorRegistry is Initializable, AccessControlUpgradeable {
             str[3 + i * 2] = alphabet[uint256(uint8(data[i] & 0x0f))];
         }
         return string(str);
+    }
+
+    function _removeValidatorFromRegistry(bytes memory _pubKey, uint256 _index) internal {
+        delete (validatorRegistry[_index]);
+        delete (validatorPubKeyIndex[_pubKey]);
+        validatorCount--;
+        registeredValidatorCount--;
+        emit RemovedValidatorFromRegistry(_pubKey);
     }
 }

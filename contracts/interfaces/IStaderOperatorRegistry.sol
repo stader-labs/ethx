@@ -5,22 +5,25 @@ pragma solidity ^0.8.16;
 import '../types/StaderPoolType.sol';
 
 interface IStaderOperatorRegistry {
+    /// @notice event emits after adding a operator to operatorRegistry
     event AddedToOperatorRegistry(uint256 operatorId, uint256 operatorCount);
+
+    /// @notice event emits after increasing validatorCount for an operator
     event IncrementedValidatorCount(uint256 operatorId, uint256 validatorCount);
+
+    /// @notice event emits after increasing activeValidatorCount for an operator
     event IncrementedActiveValidatorCount(uint256 operatorId, uint256 activeValidatorCount);
 
-    event Initialized(uint8 version);
-    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
-
-    function DEFAULT_ADMIN_ROLE() external view returns (bytes32);
+    /// @notice event emits after increasing the penalty score of a operator for misbehaving
+    event ReducedValidatorCount(uint256 operatorId, uint256 validatorCount, uint256 activeActiveCount);
 
     function OPERATOR_REGISTRY_ADMIN() external view returns (bytes32);
 
     function operatorCount() external view returns (uint256);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
+
+    function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
     function addToOperatorRegistry(
         address _operatorRewardAddress,
@@ -33,17 +36,9 @@ interface IStaderOperatorRegistry {
 
     function getOperatorIndexById(uint256 _operatorId) external view returns (uint256);
 
-    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function incrementActiveValidatorCount(uint256 _operatorId) external;
 
-    function grantRole(bytes32 role, address account) external;
-
-    function hasRole(bytes32 role, address account) external view returns (bool);
-
-    function incrementActiveValidatorCount(uint256 _index) external;
-
-    function incrementValidatorCount(uint256 _index) external;
-
-    function initialize() external;
+    function incrementValidatorCount(uint256 _operatorId) external;
 
     function operatorIdIndex(uint256) external view returns (uint256);
 
@@ -59,9 +54,5 @@ interface IStaderOperatorRegistry {
             uint256 activeValidatorCount
         );
 
-    function renounceRole(bytes32 role, address account) external;
-
-    function revokeRole(bytes32 role, address account) external;
-
-    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+    function reduceOperatorValidatorsCount(uint256 _operatorId) external;
 }

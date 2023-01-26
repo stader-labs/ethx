@@ -2,22 +2,15 @@
 pragma solidity ^0.8.16;
 
 import './types/StaderPoolType.sol';
+import './interfaces/IStaderOperatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
-    uint256 public operatorCount;
+contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, AccessControlUpgradeable {
+    uint256 public override operatorCount;
 
-    bytes32 public constant STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
-    bytes32 public constant OPERATOR_REGISTRY_ADMIN = keccak256('OPERATOR_REGISTRY_ADMIN');
-
-    /// @notice event emits after adding a operator to operatorRegistry
-    event AddedToOperatorRegistry(uint256 operatorId, uint256 operatorCount);
-
-    /// @notice event emits after increasing validatorCount for an operator
-    event IncrementedValidatorCount(uint256 operatorId, uint256 validatorCount);
-
-    /// @notice event emits after increasing activeValidatorCount for an operator
-    event IncrementedActiveValidatorCount(uint256 operatorId, uint256 activeValidatorCount);
+    bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
+    bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
+    bytes32 public constant override OPERATOR_REGISTRY_ADMIN = keccak256('OPERATOR_REGISTRY_ADMIN');
 
     struct Operator {
         address operatorRewardAddress; //Eth1 address of node for reward
@@ -27,8 +20,8 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
         uint256 validatorCount; // validator registered with stader
         uint256 activeValidatorCount; // active validator on beacon chain
     }
-    mapping(uint256 => Operator) public operatorRegistry;
-    mapping(uint256 => uint256) public operatorIdIndex;
+    mapping(uint256 => Operator) public override operatorRegistry;
+    mapping(uint256 => uint256) public override operatorIdIndex;
 
     /// @notice zero address check modifier
     modifier checkZeroAddress(address _address) {
@@ -38,12 +31,12 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
+     * @param _operatorRegistryAdmin admin operator for operator registry
      */
-    function initialize() external initializer {
+    function initialize(address _operatorRegistryAdmin) external checkZeroAddress(_operatorRegistryAdmin) initializer {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(STADER_NETWORK_POOL, msg.sender);
-        _grantRole(OPERATOR_REGISTRY_ADMIN, msg.sender);
+        _grantRole(OPERATOR_REGISTRY_ADMIN, _operatorRegistryAdmin);
     }
 
     /**
@@ -62,7 +55,7 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
         uint256 _operatorId,
         uint256 _validatorCount,
         uint256 _activeValidatorCount
-    ) external onlyRole(STADER_NETWORK_POOL) {
+    ) external override onlyRole(STADER_NETWORK_POOL) {
         Operator storage _operatorRegistry = operatorRegistry[operatorCount];
         _operatorRegistry.operatorRewardAddress = _operatorRewardAddress;
         _operatorRegistry.operatorId = _operatorId;
@@ -78,9 +71,10 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
     /**
      * @notice update the validator count for a operator
      * @dev only accept call from stader network pools
+     * @param _operatorId operator ID
      */
-    function incrementValidatorCount(uint256 operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        uint256 index = getOperatorIndexById(operatorId);
+    function incrementValidatorCount(uint256 _operatorId) external override onlyRole(STADER_NETWORK_POOL) {
+        uint256 index = getOperatorIndexById(_operatorId);
         require(index != type(uint256).max, 'invalid operatorId');
         operatorRegistry[index].validatorCount++;
         emit IncrementedValidatorCount(operatorRegistry[index].operatorId, operatorRegistry[index].validatorCount);
@@ -89,9 +83,10 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
     /**
      * @notice update the active validator count for a operator
      * @dev only accept call from stader network pools
+     * @param _operatorId operator ID
      */
-    function incrementActiveValidatorCount(uint256 operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        uint256 index = getOperatorIndexById(operatorId);
+    function incrementActiveValidatorCount(uint256 _operatorId) external override onlyRole(STADER_NETWORK_POOL) {
+        uint256 index = getOperatorIndexById(_operatorId);
         require(index != type(uint256).max, 'invalid operatorId');
         operatorRegistry[index].activeValidatorCount++;
         emit IncrementedActiveValidatorCount(
@@ -101,10 +96,28 @@ contract StaderOperatorRegistry is Initializable, AccessControlUpgradeable {
     }
 
     /**
+     * @notice reduce the validator count from registry when a validator is withdrawn
+     * @dev accept call, only from slashing manager contract
+     * @param _operatorId operator ID
+     */
+    function reduceOperatorValidatorsCount(uint256 _operatorId) external override onlyRole(STADER_SLASHING_MANAGER) {
+        uint256 index = getOperatorIndexById(_operatorId);
+        require(index != type(uint256).max, 'invalid operatorId');
+        operatorRegistry[index].validatorCount--;
+        operatorRegistry[index].activeValidatorCount--;
+        emit ReducedValidatorCount(
+            operatorRegistry[index].operatorId,
+            operatorRegistry[index].validatorCount,
+            operatorRegistry[index].activeValidatorCount
+        );
+    }
+
+    /**
      * @notice fetch operator index in registry using operatorId
      * @dev public view method
+     * @param _operatorId operator ID
      */
-    function getOperatorIndexById(uint256 _operatorId) public view returns (uint256) {
+    function getOperatorIndexById(uint256 _operatorId) public view override returns (uint256) {
         uint256 index = operatorIdIndex[_operatorId];
         if (_operatorId == operatorRegistry[index].operatorId) return index;
         return type(uint256).max;
