@@ -82,6 +82,33 @@ contract StaderWithdrawalManager is Initializable, AccessControlUpgradeable {
         withdrawRequest.push(WithdrawInfo(false, _recipient, cumulativeEther, cumulativeShares, block.number));
     }
 
+        /**
+     * @notice put a withdrawal request in a queue and associate it with `_recipient` address
+     * @dev Assumes that `_ethAmount` of stETH is locked before invoking this function
+     * @param _recipient payable address this request will be associated with
+     * @param _etherAmount maximum amount of ether (equal to amount of locked stETH) that will be claimed upon withdrawal
+     * @param _sharesAmount amount of stETH shares that will be burned upon withdrawal
+     * @return requestId unique id to claim funds once it is available
+     */
+    function nodeWithdraw(
+        address payable _recipient,
+        uint256 _etherAmount,
+        uint256 _sharesAmount
+    ) external onlyRole(POOL_MANAGER) returns (uint256 requestId) {
+        require(_etherAmount > MIN_WITHDRAWAL, 'WITHDRAWAL_IS_TOO_SMALL');
+        requestId = withdrawRequest.length;
+
+        uint256 cumulativeEther = _etherAmount;
+        uint256 cumulativeShares = _sharesAmount;
+
+        if (requestId > 0) {
+            cumulativeEther += withdrawRequest[requestId - 1].cumulativeEther;
+            cumulativeShares += withdrawRequest[requestId - 1].cumulativeShares;
+        }
+
+        withdrawRequest.push(WithdrawInfo(false, _recipient, cumulativeEther, cumulativeShares, block.number));
+    }
+
     /**
      * @notice Finalize the batch of requests started at `finalizedRequestsCounter` and ended at `_lastIdToFinalize` using the given price
      * @param _lastIdToFinalize request index in the queue that will be last finalized request in a batch

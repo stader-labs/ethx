@@ -303,7 +303,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /** @dev See {IERC4626-withdraw}. */
-    function withdraw(uint256 _ethXAmount) public whenNotPaused returns (uint256 requestId) {
+    function userWithdraw(uint256 _ethXAmount) public whenNotPaused returns (uint256 requestId) {
         require(address(withdrawalManager) != address(0), 'ZERO_WITHDRAWAL_ADDRESS');
         uint256 shares = previewWithdraw(_ethXAmount); //fix this
         requiredETHForWithdrawal += shares;
@@ -315,7 +315,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /** @dev See {IERC4626-redeem}. */
-    function redeem(uint256 _requestId) external whenNotPaused {
+    function userRedeem(uint256 _requestId) external whenNotPaused {
         require(address(withdrawalManager) != address(0), 'ZERO_WITHDRAWAL_ADDRESS');
 
         address recipient = IStaderWithdrawalManager(withdrawalManager).redeem(_requestId);
@@ -348,8 +348,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         totalWRETH += requiredETHForWithdrawal; 
     }
 
-
-    function withdrawalRequestStatus(uint256 _requestId)
+    function userWithdrawalRequestStatus(uint256 _requestId)
         external
         view
         returns (
@@ -369,6 +368,10 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             etherToWithdraw = etherToWithdraw - previousCumulativeEther;
         }
         isFinalized = _requestId < withdrawal.finalizedRequestsCounter();
+    }
+
+    function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey) public whenNotPaused returns (uint256 requestId) {
+        
     }
 
     /**
