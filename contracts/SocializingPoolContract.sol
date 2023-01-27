@@ -17,7 +17,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
     uint256 public feePercentage;
     uint256 public totalELRewardsCollected;
 
-    bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
+    bytes32 public constant SOCIALIZE_POOL_OWNER = keccak256('SOCIALIZE_POOL_OWNER');
     bytes32 public constant REWARD_DISTRIBUTOR = keccak256('REWARD_DISTRIBUTOR');
 
     /// @notice zero address check modifier
@@ -47,7 +47,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
         staderTreasury = _staderTreasury;
         feePercentage = 10;
-        _grantRole(ADMIN_ROLE, _socializingPoolOwner);
+        _grantRole(SOCIALIZE_POOL_OWNER, _socializingPoolOwner);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -99,7 +99,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
      */
     function updateStaderStakePoolManager(address _staderStakePoolManager)
         external
-        onlyRole(ADMIN_ROLE)
+        onlyRole(SOCIALIZE_POOL_OWNER)
         checkZeroAddress(_staderStakePoolManager)
     {
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
@@ -113,7 +113,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
     function updateStaderTreasury(address _staderTreasury)
         external
         checkZeroAddress(_staderTreasury)
-        onlyRole(ADMIN_ROLE)
+        onlyRole(SOCIALIZE_POOL_OWNER)
     {
         staderTreasury = _staderTreasury;
         emit UpdatedStaderTreasury(staderTreasury);
@@ -126,7 +126,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
     function updateStaderValidatorRegistry(address _staderValidatorRegistry)
         external
         checkZeroAddress(_staderValidatorRegistry)
-        onlyRole(ADMIN_ROLE)
+        onlyRole(SOCIALIZE_POOL_OWNER)
     {
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
         emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
@@ -139,7 +139,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
     function updateStaderOperatorRegistry(address _staderOperatorRegistry)
         external
         checkZeroAddress(_staderOperatorRegistry)
-        onlyRole(ADMIN_ROLE)
+        onlyRole(SOCIALIZE_POOL_OWNER)
     {
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
@@ -149,7 +149,7 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
      * @dev update stader EL reward fee percentage
      * @param _feePercentage new fee percentage
      */
-    function updateFeePercentage(uint256 _feePercentage) external onlyRole(ADMIN_ROLE) {
+    function updateFeePercentage(uint256 _feePercentage) external onlyRole(SOCIALIZE_POOL_OWNER) {
         feePercentage = _feePercentage;
         emit UpdatedFeePercentage(feePercentage);
     }

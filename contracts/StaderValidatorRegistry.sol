@@ -12,7 +12,6 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
 
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
-    bytes32 public constant override VALIDATOR_REGISTRY_ADMIN = keccak256('VALIDATOR_REGISTRY_ADMIN');
 
     struct Validator {
         bool validatorDepositStatus; // state of validator
@@ -43,7 +42,6 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(VALIDATOR_REGISTRY_ADMIN, _validatorRegistryAdmin);
     }
 
     /**
