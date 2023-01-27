@@ -22,6 +22,12 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     mapping(uint256 => Operator) public override operatorRegistry;
     mapping(uint256 => uint256) public override operatorIdIndex;
 
+    /// @notice zero address check modifier
+    modifier checkZeroAddress(address _address) {
+        require(_address != address(0), 'Address cannot be zero');
+        _;
+    }
+
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      * @param _operatorRegistryAdmin admin operator for operator registry

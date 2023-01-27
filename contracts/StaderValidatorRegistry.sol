@@ -25,6 +25,12 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     mapping(uint256 => Validator) public override validatorRegistry;
     mapping(bytes => uint256) public override validatorPubKeyIndex;
 
+    /// @notice zero address check modifier
+    modifier checkZeroAddress(address _address) {
+        require(_address != address(0), 'Address cannot be zero');
+        _;
+    }
+
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      * @param _validatorRegistryAdmin admin operator for operator registry
