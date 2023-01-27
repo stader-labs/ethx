@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 
 import './types/StaderPoolType.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
+import './interfaces/IStaderOperatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, AccessControlUpgradeable {
@@ -24,8 +25,9 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
+     * @param _operatorRegistryAdmin admin operator for operator registry
      */
-    function initialize() external initializer {
+    function initialize(address _operatorRegistryAdmin) external checkZeroAddress(_operatorRegistryAdmin) initializer {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }

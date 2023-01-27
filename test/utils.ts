@@ -36,10 +36,10 @@ const setupEnvironment = async (staderOwner: any, ssvOwner: any) => {
   //console.log("ethDeposit is ", ethDeposit.address);
 
   const operatorRegistryFactory = await ethers.getContractFactory('StaderOperatorRegistry')
-  const operatorRegistry = await upgrades.deployProxy(operatorRegistryFactory)
+  const operatorRegistry = await upgrades.deployProxy(operatorRegistryFactory, [staderOwner.address])
 
   const validatorRegistryFactory = await ethers.getContractFactory('StaderValidatorRegistry')
-  const validatorRegistry = await upgrades.deployProxy(validatorRegistryFactory)
+  const validatorRegistry = await upgrades.deployProxy(validatorRegistryFactory, [staderOwner.address])
 
   //console.log("validatorRegistry is ", validatorRegistry.address);
 
