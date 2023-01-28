@@ -23,9 +23,8 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
-     * @param _operatorRegistryAdmin admin operator for operator registry
      */
-    function initialize(address _operatorRegistryAdmin) external checkZeroAddress(_operatorRegistryAdmin) initializer {
+    function initialize() external initializer {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
