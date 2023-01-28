@@ -2,10 +2,8 @@
 
 pragma solidity ^0.8.16;
 
-import '../types/StaderPoolType.sol';
-
 interface IStaderValidatorRegistry {
-    event AddedToValidatorRegistry(bytes publicKey, StaderPoolType poolType, uint256 count);
+    event AddedToValidatorRegistry(bytes publicKey, bytes32 poolType, uint256 count);
 
     event RemovedValidatorFromRegistry(bytes publicKey);
 
@@ -16,11 +14,10 @@ interface IStaderValidatorRegistry {
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
     function addToValidatorRegistry(
-        bool _validatorDepositStatus,
         bytes memory _pubKey,
         bytes memory _signature,
         bytes32 _depositDataRoot,
-        StaderPoolType _staderPoolType,
+        bytes32 _staderPoolType,
         uint256 _operatorId,
         uint256 _bondEth
     ) external;
@@ -31,15 +28,22 @@ interface IStaderValidatorRegistry {
 
     function getValidatorIndexByPublicKey(bytes memory _publicKey) external view returns (uint256);
 
-    function getNextPermissionLessValidator(uint256 _permissionLessOperatorId) external view returns (uint256);
+    function getValidatorIndexForOperatorId(bytes32 _poolType, uint256 _inputOperatorId)
+        external
+        view
+        returns (uint256);
 
-    function getNextPermissionedValidator(uint256 _permissionedOperatorId) external view returns (uint256);
+    function handleWithdrawnValidators(bytes memory _pubKey) external;
 
-    function handleVoluntaryExitValidators(bytes memory _pubKey) external;
+    function increasePenaltyCount(uint256 validatorIndex) external;
 
     function incrementRegisteredValidatorCount(bytes memory _publicKey) external;
 
+    function markValidatorReadyForWithdrawal(uint256 validatorIndex) external;
+
     function registeredValidatorCount() external view returns (uint256);
+
+    function updateBondEth(uint256 validatorIndex, uint256 currentBondEth) external;
 
     function validatorCount() external view returns (uint256);
 
@@ -50,11 +54,13 @@ interface IStaderValidatorRegistry {
         view
         returns (
             bool validatorDepositStatus,
+            bool isWithdrawal,
             bytes memory pubKey,
             bytes memory signature,
             bytes32 depositDataRoot,
-            StaderPoolType staderPoolType,
+            bytes32 staderPoolType,
             uint256 operatorId,
-            uint256 bondEth
+            uint256 bondEth,
+            uint256 penaltyCount
         );
 }
