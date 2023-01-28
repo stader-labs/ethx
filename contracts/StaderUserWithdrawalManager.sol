@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 import './interfaces/IStaderWithdrawalManager.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderWithdrawalManager is Initializable, AccessControlUpgradeable {
+contract StaderUserWithdrawalManager is Initializable, AccessControlUpgradeable {
     bytes32 public constant  POOL_MANAGER = keccak256('POOL_MANAGER');
     address public poolManager;
 
@@ -64,33 +64,6 @@ contract StaderWithdrawalManager is Initializable, AccessControlUpgradeable {
      * @return requestId unique id to claim funds once it is available
      */
     function withdraw(
-        address payable _recipient,
-        uint256 _etherAmount,
-        uint256 _sharesAmount
-    ) external onlyRole(POOL_MANAGER) returns (uint256 requestId) {
-        require(_etherAmount > MIN_WITHDRAWAL, 'WITHDRAWAL_IS_TOO_SMALL');
-        requestId = withdrawRequest.length;
-
-        uint256 cumulativeEther = _etherAmount;
-        uint256 cumulativeShares = _sharesAmount;
-
-        if (requestId > 0) {
-            cumulativeEther += withdrawRequest[requestId - 1].cumulativeEther;
-            cumulativeShares += withdrawRequest[requestId - 1].cumulativeShares;
-        }
-
-        withdrawRequest.push(WithdrawInfo(false, _recipient, cumulativeEther, cumulativeShares, block.number));
-    }
-
-        /**
-     * @notice put a withdrawal request in a queue and associate it with `_recipient` address
-     * @dev Assumes that `_ethAmount` of stETH is locked before invoking this function
-     * @param _recipient payable address this request will be associated with
-     * @param _etherAmount maximum amount of ether (equal to amount of locked stETH) that will be claimed upon withdrawal
-     * @param _sharesAmount amount of stETH shares that will be burned upon withdrawal
-     * @return requestId unique id to claim funds once it is available
-     */
-    function nodeWithdraw(
         address payable _recipient,
         uint256 _etherAmount,
         uint256 _sharesAmount
