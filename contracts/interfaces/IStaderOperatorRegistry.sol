@@ -53,4 +53,10 @@ interface IStaderOperatorRegistry {
         );
 
     function reduceOperatorValidatorsCount(uint256 _operatorId) external;
+
+    function selectOperators(
+        uint256 _requiredOperatorCount,
+        uint256 _operatorStartIndex,
+        StaderPoolType _poolType
+    ) external view returns (uint256[] memory outputOperatorIds, uint256 operatorEndIndex);
 }

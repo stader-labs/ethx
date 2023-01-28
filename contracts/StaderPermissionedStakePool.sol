@@ -18,6 +18,8 @@ contract StaderPermissionedStakePool is
     PausableUpgradeable
 {
     uint256 public constant DEPOSIT_SIZE = 32 ether;
+    uint256 public permissionedOperatorIndex;
+    uint256 public standByPermissionedValidators;
     IDepositContract public ethValidatorDeposit;
     bytes public withdrawCredential;
     IStaderOperatorRegistry public staderOperatorRegistry;
@@ -105,20 +107,25 @@ contract StaderPermissionedStakePool is
             _operatorId,
             0
         );
+        standByPermissionedValidators++;
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract(uint256[] memory _operatorIds)
-        external
-        payable
-        onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
-    {
+    function depositEthToDepositContract() external payable onlyRole(STADER_PERMISSIONED_POOL_ADMIN) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
+        require(standByPermissionedValidators > 0, 'stand by permissioned validator not available');
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
-        require(depositCount == _operatorIds.length, 'Invalid input of operator Ids');
+        depositCount = depositCount > standByPermissionedValidators ? standByPermissionedValidators : depositCount;
+        standByPermissionedValidators -= depositCount;
+        (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
+            depositCount,
+            permissionedOperatorIndex,
+            StaderPoolType.Permissioned
+        );
+        permissionedOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(_operatorIds[counter]);
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionedValidator(selectedOperatorIds[counter]);
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
             (
                 ,

@@ -9,6 +9,8 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
     uint256 public constant DEPOSIT_SIZE = 32 ether;
+    uint256 public permissionLessOperatorIndex;
+    uint256 public standByPermissionLessValidators;
     IDepositContract public ethValidatorDeposit;
     bytes public withdrawCredential;
     IStaderOperatorRegistry public staderOperatorRegistry;
@@ -64,17 +66,23 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract(uint256[] memory _operatorIds)
-        external
-        payable
-        onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
-    {
+    function depositEthToDepositContract() external payable onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
+        require(standByPermissionLessValidators > 0, 'stand by permissionLess validator not available');
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
-        require(depositCount == _operatorIds.length, 'Invalid input of operator Ids');
+        depositCount = depositCount > standByPermissionLessValidators ? standByPermissionLessValidators : depositCount;
+        standByPermissionLessValidators -= depositCount;
+        (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
+            depositCount,
+            permissionLessOperatorIndex,
+            StaderPoolType.PermissionLess
+        );
+        permissionLessOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionLessValidator(_operatorIds[counter]);
+            uint256 validatorIndex = staderValidatorRegistry.getNextPermissionLessValidator(
+                selectedOperatorIds[counter]
+            );
             require(validatorIndex != type(uint256).max, 'permissionLess validator not available');
             (
                 ,
@@ -130,6 +138,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             _operatorId,
             msg.value
         );
+        standByPermissionLessValidators++;
     }
 
     /**
