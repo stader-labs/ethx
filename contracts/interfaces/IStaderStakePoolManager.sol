@@ -3,66 +3,72 @@
 pragma solidity ^0.8.16;
 
 interface IStaderStakePoolManager {
-    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
-    event NodeDepositReceived(uint256 operatorId, uint256 amount);
+    error InvalidWithdrawAmount();
+    error InvalidDepositAmount();
+    error InvalidMinDepositValue();
+    error InvalidMaxDepositValue();
+    error InvalidMinWithdrawValue();
+    error InvalidMaxWithdrawValue();
+
+    event Deposited(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event ExecutionLayerRewardsReceived(uint256 amount);
-    event TransferredToPermissionLessPool(address indexed poolAddress, uint256 amount);
-    event TransferredToStaderPermissionedPool(address indexed poolAddress, uint256 amount);
+    event TransferredToPool(string indexed poolName, address poolAddress, uint256 validatorCount);
     event UpdatedEthXAddress(address account);
-    event UpdatedFeePercentage(uint256 fee);
-    event UpdatedMaxDepositLimit(uint256 amount);
-    event UpdatedMinDepositLimit(uint256 amount);
-    event UpdatedPoolWeights(uint256 staderSSVStakePoolWeight, uint256 staderManagedStakePoolWeight);
-    event UpdatedPermissionLessPoolAddress(address ssvStakePool);
-    event UpdatedSocializingPoolAddress(address executionLayerRewardContract);
-    event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
+    event UpdatedMaxDepositAmount(uint256 amount);
+    event UpdatedMinDepositAmount(uint256 amount);
+    event UpdatedMaxWithdrawAmount(uint256 amount);
+    event UpdatedMinWithdrawAmount(uint256 amount);
     event UpdatedStaderOracle(address oracle);
-    event UpdatedPermissionedPoolAddresses(address staderStakePool);
-    event UpdatedStaderTreasury(address staderTreasury);
-    event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
-    event Withdrawn(
-        address indexed caller,
-        address indexed receiver,
-        address indexed owner,
-        uint256 assets,
-        uint256 shares
-    );
+    event UpdatedUserWithdrawalManager(address withdrawalManager);
+    event UpdatedPoolSelector(address poolSelector);
+
+    event WithdrawRequested(address indexed user, address recipient, uint256 ethAmount, uint256 sharesAmount);
+
+    event WithdrawVaultUserShareReceived(uint256 amount);
 
     function deposit(address receiver) external payable returns (uint256);
 
-    function initialize(
-        address _ethX,
-        address _staderSSVStakePoolAddress,
-        address _staderManagedStakePoolAddress,
-        uint256 _staderSSVStakePoolWeight,
-        uint256 _staderManagedStakePoolWeight,
-        uint256 _minDelay,
-        address[] memory _proposers,
-        address[] memory _executors,
-        address _timeLockOwner
-    ) external;
-
-    function mint(uint256 shares, address receiver) external payable returns (uint256);
-
     function previewDeposit(uint256 assets) external view returns (uint256);
 
-    function previewMint(uint256 shares) external view returns (uint256);
-
-    function previewRedeem(uint256 shares) external view returns (uint256);
-
-    function previewWithdraw(uint256 assets) external view returns (uint256);
+    function previewWithdraw(uint256 shares) external view returns (uint256);
 
     function receiveExecutionLayerRewards() external payable;
 
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) external returns (uint256);
+    function receiveWithdrawVaultUserShare() external payable;
 
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) external returns (uint256);
+    function updateMinDepositAmount(uint256 _minDepositAmount) external;
+
+    function updateMaxDepositAmount(uint256 _minDepositAmount) external;
+
+    function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external;
+
+    function updateMaxWithdrawAmount(uint256 _minWithdrawAmount) external;
+
+    function updateEthXAddress(address _ethX) external;
+
+    function updateStaderOracle(address _staderOracle) external;
+
+    function updateUserWithdrawalManager(address _userWithdrawalManager) external;
+
+    function updatePoolSelector(address _poolSelector) external;
+
+    function getExchangeRate() external view returns (uint256);
+
+    function totalAssets() external view returns (uint256);
+
+    function convertToShares(uint256 assets) external view returns (uint256);
+
+    function convertToAssets(uint256 shares) external view returns (uint256);
+
+    function maxDeposit() external view returns (uint256);
+
+    function maxWithdraw(address owner) external view returns (uint256);
+
+    function userWithdraw(uint256 _ethXAmount, address receiver) external;
+
+    function finalizeUserWithdrawalRequest(bool _slashingMode) external;
+
+    function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey) external returns (uint256 requestId);
+
+    function transferToPools() external;
 }

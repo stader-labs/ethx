@@ -3,13 +3,13 @@
 pragma solidity ^0.8.16;
 
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/ISocializingPoolContract.sol';
+import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract SocializingPoolContract is ISocializingPoolContract, Initializable, AccessControlUpgradeable {
+contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable {
     IStaderValidatorRegistry public staderValidatorRegistry;
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderStakePoolManager public staderStakePoolManager;
@@ -72,10 +72,11 @@ contract SocializingPoolContract is ISocializingPoolContract, Initializable, Acc
         uint256 totalOperatorELFee;
         uint256 totalValidatorRegistered = staderValidatorRegistry.registeredValidatorCount();
         require(totalValidatorRegistered > 0, 'No active validator on beacon chain');
-        uint256 operatorCount = staderOperatorRegistry.operatorCount();
-        for (uint256 index = 0; index < operatorCount; index++) {
-            (address operatorRewardAddress, , , , , uint256 activeValidatorCount) = staderOperatorRegistry
-                .operatorRegistry(index);
+        uint256 operatorCount = staderOperatorRegistry.getOperatorCount();
+        for (uint256 index = 0; index < operatorCount; ++index) {
+            address nodeOperator = staderOperatorRegistry.operatorByOperatorId(index);
+            (, , , address operatorRewardAddress, , , uint256 activeValidatorCount, ) = staderOperatorRegistry
+                .operatorRegistry(nodeOperator);
             if (activeValidatorCount > 0) {
                 uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
                 totalOperatorELFee += operatorELFee;

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-interface ISocializingPoolContract {
+interface ISocializingPool {
     event ETHReceived(uint256 amount);
     event UpdatedStaderPoolManager(address staderStakePoolManager);
     event UpdatedStaderTreasury(address staderTreasury);
