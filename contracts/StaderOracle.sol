@@ -78,4 +78,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         // Calculate the last reportable block based on update frequency
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
+
+    // TODO: Beacon chain status of validators
+    function submitStatus(uint256 _block) external {
+    }
 }
