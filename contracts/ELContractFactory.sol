@@ -1,28 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import '@openzeppelin/contracts/proxy/Clones.sol';
 
-import "./interfaces/IStorage.sol";
-import "./ELContract.sol";
+import './interfaces/IStorage.sol';
+import './ELContract.sol';
 
 contract ELContractFactory {
-    IStorage immutable public storageContract;
+    address public implementation;
 
-    constructor (address _storageContract) {
-        storageContract = IStorage(_storageContract);
+    constructor(address _implementation) {
+        require(_implementation != address(0), 'Zero address');
+        implementation = _implementation;
     }
 
-    // Calculates the predetermined execution layer contract address from given pubkey
-    function getProxyAddress(bytes calldata _pubkey) external view returns(address) {
-        require(_pubkey.length == 48, "Invalid pubkey length");
+    function getPubkeyRoot(bytes calldata _pubkey) public pure returns (bytes32) {
+        require(_pubkey.length == 48, 'Invalid pubkey length');
 
-        bytes32 pubkey_root = sha256(abi.encodePacked(_pubkey, bytes16(0)));
-        return Clones.predictDeterministicAddress(implementation, salt);(pubkey_root, type(ELContract).creationCode);
+        return sha256(abi.encodePacked(_pubkey, bytes16(0)));
     }
 
-    // Uses CREATE2 to deploy a execution layer contract at predetermined address
+    // Calculates the predetermined execution layer clone contract address from given pubkey
+    function getProxyAddress(bytes calldata _pubkey) external view returns (address) {
+        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
+        return Clones.predictDeterministicAddress(implementation, pubkeyRoot);
+    }
+
+    // Uses CREATE2 to deploy a execution layer clone contract at predetermined address
     function createProxy(bytes calldata _pubkey) external {
-        Create2.deploy(uint256(0), _pubkey, type(ELContract).creationCode);
+        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
+        Clones.cloneDeterministic(implementation, pubkeyRoot);
     }
 }
