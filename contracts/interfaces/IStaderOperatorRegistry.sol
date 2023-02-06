@@ -20,6 +20,8 @@ interface IStaderOperatorRegistry {
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
 
+    function STADER_SLASHING_MANAGER() external view returns (bytes32);
+
     function OPERATOR_REGISTRY_OWNER() external view returns (bytes32);
 
     function STADER_SLASHING_MANAGER() external view returns (bytes32);

@@ -187,6 +187,57 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
      * @dev accept call, only from slashing manager contract
      * @param _operatorId operator ID
      */
+    function reduceOperatorValidatorsCount(uint256 _operatorId) external override onlyRole(STADER_SLASHING_MANAGER) {
+        uint256 index = getOperatorIndexById(_operatorId);
+        require(index != type(uint256).max, 'invalid operatorId');
+        if (operatorRegistry[index].validatorCount > 0) {
+            operatorRegistry[index].validatorCount--;
+            operatorRegistry[index].activeValidatorCount--;
+            emit ReducedValidatorCount(
+                operatorRegistry[index].operatorId,
+                operatorRegistry[index].validatorCount,
+                operatorRegistry[index].activeValidatorCount
+            );
+        }
+    }
+
+    /**
+     * @notice pick the next set of operator to register validator
+     * @param _requiredOperatorCount number of operator require
+     * @param _operatorStartIndex starting index of operatorID to scan registry
+     * @param _poolType pool type of next operators
+     */
+    function selectOperators(
+        uint256 _requiredOperatorCount,
+        uint256 _operatorStartIndex,
+        bytes32 _poolType
+    ) external view override returns (uint256[] memory, uint256) {
+        uint256 counter;
+        uint256[] memory outputOperatorIds = new uint256[](_requiredOperatorCount);
+        while (_operatorStartIndex < operatorCount) {
+            if (
+                operatorRegistry[_operatorStartIndex].staderPoolType == _poolType &&
+                operatorRegistry[_operatorStartIndex].validatorCount >
+                operatorRegistry[_operatorStartIndex].activeValidatorCount
+            ) {
+                outputOperatorIds[counter] = (operatorRegistry[_operatorStartIndex].operatorId);
+                counter++;
+            }
+            _operatorStartIndex++;
+            if (_operatorStartIndex == operatorCount) {
+                _operatorStartIndex = 0;
+            }
+            if (counter == _requiredOperatorCount) {
+                return (outputOperatorIds, _operatorStartIndex);
+            }
+        }
+    }
+
+    /**
+     * @notice reduce the validator count from registry when a validator is withdrawn
+     * @dev accept call, only from slashing manager contract
+     * @param _operatorId operator ID
+     */
     function incrementWithdrawValidatorsCount(uint256 _operatorId) external override onlyRole(STADER_SLASHING_MANAGER) {
         if (_operatorId == 0) revert OperatorNotRegistered();
         address nodeOperator = operatorByOperatorId[_operatorId];
