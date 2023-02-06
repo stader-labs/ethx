@@ -334,7 +334,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         returns (uint256 requestId)
     {}
     
-    // TODO extracting funds from withdrawVauls
+    // TODO extracting funds from withdrawVaults
     function getWithdrawVaultFunds() external{}
     
     //TODO extracting EL layer reward
