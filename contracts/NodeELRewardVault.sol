@@ -13,6 +13,12 @@ contract NodeELRewardVault is Initializable, AccessControlUpgradeable {
         __AccessControl_init_unchained();
         nodeRecipient = _nodeRecipient;
     }
+    
+    // TODO compute user shares of MEV rewards and transfer to the pool manager
+    function transferUserShare() external {}
+    
+    //TODO compute node share
+    function transferNodeShareToNodeWithdrawManager() external{}
 
     /**
      * @notice Allows the contract to receive ETH

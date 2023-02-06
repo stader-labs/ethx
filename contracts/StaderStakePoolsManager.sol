@@ -326,12 +326,19 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         }
     }
 
+    // TODO node withdraw flow 
     function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey)
         public
         override
         whenNotPaused
         returns (uint256 requestId)
     {}
+    
+    // TODO extracting funds from withdrawVaults
+    function getWithdrawVaultFunds() external{}
+    
+    //TODO extracting EL layer reward
+    function getELLayerRewards() external {}
 
     /**
      * @notice spinning off validators in different pools
