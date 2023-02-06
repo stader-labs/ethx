@@ -349,9 +349,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
                     }();
                     emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
                 } else {
-                    IStaderPool(poolAddress).registerValidatorsOnBeacon{
-                        value: poolValidatorsCount[i] * DEPOSIT_SIZE
-                    }();
+                    IStaderPool(poolAddress).registerValidatorsOnBeacon{value: poolValidatorsCount[i] * DEPOSIT_SIZE}();
                     emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
                 }
             }
