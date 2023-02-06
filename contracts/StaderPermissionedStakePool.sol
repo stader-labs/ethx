@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.16;
 
-import './StaderBasePool.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderPermissionedStakePool.sol';
@@ -12,7 +11,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract StaderPermissionedStakePool is
-    StaderBasePool,
     IStaderPermissionedStakePool,
     Initializable,
     AccessControlUpgradeable,
@@ -28,6 +26,16 @@ contract StaderPermissionedStakePool is
 
     bytes32 public constant STADER_PERMISSIONED_POOL_ADMIN = keccak256('STADER_PERMISSIONED_POOL_ADMIN');
     bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
+
+    /**
+     * @notice Check for zero address
+     * @dev Modifier
+     * @param _address the address to check
+     */
+    modifier checkZeroAddress(address _address) {
+        require(_address != address(0), 'Address cannot be zero');
+        _;
+    }
 
     /**
      * @dev Stader managed stake Pool is initialized with following variables
@@ -70,9 +78,9 @@ contract StaderPermissionedStakePool is
 
     /// @dev deposit 32 ETH in ethereum deposit contract
     function registerValidatorsOnBeacon() external payable onlyRole(STADER_PERMISSIONED_POOL_ADMIN) {
-        require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
+        require(address(this).balance >= 32 ether, 'not enough balance to deposit');
         require(standByPermissionedValidators > 0, 'stand by permissioned validator not available');
-        uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
+        uint256 depositCount = address(this).balance / 32 ether;
         depositCount = depositCount > standByPermissionedValidators ? standByPermissionedValidators : depositCount;
         standByPermissionedValidators -= depositCount;
         (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
@@ -102,7 +110,7 @@ contract StaderPermissionedStakePool is
             ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
             //slither-disable-next-line arbitrary-send-eth
-            ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCred, signature, depositDataRoot);
+            ethValidatorDeposit.deposit{value: 32 ether}(pubKey, withdrawCred, signature, depositDataRoot);
             staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
             staderOperatorRegistry.incrementActiveValidatorsCount(operatorId);
             emit DepositToDepositContract(pubKey);

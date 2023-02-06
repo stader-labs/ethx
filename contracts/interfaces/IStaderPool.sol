@@ -1,5 +1,5 @@
 pragma solidity ^0.8.16;
 
-interface IStaderPoolBase {
+interface IStaderPool{
     function registerValidatorsOnBeacon() external payable;
 }

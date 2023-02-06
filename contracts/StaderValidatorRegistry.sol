@@ -8,6 +8,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     uint256 public override validatorCount;
     uint256 public override registeredValidatorCount;
     uint256 public constant override collateralETH = 4 ether;
+    uint256 public DEPOSIT_SIZE = 32 ether;
 
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
@@ -185,8 +186,35 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     function _removeValidatorFromRegistry(bytes memory _pubKey, uint256 _index) internal {
         delete (validatorRegistry[_index]);
         delete (validatorRegistryIndexByPubKey[_pubKey]);
-        validatorCount--;
-        registeredValidatorCount--;
+        // validatorCount--;
+        // registeredValidatorCount--;
         emit RemovedValidatorFromRegistry(_pubKey);
+    }
+
+    function _validateKeys(
+        bytes calldata pubkey,
+        bytes memory withdrawal_credentials,
+        bytes calldata signature,
+        bytes32 deposit_data_root
+    ) public view {
+        bytes32 pubkey_root = sha256(abi.encodePacked(pubkey, bytes16(0)));
+        bytes32 signature_root = sha256(
+            abi.encodePacked(
+                sha256(abi.encodePacked(signature[:64])),
+                sha256(abi.encodePacked(signature[64:], bytes32(0)))
+            )
+        );
+        bytes32 node = sha256(
+            abi.encodePacked(
+                sha256(abi.encodePacked(pubkey_root, withdrawal_credentials)),
+                sha256(abi.encodePacked(DEPOSIT_SIZE, bytes24(0), signature_root))
+            )
+        );
+
+        // Verify computed and expected deposit data roots match
+        require(
+            node == deposit_data_root,
+            'DepositContract: reconstructed DepositData does not match supplied deposit_data_root'
+        );
     }
 }

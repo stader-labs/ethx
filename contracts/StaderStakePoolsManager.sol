@@ -4,11 +4,11 @@ pragma solidity ^0.8.16;
 
 import './ETHX.sol';
 import './interfaces/IStaderOracle.sol';
-import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderPool.sol';
 import './interfaces/IStaderUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -40,6 +40,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public permissionedPoolExitingValidatorCount;
     uint256 public permissionLessExitingValidatorCount;
     uint256 public permissionLessPoolUserDeposit;
+
     /**
      * @notice Check for zero address
      * @dev Modifier
@@ -343,12 +344,12 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             if (poolValidatorsCount[i] > 0) {
                 (string memory poolName, address poolAddress, , , ) = poolSelector.staderPool(i);
                 if (keccak256(abi.encodePacked(poolName)) == keccak256(abi.encodePacked('PERMISSIONLESS'))) {
-                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
+                    IStaderPool(poolAddress).registerValidatorsOnBeacon{
                         value: poolValidatorsCount[i] * permissionLessPoolUserDeposit
                     }();
                     emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
                 } else {
-                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
+                    IStaderPool(poolAddress).registerValidatorsOnBeacon{
                         value: poolValidatorsCount[i] * DEPOSIT_SIZE
                     }();
                     emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
