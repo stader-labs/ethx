@@ -11,7 +11,9 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
 
     struct Operator {
-        address operatorRewardAddress; //Eth1 address of node for reward
+        bool optedForSocializingPool;
+        address mevRewardAddress;
+        address payable operatorRewardAddress; //Eth1 address of node for reward
         bytes32 staderPoolType; // pool to which the operator belong
         string operatorName; // name of the operator
         uint256 operatorId; // unique ID given by stader network
@@ -19,7 +21,7 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
         uint256 activeValidatorCount; // active validator on beacon chain
     }
     mapping(uint256 => Operator) public override operatorRegistry;
-    mapping(uint256 => uint256) public override operatorIdIndex;
+    mapping(uint256 => uint256) public override operatorRegistryIndexByOperatorId;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -39,6 +41,8 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
      * @param _activeValidatorCount active validator on beacon chain
      */
     function addToOperatorRegistry(
+        bool _optedForSocializingPool,
+        address _mevRewardAddress,
         address _operatorRewardAddress,
         bytes32 _staderPoolType,
         string memory _operatorName,
@@ -47,13 +51,15 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
         uint256 _activeValidatorCount
     ) external override onlyRole(STADER_NETWORK_POOL) {
         Operator storage _operatorRegistry = operatorRegistry[operatorCount];
-        _operatorRegistry.operatorRewardAddress = _operatorRewardAddress;
+        _operatorRegistry.optedForSocializingPool = _optedForSocializingPool;
+        _operatorRegistry.mevRewardAddress = _mevRewardAddress;
+        _operatorRegistry.operatorRewardAddress = payable(_operatorRewardAddress);
         _operatorRegistry.operatorId = _operatorId;
         _operatorRegistry.operatorName = _operatorName;
         _operatorRegistry.staderPoolType = _staderPoolType;
         _operatorRegistry.validatorCount = _validatorCount;
         _operatorRegistry.activeValidatorCount = _activeValidatorCount;
-        operatorIdIndex[_operatorId] = operatorCount;
+        operatorRegistryIndexByOperatorId[_operatorId] = operatorCount;
         operatorCount++;
         emit AddedToOperatorRegistry(_operatorId, operatorCount);
     }
@@ -142,7 +148,7 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
      * @param _operatorId operator ID
      */
     function getOperatorIndexById(uint256 _operatorId) public view override returns (uint256) {
-        uint256 index = operatorIdIndex[_operatorId];
+        uint256 index = operatorRegistryIndexByOperatorId[_operatorId];
         if (_operatorId == operatorRegistry[index].operatorId) return index;
         return type(uint256).max;
     }

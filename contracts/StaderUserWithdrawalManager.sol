@@ -1,223 +1,155 @@
 pragma solidity ^0.8.16;
 
-import './interfaces/IStaderWithdrawalManager.sol';
+import './interfaces/IStaderUserWithdrawalManager.sol';
+
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderUserWithdrawalManager is Initializable, AccessControlUpgradeable {
-    bytes32 public constant  POOL_MANAGER = keccak256('POOL_MANAGER');
-    address public poolManager;
+contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializable, AccessControlUpgradeable {
+    bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
 
-    uint256 public  lockedEtherAmount ;
+    address public override poolManager;
 
-    uint256 public  processedRequestCounter;
+    uint256 public constant override DECIMAL = 10**18;
 
-    uint256 public constant MIN_WITHDRAWAL = 0.1 ether;
+    uint256 public override lockedEtherAmount;
 
-    /// @notice queue for withdrawal requests
-    WithdrawInfo[] public withdrawRequest;
+    uint256 public override latestRequestId;
 
-    /// @notice length of the finalized part of the queue
-    uint256 public  finalizedRequestsCounter ;
+    uint256 public override lastFinalizedBatch;
 
-    /// @notice structure representing a request for withdrawal.
-    struct WithdrawInfo {
-        /// @notice flag if the request was already claimed
-        bool claimed;
-        /// @notice payable address of the recipient withdrawal will be transferred to
-        address payable recipient;
-        /// @notice sum of the all requested ether including this request
-        uint256 cumulativeEther;
-        /// @notice sum of the all shares locked for withdrawal including this request
-        uint256 cumulativeShares;
-        /// @notice block.number when the request created
-        uint256 requestBlockNumber;
+    uint256 public override currentBatchNumber;
+
+    uint256 public override requiredBatchEThThreshold;
+
+    /// @notice user withdrawal requests
+    mapping(address => UserWithdrawInfo[]) public userWithdrawRequests;
+
+    mapping(uint256 => BatchInfo) public override batchRequest;
+
+    /// @notice structure representing a user request for withdrawal.
+    struct UserWithdrawInfo {
+        address payable recipient; //payable address of the recipient to transfer withdrawal
+        uint256 batchNumber; // batch to which user request belong
+        uint256 ethAmount; //eth requested according to given share and exchangeRate
+        uint256 ethXAmount; //amount of ethX share locked for withdrawal
     }
 
-    /// @notice finalization price history registry
-    Price[] public  finalizationPrices;
-
-    /**
-     * @notice structure representing share price for some range in request queue
-     * @dev price is stored as a pair of value that should be divided later
-     */
-    struct Price {
-        uint256 totalUserTVL;
-        uint256 totalShares;
-        /// @notice last index in queue this price is actual for
-        uint256 index;
+    struct BatchInfo {
+        bool finalized;
+        uint256 startTime;
+        uint256 finalizedExchangeRate;
+        uint256 requiredEth;
+        uint256 lockedEthX;
     }
 
     function initialize(address _poolManager) external initializer {
-        require(_poolManager != address(0), 'ZERO_OWNER');
+        if (_poolManager == address(0)) revert ZeroAddress();
         __AccessControl_init_unchained();
         poolManager = _poolManager;
+        batchRequest[0] = BatchInfo(false, block.timestamp, 0, 0, 0);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(POOL_MANAGER, _poolManager);
     }
 
     /**
-     * @notice put a withdrawal request in a queue and associate it with `_recipient` address
-     * @dev Assumes that `_ethAmount` of stETH is locked before invoking this function
-     * @param _recipient payable address this request will be associated with
-     * @param _etherAmount maximum amount of ether (equal to amount of locked stETH) that will be claimed upon withdrawal
-     * @param _sharesAmount amount of stETH shares that will be burned upon withdrawal
-     * @return requestId unique id to claim funds once it is available
+     * @notice put a withdrawal request and assign it to a batch
+     * @param _recipient withdraw address for user to get back eth
+     * @param _ethAmount eth amount to be send at the withdraw exchange rate
+     * @param _ethXAmount amount of ethX shares that will be burned upon withdrawal
      */
     function withdraw(
+        address msgSender,
         address payable _recipient,
-        uint256 _etherAmount,
-        uint256 _sharesAmount
-    ) external onlyRole(POOL_MANAGER) returns (uint256 requestId) {
-        require(_etherAmount > MIN_WITHDRAWAL, 'WITHDRAWAL_IS_TOO_SMALL');
-        requestId = withdrawRequest.length;
-
-        uint256 cumulativeEther = _etherAmount;
-        uint256 cumulativeShares = _sharesAmount;
-
-        if (requestId > 0) {
-            cumulativeEther += withdrawRequest[requestId - 1].cumulativeEther;
-            cumulativeShares += withdrawRequest[requestId - 1].cumulativeShares;
+        uint256 _ethAmount,
+        uint256 _ethXAmount
+    ) external override onlyRole(POOL_MANAGER) {
+        BatchInfo memory latestBatch = batchRequest[currentBatchNumber];
+        if (
+            latestBatch.requiredEth + _ethAmount > requiredBatchEThThreshold ||
+            latestBatch.finalized ||
+            latestBatch.startTime + 24 hours > block.timestamp
+        ) {
+            currentBatchNumber++;
+            batchRequest[currentBatchNumber] = BatchInfo(false, block.timestamp, 0, _ethAmount, _ethXAmount);
+        } else {
+            latestBatch.requiredEth += _ethAmount;
+            latestBatch.lockedEthX += _ethXAmount;
         }
+        userWithdrawRequests[msgSender].push(
+            UserWithdrawInfo(payable(_recipient), currentBatchNumber, _ethAmount, _ethXAmount)
+        );
 
-        withdrawRequest.push(WithdrawInfo(false, _recipient, cumulativeEther, cumulativeShares, block.number));
+        emit WithdrawRequestReceived(msgSender, _recipient, _ethXAmount, _ethAmount);
     }
 
     /**
-     * @notice Finalize the batch of requests started at `finalizedRequestsCounter` and ended at `_lastIdToFinalize` using the given price
-     * @param _lastIdToFinalize request index in the queue that will be last finalized request in a batch
-     * @param _etherToLock ether that should be locked for these requests
-     * @param _totalUserTVL ether price component that will be used for this request batch finalization
-     * @param _totalShares shares price component that will be used for this request batch finalization
+     * @notice Finalize the batch from `lastFinalizedBatch` to _finalizedBatchNumber at `_finalizedExchangeRate`
+     * @param _finalizedBatchNumber latest batch that is finalized
+     * @param _ethToLock ether that should be locked for these requests
+     * @param _finalizedExchangeRate finalized exchangeRate
      */
     function finalize(
-        uint256 _lastIdToFinalize,
-        uint256 _etherToLock,
-        uint256 _totalUserTVL,
-        uint256 _totalShares
-    ) external payable  onlyRole(POOL_MANAGER) {
-        require(
-            _lastIdToFinalize >= finalizedRequestsCounter && _lastIdToFinalize < withdrawRequest.length,
-            'INVALID_FINALIZATION_ID'
-        );
-        require(lockedEtherAmount + _etherToLock <= address(this).balance, 'NOT_ENOUGH_ETHER');
+        uint256 _finalizedBatchNumber,
+        uint256 _ethToLock,
+        uint256 _finalizedExchangeRate
+    ) external payable override {
+        if (_finalizedBatchNumber <= lastFinalizedBatch || _finalizedBatchNumber > currentBatchNumber)
+            revert InvalidLastFinalizationBatch(_finalizedBatchNumber);
+        if (lockedEtherAmount + _ethToLock > address(this).balance) revert InSufficientBalance();
 
-        _updatePriceHistory(_totalUserTVL, _totalShares, _lastIdToFinalize);
-
-        lockedEtherAmount = _etherToLock;
-        finalizedRequestsCounter = _lastIdToFinalize + 1;
+        for (uint256 i = lastFinalizedBatch; i < _finalizedBatchNumber; ++i) {
+            BatchInfo memory batchAtIndexI = batchRequest[i];
+            batchAtIndexI.finalizedExchangeRate = _finalizedExchangeRate;
+            batchAtIndexI.finalized = true;
+        }
+        lockedEtherAmount += _ethToLock;
+        lastFinalizedBatch = _finalizedBatchNumber;
     }
 
     /**
-     * @notice Mark `_requestId` request as claimed and transfer reserved ether to recipient
-     * @param _requestId request id to claim
+     * @notice transfer the eth of finalized request and delete the request
+     * @param _requestId request id to redeem
      */
-    function redeem(uint256 _requestId) external  returns (address recipient) {
-        // request must be finalized
-        require(finalizedRequestsCounter > _requestId, 'REQUEST_NOT_FINALIZED');
+    function redeem(uint256 _requestId) external override {
+        UserWithdrawInfo[] storage userRequests = userWithdrawRequests[msg.sender];
 
-        WithdrawInfo storage request = withdrawRequest[_requestId];
-        require(!request.claimed, 'REQUEST_ALREADY_CLAIMED');
+        if (_requestId >= userRequests.length) revert InvalidRequestId(_requestId);
 
-        request.claimed = true;
+        UserWithdrawInfo storage userWithdrawRequest = userRequests[_requestId];
+        uint256 batchNumber = userWithdrawRequest.batchNumber;
+        uint256 ethXAmount = userWithdrawRequest.ethXAmount;
+        uint256 ethAmount = userWithdrawRequest.ethAmount;
 
-        Price memory price;
-        price = finalizationPrices[findPriceHint(_requestId)];
-
-        (uint256 etherToTransfer, ) = _calculateDiscountedBatch(
-            _requestId,
-            _requestId,
-            price.totalUserTVL,
-            price.totalShares
-        );
+        BatchInfo storage userBatchRequest = batchRequest[batchNumber];
+        if (!userBatchRequest.finalized) revert BatchNotFinalized(batchNumber, _requestId);
+        uint256 etherToTransfer = _min((ethXAmount * userBatchRequest.finalizedExchangeRate) / 10**18, ethAmount);
         lockedEtherAmount -= etherToTransfer;
+        _sendValue(userWithdrawRequest.recipient, etherToTransfer);
 
-        _sendValue(request.recipient, etherToTransfer);
+        userRequests[_requestId] = userRequests[userRequests.length - 1];
+        userRequests.pop();
 
-        return request.recipient;
+        emit RequestRedeemed(msg.sender, userWithdrawRequest.recipient, etherToTransfer);
     }
 
     /**
-     * @notice calculates the params to fulfill the next batch of requests in queue
-     * @param _lastIdToFinalize last id in the queue to finalize upon
-     * @param _totalUserTVL share price component to finalize requests
-     * @param _totalShares share price component to finalize requests
-     *
-     * @return etherToLock amount of eth required to finalize the batch
-     * @return sharesToBurn amount of shares that should be burned on finalization
+     * @notice change the recipient address of ongoing request
+     * @param _requestId id of the request subject to change
+     * @param _newRecipient new recipient address for withdrawal
      */
-    function calculateFinalizationParams(
-        uint256 _lastIdToFinalize,
-        uint256 _totalUserTVL,
-        uint256 _totalShares
-    ) external view  returns (uint256 etherToLock, uint256 sharesToBurn) {
-        return _calculateDiscountedBatch(finalizedRequestsCounter, _lastIdToFinalize, _totalUserTVL, _totalShares);
-    }
+    function changeRecipient(uint256 _requestId, address _newRecipient) external override {
+        UserWithdrawInfo[] storage userRequests = userWithdrawRequests[msg.sender];
 
-    function findPriceHint(uint256 _requestId) public view returns (uint256 hint) {
-        require(_requestId < finalizedRequestsCounter, 'PRICE_NOT_FOUND');
+        if (_requestId >= userRequests.length) revert InvalidRequestId(_requestId);
 
-        for (uint256 i = finalizationPrices.length; i > 0; i--) {
-            if (_isPriceHintValid(_requestId, i - 1)) {
-                return i - 1;
-            }
-        }
-        require(false);
-    }
+        UserWithdrawInfo storage request = userRequests[_requestId];
 
-    // function restake(uint256 _amount) external  onlyRole(POOL_MANAGER) {
-    //     require(lockedEtherAmount + _amount <= address(this).balance, 'NOT_ENOUGH_ETHER');
+        if (request.recipient == _newRecipient)
+            revert IdenticalRecipientAddressProvided(msg.sender, request.recipient, _requestId);
 
-    //     IRestakingSink(poolManager).receiveRestake{value: _amount}();
-    // }
+        request.recipient = payable(_newRecipient);
 
-    function getLatestRequestId() public view returns(uint256 requestId){
-        return withdrawRequest.length;
-    }
-
-    function _calculateDiscountedBatch(
-        uint256 firstId,
-        uint256 lastId,
-        uint256 _totalUserTVL,
-        uint256 _totalShares
-    ) internal view returns (uint256 eth, uint256 shares) {
-        eth = withdrawRequest[lastId].cumulativeEther;
-        shares = withdrawRequest[lastId].cumulativeShares;
-
-        if (firstId > 0) {
-            eth -= withdrawRequest[firstId - 1].cumulativeEther;
-            shares -= withdrawRequest[firstId - 1].cumulativeShares;
-        }
-
-        eth = _min(eth, (shares * _totalUserTVL) / _totalShares);
-    }
-
-    function _isPriceHintValid(uint256 _requestId, uint256 hint) internal view returns (bool isInRange) {
-        uint256 hintLastId = finalizationPrices[hint].index;
-
-        isInRange = _requestId <= hintLastId;
-        if (hint > 0) {
-            uint256 previousId = finalizationPrices[hint - 1].index;
-
-            isInRange = isInRange && previousId < _requestId;
-        }
-    } 
-
-    function _updatePriceHistory(
-        uint256 _totalUserTVL,
-        uint256 _totalShares,
-        uint256 index
-    ) internal {
-        if (finalizationPrices.length == 0) {
-            finalizationPrices.push(Price(_totalUserTVL, _totalShares, index));
-        } else {
-            Price storage lastPrice = finalizationPrices[finalizationPrices.length - 1];
-
-            if (_totalUserTVL / _totalShares == lastPrice.totalUserTVL / lastPrice.totalShares) {
-                lastPrice.index = index;
-            } else {
-                finalizationPrices.push(Price(_totalUserTVL, _totalShares, index));
-            }
-        }
+        emit RecipientAddressUpdated(msg.sender, _requestId, request.recipient, _newRecipient);
     }
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -225,10 +157,10 @@ contract StaderUserWithdrawalManager is Initializable, AccessControlUpgradeable 
     }
 
     function _sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, 'Address: insufficient balance');
+        if (address(this).balance < amount) revert InSufficientBalance();
 
         // solhint-disable-next-line
         (bool success, ) = recipient.call{value: amount}('');
-        require(success, 'Address: unable to send value, recipient may have reverted');
+        if (!success) revert TransferFailed();
     }
 }

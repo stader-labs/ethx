@@ -2,46 +2,45 @@
 
 pragma solidity ^0.8.16;
 
+import './StaderBasePool.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderPermissionedStakePool.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
+import './interfaces/IStaderELRewardVaultFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract StaderPermissionedStakePool is
+    StaderBasePool,
     IStaderPermissionedStakePool,
     Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable
 {
-    uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public permissionedOperatorIndex;
     uint256 public standByPermissionedValidators;
+    address withdrawVaultOwner;
+    address permissionedNOsMEVVault;
     IDepositContract public ethValidatorDeposit;
-    bytes public withdrawCredential;
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
+    IStaderELRewardVaultFactory public rewardVaultFactory;
 
     bytes32 public constant STADER_PERMISSIONED_POOL_ADMIN = keccak256('STADER_PERMISSIONED_POOL_ADMIN');
     bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
-
-    /// @notice zero address check modifier
-    modifier checkZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
 
     /**
      * @dev Stader managed stake Pool is initialized with following variables
      */
     function initialize(
-        bytes calldata _withdrawCredential,
         address _ethValidatorDeposit,
         address _staderOperatorRegistry,
         address _staderValidatorRegistry,
-        address _staderPoolAdmin
+        address _staderPoolAdmin,
+        address _rewardVaultFactory,
+        address _permissionedNOsMEVVault
     )
         external
         initializer
@@ -49,13 +48,17 @@ contract StaderPermissionedStakePool is
         checkZeroAddress(_staderOperatorRegistry)
         checkZeroAddress(_staderValidatorRegistry)
         checkZeroAddress(_staderPoolAdmin)
+        checkZeroAddress(_rewardVaultFactory)
+        checkZeroAddress(permissionedNOsMEVVault)
     {
         __Pausable_init();
         __AccessControl_init_unchained();
-        withdrawCredential = _withdrawCredential;
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
+        rewardVaultFactory = IStaderELRewardVaultFactory(_rewardVaultFactory);
+        withdrawVaultOwner = _staderPoolAdmin; //make it a generic multisig owner across all contract
+        permissionedNOsMEVVault = _permissionedNOsMEVVault;
         _grantRole(STADER_PERMISSIONED_POOL_ADMIN, _staderPoolAdmin);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -69,16 +72,39 @@ contract StaderPermissionedStakePool is
     }
 
     /**
+     * @notice onboard a permissioned node operator
+     *
+     */
+    function onboardPermissionedNodeOperator(
+        address _operatorRewardAddress,
+        string calldata _operatorName,
+        uint256 _operatorId
+    ) external onlyRole(STADER_PERMISSIONED_POOL_ADMIN) checkZeroAddress(_operatorRewardAddress) returns (address) {
+        uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
+        require(operatorIndex != type(uint256).max, 'operatorAlreadyOnboarded');
+        staderOperatorRegistry.addToOperatorRegistry(
+            true,
+            permissionedNOsMEVVault,
+            _operatorRewardAddress,
+            PERMISSIONED_POOL,
+            _operatorName,
+            _operatorId,
+            1,
+            0
+        );
+        return permissionedNOsMEVVault;
+    }
+
+    /**
      * @notice permission pool validator onboarding
      * @dev register the permission pool validators in stader validator registry
      *
      */
-    function registerPermissionedValidator(
+    function addValidatorKeys(
         bytes calldata _validatorPubkey,
         bytes calldata _validatorSignature,
         bytes32 _depositDataRoot,
-        address _operatorRewardAddress,
-        string calldata _operatorName,
+        bytes32 _withdrawVaultSalt,
         uint256 _operatorId
     ) external onlyRole(STADER_PERMISSIONED_POOL_ADMIN) {
         require(
@@ -86,21 +112,17 @@ contract StaderPermissionedStakePool is
             'validator already in use'
         );
         uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
-        if (operatorIndex == type(uint256).max) {
-            staderOperatorRegistry.addToOperatorRegistry(
-                _operatorRewardAddress,
-                PERMISSIONED_POOL,
-                _operatorName,
-                _operatorId,
-                1,
-                0
-            );
-        } else {
-            staderOperatorRegistry.incrementValidatorCount(_operatorId);
-        }
+        require(operatorIndex == type(uint256).max, 'operatorNotOnboarded');
+
+        staderOperatorRegistry.incrementValidatorCount(_operatorId);
+
+        address withdrawVault = rewardVaultFactory.deployWithdrawVault(_withdrawVaultSalt, payable(withdrawVaultOwner));
+        bytes memory withdrawCredential = rewardVaultFactory.getValidatorWithdrawCredential(withdrawVault);
+        _validateKeys(_validatorPubkey, withdrawCredential, _validatorSignature, _depositDataRoot);
         staderValidatorRegistry.addToValidatorRegistry(
             _validatorPubkey,
             _validatorSignature,
+            withdrawCredential,
             _depositDataRoot,
             PERMISSIONED_POOL,
             _operatorId,
@@ -110,7 +132,7 @@ contract StaderPermissionedStakePool is
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract() external payable onlyRole(STADER_PERMISSIONED_POOL_ADMIN) {
+    function registerValidatorsOnBeacon() external payable onlyRole(STADER_PERMISSIONED_POOL_ADMIN) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
         require(standByPermissionedValidators > 0, 'stand by permissioned validator not available');
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
@@ -134,6 +156,7 @@ contract StaderPermissionedStakePool is
                 ,
                 bytes memory pubKey,
                 bytes memory signature,
+                bytes memory withdrawCred,
                 bytes32 depositDataRoot,
                 ,
                 uint256 operatorId,
@@ -142,23 +165,12 @@ contract StaderPermissionedStakePool is
             ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
             //slither-disable-next-line arbitrary-send-eth
-            ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCredential, signature, depositDataRoot);
+            ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCred, signature, depositDataRoot);
             staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
             staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
             emit DepositToDepositContract(pubKey);
             counter++;
         }
-    }
-
-    /**
-     * @notice update the withdraw credential
-     * @dev only permission less pool admin can update
-     */
-    function updateWithdrawCredential(bytes calldata _withdrawCredential)
-        external
-        onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
-    {
-        withdrawCredential = _withdrawCredential;
     }
 
     /**

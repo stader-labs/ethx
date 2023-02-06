@@ -43,7 +43,7 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
         for (uint256 index; index < _pubKeys.length; index++) {
             uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
             require(validatorIndex != type(uint256).max, 'validator not available');
-            (, , , , , , , , uint256 penaltyCount) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            (, , , , , , , , , uint256 penaltyCount) = staderValidatorRegistry.validatorRegistry(validatorIndex);
             penaltyCount++;
             staderValidatorRegistry.increasePenaltyCount(validatorIndex);
             if (penaltyCount >= penaltyThreshold) {
@@ -61,7 +61,7 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
         for (uint256 index; index < _pubKeys.length; index++) {
             uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
             require(validatorIndex != type(uint256).max, 'validator not available');
-            (, , , , , , , uint256 bondEth, ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            (, , , , , , , , uint256 bondEth, ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
             bondEth = bondEth >= _validatorPenalties[index] ? bondEth - _validatorPenalties[index] : 0;
             staderValidatorRegistry.updateBondEth(validatorIndex, bondEth);
             if (bondEth <= bondEthThreshold) {
@@ -79,12 +79,12 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
         for (uint256 index; index < _pubKeys.length; index++) {
             uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
             require(validatorIndex != type(uint256).max, 'validator not available');
-            (, , , , , , uint256 operatorId, , ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            (, , , , , , , uint256 operatorId, , ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
             uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(operatorId);
             require(operatorIndex != type(uint256).max, 'operator does not exit');
 
-            (address operatorRewardAddress, , , , , ) = staderOperatorRegistry.operatorRegistry(operatorIndex);
+            (, , address operatorRewardAddress, , , , , ) = staderOperatorRegistry.operatorRegistry(operatorIndex);
             if (_nodeShare[index] > 0) {
                 //permission less operator
                 //write withdraw balance logic for node operator

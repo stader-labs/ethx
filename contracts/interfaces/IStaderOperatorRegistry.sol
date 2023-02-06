@@ -22,6 +22,8 @@ interface IStaderOperatorRegistry {
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
     function addToOperatorRegistry(
+        bool _optedForSocializingPool,
+        address _mevRewardAddress,
         address _operatorRewardAddress,
         bytes32 _staderPoolType,
         string memory _operatorName,
@@ -36,13 +38,15 @@ interface IStaderOperatorRegistry {
 
     function incrementValidatorCount(uint256 _operatorId) external;
 
-    function operatorIdIndex(uint256) external view returns (uint256);
+    function operatorRegistryIndexByOperatorId(uint256) external view returns (uint256);
 
     function operatorRegistry(uint256)
         external
         view
         returns (
-            address operatorRewardAddress,
+            bool _optedForSocializingPool,
+            address _mevRewardAddress,
+            address payable operatorRewardAddress,
             bytes32 staderPoolType,
             string memory operatorName,
             uint256 operatorId,

@@ -16,6 +16,7 @@ interface IStaderValidatorRegistry {
     function addToValidatorRegistry(
         bytes memory _pubKey,
         bytes memory _signature,
+        bytes memory _withdrawalAddress,
         bytes32 _depositDataRoot,
         bytes32 _staderPoolType,
         uint256 _operatorId,
@@ -47,7 +48,7 @@ interface IStaderValidatorRegistry {
 
     function validatorCount() external view returns (uint256);
 
-    function validatorPubKeyIndex(bytes memory) external view returns (uint256);
+    function validatorRegistryIndexByPubKey(bytes memory) external view returns (uint256);
 
     function validatorRegistry(uint256)
         external
@@ -57,6 +58,7 @@ interface IStaderValidatorRegistry {
             bool isWithdrawal,
             bytes memory pubKey,
             bytes memory signature,
+            bytes memory withdrawalAddress,
             bytes32 depositDataRoot,
             bytes32 staderPoolType,
             uint256 operatorId,

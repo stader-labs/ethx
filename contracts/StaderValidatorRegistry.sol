@@ -17,6 +17,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         bool isWithdrawal; //status of validator readiness to withdraw
         bytes pubKey; //public Key of the validator
         bytes signature; //signature for deposit to Ethereum Deposit contract
+        bytes withdrawalAddress; //eth1 withdrawal address for validator
         bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
         bytes32 staderPoolType; // validator pool type
         uint256 operatorId; // stader network assigned Id
@@ -24,7 +25,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         uint256 penaltyCount; // penalty for MEV theft or any other wrong doing
     }
     mapping(uint256 => Validator) public override validatorRegistry;
-    mapping(bytes => uint256) public override validatorPubKeyIndex;
+    mapping(bytes => uint256) public override validatorRegistryIndexByPubKey;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -46,6 +47,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     function addToValidatorRegistry(
         bytes memory _pubKey,
         bytes memory _signature,
+        bytes memory _withdrawalAddress,
         bytes32 _depositDataRoot,
         bytes32 _staderPoolType,
         uint256 _operatorId,
@@ -56,12 +58,13 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         _validatorRegistry.isWithdrawal = false;
         _validatorRegistry.pubKey = _pubKey;
         _validatorRegistry.signature = _signature;
+        _validatorRegistry.withdrawalAddress = _withdrawalAddress;
         _validatorRegistry.depositDataRoot = _depositDataRoot;
         _validatorRegistry.staderPoolType = _staderPoolType;
         _validatorRegistry.operatorId = _operatorId;
         _validatorRegistry.bondEth = _bondEth;
         _validatorRegistry.penaltyCount = 0;
-        validatorPubKeyIndex[_pubKey] = validatorCount;
+        validatorRegistryIndexByPubKey[_pubKey] = validatorCount;
         validatorCount++;
         emit AddedToValidatorRegistry(_pubKey, _staderPoolType, validatorCount);
     }
@@ -72,7 +75,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
      * @param _pubKey public key of the validator
      */
     function incrementRegisteredValidatorCount(bytes memory _pubKey) external override onlyRole(STADER_NETWORK_POOL) {
-        uint256 index = validatorPubKeyIndex[_pubKey];
+        uint256 index = getValidatorIndexByPublicKey(_pubKey);
         require(index != type(uint256).max, 'pubKey does not exist on registry');
         validatorRegistry[index].validatorDepositStatus = true;
         registeredValidatorCount++;
@@ -132,8 +135,8 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
      * @dev return uint256 max if no index is not found
      * @param _publicKey public key of the validator
      */
-    function getValidatorIndexByPublicKey(bytes calldata _publicKey) external view override returns (uint256) {
-        uint256 index = validatorPubKeyIndex[_publicKey];
+    function getValidatorIndexByPublicKey(bytes memory _publicKey) public view override returns (uint256) {
+        uint256 index = validatorRegistryIndexByPubKey[_publicKey];
         if (keccak256(_publicKey) == keccak256(validatorRegistry[index].pubKey)) return index;
         return type(uint256).max;
     }
@@ -144,7 +147,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
      * @param _pubKey public key of the validator
      */
     function handleWithdrawnValidators(bytes memory _pubKey) external override onlyRole(STADER_SLASHING_MANAGER) {
-        uint256 index = validatorPubKeyIndex[_pubKey];
+        uint256 index = getValidatorIndexByPublicKey(_pubKey);
         require(index != type(uint256).max, 'pubKey does not exist on registry');
         _removeValidatorFromRegistry(_pubKey, index);
     }
@@ -184,7 +187,7 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
 
     function _removeValidatorFromRegistry(bytes memory _pubKey, uint256 _index) internal {
         delete (validatorRegistry[_index]);
-        delete (validatorPubKeyIndex[_pubKey]);
+        delete (validatorRegistryIndexByPubKey[_pubKey]);
         validatorCount--;
         registeredValidatorCount--;
         emit RemovedValidatorFromRegistry(_pubKey);
