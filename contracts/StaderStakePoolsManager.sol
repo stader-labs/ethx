@@ -8,7 +8,7 @@ import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
-import './interfaces/IStaderPoolSelector.sol';
+import './interfaces/IStaderPoolHelper.sol';
 import './interfaces/IStaderUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -27,8 +27,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     ETHX public ethX;
     IStaderOracle public staderOracle;
-    IStaderUserWithdrawalManager public userWithdrawalManager; 
-    IStaderPoolSelector public poolSelector; 
+    IStaderUserWithdrawalManager public userWithdrawalManager;
+    IStaderPoolHelper public poolSelector;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minWithdrawAmount;
@@ -40,19 +40,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public permissionedPoolExitingValidatorCount;
     uint256 public permissionLessExitingValidatorCount;
     uint256 public permissionLessPoolUserDeposit;
-
-    error InvalidWithdrawAmount();
-    error InvalidDepositAmount();
-    error InvalidMinDepositValue();
-    error InvalidMaxDepositValue();
-    error InvalidMinWithdrawValue();
-    error InvalidMaxWithdrawValue()
-
     /**
      * @notice Check for zero address
      * @dev Modifier
      * @param _address the address to check
-    */
+     */
     modifier checkZeroAddress(address _address) {
         require(_address != address(0), 'Address cannot be zero');
         _;
@@ -93,7 +85,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         ethX = ETHX(_ethX);
         staderOracle = IStaderOracle(_staderOracle);
         userWithdrawalManager = IStaderUserWithdrawalManager(_userWithdrawManager);
-        poolSelector = IStaderPoolSelector(_poolSelector);
+        poolSelector = IStaderPoolHelper(_poolSelector);
         _initialSetup();
     }
 
@@ -104,7 +96,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     fallback() external payable {
         uint256 assets = msg.value;
-        if(assets < minDepositAmount || assets>maxDeposit(msg.sender)) revert InvalidDepositAmount();
+        if (assets < minDepositAmount || assets > maxDeposit()) revert InvalidDepositAmount();
         uint256 shares = previewDeposit(assets);
         depositedPooledETH += assets;
         _deposit(_msgSender(), _msgSender(), assets, shares);
@@ -118,7 +110,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         emit ExecutionLayerRewardsReceived(msg.value);
     }
 
-    function receiveWithdrawVaultRewards() external payable override {
+    function receiveWithdrawVaultUserShare() external payable override {
         depositedPooledETH += msg.value;
         emit WithdrawVaultUserShareReceived(msg.value);
     }
@@ -127,8 +119,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update the minimum stake amount
      * @param _minDepositAmount minimum deposit value
      */
-    function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(EXECUTOR_ROLE) {
-        if(_minDepositAmount == 0) revert InvalidMinDepositValue();
+    function updateMinDepositAmount(uint256 _minDepositAmount) external override onlyRole(EXECUTOR_ROLE) {
+        if (_minDepositAmount == 0) revert InvalidMinDepositValue();
         minDepositAmount = _minDepositAmount;
         emit UpdatedMinDepositAmount(minDepositAmount);
     }
@@ -137,8 +129,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update the maximum stake amount
      * @param _maxDepositAmount maximum deposit value
      */
-    function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(EXECUTOR_ROLE) {
-        if(_maxDepositAmount <= minDepositAmount) revert InvalidMaxDepositValue();
+    function updateMaxDepositAmount(uint256 _maxDepositAmount) external override onlyRole(EXECUTOR_ROLE) {
+        if (_maxDepositAmount <= minDepositAmount) revert InvalidMaxDepositValue();
         maxDepositAmount = _maxDepositAmount;
         emit UpdatedMaxDepositAmount(maxDepositAmount);
     }
@@ -147,8 +139,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update the minimum withdraw amount
      * @param _minWithdrawAmount minimum withdraw value
      */
-    function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external onlyRole(EXECUTOR_ROLE) {
-        if(_minWithdrawAmount == 0) revert InvalidMinWithdrawValue();
+    function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external override onlyRole(EXECUTOR_ROLE) {
+        if (_minWithdrawAmount == 0) revert InvalidMinWithdrawValue();
         minWithdrawAmount = _minWithdrawAmount;
         emit UpdatedMinWithdrawAmount(minWithdrawAmount);
     }
@@ -157,8 +149,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update the maximum withdraw amount
      * @param _maxWithdrawAmount maximum withdraw value
      */
-    function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount) external onlyRole(EXECUTOR_ROLE) {
-        if(_maxWithdrawAmount <= minWithdrawAmount) revert InvalidMaxWithdrawValue();
+    function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount) external override onlyRole(EXECUTOR_ROLE) {
+        if (_maxWithdrawAmount <= minWithdrawAmount) revert InvalidMaxWithdrawValue();
         maxWithdrawAmount = _maxWithdrawAmount;
         emit UpdatedMaxWithdrawAmount(maxWithdrawAmount);
     }
@@ -167,7 +159,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update ethX address
      * @param _ethX ethX contract
      */
-    function updateEthXAddress(address _ethX) external checkZeroAddress(_ethX) onlyRole(TIMELOCK_ADMIN_ROLE) {
+    function updateEthXAddress(address _ethX) external override checkZeroAddress(_ethX) onlyRole(TIMELOCK_ADMIN_ROLE) {
         ethX = ETHX(_ethX);
         emit UpdatedEthXAddress(address(ethX));
     }
@@ -178,6 +170,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function updateStaderOracle(address _staderOracle)
         external
+        override
         checkZeroAddress(_staderOracle)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
@@ -191,6 +184,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function updateUserWithdrawalManager(address _userWithdrawalManager)
         external
+        override
         checkZeroAddress(_userWithdrawalManager)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
@@ -204,17 +198,18 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function updatePoolSelector(address _poolSelector)
         external
+        override
         checkZeroAddress(_poolSelector)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        poolSelector = IStaderPoolSelector(_poolSelector);
+        poolSelector = IStaderPoolHelper(_poolSelector);
         emit UpdatedPoolSelector(address(_poolSelector));
     }
 
     /**
      * @notice Returns the amount of ETHER equivalent 1 ETHX (with 18 decimals)
      */
-    function getExchangeRate() public view returns (uint256) {
+    function getExchangeRate() public view override returns (uint256) {
         uint256 totalETH = totalAssets();
         uint256 totalETHx = staderOracle.totalETHXSupply();
 
@@ -225,27 +220,27 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /** @dev See {IERC4626-totalAssets}. */
-    function totalAssets() public view returns (uint256) {
+    function totalAssets() public view override returns (uint256) {
         return staderOracle.totalETHBalance();
     }
 
     /** @dev See {IERC4626-convertToShares}. */
-    function convertToShares(uint256 assets) public view returns (uint256) {
+    function convertToShares(uint256 assets) public view override returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-convertToAssets}. */
-    function convertToAssets(uint256 shares) public view returns (uint256) {
+    function convertToAssets(uint256 shares) public view override returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-maxDeposit}. */
-    function maxDeposit(address receiver) public view returns (uint256) {
+    function maxDeposit() public view override returns (uint256) {
         return _isVaultHealthy() ? maxDepositAmount : 0;
     }
 
     /** @dev See {IERC4626-maxWithdraw}. */
-    function maxWithdraw(address owner) public view returns (uint256) {
+    function maxWithdraw(address owner) public view override returns (uint256) {
         return _convertToAssets(ethX.balanceOf(owner), Math.Rounding.Down);
     }
 
@@ -262,27 +257,32 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     /** @dev See {IERC4626-deposit}. */
     function deposit(address receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
-        if(assets > maxDeposit(receiver) || assets < minDepositAmount) revert InvalidDepositAmount();
+        if (assets > maxDeposit() || assets < minDepositAmount) revert InvalidDepositAmount();
         uint256 shares = previewDeposit(assets);
         _deposit(msg.sender, receiver, assets, shares);
         return shares;
     }
 
     /** @dev See {IERC4626-withdraw}. */
-    function userWithdraw(uint256 _ethXAmount, address receiver) public whenNotPaused {
+    function userWithdraw(uint256 _ethXAmount, address receiver) public override whenNotPaused {
         uint256 assets = previewWithdraw(_ethXAmount);
-        if(assets<minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
+        if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
         ethX.transferFrom(msg.sender, (address(userWithdrawalManager)), _ethXAmount);
         requiredETHForWithdrawal += assets;
         userWithdrawalManager.withdraw(msg.sender, payable(receiver), assets, _ethXAmount);
         emit WithdrawRequested(msg.sender, receiver, assets, _ethXAmount);
     }
 
-    function finalizeUserWithdrawalRequest(bool _slashingMode) external whenNotPaused onlyRole(EXECUTOR_ROLE) { //TODO change input name
-        if(_slashingMode){
+    /**
+     * @notice finalize user request in a batch
+     * @dev when slashing mode, only process and don't finalize
+     * @param _slashingMode mode stating that protocol is getting slashed
+     */
+    function finalizeUserWithdrawalRequest(bool _slashingMode) external override whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        //TODO change input name
+        if (_slashingMode) {
             _processUserWithdrawRequests();
-        }
-        else{
+        } else {
             uint256 lastFinalizedBatchNumber = userWithdrawalManager.lastFinalizedBatch();
             uint256 currentBatchNumber = userWithdrawalManager.currentBatchNumber();
             uint256 lockedEthXToBurn;
@@ -300,7 +300,10 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
                 lockedEthXToBurn += lockedEthX;
                 ethToFinalizeBatchesAtWithdrawRate += requiredEth;
                 ethToFinalizeBatchesAtFinalizeRate += (lockedEthX * getExchangeRate()) / DECIMALS;
-                if (Math.min(ethToFinalizeBatchesAtWithdrawRate, ethToFinalizeBatchesAtFinalizeRate) > depositedPooledETH) {
+                if (
+                    Math.min(ethToFinalizeBatchesAtWithdrawRate, ethToFinalizeBatchesAtFinalizeRate) >
+                    depositedPooledETH
+                ) {
                     break;
                 }
             }
@@ -322,43 +325,65 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         }
     }
 
-    function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey) public whenNotPaused returns (uint256 requestId) {}
+    function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey)
+        public
+        override
+        whenNotPaused
+        returns (uint256 requestId)
+    {}
 
     /**
      * @notice spinning off validators in different pools
      * @dev select a pool based on poolWeight
      */
-    function transferToPools() external onlyRole(EXECUTOR_ROLE) {
+    function transferToPools() external override onlyRole(EXECUTOR_ROLE) {
         uint256 balance = address(this).balance;
-        uint256[] memory poolValidatorsCount = poolSelector.getValidatorPerPoolToDeposit(balance);
-        for(uint8 i =0;i< poolValidatorsCount.length;i++){
-            if(poolValidatorsCount[i]>0){
-                (uint8 poolType,,,address poolAddress,,,) = poolSelector.staderPool(i);
-                if(poolType==0){
-                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: poolValidatorsCount[i]* permissionLessPoolUserDeposit}();
-                    emit TransferredToPool(poolType, poolAddress, poolValidatorsCount[i]);
-                }
-                else{
-                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: poolValidatorsCount[i]* DEPOSIT_SIZE}();
-                    emit TransferredToPool(poolType, poolAddress, poolValidatorsCount[i]);
+        uint256[] memory poolValidatorsCount; //= poolSelector.getValidatorPerPoolToDeposit(balance);
+        for (uint8 i = 0; i < poolValidatorsCount.length; i++) {
+            if (poolValidatorsCount[i] > 0) {
+                (string memory poolName, address poolAddress, , , ) = poolSelector.staderPool(i);
+                if (keccak256(abi.encodePacked(poolName)) == keccak256(abi.encodePacked('PERMISSIONLESS'))) {
+                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
+                        value: poolValidatorsCount[i] * permissionLessPoolUserDeposit
+                    }();
+                    emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
+                } else {
+                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
+                        value: poolValidatorsCount[i] * DEPOSIT_SIZE
+                    }();
+                    emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
                 }
             }
         }
     }
 
-    function _processUserWithdrawRequests() internal{
-        if(requiredETHForWithdrawal > permissionedPoolExitingValidatorCount*DEPOSIT_SIZE + permissionLessExitingValidatorCount * permissionLessPoolUserDeposit){
-            
+    /**
+     * @notice computes validator from each pool to exit to finalize ongoing withdraw requests
+     * @dev take into account of exiting validator balance in account
+     */
+    function _processUserWithdrawRequests() internal view {
+        uint256 exitingValidatorsEth = permissionedPoolExitingValidatorCount *
+            DEPOSIT_SIZE +
+            permissionLessExitingValidatorCount *
+            permissionLessPoolUserDeposit;
+        if (requiredETHForWithdrawal > exitingValidatorsEth) {
+            uint256 ethRequiredByExitingValidator = requiredETHForWithdrawal - exitingValidatorsEth;
+            uint256 validatorCountToExit = ethRequiredByExitingValidator / DEPOSIT_SIZE + 1;
+            // uint256[] memory poolWiseValidatorCountToExit = poolSelector.getValidatorPerPoolToExit(
+            //     validatorCountToExit
+            // );
         }
     }
 
+    /**
+     * @notice initializes variable
+     */
     function _initialSetup() internal {
         minDepositAmount = 100;
         maxDepositAmount = 32 ether;
         minWithdrawAmount = 100;
-        maxWithdrawAmount = 10 ether ;
+        maxWithdrawAmount = 10 ether;
         permissionLessPoolUserDeposit = 28 ether;
-
     }
 
     /**

@@ -35,38 +35,35 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /**
-     * @dev add a validator to the registry
-     * @param _pubKey public Key of the validator
-     * @param _signature signature for deposit to Ethereum Deposit contract
-     * @param _depositDataRoot deposit data root for deposit to Ethereum Deposit contract
-     * @param _staderPoolType stader network pool type
-     * @param _operatorId stader network assigned operator ID
-     * @param _bondEth amount of bond eth in gwei
-     */
-    function addToValidatorRegistry(
-        bytes memory _pubKey,
-        bytes memory _signature,
-        bytes memory _withdrawalAddress,
-        bytes32 _depositDataRoot,
-        bytes32 _staderPoolType,
-        uint256 _operatorId,
-        uint256 _bondEth
-    ) external override onlyRole(STADER_NETWORK_POOL) {
-        Validator storage _validatorRegistry = validatorRegistry[validatorCount];
-        _validatorRegistry.validatorDepositStatus = false;
-        _validatorRegistry.isWithdrawal = false;
-        _validatorRegistry.pubKey = _pubKey;
-        _validatorRegistry.signature = _signature;
-        _validatorRegistry.withdrawalAddress = _withdrawalAddress;
-        _validatorRegistry.depositDataRoot = _depositDataRoot;
-        _validatorRegistry.staderPoolType = _staderPoolType;
-        _validatorRegistry.operatorId = _operatorId;
-        _validatorRegistry.bondEth = _bondEth;
-        _validatorRegistry.penaltyCount = 0;
-        validatorRegistryIndexByPubKey[_pubKey] = validatorCount;
-        validatorCount++;
-        emit AddedToValidatorRegistry(_pubKey, _staderPoolType, validatorCount);
+    // TODO add validator keys adding function
+    function addValidatorKeys() external {
+        //     bytes calldata _validatorPubkey,
+        //     bytes calldata _validatorSignature,
+        //     bytes32 _depositDataRoot,
+        //     bytes32 _withdrawVaultSalt,
+        //     uint256 _operatorId
+        // ) external payable onlyRole(PERMISSION_LESS_OPERATOR) {
+        //     require(msg.value == 4 ether, 'invalid collateral');
+        //     require(
+        //         staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
+        //         'validator already in use'
+        //     );
+        //     uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
+        //     require(operatorIndex == type(uint256).max, 'operatorNotOnboarded');
+        //     staderOperatorRegistry.incrementValidatorCount(_operatorId);
+        //     address withdrawVault = rewardVaultFactory.deployWithdrawVault(_withdrawVaultSalt, payable(withdrawVaultOwner));
+        //     bytes memory withdrawCredential = rewardVaultFactory.getValidatorWithdrawCredential(withdrawVault);
+        //     _validateKeys(_validatorPubkey, withdrawCredential, _validatorSignature, _depositDataRoot);
+        //     staderValidatorRegistry.addToValidatorRegistry(
+        //         _validatorPubkey,
+        //         _validatorSignature,
+        //         withdrawCredential,
+        //         _depositDataRoot,
+        //         PERMISSION_LESS_POOL,
+        //         _operatorId,
+        //         msg.value
+        //     );
+        //     standByPermissionLessValidators++;
     }
 
     /**

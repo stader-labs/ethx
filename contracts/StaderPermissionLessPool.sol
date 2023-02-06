@@ -4,7 +4,6 @@ import './StaderBasePool.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
-import './interfaces/IStaderELRewardVaultFactory.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
@@ -16,8 +15,6 @@ contract StaderPermissionLessStakePool is StaderBasePool, Initializable, AccessC
     IDepositContract public ethValidatorDeposit;
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
-    IStaderELRewardVaultFactory public rewardVaultFactory;
-
     bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
     bytes32 public constant PERMISSION_LESS_OPERATOR = keccak256('PERMISSION_LESS_OPERATOR');
     bytes32 public constant PERMISSION_LESS_POOL = keccak256('PERMISSION_LESS_POOL');
@@ -52,23 +49,14 @@ contract StaderPermissionLessStakePool is StaderBasePool, Initializable, AccessC
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        rewardVaultFactory = IStaderELRewardVaultFactory(_rewardVaultFactory);
         withdrawVaultOwner = _staderPermissionLessPoolAdmin; //make it a generic multisig owner across all contract
         permissionLessNOsMEVVault = _permissionLessNOsMEVVault;
         _grantRole(STADER_PERMISSION_LESS_POOL_ADMIN, _staderPermissionLessPoolAdmin);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /**
-     * @notice Allows the contract to receive ETH
-     * @dev stader pool manager send ETH to stader managed stake pool
-     */
-    receive() external payable {
-        emit ReceivedETH(msg.sender, msg.value);
-    }
-
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function depositEthToDepositContract() external payable onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
+    function registerValidatorsOnBeacon() external payable onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
         require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
         require(standByPermissionLessValidators > 0, 'stand by permissionLess validator not available');
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
@@ -103,76 +91,10 @@ contract StaderPermissionLessStakePool is StaderBasePool, Initializable, AccessC
             //slither-disable-next-line arbitrary-send-eth
             ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCred, signature, depositDataRoot);
             staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
-            staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
+            staderOperatorRegistry.incrementActiveValidatorsCount(operatorId);
             emit DepositToDepositContract(pubKey);
             counter++;
         }
-    }
-
-    /**
-     * @notice onboard a permissioned node operator
-     *
-     */
-    function onboardPermissionLessNodeOperator(
-        bool _mevOptIn,
-        address _operatorRewardAddress,
-        bytes32 _nodeDistributorSalt,
-        string calldata _operatorName,
-        uint256 _operatorId
-    ) external checkZeroAddress(_operatorRewardAddress) returns (address) {
-        uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
-        require(operatorIndex != type(uint256).max, 'operatorAlreadyOnboarded');
-        address mevFeeRecipientAddress;
-        if (!_mevOptIn) {
-            mevFeeRecipientAddress = rewardVaultFactory.deployNodeDistributor(
-                _nodeDistributorSalt,
-                payable(_operatorRewardAddress)
-            );
-        } else mevFeeRecipientAddress = permissionLessNOsMEVVault;
-
-        staderOperatorRegistry.addToOperatorRegistry(
-            _mevOptIn,
-            mevFeeRecipientAddress,
-            _operatorRewardAddress,
-            PERMISSION_LESS_POOL,
-            _operatorName,
-            _operatorId,
-            1,
-            0
-        );
-        return mevFeeRecipientAddress;
-    }
-
-    function addValidatorKeys(
-        bytes calldata _validatorPubkey,
-        bytes calldata _validatorSignature,
-        bytes32 _depositDataRoot,
-        bytes32 _withdrawVaultSalt,
-        uint256 _operatorId
-    ) external payable onlyRole(PERMISSION_LESS_OPERATOR) {
-        require(msg.value == 4 ether, 'invalid collateral');
-        require(
-            staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
-            'validator already in use'
-        );
-        uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
-        require(operatorIndex == type(uint256).max, 'operatorNotOnboarded');
-
-        staderOperatorRegistry.incrementValidatorCount(_operatorId);
-
-        address withdrawVault = rewardVaultFactory.deployWithdrawVault(_withdrawVaultSalt, payable(withdrawVaultOwner));
-        bytes memory withdrawCredential = rewardVaultFactory.getValidatorWithdrawCredential(withdrawVault);
-        _validateKeys(_validatorPubkey, withdrawCredential, _validatorSignature, _depositDataRoot);
-        staderValidatorRegistry.addToValidatorRegistry(
-            _validatorPubkey,
-            _validatorSignature,
-            withdrawCredential,
-            _depositDataRoot,
-            PERMISSION_LESS_POOL,
-            _operatorId,
-            msg.value
-        );
-        standByPermissionLessValidators++;
     }
 
     /**

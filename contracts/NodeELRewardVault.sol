@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 import './library/StaderBaseLibrary.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderNodeDistributor is Initializable, AccessControlUpgradeable {
+contract NodeELRewardVault is Initializable, AccessControlUpgradeable {
     address payable nodeRecipient;
 
     event ETHReceived(uint256 amout);

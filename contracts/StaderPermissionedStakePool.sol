@@ -7,7 +7,6 @@ import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderPermissionedStakePool.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
-import './interfaces/IStaderELRewardVaultFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
@@ -26,7 +25,6 @@ contract StaderPermissionedStakePool is
     IDepositContract public ethValidatorDeposit;
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
-    IStaderELRewardVaultFactory public rewardVaultFactory;
 
     bytes32 public constant STADER_PERMISSIONED_POOL_ADMIN = keccak256('STADER_PERMISSIONED_POOL_ADMIN');
     bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
@@ -56,7 +54,6 @@ contract StaderPermissionedStakePool is
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        rewardVaultFactory = IStaderELRewardVaultFactory(_rewardVaultFactory);
         withdrawVaultOwner = _staderPoolAdmin; //make it a generic multisig owner across all contract
         permissionedNOsMEVVault = _permissionedNOsMEVVault;
         _grantRole(STADER_PERMISSIONED_POOL_ADMIN, _staderPoolAdmin);
@@ -69,66 +66,6 @@ contract StaderPermissionedStakePool is
      */
     receive() external payable {
         emit ReceivedETH(msg.sender, msg.value);
-    }
-
-    /**
-     * @notice onboard a permissioned node operator
-     *
-     */
-    function onboardPermissionedNodeOperator(
-        address _operatorRewardAddress,
-        string calldata _operatorName,
-        uint256 _operatorId
-    ) external onlyRole(STADER_PERMISSIONED_POOL_ADMIN) checkZeroAddress(_operatorRewardAddress) returns (address) {
-        uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
-        require(operatorIndex != type(uint256).max, 'operatorAlreadyOnboarded');
-        staderOperatorRegistry.addToOperatorRegistry(
-            true,
-            permissionedNOsMEVVault,
-            _operatorRewardAddress,
-            PERMISSIONED_POOL,
-            _operatorName,
-            _operatorId,
-            1,
-            0
-        );
-        return permissionedNOsMEVVault;
-    }
-
-    /**
-     * @notice permission pool validator onboarding
-     * @dev register the permission pool validators in stader validator registry
-     *
-     */
-    function addValidatorKeys(
-        bytes calldata _validatorPubkey,
-        bytes calldata _validatorSignature,
-        bytes32 _depositDataRoot,
-        bytes32 _withdrawVaultSalt,
-        uint256 _operatorId
-    ) external onlyRole(STADER_PERMISSIONED_POOL_ADMIN) {
-        require(
-            staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
-            'validator already in use'
-        );
-        uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
-        require(operatorIndex == type(uint256).max, 'operatorNotOnboarded');
-
-        staderOperatorRegistry.incrementValidatorCount(_operatorId);
-
-        address withdrawVault = rewardVaultFactory.deployWithdrawVault(_withdrawVaultSalt, payable(withdrawVaultOwner));
-        bytes memory withdrawCredential = rewardVaultFactory.getValidatorWithdrawCredential(withdrawVault);
-        _validateKeys(_validatorPubkey, withdrawCredential, _validatorSignature, _depositDataRoot);
-        staderValidatorRegistry.addToValidatorRegistry(
-            _validatorPubkey,
-            _validatorSignature,
-            withdrawCredential,
-            _depositDataRoot,
-            PERMISSIONED_POOL,
-            _operatorId,
-            0
-        );
-        standByPermissionedValidators++;
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
@@ -167,7 +104,7 @@ contract StaderPermissionedStakePool is
             //slither-disable-next-line arbitrary-send-eth
             ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCred, signature, depositDataRoot);
             staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
-            staderOperatorRegistry.incrementActiveValidatorCount(operatorId);
+            staderOperatorRegistry.incrementActiveValidatorsCount(operatorId);
             emit DepositToDepositContract(pubKey);
             counter++;
         }

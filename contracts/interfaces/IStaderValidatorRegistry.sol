@@ -13,15 +13,7 @@ interface IStaderValidatorRegistry {
 
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
-    function addToValidatorRegistry(
-        bytes memory _pubKey,
-        bytes memory _signature,
-        bytes memory _withdrawalAddress,
-        bytes32 _depositDataRoot,
-        bytes32 _staderPoolType,
-        uint256 _operatorId,
-        uint256 _bondEth
-    ) external;
+    function addValidatorKeys() external;
 
     function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view returns (string[] memory);
 

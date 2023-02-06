@@ -3,62 +3,67 @@
 pragma solidity ^0.8.16;
 
 interface IStaderOperatorRegistry {
-    /// @notice event emits after adding a operator to operatorRegistry
-    event AddedToOperatorRegistry(uint256 operatorId, uint256 operatorCount);
+    error InvalidPoolIdInput();
+    error OperatorAlreadyOnBoarded();
+    error OperatorNotWhiteListed();
+    error OperatorNotRegistered();
+    error NoQueuedValidatorLeft();
+    error NoActiveValidatorLeft();
 
-    /// @notice event emits after increasing validatorCount for an operator
-    event IncrementedValidatorCount(uint256 operatorId, uint256 validatorCount);
+    event IncrementedQueuedValidatorsCount(uint256 operatorId, uint256 queuedValidatorCount);
+    event ReducedQueuedValidatorsCount(uint256 operatorId, uint256 queuedValidatorCount);
+    event IncrementedActiveValidatorsCount(uint256 operatorId, uint256 activeValidatorCount);
+    event ReducedActiveValidatorsCount(uint256 operatorId, uint256 activeValidatorCount);
+    event IncrementedWithdrawnValidatorsCount(uint256 operatorId, uint256 withdrawnValidators);
 
-    /// @notice event emits after increasing activeValidatorCount for an operator
-    event IncrementedActiveValidatorCount(uint256 operatorId, uint256 activeValidatorCount);
-
-    /// @notice event emits after increasing the penalty score of a operator for misbehaving
-    event ReducedValidatorCount(uint256 operatorId, uint256 validatorCount, uint256 activeActiveCount);
-
-    function operatorCount() external view returns (uint256);
+    function getOperatorCount() external view returns (uint256);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
 
+    function OPERATOR_REGISTRY_OWNER() external view returns (bytes32);
+
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
-    function addToOperatorRegistry(
-        bool _optedForSocializingPool,
-        address _mevRewardAddress,
-        address _operatorRewardAddress,
-        bytes32 _staderPoolType,
-        string memory _operatorName,
-        uint256 _operatorId,
-        uint256 _validatorCount,
-        uint256 _activeValidatorCount
-    ) external;
+    function incrementActiveValidatorsCount(uint256 _operatorId) external;
 
-    function getOperatorIndexById(uint256 _operatorId) external view returns (uint256);
+    function reduceActiveValidatorsCount(uint256 _operatorId) external;
 
-    function incrementActiveValidatorCount(uint256 _operatorId) external;
+    function incrementQueuedValidatorsCount(uint256 _operatorId) external;
 
-    function incrementValidatorCount(uint256 _operatorId) external;
+    function reduceQueuedValidatorsCount(uint256 _operatorId) external;
 
-    function operatorRegistryIndexByOperatorId(uint256) external view returns (uint256);
+    function incrementWithdrawValidatorsCount(uint256 _operatorId) external;
 
-    function operatorRegistry(uint256)
+    function whiteListedPermissionedNOs(address) external view returns (bool);
+
+    function whiteListPermissionedNOs(address _nodeOperator) external;
+
+    function operatorByOperatorId(uint256) external view returns (address);
+
+    function operatorRegistry(address)
         external
         view
         returns (
-            bool _optedForSocializingPool,
-            address _mevRewardAddress,
-            address payable operatorRewardAddress,
-            bytes32 staderPoolType,
+            bool optedForSocializingPool,
+            uint8 staderPoolId,
             string memory operatorName,
+            address payable operatorRewardAddress,
             uint256 operatorId,
-            uint256 validatorCount,
-            uint256 activeValidatorCount
+            uint256 queuedValidatorCount,
+            uint256 activeValidatorCount,
+            uint256 withdrawnValidatorCount
         );
 
-    function reduceOperatorValidatorsCount(uint256 _operatorId) external;
+    function onboardNodeOperator(
+        bool _optInForMevSocialize,
+        uint8 _poolId,
+        string calldata _operatorName,
+        address payable _operatorRewardAddress
+    ) external returns (address mevFeeRecipientAddress);
 
     function selectOperators(
         uint256 _requiredOperatorCount,
         uint256 _operatorStartIndex,
         bytes32 _poolType
-    ) external view returns (uint256[] memory outputOperatorIds, uint256 operatorEndIndex);
+    ) external view returns (uint256[] memory, uint256);
 }

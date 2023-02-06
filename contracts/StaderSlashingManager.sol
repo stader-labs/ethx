@@ -81,16 +81,14 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
             require(validatorIndex != type(uint256).max, 'validator not available');
             (, , , , , , , uint256 operatorId, , ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
-            uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(operatorId);
-            require(operatorIndex != type(uint256).max, 'operator does not exit');
-
-            (, , address operatorRewardAddress, , , , , ) = staderOperatorRegistry.operatorRegistry(operatorIndex);
+            address nodeOperator = staderOperatorRegistry.operatorByOperatorId(operatorId);
+            (, , , address operatorRewardAddress, , , , ) = staderOperatorRegistry.operatorRegistry(nodeOperator);
             if (_nodeShare[index] > 0) {
                 //permission less operator
                 //write withdraw balance logic for node operator
             }
-            staderValidatorRegistry.handleWithdrawnValidators(_pubKeys[index]);
-            staderOperatorRegistry.reduceOperatorValidatorsCount(operatorId);
+            // staderValidatorRegistry.handleWithdrawnValidators(_pubKeys[index]);
+            // staderOperatorRegistry.reduceOperatorValidatorsCount(operatorId);
         }
     }
 

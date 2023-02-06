@@ -72,10 +72,11 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         uint256 totalOperatorELFee;
         uint256 totalValidatorRegistered = staderValidatorRegistry.registeredValidatorCount();
         require(totalValidatorRegistered > 0, 'No active validator on beacon chain');
-        uint256 operatorCount = staderOperatorRegistry.operatorCount();
-        for (uint256 index = 0; index < operatorCount; index++) {
-            (, , address operatorRewardAddress, , , , , uint256 activeValidatorCount) = staderOperatorRegistry
-                .operatorRegistry(index);
+        uint256 operatorCount = staderOperatorRegistry.getOperatorCount();
+        for (uint256 index = 0; index < operatorCount; ++index) {
+            address nodeOperator = staderOperatorRegistry.operatorByOperatorId(index);
+            (, , , address operatorRewardAddress, , , uint256 activeValidatorCount, ) = staderOperatorRegistry
+                .operatorRegistry(nodeOperator);
             if (activeValidatorCount > 0) {
                 uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
                 totalOperatorELFee += operatorELFee;
