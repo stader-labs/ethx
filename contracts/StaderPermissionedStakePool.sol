@@ -20,8 +20,6 @@ contract StaderPermissionedStakePool is
 {
     uint256 public permissionedOperatorIndex;
     uint256 public standByPermissionedValidators;
-    address withdrawVaultOwner;
-    address permissionedNOsMEVVault;
     IDepositContract public ethValidatorDeposit;
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
@@ -37,9 +35,8 @@ contract StaderPermissionedStakePool is
         address _staderOperatorRegistry,
         address _staderValidatorRegistry,
         address _staderPoolAdmin,
-        address _rewardVaultFactory,
-        address _permissionedNOsMEVVault
-    )
+        address _rewardVaultFactory
+        )
         external
         initializer
         checkZeroAddress(_ethValidatorDeposit)
@@ -47,15 +44,12 @@ contract StaderPermissionedStakePool is
         checkZeroAddress(_staderValidatorRegistry)
         checkZeroAddress(_staderPoolAdmin)
         checkZeroAddress(_rewardVaultFactory)
-        checkZeroAddress(permissionedNOsMEVVault)
     {
         __Pausable_init();
         __AccessControl_init_unchained();
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        withdrawVaultOwner = _staderPoolAdmin; //make it a generic multisig owner across all contract
-        permissionedNOsMEVVault = _permissionedNOsMEVVault;
         _grantRole(STADER_PERMISSIONED_POOL_ADMIN, _staderPoolAdmin);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -76,29 +70,27 @@ contract StaderPermissionedStakePool is
         depositCount = depositCount > standByPermissionedValidators ? standByPermissionedValidators : depositCount;
         standByPermissionedValidators -= depositCount;
         (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
+            1,
             depositCount,
-            permissionedOperatorIndex,
-            PERMISSIONED_POOL
+            permissionedOperatorIndex
         );
         permissionedOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
             uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexForOperatorId(
-                PERMISSIONED_POOL,
+                1,
                 selectedOperatorIds[counter]
             );
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
-            (
-                ,
-                ,
-                bytes memory pubKey,
-                bytes memory signature,
-                bytes memory withdrawCred,
-                bytes32 depositDataRoot,
-                ,
-                uint256 operatorId,
-                ,
-
+            (,
+            ,
+            bytes memory pubKey,
+            bytes memory signature,
+            bytes memory withdrawCred,
+            uint8 staderPoolId,
+            bytes32 depositDataRoot,
+            uint256 operatorId,
+            ,
             ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
             //slither-disable-next-line arbitrary-send-eth

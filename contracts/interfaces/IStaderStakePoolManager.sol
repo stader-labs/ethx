@@ -9,6 +9,7 @@ interface IStaderStakePoolManager {
     error InvalidMaxDepositValue();
     error InvalidMinWithdrawValue();
     error InvalidMaxWithdrawValue();
+    error ProtocolNotHealthy();
 
     event Deposited(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event ExecutionLayerRewardsReceived(uint256 amount);
@@ -70,5 +71,5 @@ interface IStaderStakePoolManager {
 
     function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey) external returns (uint256 requestId);
 
-    function transferToPools() external;
+    function transferToPools(uint256[] calldata _inputVal) external;
 }

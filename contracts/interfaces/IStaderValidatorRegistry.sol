@@ -3,6 +3,11 @@
 pragma solidity ^0.8.16;
 
 interface IStaderValidatorRegistry {
+    error OperatorNotOnBoarded();
+    error InvalidKeysInput();
+    error InsufficientBond();
+    error  BondEThToAddKeys();
+
     event AddedToValidatorRegistry(bytes publicKey, bytes32 poolType, uint256 count);
 
     event RemovedValidatorFromRegistry(bytes publicKey);
@@ -13,15 +18,15 @@ interface IStaderValidatorRegistry {
 
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
-    function addValidatorKeys() external;
-
-    function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view returns (string[] memory);
-
-    function getPoRAddressListLength() external view returns (uint256);
+        function addValidatorKeys(
+            bytes[] calldata _validatorPubKey,
+            bytes[] calldata _validatorSignature,
+            bytes32[] calldata _depositDataRoot
+        ) external payable;
 
     function getValidatorIndexByPublicKey(bytes memory _publicKey) external view returns (uint256);
 
-    function getValidatorIndexForOperatorId(bytes32 _poolType, uint256 _inputOperatorId)
+    function getValidatorIndexForOperatorId(uint8 _poolId, uint256 _inputOperatorId)
         external
         view
         returns (uint256);
@@ -38,7 +43,7 @@ interface IStaderValidatorRegistry {
 
     function updateBondEth(uint256 validatorIndex, uint256 currentBondEth) external;
 
-    function validatorCount() external view returns (uint256);
+    function nextValidatorId() external view returns (uint256);
 
     function validatorRegistryIndexByPubKey(bytes memory) external view returns (uint256);
 
@@ -51,8 +56,8 @@ interface IStaderValidatorRegistry {
             bytes memory pubKey,
             bytes memory signature,
             bytes memory withdrawalAddress,
+            uint8 staderPoolId,
             bytes32 depositDataRoot,
-            bytes32 staderPoolType,
             uint256 operatorId,
             uint256 bondEth,
             uint256 penaltyCount

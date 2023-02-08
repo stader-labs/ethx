@@ -4,7 +4,7 @@ const hre = require('hardhat')
 async function main() {
   const validatorRegistry = process.env.VALIDATOR_REGISTRY ?? ''
   const validatorRegistryFactory = await ethers.getContractFactory('StaderValidatorRegistry')
-  const validatorRegistryInstance = await validatorRegistryFactory.attach(validatorRegistry)
+  const validatorRegistryInstance = validatorRegistryFactory.attach(validatorRegistry)
 
   const staderContractUpgraded = await upgrades.upgradeProxy(validatorRegistryInstance, validatorRegistryFactory)
 

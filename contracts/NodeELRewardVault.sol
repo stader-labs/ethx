@@ -1,6 +1,5 @@
 pragma solidity ^0.8.16;
 
-import './library/StaderBaseLibrary.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract NodeELRewardVault is Initializable, AccessControlUpgradeable {
@@ -8,8 +7,14 @@ contract NodeELRewardVault is Initializable, AccessControlUpgradeable {
 
     event ETHReceived(uint256 amout);
 
-    function initialize(address payable _nodeRecipient) external initializer {
-        StaderBaseLibrary.checkZeroAddress(_nodeRecipient);
+    /// @notice zero address check modifier
+    modifier checkZeroAddress(address _address) {
+        require(_address != address(0), 'Address cannot be zero');
+        _;
+    }
+
+
+    function initialize(address payable _nodeRecipient) external initializer checkZeroAddress(_nodeRecipient){
         __AccessControl_init_unchained();
         nodeRecipient = _nodeRecipient;
     }

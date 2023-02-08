@@ -8,6 +8,7 @@ import './interfaces/IStaderRewardContractFactory.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, AccessControlUpgradeable {
+    
     IStaderPoolHelper staderPoolHelper;
     IStaderRewardContractFactory rewardContractFactory;
     address permissionLessSocializePool;
@@ -42,8 +43,18 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
-    function initialize() external initializer {
+    function initialize(
+        address _rewardContractFactory,
+        address _permissionedSocializePool,
+        address _permissionLessSocializePool
+    ) external initializer 
+    checkZeroAddress(_rewardContractFactory)
+    checkZeroAddress(_permissionedSocializePool)
+    checkZeroAddress(_permissionLessSocializePool){
         __AccessControl_init_unchained();
+        rewardContractFactory = IStaderRewardContractFactory(_rewardContractFactory);
+        permissionedSocializePool = _permissionedSocializePool;
+        permissionLessSocializePool = _permissionLessSocializePool;
         nextOperatorId = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -97,6 +108,7 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
             nextOperatorId++;
             return mevFeeRecipientAddress;
         }
+        //if whitelisted operator tries with poolId of permission less then revert
         if (whiteListedPermissionedNOs[msg.sender]) revert InvalidPoolIdInput();
         mevFeeRecipientAddress = permissionLessSocializePool;
         if (!_optInForMevSocialize) {
@@ -201,35 +213,49 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
         _operatorCount = nextOperatorId - 1;
     }
 
+    function updatePoolHelper(address _staderPoolHelper) external checkZeroAddress(_staderPoolHelper) onlyRole(STADER_NETWORK_POOL){
+        staderPoolHelper = IStaderPoolHelper(_staderPoolHelper);
+    }
+
+/**
+ * @notice get the total deposited keys for an operator
+ * @dev add queued, active and withdrawn validator to get total validators keys
+ * @param _nodeOperator node operator address
+ */
+    function getTotalValidatorKeys(address _nodeOperator) external view returns(uint256 _totalKeys){
+        if(operatorRegistry[_nodeOperator].operatorId ==0) revert OperatorNotRegistered();
+        _totalKeys = operatorRegistry[_nodeOperator].queuedValidatorCount+ operatorRegistry[_nodeOperator].activeValidatorCount + operatorRegistry[_nodeOperator].withdrawnValidatorCount;
+    }
+
     /**
      * @notice pick the next set of operator to register validator
      * @param _requiredOperatorCount number of operator require
-     * @param _operatorStartIndex starting index of operatorID to scan registry
-     * @param _poolType pool type of next operators
+     * @param _operatorStartId starting index of operatorID to scan registry
+     * @param _poolId pool type of next operators
      */
     function selectOperators(
+        uint8 _poolId,
         uint256 _requiredOperatorCount,
-        uint256 _operatorStartIndex,
-        bytes32 _poolType
+        uint256 _operatorStartId
     ) external view override returns (uint256[] memory, uint256) {
         uint256 counter;
         uint256[] memory outputOperatorIds = new uint256[](_requiredOperatorCount);
-        // while (_operatorStartIndex < operatorCount) {
-        //     if (
-        //         operatorRegistry[_operatorStartIndex].staderPoolType == _poolType &&
-        //         operatorRegistry[_operatorStartIndex].validatorCount >
-        //         operatorRegistry[_operatorStartIndex].activeValidatorCount
-        //     ) {
-        //         outputOperatorIds[counter] = (operatorRegistry[_operatorStartIndex].operatorId);
-        //         counter++;
-        //     }
-        //     _operatorStartIndex++;
-        //     if (_operatorStartIndex == operatorCount) {
-        //         _operatorStartIndex = 0;
-        // }
-        if (counter == _requiredOperatorCount) {
-            return (outputOperatorIds, _operatorStartIndex);
+        while (_operatorStartId < nextOperatorId) {
+            address nodeOperator = operatorByOperatorId[_operatorStartId];
+            if (
+                operatorRegistry[nodeOperator].staderPoolId == _poolId &&
+                operatorRegistry[nodeOperator].queuedValidatorCount > 0
+            ) {
+                outputOperatorIds[counter] = _operatorStartId;
+                counter++;
+            }
+            _operatorStartId++;
+            if (_operatorStartId == nextOperatorId) {
+                _operatorStartId = 1;
         }
-        // }
+        if (counter == _requiredOperatorCount) {
+            return (outputOperatorIds, _operatorStartId);
+        }
+        }
     }
 }

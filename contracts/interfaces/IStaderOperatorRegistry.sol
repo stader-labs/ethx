@@ -3,6 +3,7 @@
 pragma solidity ^0.8.16;
 
 interface IStaderOperatorRegistry {
+
     error InvalidPoolIdInput();
     error OperatorAlreadyOnBoarded();
     error OperatorNotWhiteListed();
@@ -61,9 +62,12 @@ interface IStaderOperatorRegistry {
         address payable _operatorRewardAddress
     ) external returns (address mevFeeRecipientAddress);
 
+    function getTotalValidatorKeys(address _nodeOperator) external view returns(uint256 _totalKeys);
+
     function selectOperators(
+        uint8 _poolId,
         uint256 _requiredOperatorCount,
-        uint256 _operatorStartIndex,
-        bytes32 _poolType
+        uint256 _operatorStartId
+
     ) external view returns (uint256[] memory, uint256);
 }

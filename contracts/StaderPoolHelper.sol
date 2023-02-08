@@ -41,6 +41,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
         staderPool[1] = Pool('PERMISSIONED', _permissionedPoolAddress, 0, 0, 0);
         poolTypeCount = 2;
         _grantRole(POOL_SELECTOR_ADMIN, _poolSelectorAdmin);
+        _grantRole(DEFAULT_ADMIN_ROLE,msg.sender);
     }
 
     /**
@@ -125,6 +126,14 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     function incrementWithdrawnValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
         staderPool[_poolId].withdrawnValidatorKeys++;
         emit UpdatedWithdrawnValidatorKeys(_poolId, staderPool[_poolId].withdrawnValidatorKeys);
+    }
+
+    function getQueuedValidator(uint8 _poolId) external view override returns(uint256){
+        return staderPool[_poolId].queuedValidatorKeys;
+    }
+
+    function getActiveValidator(uint8 _poolId) external view override returns(uint256){
+        return staderPool[_poolId].activeValidatorKeys;
     }
 
     /** @notice Check for zero address

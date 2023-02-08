@@ -36,9 +36,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public minDepositAmount;
     uint256 public maxDepositAmount;
     uint256 public depositedPooledETH;
-    uint256 public requiredETHForWithdrawal;
-    uint256 public permissionedPoolExitingValidatorCount;
-    uint256 public permissionLessExitingValidatorCount;
     uint256 public permissionLessPoolUserDeposit;
     /**
      * @notice Check for zero address
@@ -268,7 +265,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 assets = previewWithdraw(_ethXAmount);
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
         ethX.transferFrom(msg.sender, (address(userWithdrawalManager)), _ethXAmount);
-        requiredETHForWithdrawal += assets;
         userWithdrawalManager.withdraw(msg.sender, payable(receiver), assets, _ethXAmount);
         emit WithdrawRequested(msg.sender, receiver, assets, _ethXAmount);
     }
@@ -280,48 +276,43 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function finalizeUserWithdrawalRequest(bool _slashingMode) external override whenNotPaused onlyRole(EXECUTOR_ROLE) {
         //TODO change input name
-        if (_slashingMode) {
-            _processUserWithdrawRequests();
-        } else {
-            uint256 lastFinalizedBatchNumber = userWithdrawalManager.lastFinalizedBatch();
-            uint256 currentBatchNumber = userWithdrawalManager.currentBatchNumber();
+        if (!_slashingMode) {
+
+            if(getExchangeRate()==0) revert ProtocolNotHealthy();
+            //batch ID to be finalized next
+            uint256 nextBatchIdToFinalize = userWithdrawalManager.nextBatchIdToFinalize(); 
+            //ongoing batch Id
+            uint256 latestBatchId = userWithdrawalManager.latestBatchId();
             uint256 lockedEthXToBurn;
-            uint256 ethToFinalizeBatchesAtWithdrawRate;
-            uint256 ethToFinalizeBatchesAtFinalizeRate;
-            uint256 updatedFinalizedBatchNumber;
+            uint256 ethToSendToFinalizeBatch;
+            uint256 batchId;
             for (
-                updatedFinalizedBatchNumber = lastFinalizedBatchNumber;
-                updatedFinalizedBatchNumber < currentBatchNumber;
-                ++updatedFinalizedBatchNumber
+                uint256  i = nextBatchIdToFinalize;
+                i < latestBatchId;
+                i++
             ) {
                 (, , , uint256 requiredEth, uint256 lockedEthX) = userWithdrawalManager.batchRequest(
-                    updatedFinalizedBatchNumber
+                    batchId
                 );
                 lockedEthXToBurn += lockedEthX;
-                ethToFinalizeBatchesAtWithdrawRate += requiredEth;
-                ethToFinalizeBatchesAtFinalizeRate += (lockedEthX * getExchangeRate()) / DECIMALS;
-                if (
-                    Math.min(ethToFinalizeBatchesAtWithdrawRate, ethToFinalizeBatchesAtFinalizeRate) >
-                    depositedPooledETH
-                ) {
+                uint256 minEThRequiredToFinalizeBatch = Math.min(requiredEth,(lockedEthX * getExchangeRate()) / DECIMALS);
+                if (minEThRequiredToFinalizeBatch >depositedPooledETH) {
                     break;
                 }
+                else{
+                    ethToSendToFinalizeBatch +=minEThRequiredToFinalizeBatch;
+                    depositedPooledETH -= minEThRequiredToFinalizeBatch;
+                    batchId = i;
+                }
             }
-            if (updatedFinalizedBatchNumber > lastFinalizedBatchNumber) {
-                uint256 ethToSendToFinalizeBatch = Math.min(
-                    ethToFinalizeBatchesAtWithdrawRate,
-                    ethToFinalizeBatchesAtFinalizeRate
-                );
+            if (batchId >= nextBatchIdToFinalize) {
                 ethX.burnFrom(address(userWithdrawalManager), lockedEthXToBurn);
                 userWithdrawalManager.finalize{value: ethToSendToFinalizeBatch}(
-                    updatedFinalizedBatchNumber,
+                    batchId,
                     ethToSendToFinalizeBatch,
                     getExchangeRate()
                 );
-                requiredETHForWithdrawal -= ethToSendToFinalizeBatch;
-                depositedPooledETH -= ethToSendToFinalizeBatch;
             }
-            _processUserWithdrawRequests();
         }
     }
 
@@ -336,42 +327,22 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice spinning off validators in different pools
      * @dev select a pool based on poolWeight
      */
-    function transferToPools() external override onlyRole(EXECUTOR_ROLE) {
-        uint256 balance = address(this).balance;
-        uint256[] memory poolValidatorsCount; //= poolSelector.getValidatorPerPoolToDeposit(balance);
-        for (uint8 i = 0; i < poolValidatorsCount.length; i++) {
-            if (poolValidatorsCount[i] > 0) {
+    function transferToPools(uint256[] calldata _inputVal) external override onlyRole(EXECUTOR_ROLE) {
+        for (uint8 i = 0; i < _inputVal.length; i++) {
+            if (_inputVal[i] > 0) {
                 (string memory poolName, address poolAddress, , , ) = poolSelector.staderPool(i);
                 if (keccak256(abi.encodePacked(poolName)) == keccak256(abi.encodePacked('PERMISSIONLESS'))) {
                     IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
-                        value: poolValidatorsCount[i] * permissionLessPoolUserDeposit
+                        value: _inputVal[i] * permissionLessPoolUserDeposit
                     }();
-                    emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
+                    emit TransferredToPool(poolName, poolAddress, _inputVal[i]);
                 } else {
                     IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
-                        value: poolValidatorsCount[i] * DEPOSIT_SIZE
+                        value: _inputVal[i] * DEPOSIT_SIZE
                     }();
-                    emit TransferredToPool(poolName, poolAddress, poolValidatorsCount[i]);
+                    emit TransferredToPool(poolName, poolAddress, _inputVal[i]);
                 }
             }
-        }
-    }
-
-    /**
-     * @notice computes validator from each pool to exit to finalize ongoing withdraw requests
-     * @dev take into account of exiting validator balance in account
-     */
-    function _processUserWithdrawRequests() internal view {
-        uint256 exitingValidatorsEth = permissionedPoolExitingValidatorCount *
-            DEPOSIT_SIZE +
-            permissionLessExitingValidatorCount *
-            permissionLessPoolUserDeposit;
-        if (requiredETHForWithdrawal > exitingValidatorsEth) {
-            uint256 ethRequiredByExitingValidator = requiredETHForWithdrawal - exitingValidatorsEth;
-            uint256 validatorCountToExit = ethRequiredByExitingValidator / DEPOSIT_SIZE + 1;
-            // uint256[] memory poolWiseValidatorCountToExit = poolSelector.getValidatorPerPoolToExit(
-            //     validatorCountToExit
-            // );
         }
     }
 

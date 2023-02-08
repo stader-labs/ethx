@@ -6,10 +6,8 @@ async function main() {
   const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT
   const validatorRegistry = process.env.VALIDATOR_REGISTRY
   const operatorRegistry = process.env.OPERATOR_REGISTRY
-  const withdrawCred = process.env.WITHDRAW_CRED
   const staderPermissionLessPoolFactory = await ethers.getContractFactory('StaderPermissionLessStakePool')
   const staderPermissionLessPool = await upgrades.deployProxy(staderPermissionLessPoolFactory, [
-    withdrawCred,
     ethDepositContract,
     operatorRegistry,
     validatorRegistry,

@@ -6,8 +6,7 @@ interface IStaderRewardContractFactory {
 
     function deployWithdrawVault(
         uint256 operatorId,
-        uint256 validatorCount,
-        address payable owner
+        uint256 validatorCount
     ) external returns (address);
 
     function deployNodeELRewardVault(uint256 operatorId, address payable nodeRecipient) external returns (address);

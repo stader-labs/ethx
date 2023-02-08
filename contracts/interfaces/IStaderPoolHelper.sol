@@ -42,4 +42,8 @@ interface IStaderPoolHelper {
     function reduceActiveValidatorKeys(uint8 _poolId) external;
 
     function incrementWithdrawnValidatorKeys(uint8 _poolId) external;
+
+    function getQueuedValidator(uint8 _poolId) external view returns(uint256);
+
+    function getActiveValidator(uint8 _poolId) external view returns(uint256);
 }

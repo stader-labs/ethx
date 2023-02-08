@@ -9,19 +9,31 @@ import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializable, AccessControlUpgradeable {
-    function initialize() external initializer {
+
+    address vaultOwner;
+
+    bytes32 public constant STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
+
+    /// @notice zero address check modifier
+    modifier checkZeroAddress(address _address) {
+        require(_address != address(0), 'Address cannot be zero');
+        _;
+    }
+
+    function initialize(address _vaultOwner) external initializer checkZeroAddress(_vaultOwner) {
         __AccessControl_init_unchained();
+        vaultOwner = _vaultOwner;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function deployWithdrawVault(
         uint256 operatorId,
-        uint256 validatorCount,
-        address payable owner
-    ) public override returns (address) {
+        uint256 validatorCount
+    ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(operatorId, validatorCount));
         withdrawVaultAddress = Create2.deploy(0, salt, type(StaderWithdrawVault).creationCode);
-        StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(owner);
+        StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(vaultOwner);
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
         return withdrawVaultAddress;
@@ -29,7 +41,7 @@ contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializa
 
     function deployNodeELRewardVault(uint256 operatorId, address payable nodeRecipient)
         public
-        override
+        override onlyRole(STADER_NETWORK_CONTRACT)
         returns (address)
     {
         address nodeELRewardVaultAddress;

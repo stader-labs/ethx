@@ -6,14 +6,14 @@ async function main() {
   const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT
   const validatorRegistry = process.env.VALIDATOR_REGISTRY
   const operatorRegistry = process.env.OPERATOR_REGISTRY
-  const withdrawCred = process.env.WITHDRAW_CRED
-  const staderManagedPoolFactory = await ethers.getContractFactory('StaderManagedStakePool')
+  const rewardFactory = process.env.REWARD_FACTORY
+  const staderManagedPoolFactory = await ethers.getContractFactory('StaderPermissionedStakePool')
   const staderManagedStakePool = await upgrades.deployProxy(staderManagedPoolFactory, [
-    withdrawCred,
     ethDepositContract,
     operatorRegistry,
     validatorRegistry,
     owner.address,
+    rewardFactory
   ])
   await staderManagedStakePool.deployed()
   console.log('Stader Permission Pool deployed to:', staderManagedStakePool.address)

@@ -2,12 +2,21 @@
 pragma solidity ^0.8.16;
 
 import './interfaces/IStaderValidatorRegistry.sol';
+import './interfaces/IStaderOperatorRegistry.sol';
+import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderRewardContractFactory.sol';
+
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, AccessControlUpgradeable {
-    uint256 public override validatorCount;
+
+    IStaderPoolHelper staderPoolHelper;
+    IStaderRewardContractFactory rewardContractFactory;
+    IStaderOperatorRegistry staderOperatorRegistry;
+    uint256 public override nextValidatorId;
     uint256 public override registeredValidatorCount;
     uint256 public constant override collateralETH = 4 ether;
+    uint256 public constant DEPOSIT_SIZE = 32 ether;
 
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant override STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
@@ -18,8 +27,8 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         bytes pubKey; //public Key of the validator
         bytes signature; //signature for deposit to Ethereum Deposit contract
         bytes withdrawalAddress; //eth1 withdrawal address for validator
+        uint8 staderPoolId; // validator pool type
         bytes32 depositDataRoot; //deposit data root for deposit to Ethereum Deposit contract
-        bytes32 staderPoolType; // validator pool type
         uint256 operatorId; // stader network assigned Id
         uint256 bondEth; // amount of bond eth in gwei
         uint256 penaltyCount; // penalty for MEV theft or any other wrong doing
@@ -27,43 +36,50 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     mapping(uint256 => Validator) public override validatorRegistry;
     mapping(bytes => uint256) public override validatorRegistryIndexByPubKey;
 
+    /// @notice zero address check modifier
+    modifier checkZeroAddress(address _address) {
+        require(_address != address(0), 'Address cannot be zero');
+        _;
+    }
+
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
-    function initialize() external initializer {
+    function initialize(
+    address _rewardFactory,
+    address _operatorRegistry
+    )external initializer 
+     checkZeroAddress(_rewardFactory)
+     checkZeroAddress(_operatorRegistry)
+    {
         __AccessControl_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(STADER_NETWORK_POOL,msg.sender);
+        rewardContractFactory = IStaderRewardContractFactory(_rewardFactory);
+        staderOperatorRegistry = IStaderOperatorRegistry(_operatorRegistry);
     }
 
     // TODO add validator keys adding function
-    function addValidatorKeys() external {
-        //     bytes calldata _validatorPubkey,
-        //     bytes calldata _validatorSignature,
-        //     bytes32 _depositDataRoot,
-        //     bytes32 _withdrawVaultSalt,
-        //     uint256 _operatorId
-        // ) external payable onlyRole(PERMISSION_LESS_OPERATOR) {
-        //     require(msg.value == 4 ether, 'invalid collateral');
-        //     require(
-        //         staderValidatorRegistry.getValidatorIndexByPublicKey(_validatorPubkey) == type(uint256).max,
-        //         'validator already in use'
-        //     );
-        //     uint256 operatorIndex = staderOperatorRegistry.getOperatorIndexById(_operatorId);
-        //     require(operatorIndex == type(uint256).max, 'operatorNotOnboarded');
-        //     staderOperatorRegistry.incrementValidatorCount(_operatorId);
-        //     address withdrawVault = rewardVaultFactory.deployWithdrawVault(_withdrawVaultSalt, payable(withdrawVaultOwner));
-        //     bytes memory withdrawCredential = rewardVaultFactory.getValidatorWithdrawCredential(withdrawVault);
-        //     _validateKeys(_validatorPubkey, withdrawCredential, _validatorSignature, _depositDataRoot);
-        //     staderValidatorRegistry.addToValidatorRegistry(
-        //         _validatorPubkey,
-        //         _validatorSignature,
-        //         withdrawCredential,
-        //         _depositDataRoot,
-        //         PERMISSION_LESS_POOL,
-        //         _operatorId,
-        //         msg.value
-        //     );
-        //     standByPermissionLessValidators++;
+    function addValidatorKeys(
+            bytes[] calldata _validatorPubKey,
+            bytes[] calldata _validatorSignature,
+            bytes32[] calldata _depositDataRoot
+        ) external payable override {
+        
+        if(_validatorPubKey.length != _validatorSignature.length || _validatorPubKey.length != _depositDataRoot.length || _validatorSignature.length!= _depositDataRoot.length) revert InvalidKeysInput();
+        (,uint8 staderPoolId,,,uint256 operatorId,,,) = staderOperatorRegistry.operatorRegistry(msg.sender);
+            if(operatorId == 0) revert OperatorNotOnBoarded();
+
+            //TODO handle permissioned operator but with poolID of 0 - permissioneless
+            if(staderPoolId ==0){
+                if(msg.value != 4 ether * _validatorPubKey.length) revert InsufficientBond();
+            }
+            else{
+                if(!staderOperatorRegistry.whiteListedPermissionedNOs(msg.sender)) revert BondEThToAddKeys();
+            }
+            for(uint256 i =0;i<_validatorPubKey.length;i++){
+                _addValidatorKey(_validatorPubKey[i],_validatorSignature[i],staderPoolId, _depositDataRoot[i],operatorId);
+            }
     }
 
     /**
@@ -81,21 +97,21 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     /**
      * @notice return the index of next permission less validator available for the deposit
      * @dev return uint256 max if no permission less validator is available
-     * @param _poolType stader pool type of the validator
+     * @param _poolId stader pool Id of the validator
      * @param _inputOperatorId operatorID of a permissionLess operator
      */
-    function getValidatorIndexForOperatorId(bytes32 _poolType, uint256 _inputOperatorId)
+    function getValidatorIndexForOperatorId(uint8 _poolId, uint256 _inputOperatorId)
         external
         view
         override
         returns (uint256)
     {
         uint256 index = 0;
-        while (index < validatorCount) {
+        while (index < nextValidatorId) {
             if (
                 //slither-disable-next-line boolean-equal
                 validatorRegistry[index].validatorDepositStatus == false &&
-                validatorRegistry[index].staderPoolType == _poolType &&
+                validatorRegistry[index].staderPoolId == _poolId &&
                 validatorRegistry[index].operatorId == _inputOperatorId
             ) {
                 return index;
@@ -103,28 +119,6 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
             index++;
         }
         return type(uint256).max;
-    }
-
-    function getPoRAddressListLength() external view override returns (uint256) {
-        return validatorCount;
-    }
-
-    function getPoRAddressList(uint256 startIndex, uint256 endIndex) external view override returns (string[] memory) {
-        if (startIndex > endIndex) {
-            return new string[](0);
-        }
-        endIndex = endIndex > validatorCount - 1 ? validatorCount - 1 : endIndex;
-        string[] memory stringAddresses = new string[](endIndex - startIndex + 1);
-        uint256 currIdx = startIndex;
-        uint256 strAddrIdx = 0;
-        while (currIdx <= endIndex) {
-            if (validatorRegistry[currIdx].validatorDepositStatus) {
-                stringAddresses[strAddrIdx] = toString(abi.encodePacked(validatorRegistry[currIdx].pubKey));
-                strAddrIdx++;
-            }
-            currIdx++;
-        }
-        return stringAddresses;
     }
 
     /**
@@ -161,6 +155,28 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
         validatorRegistry[validatorIndex].bondEth = currentBondEth;
     }
 
+    function _addValidatorKey(bytes calldata _pubKey, bytes calldata _signature,uint8 _poolId, bytes32 _depositDataRoot, uint256 _operatorId) private{
+        uint256 totalKeys = staderOperatorRegistry.getTotalValidatorKeys(msg.sender);
+        address withdrawVault = rewardContractFactory.deployWithdrawVault(_operatorId, totalKeys);
+        bytes memory withdrawCredential = rewardContractFactory.getValidatorWithdrawCredential(withdrawVault);
+        _validateKeys(_pubKey, withdrawCredential, _signature, _depositDataRoot);
+        validatorRegistry[nextValidatorId] =  Validator(
+            false,
+            false,
+            _pubKey,
+            _signature,
+            withdrawCredential,
+            _poolId,
+            _depositDataRoot,
+            _operatorId,
+            msg.value,
+            0
+        );
+        staderPoolHelper.incrementQueuedValidatorKeys(_poolId);
+        staderOperatorRegistry.incrementQueuedValidatorsCount(_operatorId);
+        nextValidatorId++;
+    }
+
     function markValidatorReadyForWithdrawal(uint256 validatorIndex)
         external
         override
@@ -168,25 +184,41 @@ contract StaderValidatorRegistry is IStaderValidatorRegistry, Initializable, Acc
     {
         validatorRegistry[validatorIndex].isWithdrawal = true;
     }
-
-    function toString(bytes memory data) private pure returns (string memory) {
-        bytes memory alphabet = '0123456789abcdef';
-
-        bytes memory str = new bytes(2 + data.length * 2);
-        str[0] = '0';
-        str[1] = 'x';
-        for (uint256 i = 0; i < data.length; i++) {
-            str[2 + i * 2] = alphabet[uint256(uint8(data[i] >> 4))];
-            str[3 + i * 2] = alphabet[uint256(uint8(data[i] & 0x0f))];
-        }
-        return string(str);
+    
+    function updatePoolHelper(address _staderPoolHelper) external checkZeroAddress(_staderPoolHelper) onlyRole(STADER_NETWORK_POOL){
+        staderPoolHelper = IStaderPoolHelper(_staderPoolHelper);
     }
 
     function _removeValidatorFromRegistry(bytes memory _pubKey, uint256 _index) internal {
         delete (validatorRegistry[_index]);
         delete (validatorRegistryIndexByPubKey[_pubKey]);
-        validatorCount--;
-        registeredValidatorCount--;
         emit RemovedValidatorFromRegistry(_pubKey);
+    }
+
+    function _validateKeys(
+        bytes calldata pubkey,
+        bytes memory withdrawal_credentials,
+        bytes calldata signature,
+        bytes32 deposit_data_root
+    ) public pure {
+        bytes32 pubkey_root = sha256(abi.encodePacked(pubkey, bytes16(0)));
+        bytes32 signature_root = sha256(
+            abi.encodePacked(
+                sha256(abi.encodePacked(signature[:64])),
+                sha256(abi.encodePacked(signature[64:], bytes32(0)))
+            )
+        );
+        bytes32 node = sha256(
+            abi.encodePacked(
+                sha256(abi.encodePacked(pubkey_root, withdrawal_credentials)),
+                sha256(abi.encodePacked(DEPOSIT_SIZE, bytes24(0), signature_root))
+            )
+        );
+
+        // Verify computed and expected deposit data roots match
+        require(
+            node == deposit_data_root,
+            'DepositContract: reconstructed DepositData does not match supplied deposit_data_root'
+        );
     }
 }

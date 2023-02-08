@@ -5,21 +5,20 @@ import './interfaces/IStaderUserWithdrawalManager.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializable, AccessControlUpgradeable {
+    
     bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
 
-    address public override poolManager;
+    address public override staderOwner;
 
     uint256 public constant override DECIMAL = 10**18;
 
     uint256 public override lockedEtherAmount;
 
-    uint256 public override latestRequestId;
+    uint256 public override nextBatchIdToFinalize;
 
-    uint256 public override lastFinalizedBatch;
+    uint256 public override latestBatchId;
 
-    uint256 public override currentBatchNumber;
-
-    uint256 public override requiredBatchEThThreshold;
+    uint256 public override lastIncrementBatchTime;
 
     /// @notice user withdrawal requests
     mapping(address => UserWithdrawInfo[]) public userWithdrawRequests;
@@ -42,13 +41,15 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
         uint256 lockedEthX;
     }
 
-    function initialize(address _poolManager) external initializer {
-        if (_poolManager == address(0)) revert ZeroAddress();
+    function initialize(address _staderOwner) external initializer {
+        if (_staderOwner == address(0)) revert ZeroAddress();
         __AccessControl_init_unchained();
-        poolManager = _poolManager;
-        batchRequest[0] = BatchInfo(false, block.timestamp, 0, 0, 0);
+        staderOwner = _staderOwner;
+        batchRequest[0] = BatchInfo(true, block.timestamp, 0, 0, 0);
+        batchRequest[1] = BatchInfo(false, block.timestamp, 0, 0, 0);
+        nextBatchIdToFinalize = 1;
+        latestBatchId = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(POOL_MANAGER, _poolManager);
     }
 
     /**
@@ -63,20 +64,12 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
         uint256 _ethAmount,
         uint256 _ethXAmount
     ) external override onlyRole(POOL_MANAGER) {
-        BatchInfo memory latestBatch = batchRequest[currentBatchNumber];
-        if (
-            latestBatch.requiredEth + _ethAmount > requiredBatchEThThreshold ||
-            latestBatch.finalized ||
-            latestBatch.startTime + 24 hours > block.timestamp
-        ) {
-            currentBatchNumber++;
-            batchRequest[currentBatchNumber] = BatchInfo(false, block.timestamp, 0, _ethAmount, _ethXAmount);
-        } else {
-            latestBatch.requiredEth += _ethAmount;
-            latestBatch.lockedEthX += _ethXAmount;
-        }
+
+        BatchInfo memory latestBatch = batchRequest[latestBatchId];
+        latestBatch.requiredEth += _ethAmount;
+        latestBatch.lockedEthX += _ethXAmount;
         userWithdrawRequests[msgSender].push(
-            UserWithdrawInfo(payable(_recipient), currentBatchNumber, _ethAmount, _ethXAmount)
+            UserWithdrawInfo(payable(_recipient), latestBatchId, _ethAmount, _ethXAmount)
         );
 
         emit WithdrawRequestReceived(msgSender, _recipient, _ethXAmount, _ethAmount);
@@ -84,26 +77,26 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
 
     /**
      * @notice Finalize the batch from `lastFinalizedBatch` to _finalizedBatchNumber at `_finalizedExchangeRate`
-     * @param _finalizedBatchNumber latest batch that is finalized
+     * @param _finalizeBatchId batch ID to finalize up to from latestFinalizedBatchId
      * @param _ethToLock ether that should be locked for these requests
      * @param _finalizedExchangeRate finalized exchangeRate
      */
     function finalize(
-        uint256 _finalizedBatchNumber,
+        uint256 _finalizeBatchId,
         uint256 _ethToLock,
         uint256 _finalizedExchangeRate
-    ) external payable override {
-        if (_finalizedBatchNumber <= lastFinalizedBatch || _finalizedBatchNumber > currentBatchNumber)
-            revert InvalidLastFinalizationBatch(_finalizedBatchNumber);
+    ) external payable override onlyRole(POOL_MANAGER){
+        if (_finalizeBatchId < nextBatchIdToFinalize || _finalizeBatchId >= latestBatchId)
+            revert InvalidLastFinalizationBatch(_finalizeBatchId);
         if (lockedEtherAmount + _ethToLock > address(this).balance) revert InSufficientBalance();
 
-        for (uint256 i = lastFinalizedBatch; i < _finalizedBatchNumber; ++i) {
+        for (uint256 i = nextBatchIdToFinalize; i <= _finalizeBatchId; i++) {
             BatchInfo memory batchAtIndexI = batchRequest[i];
             batchAtIndexI.finalizedExchangeRate = _finalizedExchangeRate;
             batchAtIndexI.finalized = true;
         }
         lockedEtherAmount += _ethToLock;
-        lastFinalizedBatch = _finalizedBatchNumber;
+        nextBatchIdToFinalize = _finalizeBatchId+1;
     }
 
     /**
@@ -122,7 +115,7 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
 
         BatchInfo storage userBatchRequest = batchRequest[batchNumber];
         if (!userBatchRequest.finalized) revert BatchNotFinalized(batchNumber, _requestId);
-        uint256 etherToTransfer = _min((ethXAmount * userBatchRequest.finalizedExchangeRate) / 10**18, ethAmount);
+        uint256 etherToTransfer = _min((ethXAmount * userBatchRequest.finalizedExchangeRate) / DECIMAL, ethAmount);
         lockedEtherAmount -= etherToTransfer;
         _sendValue(userWithdrawRequest.recipient, etherToTransfer);
 
@@ -132,24 +125,22 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
         emit RequestRedeemed(msg.sender, userWithdrawRequest.recipient, etherToTransfer);
     }
 
-    /**
-     * @notice change the recipient address of ongoing request
-     * @param _requestId id of the request subject to change
-     * @param _newRecipient new recipient address for withdrawal
-     */
-    function changeRecipient(uint256 _requestId, address _newRecipient) external override {
-        UserWithdrawInfo[] storage userRequests = userWithdrawRequests[msg.sender];
-
-        if (_requestId >= userRequests.length) revert InvalidRequestId(_requestId);
-
-        UserWithdrawInfo storage request = userRequests[_requestId];
-
-        if (request.recipient == _newRecipient)
-            revert IdenticalRecipientAddressProvided(msg.sender, request.recipient, _requestId);
-
-        request.recipient = payable(_newRecipient);
-
-        emit RecipientAddressUpdated(msg.sender, _requestId, request.recipient, _newRecipient);
+/**
+ * @notice creates a new batch
+ * @dev anyone can call after 24 hours from last incrementBatch, 
+ *  staderOwner can bypass the time check
+ */
+    function incrementBatch() external {
+        address sender  = msg.sender;
+        if(batchRequest[latestBatchId].requiredEth==0){
+            return;
+        }
+        if(sender != staderOwner && lastIncrementBatchTime+24 hours > block.timestamp){
+            return;
+        }
+        latestBatchId = latestBatchId+1;
+        lastIncrementBatchTime = block.timestamp;
+        batchRequest[latestBatchId] = BatchInfo(false, block.timestamp, 0, 0, 0);
     }
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {
