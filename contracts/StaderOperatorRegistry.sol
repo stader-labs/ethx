@@ -8,7 +8,6 @@ import './interfaces/IStaderRewardContractFactory.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, AccessControlUpgradeable {
-    
     IStaderPoolHelper staderPoolHelper;
     IStaderRewardContractFactory rewardContractFactory;
     address permissionLessSocializePool;
@@ -31,7 +30,7 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
     }
 
     mapping(address => Operator) public override operatorRegistry;
-    mapping(address => bool) public override whiteListedPermissionedNOs;
+    mapping(address => bool) public override isWhitelistedPermissionedNO;
     mapping(uint256 => address) public override operatorByOperatorId;
 
     /// @notice zero address check modifier
@@ -44,19 +43,23 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
     function initialize(
+        address _adminOwner,
         address _rewardContractFactory,
         address _permissionedSocializePool,
         address _permissionLessSocializePool
-    ) external initializer 
-    checkZeroAddress(_rewardContractFactory)
-    checkZeroAddress(_permissionedSocializePool)
-    checkZeroAddress(_permissionLessSocializePool){
+    )
+        external
+        initializer
+        checkZeroAddress(_rewardContractFactory)
+        checkZeroAddress(_permissionedSocializePool)
+        checkZeroAddress(_permissionLessSocializePool)
+    {
         __AccessControl_init_unchained();
         rewardContractFactory = IStaderRewardContractFactory(_rewardContractFactory);
         permissionedSocializePool = _permissionedSocializePool;
         permissionLessSocializePool = _permissionLessSocializePool;
         nextOperatorId = 1;
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
     /**
@@ -64,13 +67,16 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
      * @dev update the status of NOs in whitelist mapping, only owner can call
      * @param _nodeOperator wallet of node operator which will interact with contract
      */
-    function whiteListPermissionedNOs(address _nodeOperator)
+    function whitelistPermissionedNOs(address[] calldata _nodeOperator)
         external
         override
-        checkZeroAddress(_nodeOperator)
         onlyRole(OPERATOR_REGISTRY_OWNER)
     {
-        whiteListedPermissionedNOs[_nodeOperator] = true;
+        for (uint256 i = 0; i < _nodeOperator.length; i++) {
+            if (_nodeOperator[i] == address(0)) revert ZeroAddress();
+            isWhitelistedPermissionedNO[_nodeOperator[i]] = true;
+        }
+        emit OperatorWhitelisted(_nodeOperator.length);
     }
 
     /**
@@ -82,34 +88,16 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
      * @return mevFeeRecipientAddress fee recipient address
      */
-    function onboardNodeOperator(
+    function onboardPermissionLessNodeOperator(
         bool _optInForMevSocialize,
         uint8 _poolId,
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) external override checkZeroAddress(_operatorRewardAddress) returns (address mevFeeRecipientAddress) {
-        if (_poolId >= staderPoolHelper.poolTypeCount()) revert InvalidPoolIdInput();
+        if (_poolId == 1) revert InvalidPoolIdInput();
         if (operatorRegistry[msg.sender].operatorId != 0) revert OperatorAlreadyOnBoarded();
-        (string memory poolName, address poolAddress, , , ) = staderPoolHelper.staderPool(_poolId);
-        mevFeeRecipientAddress = permissionedSocializePool;
-        if (keccak256(abi.encodePacked(poolName)) == keccak256(abi.encodePacked('PERMISSIONED'))) {
-            if (!whiteListedPermissionedNOs[msg.sender]) revert OperatorNotWhiteListed();
-            operatorRegistry[msg.sender] = Operator(
-                true,
-                _poolId,
-                _operatorName,
-                _operatorRewardAddress,
-                nextOperatorId,
-                0,
-                0,
-                0
-            );
-            operatorByOperatorId[nextOperatorId] = msg.sender;
-            nextOperatorId++;
-            return mevFeeRecipientAddress;
-        }
         //if whitelisted operator tries with poolId of permission less then revert
-        if (whiteListedPermissionedNOs[msg.sender]) revert InvalidPoolIdInput();
+        if (isWhitelistedPermissionedNO[msg.sender]) revert InvalidPoolIdInput();
         mevFeeRecipientAddress = permissionLessSocializePool;
         if (!_optInForMevSocialize) {
             mevFeeRecipientAddress = rewardContractFactory.deployNodeELRewardVault(
@@ -117,18 +105,20 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
                 payable(_operatorRewardAddress)
             );
         }
-        operatorRegistry[msg.sender] = Operator(
-            _optInForMevSocialize,
-            _poolId,
-            _operatorName,
-            _operatorRewardAddress,
-            nextOperatorId,
-            0,
-            0,
-            0
-        );
-        operatorByOperatorId[nextOperatorId] = msg.sender;
-        nextOperatorId++;
+        _onboardOperator(_optInForMevSocialize, _poolId, _operatorName, _operatorRewardAddress);
+        return mevFeeRecipientAddress;
+    }
+
+    function onboardPermissionedNodeOperator(
+        uint8 _poolId,
+        string calldata _operatorName,
+        address payable _operatorRewardAddress
+    ) external checkZeroAddress(_operatorRewardAddress) returns (address mevFeeRecipientAddress) {
+        if (_poolId != 2) revert InvalidPoolIdInput();
+        if (!isWhitelistedPermissionedNO[msg.sender]) revert OperatorNotWhitelisted();
+        if (operatorRegistry[msg.sender].operatorId != 0) revert OperatorAlreadyOnBoarded();
+        mevFeeRecipientAddress = permissionedSocializePool;
+        _onboardOperator(true, _poolId, _operatorName, _operatorRewardAddress);
         return mevFeeRecipientAddress;
     }
 
@@ -213,18 +203,25 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
         _operatorCount = nextOperatorId - 1;
     }
 
-    function updatePoolHelper(address _staderPoolHelper) external checkZeroAddress(_staderPoolHelper) onlyRole(STADER_NETWORK_POOL){
+    function updatePoolHelper(address _staderPoolHelper)
+        external
+        checkZeroAddress(_staderPoolHelper)
+        onlyRole(STADER_NETWORK_POOL)
+    {
         staderPoolHelper = IStaderPoolHelper(_staderPoolHelper);
     }
 
-/**
- * @notice get the total deposited keys for an operator
- * @dev add queued, active and withdrawn validator to get total validators keys
- * @param _nodeOperator node operator address
- */
-    function getTotalValidatorKeys(address _nodeOperator) external view returns(uint256 _totalKeys){
-        if(operatorRegistry[_nodeOperator].operatorId ==0) revert OperatorNotRegistered();
-        _totalKeys = operatorRegistry[_nodeOperator].queuedValidatorCount+ operatorRegistry[_nodeOperator].activeValidatorCount + operatorRegistry[_nodeOperator].withdrawnValidatorCount;
+    /**
+     * @notice get the total deposited keys for an operator
+     * @dev add queued, active and withdrawn validator to get total validators keys
+     * @param _nodeOperator node operator address
+     */
+    function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys) {
+        if (operatorRegistry[_nodeOperator].operatorId == 0) revert OperatorNotRegistered();
+        _totalKeys =
+            operatorRegistry[_nodeOperator].queuedValidatorCount +
+            operatorRegistry[_nodeOperator].activeValidatorCount +
+            operatorRegistry[_nodeOperator].withdrawnValidatorCount;
     }
 
     /**
@@ -252,10 +249,30 @@ contract StaderOperatorRegistry is IStaderOperatorRegistry, Initializable, Acces
             _operatorStartId++;
             if (_operatorStartId == nextOperatorId) {
                 _operatorStartId = 1;
+            }
+            if (counter == _requiredOperatorCount) {
+                return (outputOperatorIds, _operatorStartId);
+            }
         }
-        if (counter == _requiredOperatorCount) {
-            return (outputOperatorIds, _operatorStartId);
-        }
-        }
+    }
+
+    function _onboardOperator(
+        bool _optInForMevSocialize,
+        uint8 _poolId,
+        string calldata _operatorName,
+        address payable _operatorRewardAddress
+    ) private {
+        operatorRegistry[msg.sender] = Operator(
+            _optInForMevSocialize,
+            _poolId,
+            _operatorName,
+            _operatorRewardAddress,
+            nextOperatorId,
+            0,
+            0,
+            0
+        );
+        operatorByOperatorId[nextOperatorId] = msg.sender;
+        nextOperatorId++;
     }
 }

@@ -31,7 +31,7 @@ contract StaderPermissionLessStakePool is StaderBasePool, Initializable, AccessC
         address _staderOperatorRegistry,
         address _staderValidatorRegistry,
         address _staderPermissionLessPoolAdmin
-        )
+    )
         external
         initializer
         checkZeroAddress(_ethValidatorDeposit)
@@ -70,15 +70,16 @@ contract StaderPermissionLessStakePool is StaderBasePool, Initializable, AccessC
             );
             require(validatorIndex != type(uint256).max, 'permissionLess validator not available');
             (
-            ,
-          ,
-            bytes memory pubKey,
-            bytes memory signature,
-            bytes memory withdrawCred,
-            uint8 staderPoolId,
-            bytes32 depositDataRoot,
-            uint256 operatorId,
-           ,
+                ,
+                ,
+                bytes memory pubKey,
+                bytes memory signature,
+                bytes memory withdrawCred,
+                uint8 staderPoolId,
+                bytes32 depositDataRoot,
+                uint256 operatorId,
+                ,
+
             ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
             //slither-disable-next-line arbitrary-send-eth
@@ -105,7 +106,11 @@ contract StaderPermissionLessStakePool is StaderBasePool, Initializable, AccessC
         emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
     }
 
-    function updatePoolHelper(address _poolHelper) external checkZeroAddress(_poolHelper) onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN){
+    function updatePoolHelper(address _poolHelper)
+        external
+        checkZeroAddress(_poolHelper)
+        onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
+    {
         poolHelper = IStaderPoolHelper(_poolHelper);
     }
 

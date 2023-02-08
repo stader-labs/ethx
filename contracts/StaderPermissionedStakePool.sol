@@ -36,7 +36,7 @@ contract StaderPermissionedStakePool is
         address _staderValidatorRegistry,
         address _staderPoolAdmin,
         address _rewardVaultFactory
-        )
+    )
         external
         initializer
         checkZeroAddress(_ethValidatorDeposit)
@@ -82,15 +82,17 @@ contract StaderPermissionedStakePool is
                 selectedOperatorIds[counter]
             );
             require(validatorIndex != type(uint256).max, 'permissioned validator not available');
-            (,
-            ,
-            bytes memory pubKey,
-            bytes memory signature,
-            bytes memory withdrawCred,
-            uint8 staderPoolId,
-            bytes32 depositDataRoot,
-            uint256 operatorId,
-            ,
+            (
+                ,
+                ,
+                bytes memory pubKey,
+                bytes memory signature,
+                bytes memory withdrawCred,
+                uint8 staderPoolId,
+                bytes32 depositDataRoot,
+                uint256 operatorId,
+                ,
+
             ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
             //slither-disable-next-line arbitrary-send-eth

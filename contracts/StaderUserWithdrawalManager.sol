@@ -5,7 +5,6 @@ import './interfaces/IStaderUserWithdrawalManager.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializable, AccessControlUpgradeable {
-    
     bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
 
     address public override staderOwner;
@@ -64,7 +63,6 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
         uint256 _ethAmount,
         uint256 _ethXAmount
     ) external override onlyRole(POOL_MANAGER) {
-
         BatchInfo memory latestBatch = batchRequest[latestBatchId];
         latestBatch.requiredEth += _ethAmount;
         latestBatch.lockedEthX += _ethXAmount;
@@ -85,7 +83,7 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
         uint256 _finalizeBatchId,
         uint256 _ethToLock,
         uint256 _finalizedExchangeRate
-    ) external payable override onlyRole(POOL_MANAGER){
+    ) external payable override onlyRole(POOL_MANAGER) {
         if (_finalizeBatchId < nextBatchIdToFinalize || _finalizeBatchId >= latestBatchId)
             revert InvalidLastFinalizationBatch(_finalizeBatchId);
         if (lockedEtherAmount + _ethToLock > address(this).balance) revert InSufficientBalance();
@@ -96,7 +94,7 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
             batchAtIndexI.finalized = true;
         }
         lockedEtherAmount += _ethToLock;
-        nextBatchIdToFinalize = _finalizeBatchId+1;
+        nextBatchIdToFinalize = _finalizeBatchId + 1;
     }
 
     /**
@@ -125,20 +123,20 @@ contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializa
         emit RequestRedeemed(msg.sender, userWithdrawRequest.recipient, etherToTransfer);
     }
 
-/**
- * @notice creates a new batch
- * @dev anyone can call after 24 hours from last incrementBatch, 
- *  staderOwner can bypass the time check
- */
+    /**
+     * @notice creates a new batch
+     * @dev anyone can call after 24 hours from last incrementBatch,
+     *  staderOwner can bypass the time check
+     */
     function incrementBatch() external {
-        address sender  = msg.sender;
-        if(batchRequest[latestBatchId].requiredEth==0){
+        address sender = msg.sender;
+        if (batchRequest[latestBatchId].requiredEth == 0) {
             return;
         }
-        if(sender != staderOwner && lastIncrementBatchTime+24 hours > block.timestamp){
+        if (sender != staderOwner && lastIncrementBatchTime + 24 hours > block.timestamp) {
             return;
         }
-        latestBatchId = latestBatchId+1;
+        latestBatchId = latestBatchId + 1;
         lastIncrementBatchTime = block.timestamp;
         batchRequest[latestBatchId] = BatchInfo(false, block.timestamp, 0, 0, 0);
     }

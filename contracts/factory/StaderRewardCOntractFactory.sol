@@ -9,7 +9,6 @@ import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializable, AccessControlUpgradeable {
-
     address vaultOwner;
 
     bytes32 public constant STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
@@ -26,10 +25,12 @@ contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializa
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function deployWithdrawVault(
-        uint256 operatorId,
-        uint256 validatorCount
-    ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
+    function deployWithdrawVault(uint256 operatorId, uint256 validatorCount)
+        public
+        override
+        onlyRole(STADER_NETWORK_CONTRACT)
+        returns (address)
+    {
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(operatorId, validatorCount));
         withdrawVaultAddress = Create2.deploy(0, salt, type(StaderWithdrawVault).creationCode);
@@ -41,7 +42,8 @@ contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializa
 
     function deployNodeELRewardVault(uint256 operatorId, address payable nodeRecipient)
         public
-        override onlyRole(STADER_NETWORK_CONTRACT)
+        override
+        onlyRole(STADER_NETWORK_CONTRACT)
         returns (address)
     {
         address nodeELRewardVaultAddress;

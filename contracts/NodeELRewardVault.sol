@@ -13,8 +13,7 @@ contract NodeELRewardVault is Initializable, AccessControlUpgradeable {
         _;
     }
 
-
-    function initialize(address payable _nodeRecipient) external initializer checkZeroAddress(_nodeRecipient){
+    function initialize(address payable _nodeRecipient) external initializer checkZeroAddress(_nodeRecipient) {
         __AccessControl_init_unchained();
         nodeRecipient = _nodeRecipient;
     }

@@ -3,10 +3,9 @@
 pragma solidity ^0.8.16;
 
 interface IStaderValidatorRegistry {
+    error TransferFailed();
     error OperatorNotOnBoarded();
-    error InvalidKeysInput();
-    error InsufficientBond();
-    error  BondEThToAddKeys();
+    error InvalidInputOfKeys();
 
     event AddedToValidatorRegistry(bytes publicKey, bytes32 poolType, uint256 count);
 
@@ -18,18 +17,15 @@ interface IStaderValidatorRegistry {
 
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
-        function addValidatorKeys(
-            bytes[] calldata _validatorPubKey,
-            bytes[] calldata _validatorSignature,
-            bytes32[] calldata _depositDataRoot
-        ) external payable;
+    function addValidatorKeys(
+        bytes calldata _validatorPubKey,
+        bytes calldata _validatorSignature,
+        bytes32 _depositDataRoot
+    ) external payable;
 
     function getValidatorIndexByPublicKey(bytes memory _publicKey) external view returns (uint256);
 
-    function getValidatorIndexForOperatorId(uint8 _poolId, uint256 _inputOperatorId)
-        external
-        view
-        returns (uint256);
+    function getValidatorIndexForOperatorId(uint8 _poolId, uint256 _inputOperatorId) external view returns (uint256);
 
     function handleWithdrawnValidators(bytes memory _pubKey) external;
 

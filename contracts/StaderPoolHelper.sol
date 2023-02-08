@@ -40,8 +40,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
         staderPool[0] = Pool('PERMISSIONLESS', _permissionLessPoolAddress, 0, 0, 0);
         staderPool[1] = Pool('PERMISSIONED', _permissionedPoolAddress, 0, 0, 0);
         poolTypeCount = 2;
-        _grantRole(POOL_SELECTOR_ADMIN, _poolSelectorAdmin);
-        _grantRole(DEFAULT_ADMIN_ROLE,msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -128,11 +127,11 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
         emit UpdatedWithdrawnValidatorKeys(_poolId, staderPool[_poolId].withdrawnValidatorKeys);
     }
 
-    function getQueuedValidator(uint8 _poolId) external view override returns(uint256){
+    function getQueuedValidator(uint8 _poolId) external view override returns (uint256) {
         return staderPool[_poolId].queuedValidatorKeys;
     }
 
-    function getActiveValidator(uint8 _poolId) external view override returns(uint256){
+    function getActiveValidator(uint8 _poolId) external view override returns (uint256) {
         return staderPool[_poolId].activeValidatorKeys;
     }
 

@@ -3,14 +3,15 @@
 pragma solidity ^0.8.16;
 
 interface IStaderOperatorRegistry {
-
+    error ZeroAddress();
     error InvalidPoolIdInput();
     error OperatorAlreadyOnBoarded();
-    error OperatorNotWhiteListed();
+    error OperatorNotWhitelisted();
     error OperatorNotRegistered();
     error NoQueuedValidatorLeft();
     error NoActiveValidatorLeft();
 
+    event OperatorWhitelisted(uint256 whitelistedNOsCount);
     event IncrementedQueuedValidatorsCount(uint256 operatorId, uint256 queuedValidatorCount);
     event ReducedQueuedValidatorsCount(uint256 operatorId, uint256 queuedValidatorCount);
     event IncrementedActiveValidatorsCount(uint256 operatorId, uint256 activeValidatorCount);
@@ -35,9 +36,9 @@ interface IStaderOperatorRegistry {
 
     function incrementWithdrawValidatorsCount(uint256 _operatorId) external;
 
-    function whiteListedPermissionedNOs(address) external view returns (bool);
+    function isWhitelistedPermissionedNO(address) external view returns (bool);
 
-    function whiteListPermissionedNOs(address _nodeOperator) external;
+    function whitelistPermissionedNOs(address[] calldata _nodeOperator) external;
 
     function operatorByOperatorId(uint256) external view returns (address);
 
@@ -55,19 +56,18 @@ interface IStaderOperatorRegistry {
             uint256 withdrawnValidatorCount
         );
 
-    function onboardNodeOperator(
+    function onboardPermissionLessNodeOperator(
         bool _optInForMevSocialize,
         uint8 _poolId,
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) external returns (address mevFeeRecipientAddress);
 
-    function getTotalValidatorKeys(address _nodeOperator) external view returns(uint256 _totalKeys);
+    function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 
     function selectOperators(
         uint8 _poolId,
         uint256 _requiredOperatorCount,
         uint256 _operatorStartId
-
     ) external view returns (uint256[] memory, uint256);
 }

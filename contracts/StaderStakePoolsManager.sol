@@ -273,30 +273,25 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function finalizeUserWithdrawalRequest(bool _slashingMode) external override whenNotPaused onlyRole(EXECUTOR_ROLE) {
         //TODO change input name
         if (!_slashingMode) {
-
-            if(getExchangeRate()==0) revert ProtocolNotHealthy();
+            if (getExchangeRate() == 0) revert ProtocolNotHealthy();
             //batch ID to be finalized next
-            uint256 nextBatchIdToFinalize = userWithdrawalManager.nextBatchIdToFinalize(); 
+            uint256 nextBatchIdToFinalize = userWithdrawalManager.nextBatchIdToFinalize();
             //ongoing batch Id
             uint256 latestBatchId = userWithdrawalManager.latestBatchId();
             uint256 lockedEthXToBurn;
             uint256 ethToSendToFinalizeBatch;
             uint256 batchId = 0;
-            for (
-                uint256  i = nextBatchIdToFinalize;
-                i < latestBatchId;
-                i++
-            ) {
-                (, , , uint256 requiredEth, uint256 lockedEthX) = userWithdrawalManager.batchRequest(
-                    batchId
+            for (uint256 i = nextBatchIdToFinalize; i < latestBatchId; i++) {
+                (, , , uint256 requiredEth, uint256 lockedEthX) = userWithdrawalManager.batchRequest(batchId);
+                uint256 minEThRequiredToFinalizeBatch = Math.min(
+                    requiredEth,
+                    (lockedEthX * getExchangeRate()) / DECIMALS
                 );
-                uint256 minEThRequiredToFinalizeBatch = Math.min(requiredEth,(lockedEthX * getExchangeRate()) / DECIMALS);
-                if (minEThRequiredToFinalizeBatch >depositedPooledETH) {
+                if (minEThRequiredToFinalizeBatch > depositedPooledETH) {
                     break;
-                }
-                else{
+                } else {
                     lockedEthXToBurn += lockedEthX;
-                    ethToSendToFinalizeBatch +=minEThRequiredToFinalizeBatch;
+                    ethToSendToFinalizeBatch += minEThRequiredToFinalizeBatch;
                     depositedPooledETH -= minEThRequiredToFinalizeBatch;
                     batchId = i;
                 }
@@ -333,9 +328,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
                     }();
                     emit TransferredToPool(poolName, poolAddress, _inputVal[i]);
                 } else {
-                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
-                        value: _inputVal[i] * DEPOSIT_SIZE
-                    }();
+                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: _inputVal[i] * DEPOSIT_SIZE}();
                     emit TransferredToPool(poolName, poolAddress, _inputVal[i]);
                 }
             }
