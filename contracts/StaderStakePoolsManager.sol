@@ -92,11 +92,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * protection against accidental submissions by calling non-existent function
      */
     fallback() external payable {
-        uint256 assets = msg.value;
-        if (assets < minDepositAmount || assets > maxDeposit()) revert InvalidDepositAmount();
-        uint256 shares = previewDeposit(assets);
-        depositedPooledETH += assets;
-        _deposit(_msgSender(), _msgSender(), assets, shares);
+        revert UnsupportedOperation();
     }
 
     /**
@@ -285,7 +281,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             uint256 latestBatchId = userWithdrawalManager.latestBatchId();
             uint256 lockedEthXToBurn;
             uint256 ethToSendToFinalizeBatch;
-            uint256 batchId;
+            uint256 batchId = 0;
             for (
                 uint256  i = nextBatchIdToFinalize;
                 i < latestBatchId;
@@ -294,12 +290,12 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
                 (, , , uint256 requiredEth, uint256 lockedEthX) = userWithdrawalManager.batchRequest(
                     batchId
                 );
-                lockedEthXToBurn += lockedEthX;
                 uint256 minEThRequiredToFinalizeBatch = Math.min(requiredEth,(lockedEthX * getExchangeRate()) / DECIMALS);
                 if (minEThRequiredToFinalizeBatch >depositedPooledETH) {
                     break;
                 }
                 else{
+                    lockedEthXToBurn += lockedEthX;
                     ethToSendToFinalizeBatch +=minEThRequiredToFinalizeBatch;
                     depositedPooledETH -= minEThRequiredToFinalizeBatch;
                     batchId = i;

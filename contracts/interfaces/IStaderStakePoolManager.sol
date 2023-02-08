@@ -10,6 +10,7 @@ interface IStaderStakePoolManager {
     error InvalidMinWithdrawValue();
     error InvalidMaxWithdrawValue();
     error ProtocolNotHealthy();
+    error UnsupportedOperation();
 
     event Deposited(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event ExecutionLayerRewardsReceived(uint256 amount);
