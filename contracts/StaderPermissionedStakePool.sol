@@ -51,6 +51,8 @@ contract StaderPermissionedStakePool is
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
+        withdrawVaultOwner = _staderPoolAdmin; //make it a generic multisig owner across all contract
+        permissionedNOsMEVVault = _permissionedNOsMEVVault;
         _grantRole(STADER_PERMISSIONED_POOL_ADMIN, _staderPoolAdmin);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
