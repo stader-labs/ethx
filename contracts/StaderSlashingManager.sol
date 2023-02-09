@@ -41,9 +41,9 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
 
     function updateMisbehavePenaltyScore(bytes[] calldata _pubKeys) external override onlyRole(STADER_DAO) {
         for (uint256 index; index < _pubKeys.length; index++) {
-            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
+            uint256 validatorIndex = staderValidatorRegistry.validatorIdByPubKey(_pubKeys[index]);
             require(validatorIndex != type(uint256).max, 'validator not available');
-            (, , , , , , , , , uint256 penaltyCount) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            (, , , , , , , , uint256 penaltyCount) = staderValidatorRegistry.validatorRegistry(validatorIndex);
             penaltyCount++;
             staderValidatorRegistry.increasePenaltyCount(validatorIndex);
             if (penaltyCount >= penaltyThreshold) {
@@ -59,9 +59,9 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
     {
         require(_pubKeys.length == _validatorPenalties.length, 'incorrect validatorPenalties data');
         for (uint256 index; index < _pubKeys.length; index++) {
-            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
+            uint256 validatorIndex = staderValidatorRegistry.validatorIdByPubKey(_pubKeys[index]);
             require(validatorIndex != type(uint256).max, 'validator not available');
-            (, , , , , , , , uint256 bondEth, ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            (, , , , , , , uint256 bondEth, ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
             bondEth = bondEth >= _validatorPenalties[index] ? bondEth - _validatorPenalties[index] : 0;
             staderValidatorRegistry.updateBondEth(validatorIndex, bondEth);
             if (bondEth <= bondEthThreshold) {
@@ -77,12 +77,12 @@ contract StaderSlashingManager is IStaderSlashingManager, Initializable, AccessC
     {
         require(_pubKeys.length == _nodeShare.length, 'incorrect slashingPenalty data');
         for (uint256 index; index < _pubKeys.length; index++) {
-            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexByPublicKey(_pubKeys[index]);
+            uint256 validatorIndex = staderValidatorRegistry.validatorIdByPubKey(_pubKeys[index]);
             require(validatorIndex != type(uint256).max, 'validator not available');
-            (, , , , , , , uint256 operatorId, , ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
+            (, , , , , , uint256 operatorId, , ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
 
             address nodeOperator = staderOperatorRegistry.operatorByOperatorId(operatorId);
-            (, , , address operatorRewardAddress, , , , ) = staderOperatorRegistry.operatorRegistry(nodeOperator);
+            (, , address operatorRewardAddress, , , , ,) = staderOperatorRegistry.operatorRegistry(nodeOperator);
             if (_nodeShare[index] > 0) {
                 //permission less operator
                 //write withdraw balance logic for node operator

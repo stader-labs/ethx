@@ -1,28 +1,38 @@
 pragma solidity ^0.8.16;
 
-import './StaderBasePool.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderPoolHelper.sol';
+
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract StaderPermissionLessStakePool is StaderBasePool, Initializable, AccessControlUpgradeable, PausableUpgradeable {
-    IStaderPoolHelper poolHelper;
+contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+    IStaderPoolHelper public poolHelper;
     uint256 public permissionLessOperatorIndex;
     IDepositContract public ethValidatorDeposit;
     IStaderOperatorRegistry public staderOperatorRegistry;
     IStaderValidatorRegistry public staderValidatorRegistry;
+
     bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
     bytes32 public constant PERMISSION_LESS_OPERATOR = keccak256('PERMISSION_LESS_OPERATOR');
     bytes32 public constant PERMISSION_LESS_POOL = keccak256('PERMISSION_LESS_POOL');
+
+    uint256 public constant DEPOSIT_SIZE = 32 ether;
+
 
     event DepositToDepositContract(bytes indexed pubKey);
     event ReceivedETH(address indexed from, uint256 amount);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
 
+    /// @notice zero address check modifier
+    modifier checkZeroAddress(address _address) {
+        require(_address != address(0), 'Address cannot be zero');
+        _;
+    }
+    
     /**
      * @dev Stader managed stake Pool is initialized with following variables
      */

@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.16;
 
-import './StaderBasePool.sol';
 import './interfaces/IDepositContract.sol';
+import './library/Address.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderPermissionedStakePool.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
@@ -12,7 +12,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract StaderPermissionedStakePool is
-    StaderBasePool,
     IStaderPermissionedStakePool,
     Initializable,
     AccessControlUpgradeable,
@@ -27,6 +26,8 @@ contract StaderPermissionedStakePool is
     bytes32 public constant STADER_PERMISSIONED_POOL_ADMIN = keccak256('STADER_PERMISSIONED_POOL_ADMIN');
     bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
 
+    uint256 public constant DEPOSIT_SIZE = 32 ether;
+    
     /**
      * @dev Stader managed stake Pool is initialized with following variables
      */
@@ -39,12 +40,12 @@ contract StaderPermissionedStakePool is
     )
         external
         initializer
-        checkZeroAddress(_ethValidatorDeposit)
-        checkZeroAddress(_staderOperatorRegistry)
-        checkZeroAddress(_staderValidatorRegistry)
-        checkZeroAddress(_staderPoolAdmin)
-        checkZeroAddress(_rewardVaultFactory)
     {
+        Address.checkZeroAddress(_ethValidatorDeposit);
+        Address.checkZeroAddress(_staderOperatorRegistry);
+        Address.checkZeroAddress(_staderValidatorRegistry);
+        Address.checkZeroAddress(_staderPoolAdmin);
+        Address.checkZeroAddress(_rewardVaultFactory);
         __Pausable_init();
         __AccessControl_init_unchained();
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
@@ -69,11 +70,11 @@ contract StaderPermissionedStakePool is
         uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
         depositCount = depositCount > standByPermissionedValidators ? standByPermissionedValidators : depositCount;
         standByPermissionedValidators -= depositCount;
-        (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
-            1,
-            depositCount,
-            permissionedOperatorIndex
-        );
+        // (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
+        //     1,
+        //     depositCount,
+        //     permissionedOperatorIndex
+        // );
         permissionedOperatorIndex = updatedOperatorIndex;
         uint256 counter = 0;
         while (counter < depositCount) {
@@ -110,9 +111,10 @@ contract StaderPermissionedStakePool is
      */
     function updateStaderValidatorRegistry(address _staderValidatorRegistry)
         external
-        checkZeroAddress(_staderValidatorRegistry)
+        
         onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
     {
+        Address.checkZeroAddress(_staderValidatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
         emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
     }
@@ -123,9 +125,9 @@ contract StaderPermissionedStakePool is
      */
     function updateStaderOperatorRegistry(address _staderOperatorRegistry)
         external
-        checkZeroAddress(_staderOperatorRegistry)
         onlyRole(STADER_PERMISSIONED_POOL_ADMIN)
     {
+        Address.checkZeroAddress(_staderOperatorRegistry);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
     }

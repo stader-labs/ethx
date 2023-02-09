@@ -8,10 +8,13 @@ interface IStaderOperatorRegistry {
     error OperatorAlreadyOnBoarded();
     error OperatorNotWhitelisted();
     error OperatorNotRegistered();
+    error NoInitializedValidatorLeft();
     error NoQueuedValidatorLeft();
     error NoActiveValidatorLeft();
 
     event OperatorWhitelisted(uint256 whitelistedNOsCount);
+    event IncrementedInitializedValidatorsCount(uint256 operatorId, uint256 initializedValidatorCount);
+    event ReducedInitializedValidatorsCount(uint256 operatorId, uint256 initializedValidatorCount);
     event IncrementedQueuedValidatorsCount(uint256 operatorId, uint256 queuedValidatorCount);
     event ReducedQueuedValidatorsCount(uint256 operatorId, uint256 queuedValidatorCount);
     event IncrementedActiveValidatorsCount(uint256 operatorId, uint256 activeValidatorCount);
@@ -25,6 +28,10 @@ interface IStaderOperatorRegistry {
     function OPERATOR_REGISTRY_OWNER() external view returns (bytes32);
 
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
+
+    function incrementInitializedValidatorsCount(uint256 _operatorId) external;
+
+    function reduceInitializedValidatorsCount(uint256 _operatorId) external;
 
     function incrementActiveValidatorsCount(uint256 _operatorId) external;
 
@@ -47,27 +54,19 @@ interface IStaderOperatorRegistry {
         view
         returns (
             bool optedForSocializingPool,
-            uint8 staderPoolId,
             string memory operatorName,
             address payable operatorRewardAddress,
             uint256 operatorId,
+            uint256 initializedValidatorCount,
             uint256 queuedValidatorCount,
             uint256 activeValidatorCount,
             uint256 withdrawnValidatorCount
         );
 
-    function onboardPermissionLessNodeOperator(
-        bool _optInForMevSocialize,
-        uint8 _poolId,
+    function onboardPermissionedNodeOperator(
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) external returns (address mevFeeRecipientAddress);
 
     function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
-
-    function selectOperators(
-        uint8 _poolId,
-        uint256 _requiredOperatorCount,
-        uint256 _operatorStartId
-    ) external view returns (uint256[] memory, uint256);
 }

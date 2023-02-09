@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/ISocializingPool.sol';
+import './library/Address.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
 import './interfaces/IStaderValidatorRegistry.sol';
 
@@ -20,12 +21,6 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     bytes32 public constant SOCIALIZE_POOL_OWNER = keccak256('SOCIALIZE_POOL_OWNER');
     bytes32 public constant REWARD_DISTRIBUTOR = keccak256('REWARD_DISTRIBUTOR');
 
-    /// @notice zero address check modifier
-    modifier checkZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
-
     function initialize(
         address _staderOperatorRegistry,
         address _staderValidatorRegistry,
@@ -35,12 +30,13 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     )
         external
         initializer
-        checkZeroAddress(_staderOperatorRegistry)
-        checkZeroAddress(_staderValidatorRegistry)
-        checkZeroAddress(_staderStakePoolManager)
-        checkZeroAddress(_socializingPoolOwner)
-        checkZeroAddress(_staderTreasury)
     {
+
+        Address.checkZeroAddress(_staderOperatorRegistry);
+        Address.checkZeroAddress(_staderValidatorRegistry);
+        Address.checkZeroAddress(_staderStakePoolManager);
+        Address.checkZeroAddress(_socializingPoolOwner);
+        Address.checkZeroAddress(_staderTreasury);
         __AccessControl_init_unchained();
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
@@ -75,7 +71,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         uint256 operatorCount = staderOperatorRegistry.getOperatorCount();
         for (uint256 index = 0; index < operatorCount; ++index) {
             address nodeOperator = staderOperatorRegistry.operatorByOperatorId(index);
-            (, , , address operatorRewardAddress, , , uint256 activeValidatorCount, ) = staderOperatorRegistry
+            (, , address operatorRewardAddress, , , , uint256 activeValidatorCount, ) = staderOperatorRegistry
                 .operatorRegistry(nodeOperator);
             if (activeValidatorCount > 0) {
                 uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
@@ -101,8 +97,9 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     function updateStaderStakePoolManager(address _staderStakePoolManager)
         external
         onlyRole(SOCIALIZE_POOL_OWNER)
-        checkZeroAddress(_staderStakePoolManager)
+        
     {
+        Address.checkZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
         emit UpdatedStaderPoolManager(_staderStakePoolManager);
     }
@@ -113,9 +110,9 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
      */
     function updateStaderTreasury(address _staderTreasury)
         external
-        checkZeroAddress(_staderTreasury)
         onlyRole(SOCIALIZE_POOL_OWNER)
     {
+        Address.checkZeroAddress(_staderTreasury);
         staderTreasury = _staderTreasury;
         emit UpdatedStaderTreasury(staderTreasury);
     }
@@ -126,9 +123,9 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
      */
     function updateStaderValidatorRegistry(address _staderValidatorRegistry)
         external
-        checkZeroAddress(_staderValidatorRegistry)
         onlyRole(SOCIALIZE_POOL_OWNER)
     {
+        Address.checkZeroAddress(_staderValidatorRegistry);
         staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
         emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
     }
@@ -139,9 +136,9 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
      */
     function updateStaderOperatorRegistry(address _staderOperatorRegistry)
         external
-        checkZeroAddress(_staderOperatorRegistry)
         onlyRole(SOCIALIZE_POOL_OWNER)
     {
+        Address.checkZeroAddress(_staderOperatorRegistry);
         staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
         emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
     }

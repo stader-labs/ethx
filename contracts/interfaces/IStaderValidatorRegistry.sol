@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.16;
+
+import '../library/ValidatorStatus.sol';
 
 interface IStaderValidatorRegistry {
     error TransferFailed();
     error OperatorNotOnBoarded();
-    error InvalidInputOfKeys();
+    error InvalidBondEthValue();
+    error OperatorNotWhitelisted();
 
     event AddedToValidatorRegistry(bytes publicKey, bytes32 poolType, uint256 count);
 
@@ -23,7 +25,7 @@ interface IStaderValidatorRegistry {
         bytes32 _depositDataRoot
     ) external payable;
 
-    function getValidatorIndexByPublicKey(bytes memory _publicKey) external view returns (uint256);
+    function validatorIdByPubKey(bytes memory _publicKey) external view returns (uint256);
 
     function getValidatorIndexForOperatorId(uint8 _poolId, uint256 _inputOperatorId) external view returns (uint256);
 
@@ -41,18 +43,15 @@ interface IStaderValidatorRegistry {
 
     function nextValidatorId() external view returns (uint256);
 
-    function validatorRegistryIndexByPubKey(bytes memory) external view returns (uint256);
-
     function validatorRegistry(uint256)
         external
         view
         returns (
-            bool validatorDepositStatus,
+            ValidatorStatus status,
             bool isWithdrawal,
             bytes memory pubKey,
             bytes memory signature,
             bytes memory withdrawalAddress,
-            uint8 staderPoolId,
             bytes32 depositDataRoot,
             uint256 operatorId,
             uint256 bondEth,

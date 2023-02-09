@@ -36,6 +36,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public minDepositAmount;
     uint256 public maxDepositAmount;
     uint256 public depositedPooledETH;
+    uint256 public paginationLimit;
     uint256 public permissionLessPoolUserDeposit;
     /**
      * @notice Check for zero address
@@ -278,10 +279,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             uint256 nextBatchIdToFinalize = userWithdrawalManager.nextBatchIdToFinalize();
             //ongoing batch Id
             uint256 latestBatchId = userWithdrawalManager.latestBatchId();
+            uint256 maxBatchIdToFinalize = Math.min(latestBatchId, nextBatchIdToFinalize + paginationLimit);
             uint256 lockedEthXToBurn;
             uint256 ethToSendToFinalizeBatch;
             uint256 batchId = 0;
-            for (uint256 i = nextBatchIdToFinalize; i < latestBatchId; i++) {
+            for (uint256 i = nextBatchIdToFinalize; i < maxBatchIdToFinalize; i++) {
                 (, , , uint256 requiredEth, uint256 lockedEthX) = userWithdrawalManager.batchRequest(batchId);
                 uint256 minEThRequiredToFinalizeBatch = Math.min(
                     requiredEth,
@@ -336,6 +338,22 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /**
+     * @dev Triggers stopped state.
+     * should not be paused
+     */
+    function pause() external onlyRole(EXECUTOR_ROLE){
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * should not be paused
+     */
+    function unpause() external onlyRole(EXECUTOR_ROLE){
+        _unpause();
+    }
+
+    /**
      * @notice initializes variable
      */
     function _initialSetup() internal {
@@ -343,6 +361,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         maxDepositAmount = 32 ether;
         minWithdrawAmount = 100;
         maxWithdrawAmount = 10 ether;
+        paginationLimit = 50;
         permissionLessPoolUserDeposit = 28 ether;
     }
 

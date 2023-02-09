@@ -2,14 +2,14 @@ pragma solidity ^0.8.16;
 
 import '../StaderWithdrawVault.sol';
 import '../NodeELRewardVault.sol';
-import '../interfaces/IStaderRewardContractFactory.sol';
+import '../interfaces/IVaultFactory.sol';
 import '@openzeppelin/contracts/utils/Create2.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializable, AccessControlUpgradeable {
+contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
     address vaultOwner;
+    address staderTreasury;
 
     bytes32 public constant STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
 
@@ -19,20 +19,28 @@ contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializa
         _;
     }
 
-    function initialize(address _vaultOwner) external initializer checkZeroAddress(_vaultOwner) {
+    function initialize(
+        address _factoryAdmin,
+        address _vaultOwner,
+        address _staderTreasury
+    ) external initializer 
+    checkZeroAddress(_factoryAdmin)
+    checkZeroAddress(_vaultOwner)
+    checkZeroAddress(_staderTreasury) {
         __AccessControl_init_unchained();
         vaultOwner = _vaultOwner;
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        staderTreasury = _staderTreasury;
+        _grantRole(DEFAULT_ADMIN_ROLE, _factoryAdmin);
     }
 
-    function deployWithdrawVault(uint256 operatorId, uint256 validatorCount)
+    function deployWithdrawVault(uint8 poolType, uint256 operatorId, uint256 validatorCount)
         public
         override
         onlyRole(STADER_NETWORK_CONTRACT)
         returns (address)
     {
         address withdrawVaultAddress;
-        bytes32 salt = sha256(abi.encode(operatorId, validatorCount));
+        bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
         withdrawVaultAddress = Create2.deploy(0, salt, type(StaderWithdrawVault).creationCode);
         StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(vaultOwner);
 
@@ -40,14 +48,14 @@ contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializa
         return withdrawVaultAddress;
     }
 
-    function deployNodeELRewardVault(uint256 operatorId, address payable nodeRecipient)
+    function deployNodeELRewardVault(uint8 poolType, uint256 operatorId, address payable nodeRecipient)
         public
         override
         onlyRole(STADER_NETWORK_CONTRACT)
         returns (address)
     {
         address nodeELRewardVaultAddress;
-        bytes32 salt = sha256(abi.encode(operatorId));
+        bytes32 salt = sha256(abi.encode(poolType, operatorId));
         nodeELRewardVaultAddress = Create2.deploy(0, salt, type(NodeELRewardVault).creationCode);
         NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(nodeRecipient);
 
@@ -55,18 +63,18 @@ contract StaderRewardContractFactory is IStaderRewardContractFactory, Initializa
         return nodeELRewardVaultAddress;
     }
 
-    function computeWithdrawVaultAddress(uint256 operatorId, uint256 validatorCount)
+    function computeWithdrawVaultAddress(uint8 poolType, uint256 operatorId, uint256 validatorCount)
         public
         view
         override
         returns (address)
     {
-        bytes32 salt = sha256(abi.encode(operatorId, validatorCount));
+        bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
         return Create2.computeAddress(salt, bytes32(type(StaderWithdrawVault).creationCode));
     }
 
-    function computeNodeELRewardVaultAddress(uint256 operatorId) public view override returns (address) {
-        bytes32 salt = sha256(abi.encode(operatorId));
+    function computeNodeELRewardVaultAddress(uint8 poolType, uint256 operatorId) public view override returns (address) {
+        bytes32 salt = sha256(abi.encode(poolType, operatorId));
         return Create2.computeAddress(salt, bytes32(type(NodeELRewardVault).creationCode));
     }
 
