@@ -6,6 +6,7 @@ import './interfaces/IStaderNodeWithdrawManager.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
+
     bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
     IStaderOperatorRegistry public staderOperatorRegistry;
     address payable public staderPoolManager;
@@ -16,6 +17,7 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
 
     function initialize(address _owner) external initializer {
         __AccessControl_init_unchained();
+        protocolCommission = 10;
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 

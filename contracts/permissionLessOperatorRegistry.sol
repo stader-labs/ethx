@@ -38,7 +38,7 @@ contract PermissionLessOperatorRegistry is OperatorRegistryBase, AccessControlUp
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
      * @return mevFeeRecipientAddress fee recipient address
      */
-    function onboardPermissionLessNodeOperator(
+    function onboardNodeOperator(
         bool _optInForMevSocialize,
         string calldata _operatorName,
         address payable _operatorRewardAddress

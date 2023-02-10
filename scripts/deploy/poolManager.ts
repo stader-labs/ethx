@@ -15,7 +15,6 @@ const poolHelper = process.env.POOL_HELPER
     ethX.address,
     oracle,
     userWithdrawManager,
-    poolHelper,
     [owner.address, owner.address],
     [owner.address, owner.address],
     owner.address,

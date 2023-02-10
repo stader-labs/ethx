@@ -3,6 +3,7 @@
 pragma solidity ^0.8.16;
 
 interface IStaderOperatorRegistry {
+
     error ZeroAddress();
     error InvalidPoolIdInput();
     error OperatorAlreadyOnBoarded();
@@ -49,6 +50,12 @@ interface IStaderOperatorRegistry {
 
     function whitelistPermissionedNOs(address[] calldata _nodeOperator)
         external;
+
+    function onboardNodeOperator(
+        bool _optInForMevSocialize,
+        string calldata _operatorName,
+        address payable _operatorRewardAddress
+    ) external returns (address mevFeeRecipientAddress);
 
     function operatorRegistry(address)
         external

@@ -53,7 +53,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @param _ethX ethX contract
      * @param _staderOracle stader oracle contract
      * @param _userWithdrawManager user withdraw manager
-     * @param _poolHelper pool selector contract
      * @param _minDelay initial minimum delay for operations
      * @param _proposers accounts to be granted proposer and canceller roles
      * @param _executors  accounts to be granted executor role
@@ -64,7 +63,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         address _ethX,
         address _staderOracle,
         address _userWithdrawManager,
-        address _poolHelper,
         address[] memory _proposers,
         address[] memory _executors,
         address _timeLockOwner,
@@ -75,7 +73,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         checkZeroAddress(_ethX)
         checkZeroAddress(_staderOracle)
         checkZeroAddress(_userWithdrawManager)
-        checkZeroAddress(_poolHelper)
     {
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         __Pausable_init();
@@ -83,7 +80,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         ethX = ETHX(_ethX);
         staderOracle = IStaderOracle(_staderOracle);
         userWithdrawalManager = IStaderUserWithdrawalManager(_userWithdrawManager);
-        poolHelper = IStaderPoolHelper(_poolHelper);
         _initialSetup();
     }
 
@@ -190,7 +186,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update stader pool selector contract address
      * @param _poolHelper stader pool selector contract
      */
-    function updatePoolSelector(address _poolHelper)
+    function updatePoolHelper(address _poolHelper)
         external
         override
         checkZeroAddress(_poolHelper)
@@ -322,7 +318,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function transferToPools(uint256 _validatorToSpin) external override onlyRole(EXECUTOR_ROLE) {
         require(_validatorToSpin* 28 ether <= address(this).balance, 'insufficient balance');
-            (,string memory poolName,address poolAddress,address operatorRegistry,address validatorRegistry,,,,) = poolHelper.staderPool(1);
+            (,string memory poolName,address poolAddress,,,,,,) = poolHelper.staderPool(1);
         IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: _validatorToSpin * 28 ether}();
         emit TransferredToPool(poolName, poolAddress, _validatorToSpin*28 ether);
     }

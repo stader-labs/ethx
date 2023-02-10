@@ -9,7 +9,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
     address vaultOwner;
-    address staderTreasury;
+    address payable staderTreasury;
 
     bytes32 public constant STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
 
@@ -22,7 +22,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     function initialize(
         address _factoryAdmin,
         address _vaultOwner,
-        address _staderTreasury
+        address payable _staderTreasury
     ) external initializer 
     checkZeroAddress(_factoryAdmin)
     checkZeroAddress(_vaultOwner)
@@ -57,7 +57,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
         nodeELRewardVaultAddress = Create2.deploy(0, salt, type(NodeELRewardVault).creationCode);
-        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(nodeRecipient);
+        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(nodeRecipient,staderTreasury);
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
         return nodeELRewardVaultAddress;

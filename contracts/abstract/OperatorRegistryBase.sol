@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 abstract contract OperatorRegistryBase is Initializable, ContextUpgradeable {
 
-    error ZeroAddress();
     error InvalidPoolIdInput();
     error OperatorAlreadyOnBoarded();
     error OperatorNotWhitelisted();

@@ -24,7 +24,6 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
 
     function initialize(
         address _adminOwner,
-        address _poolHelper,
         address _staderStakePoolManager,
         address _staderTreasury
     )
@@ -32,11 +31,9 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         initializer
     {
         Address.checkZeroAddress(_adminOwner);
-        Address.checkZeroAddress(_poolHelper);
         Address.checkZeroAddress(_staderStakePoolManager);
         Address.checkZeroAddress(_staderTreasury);
         __AccessControl_init_unchained();
-        poolHelper = IStaderPoolHelper(_poolHelper);
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
         staderTreasury = _staderTreasury;
         feePercentage = 10;
@@ -86,6 +83,10 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     //     staderStakePoolManager.receiveExecutionLayerRewards{value: address(this).balance}();
     // }
 
+   function updatePoolHelper(address _poolHelper) external onlyRole(SOCIALIZE_POOL_OWNER){
+        Address.checkZeroAddress(_poolHelper);
+        poolHelper = IStaderPoolHelper(_poolHelper);
+   }
     /**
      * @dev update stader pool manager address
      * @param _staderStakePoolManager staderPoolManager address

@@ -2,11 +2,11 @@ import { ethers } from 'hardhat'
 
 async function main() {
   const validatorRegistry = process.env.VALIDATOR_REGISTRY ?? ''
-  const validatorRegistryFactory = await ethers.getContractFactory('StaderValidatorRegistry')
+  const validatorRegistryFactory = await ethers.getContractFactory('PermissionLessValidatorRegistry')
   const validatorRegistryInstance = await validatorRegistryFactory.attach(validatorRegistry)
-  const porAddressList = await validatorRegistryInstance.addValidatorKeys('0xb1a91b2556bd3ebe04059dd7753afab6ac73596838a537487fa3dcf3d0645e6b5173929dac838ebaa213cba966832575',
-  '0xb04891165c184470d0fc07f05cbade098f05762fb46774c4aa2095f21009b23b11a04e57ab6e10cf57900c64438e421d0ca2f9929ee6c5769a77669c49f9da6884ff91869bc1cc7b6c25dccaf9fa5f2ddb870b3613001b13ed9f521c31e31e1b',
-  '0x7ab5643a0e03bd3258d5adf2aed79d63af926d2dcfd9b62b475709078cac0748',{ value: ethers.utils.parseEther('4') })
+  const porAddressList = await validatorRegistryInstance.addValidatorKeys('0x80b6fc1815407e009a48f02a1dcae0934927b86855ddccb91c2b5cf20d658256986e4996e5d34ef40deba358d7b94162',
+  '0x873ffefed0334f07e7bd4356e8cb01902eddc80600a2da51feb66c3359491f470df4b603ba9822809b112cd66efe2123032d80ffdbb448da137952b4f235f8635e6bf31313d1320640a2420a2a43d615564b2b57c73da17178f64c2b5c3f7b39',
+  '0x0becaf15c2f7d2d7e8247eeb88e31a3b41636d2bce9c7880a5b3d08ac655c443',{ value: ethers.utils.parseEther('4') })
   console.log('added keys');
 }
 main()

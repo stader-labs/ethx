@@ -41,7 +41,6 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     function initialize(
         address _adminOwner,
         address _ethValidatorDeposit,
-        address _poolHelper,
         uint256 _maxDepositPerBlock
     )
         external
@@ -49,11 +48,9 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     {
         Address.checkZeroAddress(_adminOwner);
         Address.checkZeroAddress(_ethValidatorDeposit);
-        Address.checkZeroAddress(_poolHelper);
         __Pausable_init();
         __AccessControl_init_unchained();
         maxDepositPerBlock = _maxDepositPerBlock;
-        poolHelper = IStaderPoolHelper(_poolHelper);
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }

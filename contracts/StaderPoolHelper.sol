@@ -27,40 +27,28 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @notice initialize with permissioned and permissionLess Pool
      * @dev pool index start from 1 with permission less pool 
      * @param _permissionLessTarget target weight of permissionless pool
-     * @param _permissionedTarget target weight of permissioned pool 
      * @param _adminOwner admin address for pool selector
      * @param _permissionLessPoolAddress permissionLess pool contract address
      * @param _permissionLessOperatorRegistry permissionLess operator registry
      * @param _permissionLessValidatorRegistry permissionLess validator registry
-     * @param _permissionedPoolAddress permissioned pool contract address
-     * @param _permissionedOperatorRegistry permissioned operator registry
-     * @param _permissionedValidatorRegistry permissioned validator registry
      */
     function initialize(
         uint8 _permissionLessTarget,
-        uint8 _permissionedTarget,
         address _adminOwner,
         address _permissionLessPoolAddress,
         address _permissionLessOperatorRegistry,
-        address _permissionLessValidatorRegistry,
-        address _permissionedPoolAddress,
-        address _permissionedOperatorRegistry,
-        address _permissionedValidatorRegistry
+        address _permissionLessValidatorRegistry
     )
         external
         initializer
     {
         Address.checkZeroAddress(_adminOwner);
-        Address.checkZeroAddress(_permissionedPoolAddress);
-        Address.checkZeroAddress(_permissionedOperatorRegistry);
-        Address.checkZeroAddress(_permissionedValidatorRegistry);
         Address.checkZeroAddress(_permissionLessPoolAddress);
         Address.checkZeroAddress(_permissionLessOperatorRegistry);
         Address.checkZeroAddress(_permissionLessValidatorRegistry);
         __AccessControl_init_unchained();
-        staderPool[1] = Pool(_permissionLessTarget, 'PERMISSIONLESS', _permissionLessPoolAddress,_permissionedOperatorRegistry,_permissionedValidatorRegistry,0, 0, 0, 0);
-        staderPool[2] = Pool(_permissionedTarget, 'PERMISSIONED', _permissionedPoolAddress,_permissionLessOperatorRegistry,_permissionLessValidatorRegistry,0, 0, 0, 0);
-        poolCount = 2;
+        staderPool[1] = Pool(_permissionLessTarget, 'PERMISSIONLESS', _permissionLessPoolAddress,_permissionLessOperatorRegistry,_permissionLessValidatorRegistry,0, 0, 0, 0);
+        poolCount = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
