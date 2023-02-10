@@ -28,7 +28,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     ETHX public ethX;
     IStaderOracle public staderOracle;
     IStaderUserWithdrawalManager public userWithdrawalManager;
-    IStaderPoolHelper public poolSelector;
+    IStaderPoolHelper public poolHelper;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minWithdrawAmount;
@@ -53,7 +53,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @param _ethX ethX contract
      * @param _staderOracle stader oracle contract
      * @param _userWithdrawManager user withdraw manager
-     * @param _poolSelector pool selector contract
+     * @param _poolHelper pool selector contract
      * @param _minDelay initial minimum delay for operations
      * @param _proposers accounts to be granted proposer and canceller roles
      * @param _executors  accounts to be granted executor role
@@ -64,7 +64,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         address _ethX,
         address _staderOracle,
         address _userWithdrawManager,
-        address _poolSelector,
+        address _poolHelper,
         address[] memory _proposers,
         address[] memory _executors,
         address _timeLockOwner,
@@ -75,7 +75,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         checkZeroAddress(_ethX)
         checkZeroAddress(_staderOracle)
         checkZeroAddress(_userWithdrawManager)
-        checkZeroAddress(_poolSelector)
+        checkZeroAddress(_poolHelper)
     {
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         __Pausable_init();
@@ -83,7 +83,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         ethX = ETHX(_ethX);
         staderOracle = IStaderOracle(_staderOracle);
         userWithdrawalManager = IStaderUserWithdrawalManager(_userWithdrawManager);
-        poolSelector = IStaderPoolHelper(_poolSelector);
+        poolHelper = IStaderPoolHelper(_poolHelper);
         _initialSetup();
     }
 
@@ -188,16 +188,16 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     /**
      * @dev update stader pool selector contract address
-     * @param _poolSelector stader pool selector contract
+     * @param _poolHelper stader pool selector contract
      */
-    function updatePoolSelector(address _poolSelector)
+    function updatePoolSelector(address _poolHelper)
         external
         override
-        checkZeroAddress(_poolSelector)
+        checkZeroAddress(_poolHelper)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        poolSelector = IStaderPoolHelper(_poolSelector);
-        emit UpdatedPoolSelector(address(_poolSelector));
+        poolHelper = IStaderPoolHelper(_poolHelper);
+        emit UpdatedPoolSelector(address(_poolHelper));
     }
 
     /**
@@ -320,21 +320,11 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice spinning off validators in different pools
      * @dev select a pool based on poolWeight
      */
-    function transferToPools(uint256[] calldata _inputVal) external override onlyRole(EXECUTOR_ROLE) {
-        for (uint8 i = 0; i < _inputVal.length; i++) {
-            if (_inputVal[i] > 0) {
-                (string memory poolName, address poolAddress, , , ) = poolSelector.staderPool(i);
-                if (keccak256(abi.encodePacked(poolName)) == keccak256(abi.encodePacked('PERMISSIONLESS'))) {
-                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{
-                        value: _inputVal[i] * permissionLessPoolUserDeposit
-                    }();
-                    emit TransferredToPool(poolName, poolAddress, _inputVal[i]);
-                } else {
-                    IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: _inputVal[i] * DEPOSIT_SIZE}();
-                    emit TransferredToPool(poolName, poolAddress, _inputVal[i]);
-                }
-            }
-        }
+    function transferToPools(uint256 _validatorToSpin) external override onlyRole(EXECUTOR_ROLE) {
+        require(_validatorToSpin* 28 ether <= address(this).balance, 'insufficient balance');
+            (,string memory poolName,address poolAddress,address operatorRegistry,address validatorRegistry,,,,) = poolHelper.staderPool(1);
+        IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: _validatorToSpin * 28 ether}();
+        emit TransferredToPool(poolName, poolAddress, _validatorToSpin*28 ether);
     }
 
     /**

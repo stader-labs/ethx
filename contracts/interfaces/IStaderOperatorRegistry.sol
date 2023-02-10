@@ -29,25 +29,26 @@ interface IStaderOperatorRegistry {
 
     function STADER_SLASHING_MANAGER() external view returns (bytes32);
 
-    function incrementInitializedValidatorsCount(uint256 _operatorId) external;
+    function incrementInitializedValidatorsCount(address _nodeOperator) external;
 
-    function reduceInitializedValidatorsCount(uint256 _operatorId) external;
+    function reduceInitializedValidatorsCount(address _nodeOperator) external;
 
-    function incrementActiveValidatorsCount(uint256 _operatorId) external;
+    function incrementActiveValidatorsCount(address _nodeOperator) external;
 
-    function reduceActiveValidatorsCount(uint256 _operatorId) external;
+    function reduceActiveValidatorsCount(address _nodeOperator) external;
 
-    function incrementQueuedValidatorsCount(uint256 _operatorId) external;
+    function incrementQueuedValidatorsCount(address _nodeOperator) external;
 
-    function reduceQueuedValidatorsCount(uint256 _operatorId) external;
+    function reduceQueuedValidatorsCount(address _nodeOperator) external;
 
-    function incrementWithdrawValidatorsCount(uint256 _operatorId) external;
-
-    function isWhitelistedPermissionedNO(address) external view returns (bool);
-
-    function whitelistPermissionedNOs(address[] calldata _nodeOperator) external;
+    function incrementWithdrawValidatorsCount(address _nodeOperator) external;
 
     function operatorByOperatorId(uint256) external view returns (address);
+
+    function isWhitelistedPermissionedNO(address) external view returns(bool);
+
+    function whitelistPermissionedNOs(address[] calldata _nodeOperator)
+        external;
 
     function operatorRegistry(address)
         external
@@ -62,11 +63,6 @@ interface IStaderOperatorRegistry {
             uint256 activeValidatorCount,
             uint256 withdrawnValidatorCount
         );
-
-    function onboardPermissionedNodeOperator(
-        string calldata _operatorName,
-        address payable _operatorRewardAddress
-    ) external returns (address mevFeeRecipientAddress);
 
     function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 }

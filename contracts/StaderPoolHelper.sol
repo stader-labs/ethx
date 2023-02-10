@@ -1,17 +1,22 @@
 pragma solidity ^0.8.16;
 
 import './interfaces/IStaderPoolHelper.sol';
+import './library/Address.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgradeable {
-    uint8 public override poolTypeCount;
+    uint8 public override poolCount;
     bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
 
     struct Pool {
+        uint8 targetShare; // shares of total active validators for the pool
         string poolName; // pool name
         address poolAddress; //pool contract address
-        uint256 queuedValidatorKeys; //total validator registered in the pool
+        address operatorRegistry; //address of operator registry
+        address validatorRegistry; // address of validator registry
+        uint256 initializedValidatorKeys; //validator waiting for pre-signed messages to submit
+        uint256 queuedValidatorKeys; //validator in the pool ready to deposit
         uint256 activeValidatorKeys; //validator registered on beacon chain for the pool
         uint256 withdrawnValidatorKeys; // count of validator withdrawn for the pool
     }
@@ -20,65 +25,142 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
 
     /**
      * @notice initialize with permissioned and permissionLess Pool
-     * @dev permissionLess pool at index 0
-     * @param _poolSelectorAdmin admin address for pool selector
-     * @param _permissionedPoolAddress permissioned pool contract address
+     * @dev pool index start from 1 with permission less pool 
+     * @param _permissionLessTarget target weight of permissionless pool
+     * @param _permissionedTarget target weight of permissioned pool 
+     * @param _adminOwner admin address for pool selector
      * @param _permissionLessPoolAddress permissionLess pool contract address
+     * @param _permissionLessOperatorRegistry permissionLess operator registry
+     * @param _permissionLessValidatorRegistry permissionLess validator registry
+     * @param _permissionedPoolAddress permissioned pool contract address
+     * @param _permissionedOperatorRegistry permissioned operator registry
+     * @param _permissionedValidatorRegistry permissioned validator registry
      */
     function initialize(
-        address _poolSelectorAdmin,
+        uint8 _permissionLessTarget,
+        uint8 _permissionedTarget,
+        address _adminOwner,
+        address _permissionLessPoolAddress,
+        address _permissionLessOperatorRegistry,
+        address _permissionLessValidatorRegistry,
         address _permissionedPoolAddress,
-        address _permissionLessPoolAddress
+        address _permissionedOperatorRegistry,
+        address _permissionedValidatorRegistry
     )
         external
-        checkZeroAddress(_poolSelectorAdmin)
-        checkZeroAddress(_permissionedPoolAddress)
-        checkZeroAddress(_permissionLessPoolAddress)
         initializer
     {
+        Address.checkZeroAddress(_adminOwner);
+        Address.checkZeroAddress(_permissionedPoolAddress);
+        Address.checkZeroAddress(_permissionedOperatorRegistry);
+        Address.checkZeroAddress(_permissionedValidatorRegistry);
+        Address.checkZeroAddress(_permissionLessPoolAddress);
+        Address.checkZeroAddress(_permissionLessOperatorRegistry);
+        Address.checkZeroAddress(_permissionLessValidatorRegistry);
         __AccessControl_init_unchained();
-        staderPool[0] = Pool('PERMISSIONLESS', _permissionLessPoolAddress, 0, 0, 0);
-        staderPool[1] = Pool('PERMISSIONED', _permissionedPoolAddress, 0, 0, 0);
-        poolTypeCount = 2;
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        staderPool[1] = Pool(_permissionLessTarget, 'PERMISSIONLESS', _permissionLessPoolAddress,_permissionedOperatorRegistry,_permissionedValidatorRegistry,0, 0, 0, 0);
+        staderPool[2] = Pool(_permissionedTarget, 'PERMISSIONED', _permissionedPoolAddress,_permissionLessOperatorRegistry,_permissionLessValidatorRegistry,0, 0, 0, 0);
+        poolCount = 2;
+        _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
     /**
      * @notice add a new pool in pool selector logic
      * @dev pass all previous pool new updated weights, only callable by admin
+     * @param _newTargetShares new targets for all pool including new 
      * @param _newPoolName name of new pool
      * @param _newPoolAddress new pool contract address
+     * @param _operatorRegistry operator registry of the new pool
+     * @param _validatorRegistry validator registry of new pool
      */
-    function addNewPool(string calldata _newPoolName, address _newPoolAddress)
+    function addNewPool(uint8[] calldata _newTargetShares, string calldata _newPoolName, address _newPoolAddress, address _operatorRegistry, address _validatorRegistry)
         external
         override
-        checkZeroAddress(_newPoolAddress)
         onlyRole(POOL_SELECTOR_ADMIN)
     {
-        staderPool[poolTypeCount] = Pool(_newPoolName, _newPoolAddress, 0, 0, 0);
-        poolTypeCount++;
+        Address.checkZeroAddress(_newPoolAddress);
+        if(poolCount+1 != _newTargetShares.length) revert InvalidNewPoodInput();
+        for(uint8 i=1;i<_newTargetShares.length;i++){
+            staderPool[i].targetShare = _newTargetShares[i-1];
+        }
+        staderPool[poolCount+1] = Pool(_newTargetShares[poolCount],_newPoolName, _newPoolAddress, _operatorRegistry,_validatorRegistry, 0, 0, 0, 0);
+        poolCount++;
     }
 
     /**
-     * @notice updated the withdraw weights of existing pools
+     * @notice updated the pool address for pool `_poolId`
      * @dev only admin can call
-     * @param _poolId new withdraw weights of pools
+     * @param _poolId Id of the pool
      * @param _poolAddress updated address of the pool
      */
     function updatePoolAddress(uint8 _poolId, address _poolAddress)
         external
         override
-        checkZeroAddress(_poolAddress)
         onlyRole(POOL_SELECTOR_ADMIN)
     {
-        if (_poolId >= poolTypeCount) revert InvalidPoolType();
+        Address.checkZeroAddress(_poolAddress);
+        if (_poolId > poolCount) revert InvalidPoolId();
         staderPool[_poolId].poolAddress = _poolAddress;
     }
 
     /**
-     * @notice increase the queued validator count for `_poolType` pool
+     * @notice updated the operator registry address for pool `_poolId`
+     * @dev only admin can call
+     * @param _poolId Id of the pool
+     * @param _operatorRegistry updated operator registry address for the pool
+     */
+    function updatePoolOperatorRegistry(uint8 _poolId, address _operatorRegistry)
+        external
+        override
+        onlyRole(POOL_SELECTOR_ADMIN)
+    {
+        Address.checkZeroAddress(_operatorRegistry);
+        if (_poolId > poolCount) revert InvalidPoolId();
+        staderPool[_poolId].operatorRegistry = _operatorRegistry;
+    }
+
+    /**
+     * @notice updated the validator registry address for pool `_poolId`
+     * @dev only admin can call
+     * @param _poolId Id of the pool
+     * @param _validatorRegistry updated validator registry address for the pool
+     */
+    function updatePoolValidatorRegistry(uint8 _poolId, address _validatorRegistry)
+        external
+        override
+        onlyRole(POOL_SELECTOR_ADMIN)
+    {
+        Address.checkZeroAddress(_validatorRegistry);
+        if (_poolId > poolCount) revert InvalidPoolId();
+        staderPool[_poolId].validatorRegistry = _validatorRegistry;
+    }
+
+    /**
+     * @notice increase the initialized validator count for `_poolId` pool
      * @dev only accept call from stader network pools
-     * @param _poolId type of the pool
+     * @param _poolId Id of the pool
+     */
+    function incrementInitializedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
+        staderPool[_poolId].initializedValidatorKeys++;
+        emit UpdatedTotalValidatorKeys(_poolId, staderPool[_poolId].initializedValidatorKeys);
+    }
+
+
+    /**
+     * @notice reduce the initialized validator count for `_poolId` pool
+     * @dev only accept call from stader network pools
+     * @param _poolId Id of the pool
+     */
+    function reduceInitializedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
+        if (staderPool[_poolId].initializedValidatorKeys == 0) revert NoInitializedValidators();
+        staderPool[_poolId].initializedValidatorKeys--;
+        emit UpdatedTotalValidatorKeys(_poolId, staderPool[_poolId].initializedValidatorKeys);
+    }
+
+    /**
+     * @notice increase the queued validator count for `_poolId` pool
+     * @dev only accept call from stader network pools
+     * @param _poolId Id of the pool
      */
     function incrementQueuedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
         staderPool[_poolId].queuedValidatorKeys++;
@@ -86,20 +168,20 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     }
 
     /**
-     * @notice decrease the queued validator count for `_poolType` pool
+     * @notice decrease the queued validator count for `_poolId` pool
      * @dev only accept call from stader network pools
-     * @param _poolId type of the pool
+     * @param _poolId Id of the pool
      */
     function reduceQueuedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        if (staderPool[_poolId].queuedValidatorKeys == 0) revert NOQueuedValidators();
+        if (staderPool[_poolId].queuedValidatorKeys == 0) revert NoQueuedValidators();
         staderPool[_poolId].queuedValidatorKeys--;
         emit UpdatedTotalValidatorKeys(_poolId, staderPool[_poolId].queuedValidatorKeys);
     }
 
     /**
-     * @notice increase the registered validator count on beacon chain for `_poolType` pool
+     * @notice increase the registered validator count on beacon chain for `_poolId` pool
      * @dev only accept call from stader network pools
-     * @param _poolId type of the pool
+     * @param _poolId Id of the pool
      */
     function incrementActiveValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
         staderPool[_poolId].activeValidatorKeys++;
@@ -107,9 +189,9 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     }
 
     /**
-     * @notice decrease the registered validator count on beacon chain for `_poolType` pool
+     * @notice decrease the registered validator count on beacon chain for `_poolId` pool
      * @dev only accept call from stader network pools
-     * @param _poolId type of the pool
+     * @param _poolId Id of the pool
      */
     function reduceActiveValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
         if (staderPool[_poolId].activeValidatorKeys == 0) revert NoActiveValidators();
@@ -118,29 +200,39 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     }
 
     /**
-     * @notice increase the withdrawn validator count for `_poolType` pool
+     * @notice increase the withdrawn validator count for `_poolId` pool
      * @dev only accept call from stader network pools
-     * @param _poolId type of the pool
+     * @param _poolId Id of the pool
      */
     function incrementWithdrawnValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
         staderPool[_poolId].withdrawnValidatorKeys++;
         emit UpdatedWithdrawnValidatorKeys(_poolId, staderPool[_poolId].withdrawnValidatorKeys);
     }
 
+    /**
+     * @notice get the queued validator count which are ready to deposit
+     * @dev validator having PRE_DEPOSIT state
+     * @param _poolId Id of the pool
+     */
     function getQueuedValidator(uint8 _poolId) external view override returns (uint256) {
         return staderPool[_poolId].queuedValidatorKeys;
     }
 
+    /**
+     * @notice get the active validator count which are registered on beacon chain
+     * @dev validator registered on beacon chain
+     * @param _poolId Id of the pool
+     */
     function getActiveValidator(uint8 _poolId) external view override returns (uint256) {
         return staderPool[_poolId].activeValidatorKeys;
     }
 
-    /** @notice Check for zero address
-     * @dev Modifier
-     * @param _address the address to check
-     **/
-    modifier checkZeroAddress(address _address) {
-        if (_address == address(0)) revert ZeroAddress();
-        _;
+    /**
+     * @notice get the withdrawn validator count which passed the withdrawn epoch
+     * @dev validator withdrawn from beacon chain
+     * @param _poolId Id of the pool
+     */
+    function getWithdrawnValidator(uint8 _poolId) external view override returns (uint256) {
+        return staderPool[_poolId].activeValidatorKeys;
     }
 }

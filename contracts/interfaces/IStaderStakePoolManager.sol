@@ -72,5 +72,5 @@ interface IStaderStakePoolManager {
 
     function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey) external returns (uint256 requestId);
 
-    function transferToPools(uint256[] calldata _inputVal) external;
+    function transferToPools(uint256 _validatorToSpin) external;
 }

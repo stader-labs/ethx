@@ -67,64 +67,64 @@ contract PermissionedOperatorRegistry is OperatorRegistryBase, AccessControlUpgr
     /**
      * @notice increase the queued validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator operator address
      */
-    function incrementInitializedValidatorsCount(uint256 _operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        _incrementInitializedValidatorsCount(_operatorId);
+    function incrementInitializedValidatorsCount(address _nodeOperator) external onlyRole(STADER_NETWORK_POOL) {
+        _incrementInitializedValidatorsCount(_nodeOperator);
     }
 
     /**
      * @notice reduce the queued validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator operator address
      */
-    function reduceInitializedValidatorsCount(uint256 _operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        _reduceInitializedValidatorsCount(_operatorId);
+    function reduceInitializedValidatorsCount(address _nodeOperator) external onlyRole(STADER_NETWORK_POOL) {
+        _reduceInitializedValidatorsCount(_nodeOperator);
     }
 
     /**
      * @notice increase the queued validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator operator address
      */
-    function incrementQueuedValidatorsCount(uint256 _operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        _incrementQueuedValidatorsCount(_operatorId);
+    function incrementQueuedValidatorsCount(address _nodeOperator) external onlyRole(STADER_NETWORK_POOL) {
+        _incrementQueuedValidatorsCount(_nodeOperator);
     }
 
     /**
      * @notice reduce the queued validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator operator address
      */
-    function reduceQueuedValidatorsCount(uint256 _operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        _reduceQueuedValidatorsCount(_operatorId);
+    function reduceQueuedValidatorsCount(address _nodeOperator) external onlyRole(STADER_NETWORK_POOL) {
+        _reduceQueuedValidatorsCount(_nodeOperator);
     }
 
     /**
      * @notice increase the active validator count for a operator
      * @dev only accept call from stader network pools
-     * @param _operatorId operator ID
+     * @param _nodeOperator operator address
      */
-    function incrementActiveValidatorsCount(uint256 _operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        _incrementActiveValidatorsCount(_operatorId);
+    function incrementActiveValidatorsCount(address _nodeOperator) external onlyRole(STADER_NETWORK_POOL) {
+        _incrementActiveValidatorsCount(_nodeOperator);
     }
 
     /**
      * @notice reduce the active validator count for a operator
      * @dev only accept call from stader network pools
-     * @param _operatorId operator ID
+     * @param _nodeOperator operator address
      */
-    function reduceActiveValidatorsCount(uint256 _operatorId) external onlyRole(STADER_NETWORK_POOL) {
-        _reduceActiveValidatorsCount(_operatorId);
+    function reduceActiveValidatorsCount(address _nodeOperator) external onlyRole(STADER_NETWORK_POOL) {
+        _reduceActiveValidatorsCount(_nodeOperator);
     }
 
     /**
      * @notice reduce the validator count from registry when a validator is withdrawn
      * @dev accept call, only from slashing manager contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator operator address
      */
-    function incrementWithdrawValidatorsCount(uint256 _operatorId) external onlyRole(STADER_SLASHING_MANAGER) {
-        _incrementWithdrawValidatorsCount(_operatorId);
+    function incrementWithdrawValidatorsCount(address _nodeOperator) external onlyRole(STADER_SLASHING_MANAGER) {
+        _incrementWithdrawValidatorsCount(_nodeOperator);
     }
 
     /**

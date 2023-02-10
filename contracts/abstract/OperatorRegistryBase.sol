@@ -31,6 +31,22 @@ abstract contract OperatorRegistryBase is Initializable, ContextUpgradeable {
     bytes32 public constant  STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
     bytes32 public constant  STADER_SLASHING_MANAGER = keccak256('STADER_SLASHING_MANAGER');
 
+/**
+ * @notice modifier to check if operator registered
+ */
+    modifier OperatorOnboard(address _nodeOperator){
+        if(operatorRegistry[_nodeOperator].operatorId == 0) revert OperatorNotRegistered();
+        _;
+    }
+
+    /**
+ * @notice modifier to check if operator not registered
+ */
+    modifier OperatorNotOnboard(address _nodeOperator){
+        if(operatorRegistry[_nodeOperator].operatorId == 0) revert OperatorNotRegistered();
+        _;
+    }
+
     struct Operator {
         bool optedForSocializingPool; // operator opted for socializing pool
         string operatorName; // name of the operator
@@ -62,108 +78,94 @@ abstract contract OperatorRegistryBase is Initializable, ContextUpgradeable {
     /**
      * @notice increase the initialized validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator owner of operator
      */
-    function _incrementInitializedValidatorsCount(uint256 _operatorId) internal virtual {
-        if (_operatorId == 0) revert OperatorNotRegistered();
-        address nodeOperator = operatorByOperatorId[_operatorId];
-        operatorRegistry[nodeOperator].initializedValidatorCount++;
+    function _incrementInitializedValidatorsCount(address _nodeOperator) internal virtual {
+        operatorRegistry[_nodeOperator].initializedValidatorCount++;
         emit IncrementedInitializedValidatorsCount(
-            operatorRegistry[nodeOperator].operatorId,
-            operatorRegistry[nodeOperator].initializedValidatorCount
+            operatorRegistry[_nodeOperator].operatorId,
+            operatorRegistry[_nodeOperator].initializedValidatorCount
         );
     }
 
     /**
      * @notice reduce the initialized validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator owner of operator
      */
-    function _reduceInitializedValidatorsCount(uint256 _operatorId) internal virtual {
-        if (_operatorId == 0) revert OperatorNotRegistered();
-        address nodeOperator = operatorByOperatorId[_operatorId];
-        if (operatorRegistry[nodeOperator].initializedValidatorCount == 0) revert NoInitializedValidatorLeft();
-        operatorRegistry[nodeOperator].initializedValidatorCount--;
+    function _reduceInitializedValidatorsCount(address _nodeOperator) internal virtual {
+        if (operatorRegistry[_nodeOperator].initializedValidatorCount == 0) revert NoInitializedValidatorLeft();
+        operatorRegistry[_nodeOperator].initializedValidatorCount--;
         emit ReducedInitializedValidatorsCount(
-            operatorRegistry[nodeOperator].operatorId,
-            operatorRegistry[nodeOperator].initializedValidatorCount
+            operatorRegistry[_nodeOperator].operatorId,
+            operatorRegistry[_nodeOperator].initializedValidatorCount
         );
     }
 
     /**
      * @notice increase the queued validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator owner of operator
      */
-    function _incrementQueuedValidatorsCount(uint256 _operatorId) internal virtual {
-        if (_operatorId == 0) revert OperatorNotRegistered();
-        address nodeOperator = operatorByOperatorId[_operatorId];
-        operatorRegistry[nodeOperator].queuedValidatorCount++;
+    function _incrementQueuedValidatorsCount(address _nodeOperator) internal virtual {
+        operatorRegistry[_nodeOperator].queuedValidatorCount++;
         emit IncrementedQueuedValidatorsCount(
-            operatorRegistry[nodeOperator].operatorId,
-            operatorRegistry[nodeOperator].queuedValidatorCount
+            operatorRegistry[_nodeOperator].operatorId,
+            operatorRegistry[_nodeOperator].queuedValidatorCount
         );
     }
 
     /**
      * @notice reduce the queued validator count for a operator
      * @dev only accept call from stader network contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator owner of operator 
      */
-    function _reduceQueuedValidatorsCount(uint256 _operatorId) internal virtual {
-        if (_operatorId == 0) revert OperatorNotRegistered();
-        address nodeOperator = operatorByOperatorId[_operatorId];
-        if (operatorRegistry[nodeOperator].queuedValidatorCount == 0) revert NoQueuedValidatorLeft();
-        operatorRegistry[nodeOperator].queuedValidatorCount--;
+    function _reduceQueuedValidatorsCount(address _nodeOperator) internal virtual {
+        if (operatorRegistry[_nodeOperator].queuedValidatorCount == 0) revert NoQueuedValidatorLeft();
+        operatorRegistry[_nodeOperator].queuedValidatorCount--;
         emit ReducedQueuedValidatorsCount(
-            operatorRegistry[nodeOperator].operatorId,
-            operatorRegistry[nodeOperator].queuedValidatorCount
+            operatorRegistry[_nodeOperator].operatorId,
+            operatorRegistry[_nodeOperator].queuedValidatorCount
         );
     }
 
     /**
      * @notice increase the active validator count for a operator
      * @dev only accept call from stader network pools
-     * @param _operatorId operator ID
+     * @param _nodeOperator owner of operator 
      */
-    function _incrementActiveValidatorsCount(uint256 _operatorId) internal virtual {
-        if (_operatorId == 0) revert OperatorNotRegistered();
-        address nodeOperator = operatorByOperatorId[_operatorId];
-        operatorRegistry[nodeOperator].activeValidatorCount++;
+    function _incrementActiveValidatorsCount(address _nodeOperator) internal virtual {
+        operatorRegistry[_nodeOperator].activeValidatorCount++;
         emit IncrementedActiveValidatorsCount(
-            operatorRegistry[nodeOperator].operatorId,
-            operatorRegistry[nodeOperator].activeValidatorCount
+            operatorRegistry[_nodeOperator].operatorId,
+            operatorRegistry[_nodeOperator].activeValidatorCount
         );
     }
 
     /**
      * @notice reduce the active validator count for a operator
      * @dev only accept call from stader network pools
-     * @param _operatorId operator ID
+     * @param _nodeOperator owner of operator 
      */
-    function _reduceActiveValidatorsCount(uint256 _operatorId) internal virtual {
-        if (_operatorId == 0) revert OperatorNotRegistered();
-        address nodeOperator = operatorByOperatorId[_operatorId];
-        if (operatorRegistry[nodeOperator].activeValidatorCount == 0) revert NoActiveValidatorLeft();
-        operatorRegistry[nodeOperator].activeValidatorCount--;
+    function _reduceActiveValidatorsCount(address _nodeOperator) internal virtual {
+        if (operatorRegistry[_nodeOperator].activeValidatorCount == 0) revert NoActiveValidatorLeft();
+        operatorRegistry[_nodeOperator].activeValidatorCount--;
         emit ReducedActiveValidatorsCount(
-            operatorRegistry[nodeOperator].operatorId,
-            operatorRegistry[nodeOperator].activeValidatorCount
+            operatorRegistry[_nodeOperator].operatorId,
+            operatorRegistry[_nodeOperator].activeValidatorCount
         );
     }
 
     /**
      * @notice reduce the validator count from registry when a validator is withdrawn
      * @dev accept call, only from slashing manager contract
-     * @param _operatorId operator ID
+     * @param _nodeOperator owner of operator 
      */
-    function _incrementWithdrawValidatorsCount(uint256 _operatorId) internal virtual  {
-        if (_operatorId == 0) revert OperatorNotRegistered();
-        address nodeOperator = operatorByOperatorId[_operatorId];
-        operatorRegistry[nodeOperator].withdrawnValidatorCount++;
+    function _incrementWithdrawValidatorsCount(address _nodeOperator) internal virtual  {
+        operatorRegistry[_nodeOperator].withdrawnValidatorCount++;
         emit IncrementedWithdrawnValidatorsCount(
-            operatorRegistry[nodeOperator].operatorId,
-            operatorRegistry[nodeOperator].withdrawnValidatorCount
+            operatorRegistry[_nodeOperator].operatorId,
+            operatorRegistry[_nodeOperator].withdrawnValidatorCount
         );
     }
 
@@ -174,10 +176,9 @@ abstract contract OperatorRegistryBase is Initializable, ContextUpgradeable {
     /**
      * @notice get the total deposited keys for an operator
      * @dev add queued, active and withdrawn validator to get total validators keys
-     * @param _nodeOperator node operator address
+     * @param _nodeOperator owner of operator 
      */
     function getTotalValidatorKeys(address _nodeOperator) public view returns (uint256 _totalKeys) {
-        if (operatorRegistry[_nodeOperator].operatorId == 0) revert OperatorNotRegistered();
         _totalKeys =
             operatorRegistry[_nodeOperator].initializedValidatorCount +
             operatorRegistry[_nodeOperator].queuedValidatorCount +

@@ -38,22 +38,25 @@ contract PermissionLessValidatorRegistry is ValidatorRegistryBase, AccessControl
         _addValidatorKey(_validatorPubKey, _validatorSignature, 1, _depositDataRoot, operatorId);
     }
 
-    function increasePenaltyCount(uint256 validatorIndex) external  onlyRole(STADER_SLASHING_MANAGER) {
-        _increasePenaltyCount(validatorIndex);
+    function markValidatorReadyToDeposit(bytes[] calldata _pubKeys) external onlyRole(VALIDATOR_REGISTRY_ADMIN){
+        for(uint256 i=0;i<_pubKeys.length;i++){
+            uint256 validatorId = validatorIdByPubKey[_pubKeys[i]];
+            if(validatorId==0) revert PubKeyDoesNotExist();
+            _markKeyReadyToDeposit(1, validatorId);
+        }
     }
 
-    function updateBondEth(uint256 _validatorIndex, uint256 _currentBondEth)
-        external
-        onlyRole(STADER_SLASHING_MANAGER)
-    {
-        _updateBondEth(_validatorIndex,_currentBondEth);
+    function deleteDepositQueueValidator(uint256 _index) external onlyRole(STADER_NETWORK_POOL){
+        if(_index >= queuedValidatorIndex) revert InvalidIndex();
+        delete(queueToDeposit[_index]);
     }
 
-    function markValidatorReadyForWithdrawal(uint256 validatorIndex)
-        external
-        onlyRole(STADER_SLASHING_MANAGER)
-    {
-        _markValidatorReadyForWithdrawal(validatorIndex);
+    function transferCollateralToPool(uint256 _amount) external onlyRole(STADER_NETWORK_POOL){
+        _sendValue(_amount);
+    }
+
+    function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external onlyRole(STADER_NETWORK_POOL){
+        _updateValidatorStatus(_pubKey,_status);
     }
 
     function updatePoolHelper(address _staderPoolHelper)

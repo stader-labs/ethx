@@ -12,10 +12,13 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
 
+    error InvalidIndex();
     error TransferFailed();
+    error PubKeyDoesNotExist();
     error OperatorNotOnBoarded();
     error InvalidBondEthValue();
     error OperatorNotWhitelisted();
+    error InSufficientBalance();
 
     event AddedToValidatorRegistry(bytes publicKey, bytes32 poolType, uint256 count);
 
@@ -25,7 +28,7 @@ abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
     IVaultFactory public vaultFactory;
     IStaderOperatorRegistry public staderOperatorRegistry;
     uint256 public  nextValidatorId;
-    uint256 public  registeredValidatorCount;
+    uint256 public  queuedValidatorIndex;
     uint256 public constant collateralETH = 4 ether;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
 
@@ -49,6 +52,8 @@ abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
     // mapping() public 
     mapping(bytes => uint256) public  validatorIdByPubKey;
 
+    mapping(uint256 => uint256) public queueToDeposit;
+
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
@@ -59,15 +64,15 @@ abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
         staderOperatorRegistry = IStaderOperatorRegistry(_operatorRegistry);
     }
 
-    function _increasePenaltyCount(uint256 validatorIndex) internal virtual {
-        validatorRegistry[validatorIndex].penaltyCount++;
-    }
-
-    function _updateBondEth(uint256 validatorIndex, uint256 currentBondEth)
-        internal
-        virtual
-    {
-        validatorRegistry[validatorIndex].bondEth = currentBondEth;
+    function _markKeyReadyToDeposit(uint8 _poolId, uint256 _validatorId) internal virtual {
+        validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
+        queueToDeposit[queuedValidatorIndex] = _validatorId;
+        address nodeOperator = staderOperatorRegistry.operatorByOperatorId(validatorRegistry[_validatorId].operatorId);
+        poolHelper.reduceInitializedValidatorKeys(_poolId);
+        poolHelper.incrementQueuedValidatorKeys(_poolId);
+        staderOperatorRegistry.reduceInitializedValidatorsCount(nodeOperator);
+        staderOperatorRegistry.incrementQueuedValidatorsCount(nodeOperator);
+        queuedValidatorIndex++;
     }
 
     function _addValidatorKey(
@@ -93,16 +98,9 @@ abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
             msg.value,
             0
         );
-        poolHelper.incrementQueuedValidatorKeys(_poolId);
-        staderOperatorRegistry.incrementInitializedValidatorsCount(_operatorId);
+        poolHelper.incrementInitializedValidatorKeys(_poolId);
+        staderOperatorRegistry.incrementInitializedValidatorsCount(msg.sender);
         nextValidatorId++;
-    }
-
-    function _markValidatorReadyForWithdrawal(uint256 validatorIndex)
-        internal
-        virtual
-    {
-        validatorRegistry[validatorIndex].isWithdrawal = true;
     }
 
     function _updatePoolHelper(address _staderPoolHelper)
@@ -111,10 +109,10 @@ abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
         poolHelper = IStaderPoolHelper(_staderPoolHelper);
     }
 
-    function _removeValidatorFromRegistry(bytes memory _pubKey, uint256 _index) internal {
-        delete (validatorRegistry[_index]);
-        delete (validatorIdByPubKey[_pubKey]);
-        emit RemovedValidatorFromRegistry(_pubKey);
+    function _updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) internal{
+        uint256 validatorId = validatorIdByPubKey[_pubKey];
+        if(validatorId == 0) revert PubKeyDoesNotExist();
+        validatorRegistry[validatorId].status = _status;
     }
 
     function _validateKeys(
@@ -158,5 +156,15 @@ abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
         ret[5] = bytesValue[2];
         ret[6] = bytesValue[1];
         ret[7] = bytesValue[0];
+    }
+
+    function _sendValue(uint256 _amount) internal {
+        if (address(this).balance < _amount) revert InSufficientBalance();
+
+        (,,address poolAddress,,,,,,) = poolHelper.staderPool(1);
+
+        // solhint-disable-next-line
+        (bool success, ) = payable(poolAddress).call{value: _amount}('');
+        if (!success) revert TransferFailed();
     }
 }

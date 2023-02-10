@@ -2,138 +2,95 @@ pragma solidity ^0.8.16;
 
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderPoolHelper.sol';
+import './library/Address.sol';
 
 import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderOperatorRegistry.sol';
+
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+
+    using Math for uint256; 
+
     IStaderPoolHelper public poolHelper;
-    uint256 public permissionLessOperatorIndex;
+    uint256 public depositQueueStartIndex;
     IDepositContract public ethValidatorDeposit;
-    IStaderOperatorRegistry public staderOperatorRegistry;
-    IStaderValidatorRegistry public staderValidatorRegistry;
 
     bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
     bytes32 public constant PERMISSION_LESS_OPERATOR = keccak256('PERMISSION_LESS_OPERATOR');
     bytes32 public constant PERMISSION_LESS_POOL = keccak256('PERMISSION_LESS_POOL');
 
+    uint256 public maxDepositPerBlock;
+    uint256 public constant NODE_BOND = 4 ether;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
 
+    error NotEnoughCapacity();
+    error NotSufficientETHToSpinValidator();
 
     event DepositToDepositContract(bytes indexed pubKey);
     event ReceivedETH(address indexed from, uint256 amount);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
-
-    /// @notice zero address check modifier
-    modifier checkZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
     
     /**
      * @dev Stader managed stake Pool is initialized with following variables
      */
     function initialize(
+        address _adminOwner,
         address _ethValidatorDeposit,
-        address _staderOperatorRegistry,
-        address _staderValidatorRegistry,
-        address _staderPermissionLessPoolAdmin
+        address _poolHelper,
+        uint256 _maxDepositPerBlock
     )
         external
         initializer
-        checkZeroAddress(_ethValidatorDeposit)
-        checkZeroAddress(_staderOperatorRegistry)
-        checkZeroAddress(_staderValidatorRegistry)
-        checkZeroAddress(_staderPermissionLessPoolAdmin)
     {
+        Address.checkZeroAddress(_adminOwner);
+        Address.checkZeroAddress(_ethValidatorDeposit);
+        Address.checkZeroAddress(_poolHelper);
         __Pausable_init();
         __AccessControl_init_unchained();
+        maxDepositPerBlock = _maxDepositPerBlock;
+        poolHelper = IStaderPoolHelper(_poolHelper);
         ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
-        staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
-        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        _grantRole(STADER_PERMISSION_LESS_POOL_ADMIN, _staderPermissionLessPoolAdmin);
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
     /// @dev deposit 32 ETH in ethereum deposit contract
-    function registerValidatorsOnBeacon() external payable onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
-        require(address(this).balance >= DEPOSIT_SIZE, 'not enough balance to deposit');
-        uint256 standByPermissionLessValidators = poolHelper.getQueuedValidator(0);
-        require(standByPermissionLessValidators > 0, 'stand by permissionLess validator not available');
-        uint256 depositCount = address(this).balance / DEPOSIT_SIZE;
-        depositCount = depositCount > standByPermissionLessValidators ? standByPermissionLessValidators : depositCount;
-        standByPermissionLessValidators -= depositCount;
-        (uint256[] memory selectedOperatorIds, uint256 updatedOperatorIndex) = staderOperatorRegistry.selectOperators(
-            0,
-            depositCount,
-            permissionLessOperatorIndex
-        );
-        permissionLessOperatorIndex = updatedOperatorIndex;
-        uint256 counter = 0;
-        while (counter < depositCount) {
-            uint256 validatorIndex = staderValidatorRegistry.getValidatorIndexForOperatorId(
-                0,
-                selectedOperatorIds[counter]
-            );
-            require(validatorIndex != type(uint256).max, 'permissionLess validator not available');
-            (
-                ,
-                ,
-                bytes memory pubKey,
-                bytes memory signature,
-                bytes memory withdrawCred,
-                uint8 staderPoolId,
-                bytes32 depositDataRoot,
-                uint256 operatorId,
-                ,
+    function registerValidatorsOnBeacon() external payable {
+        uint256 validatorToSpin = address(this).balance/ 28 ether ;
+        if(validatorToSpin ==0) revert NotSufficientETHToSpinValidator();
+        validatorToSpin = Math.min(validatorToSpin, maxDepositPerBlock);
+            (,,,address operatorRegistry,address validatorRegistry,,uint256 queuedValidatorKeys,,) = poolHelper.staderPool(1);
+        if(queuedValidatorKeys < validatorToSpin) revert NotEnoughCapacity();
+        IStaderValidatorRegistry(validatorRegistry).transferCollateralToPool(validatorToSpin* NODE_BOND);
+        for(uint i = depositQueueStartIndex;i<validatorToSpin+depositQueueStartIndex;i++){
+            uint256 validatorId = IStaderValidatorRegistry(validatorRegistry).queueToDeposit(i);
+            (,,
+            bytes memory pubKey,
+            bytes memory signature,
+            bytes memory withdrawalAddress,
+            bytes32 depositDataRoot,
+            uint256 operatorId,,) = IStaderValidatorRegistry(validatorRegistry).validatorRegistry(validatorId);
+            ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey,withdrawalAddress,signature,depositDataRoot);
 
-            ) = staderValidatorRegistry.validatorRegistry(validatorIndex);
-
-            //slither-disable-next-line arbitrary-send-eth
-            ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawCred, signature, depositDataRoot);
-            staderValidatorRegistry.incrementRegisteredValidatorCount(pubKey);
-            staderOperatorRegistry.incrementActiveValidatorsCount(operatorId);
-            poolHelper.incrementActiveValidatorKeys(staderPoolId);
-            poolHelper.reduceQueuedValidatorKeys(staderPoolId);
-            emit DepositToDepositContract(pubKey);
-            counter++;
+            address nodeOperator = IStaderOperatorRegistry(operatorRegistry).operatorByOperatorId(operatorId);
+            
+            IStaderValidatorRegistry(validatorRegistry).updateValidatorStatus(pubKey,ValidatorStatus.DEPOSITED);
+            IStaderOperatorRegistry(operatorRegistry).reduceQueuedValidatorsCount(nodeOperator);
+            IStaderOperatorRegistry(operatorRegistry).incrementActiveValidatorsCount(nodeOperator);
+            poolHelper.reduceQueuedValidatorKeys(1);
+            poolHelper.incrementActiveValidatorKeys(1);
         }
-    }
-
-    /**
-     * @dev update stader validator registry address
-     * @param _staderValidatorRegistry staderValidator Registry address
-     */
-    function updateStaderValidatorRegistry(address _staderValidatorRegistry)
-        external
-        checkZeroAddress(_staderValidatorRegistry)
-        onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
-    {
-        staderValidatorRegistry = IStaderValidatorRegistry(_staderValidatorRegistry);
-        emit UpdatedStaderValidatorRegistry(address(staderValidatorRegistry));
     }
 
     function updatePoolHelper(address _poolHelper)
         external
-        checkZeroAddress(_poolHelper)
         onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
     {
+        Address.checkZeroAddress(_poolHelper);
         poolHelper = IStaderPoolHelper(_poolHelper);
-    }
-
-    /**
-     * @dev update stader operator registry address
-     * @param _staderOperatorRegistry stader operator Registry address
-     */
-    function updateStaderOperatorRegistry(address _staderOperatorRegistry)
-        external
-        checkZeroAddress(_staderOperatorRegistry)
-        onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN)
-    {
-        staderOperatorRegistry = IStaderOperatorRegistry(_staderOperatorRegistry);
-        emit UpdatedStaderOperatorRegistry(address(staderOperatorRegistry));
     }
 }

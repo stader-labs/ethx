@@ -27,21 +27,17 @@ interface IStaderValidatorRegistry {
 
     function validatorIdByPubKey(bytes memory _publicKey) external view returns (uint256);
 
-    function getValidatorIndexForOperatorId(uint8 _poolId, uint256 _inputOperatorId) external view returns (uint256);
-
-    function handleWithdrawnValidators(bytes memory _pubKey) external;
-
-    function increasePenaltyCount(uint256 validatorIndex) external;
-
-    function incrementRegisteredValidatorCount(bytes memory _publicKey) external;
-
-    function markValidatorReadyForWithdrawal(uint256 validatorIndex) external;
-
-    function registeredValidatorCount() external view returns (uint256);
-
-    function updateBondEth(uint256 validatorIndex, uint256 currentBondEth) external;
+    function queueToDeposit(uint256) external view returns(uint256);
 
     function nextValidatorId() external view returns (uint256);
+
+    function markValidatorReadyToDeposit(bytes[] calldata _pubKeys) external;
+
+    function deleteDepositQueueValidator(uint256 _index) external;
+
+    function transferCollateralToPool(uint256 _amount) external ;
+
+    function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
 
     function validatorRegistry(uint256)
         external

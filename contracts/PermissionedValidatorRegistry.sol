@@ -37,24 +37,6 @@ contract PermissionedValidatorRegistry is ValidatorRegistryBase, AccessControlUp
         _addValidatorKey(_validatorPubKey, _validatorSignature, 2, _depositDataRoot, operatorId);
     }
 
-    function increasePenaltyCount(uint256 validatorIndex) external  onlyRole(STADER_SLASHING_MANAGER) {
-        _increasePenaltyCount(validatorIndex);
-    }
-
-    function updateBondEth(uint256 _validatorIndex, uint256 _currentBondEth)
-        external
-        onlyRole(STADER_SLASHING_MANAGER)
-    {
-        _updateBondEth(_validatorIndex,_currentBondEth);
-    }
-
-    function markValidatorReadyForWithdrawal(uint256 validatorIndex)
-        external
-        onlyRole(STADER_SLASHING_MANAGER)
-    {
-        _markValidatorReadyForWithdrawal(validatorIndex);
-    }
-
     function updatePoolHelper(address _staderPoolHelper)
         external
         onlyRole(STADER_NETWORK_POOL)
