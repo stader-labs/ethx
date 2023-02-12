@@ -55,6 +55,9 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
+    receive() external payable {
+    }
+
     /// @dev deposit 32 ETH in ethereum deposit contract
     function registerValidatorsOnBeacon() external payable {
         uint256 validatorToSpin = address(this).balance/ 28 ether ;
@@ -71,6 +74,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             bytes memory withdrawalAddress,
             bytes32 depositDataRoot,
             uint256 operatorId,,) = IStaderValidatorRegistry(validatorRegistry).validatorRegistry(validatorId);
+            //TODO should be add a check if that status should be PRE_DEPOSIT
             ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey,withdrawalAddress,signature,depositDataRoot);
 
             address nodeOperator = IStaderOperatorRegistry(operatorRegistry).operatorByOperatorId(operatorId);
@@ -81,6 +85,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
             poolHelper.reduceQueuedValidatorKeys(1);
             poolHelper.incrementActiveValidatorKeys(1);
         }
+        depositQueueStartIndex += validatorToSpin;
     }
 
     function updatePoolHelper(address _poolHelper)

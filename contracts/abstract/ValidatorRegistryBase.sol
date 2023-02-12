@@ -98,6 +98,7 @@ abstract contract ValidatorRegistryBase is Initializable, ContextUpgradeable {
             msg.value,
             0
         );
+        validatorIdByPubKey[_pubKey] = nextValidatorId;
         poolHelper.incrementInitializedValidatorKeys(_poolId);
         staderOperatorRegistry.incrementInitializedValidatorsCount(msg.sender);
         nextValidatorId++;
