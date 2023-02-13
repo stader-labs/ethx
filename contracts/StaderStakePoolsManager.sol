@@ -5,9 +5,7 @@ pragma solidity ^0.8.16;
 import './ETHX.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
-import './interfaces/IStaderValidatorRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IStaderOperatorRegistry.sol';
 import './interfaces/IStaderPoolHelper.sol';
 import './interfaces/IStaderUserWithdrawalManager.sol';
 
@@ -43,7 +41,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev Modifier
      * @param _address the address to check
      */
-    modifier checkZeroAddress(address _address) {
+    modifier checkNonZeroAddress(address _address) {
         require(_address != address(0), 'Address cannot be zero');
         _;
     }
@@ -70,9 +68,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     )
         external
         initializer
-        checkZeroAddress(_ethX)
-        checkZeroAddress(_staderOracle)
-        checkZeroAddress(_userWithdrawManager)
+        checkNonZeroAddress(_ethX)
+        checkNonZeroAddress(_staderOracle)
+        checkNonZeroAddress(_userWithdrawManager)
     {
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         __Pausable_init();
@@ -149,7 +147,12 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update ethX address
      * @param _ethX ethX contract
      */
-    function updateEthXAddress(address _ethX) external override checkZeroAddress(_ethX) onlyRole(TIMELOCK_ADMIN_ROLE) {
+    function updateEthXAddress(address _ethX)
+        external
+        override
+        checkNonZeroAddress(_ethX)
+        onlyRole(TIMELOCK_ADMIN_ROLE)
+    {
         ethX = ETHX(_ethX);
         emit UpdatedEthXAddress(address(ethX));
     }
@@ -161,7 +164,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function updateStaderOracle(address _staderOracle)
         external
         override
-        checkZeroAddress(_staderOracle)
+        checkNonZeroAddress(_staderOracle)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
         staderOracle = IStaderOracle(_staderOracle);
@@ -175,7 +178,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function updateUserWithdrawalManager(address _userWithdrawalManager)
         external
         override
-        checkZeroAddress(_userWithdrawalManager)
+        checkNonZeroAddress(_userWithdrawalManager)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
         userWithdrawalManager = IStaderUserWithdrawalManager(_userWithdrawalManager);
@@ -189,7 +192,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function updatePoolHelper(address _poolHelper)
         external
         override
-        checkZeroAddress(_poolHelper)
+        checkNonZeroAddress(_poolHelper)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
         poolHelper = IStaderPoolHelper(_poolHelper);
@@ -317,17 +320,17 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev select a pool based on poolWeight
      */
     function transferToPools(uint256 _validatorToSpin) external override onlyRole(EXECUTOR_ROLE) {
-        require(_validatorToSpin* 28 ether <= address(this).balance, 'insufficient balance');
-            (,string memory poolName,address poolAddress,,,,,,) = poolHelper.staderPool(1);
+        require(_validatorToSpin * 28 ether <= address(this).balance, 'insufficient balance');
+        (, string memory poolName, address poolAddress, , , , , , ) = poolHelper.staderPool(1);
         IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: _validatorToSpin * 28 ether}();
-        emit TransferredToPool(poolName, poolAddress, _validatorToSpin*28 ether);
+        emit TransferredToPool(poolName, poolAddress, _validatorToSpin * 28 ether);
     }
 
     /**
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(EXECUTOR_ROLE){
+    function pause() external onlyRole(EXECUTOR_ROLE) {
         _pause();
     }
 
@@ -335,7 +338,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external onlyRole(EXECUTOR_ROLE){
+    function unpause() external onlyRole(EXECUTOR_ROLE) {
         _unpause();
     }
 

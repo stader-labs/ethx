@@ -1,11 +1,11 @@
 pragma solidity ^0.8.16;
 
 interface IStaderPoolHelper {
-    
     error InvalidPoolId();
     error NoQueuedValidators();
     error NoActiveValidators();
     error InvalidNewPoodInput();
+    error InvalidNewTargetInput();
     error NoInitializedValidators();
 
     event PoolAddressUpdated(uint8 indexed poolType, address poolAddress);
@@ -35,16 +35,20 @@ interface IStaderPoolHelper {
             uint256 withdrawnValidatorKeys
         );
 
-    function addNewPool(uint8[] calldata _targetSharesstring, string calldata _newPoolName, address _newPoolAddress, address _operatorRegistry, address _validatorRegistry) external;
+    function addNewPool(
+        uint8[] calldata _targetSharesstring,
+        string calldata _newPoolName,
+        address _newPoolAddress,
+        address _operatorRegistry,
+        address _validatorRegistry
+    ) external;
 
     function updatePoolAddress(uint8 _poolType, address _poolAddress) external;
 
-    function updatePoolOperatorRegistry(uint8 _poolId, address _operatorRegistry)
-        external;
+    function updatePoolOperatorRegistry(uint8 _poolId, address _operatorRegistry) external;
 
-    function updatePoolValidatorRegistry(uint8 _poolId, address _validatorRegistry)
-        external;
-    
+    function updatePoolValidatorRegistry(uint8 _poolId, address _validatorRegistry) external;
+
     function incrementInitializedValidatorKeys(uint8 _poolId) external;
 
     function reduceInitializedValidatorKeys(uint8 _poolId) external;

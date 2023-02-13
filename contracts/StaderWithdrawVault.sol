@@ -1,14 +1,13 @@
 pragma solidity ^0.8.16;
 
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IStaderOperatorRegistry.sol';
+import './interfaces/IPermissionlessNodeRegistry.sol';
 import './interfaces/IStaderNodeWithdrawManager.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
-
     bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
-    IStaderOperatorRegistry public staderOperatorRegistry;
+    IPermissionlessNodeRegistry public staderOperatorRegistry;
     address payable public staderPoolManager;
     address payable public nodeWithdrawManager;
     address payable public staderTreasury;

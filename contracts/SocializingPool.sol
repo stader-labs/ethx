@@ -2,17 +2,15 @@
 
 pragma solidity ^0.8.16;
 
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/ISocializingPool.sol';
 import './library/Address.sol';
+import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderPoolHelper.sol';
-import './interfaces/IStaderOperatorRegistry.sol';
-import './interfaces/IStaderValidatorRegistry.sol';
+import './interfaces/IStaderStakePoolManager.sol';
+import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable {
-
     IStaderPoolHelper public poolHelper;
     IStaderStakePoolManager public staderStakePoolManager;
     address public staderTreasury;
@@ -26,13 +24,10 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         address _adminOwner,
         address _staderStakePoolManager,
         address _staderTreasury
-    )
-        external
-        initializer
-    {
-        Address.checkZeroAddress(_adminOwner);
-        Address.checkZeroAddress(_staderStakePoolManager);
-        Address.checkZeroAddress(_staderTreasury);
+    ) external initializer {
+        Address.checkNonZeroAddress(_adminOwner);
+        Address.checkNonZeroAddress(_staderStakePoolManager);
+        Address.checkNonZeroAddress(_staderTreasury);
         __AccessControl_init_unchained();
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
         staderTreasury = _staderTreasury;
@@ -83,20 +78,17 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     //     staderStakePoolManager.receiveExecutionLayerRewards{value: address(this).balance}();
     // }
 
-   function updatePoolHelper(address _poolHelper) external onlyRole(SOCIALIZE_POOL_OWNER){
-        Address.checkZeroAddress(_poolHelper);
+    function updatePoolHelper(address _poolHelper) external onlyRole(SOCIALIZE_POOL_OWNER) {
+        Address.checkNonZeroAddress(_poolHelper);
         poolHelper = IStaderPoolHelper(_poolHelper);
-   }
+    }
+
     /**
      * @dev update stader pool manager address
      * @param _staderStakePoolManager staderPoolManager address
      */
-    function updateStaderStakePoolManager(address _staderStakePoolManager)
-        external
-        onlyRole(SOCIALIZE_POOL_OWNER)
-        
-    {
-        Address.checkZeroAddress(_staderStakePoolManager);
+    function updateStaderStakePoolManager(address _staderStakePoolManager) external onlyRole(SOCIALIZE_POOL_OWNER) {
+        Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
         emit UpdatedStaderPoolManager(_staderStakePoolManager);
     }
@@ -105,11 +97,8 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
      * @dev update stader treasury address
      * @param _staderTreasury staderTreasury address
      */
-    function updateStaderTreasury(address _staderTreasury)
-        external
-        onlyRole(SOCIALIZE_POOL_OWNER)
-    {
-        Address.checkZeroAddress(_staderTreasury);
+    function updateStaderTreasury(address _staderTreasury) external onlyRole(SOCIALIZE_POOL_OWNER) {
+        Address.checkNonZeroAddress(_staderTreasury);
         staderTreasury = _staderTreasury;
         emit UpdatedStaderTreasury(staderTreasury);
     }

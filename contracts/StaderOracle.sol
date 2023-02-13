@@ -80,6 +80,5 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     // TODO: Beacon chain status of validators
-    function submitStatus(uint256 _block) external {
-    }
+    function submitStatus(uint256 _block) external {}
 }
