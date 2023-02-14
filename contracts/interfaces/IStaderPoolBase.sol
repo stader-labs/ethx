@@ -1,7 +1,6 @@
 pragma solidity ^0.8.16;
 
 interface IStaderPoolBase {
-
     error NotEnoughCapacity();
     error ValidatorNotInQueue();
     error NotEnoughValidatorToDeposit();
@@ -13,8 +12,6 @@ interface IStaderPoolBase {
     function registerValidatorsOnBeacon() external payable;
 
     function updatePoolSelector(address _poolHelper) external;
-    
-    function updateStaderStakePoolManager(address _staderStakePoolManager)
-        external;
 
+    function updateStaderStakePoolManager(address _staderStakePoolManager) external;
 }

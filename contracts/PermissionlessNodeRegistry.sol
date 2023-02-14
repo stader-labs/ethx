@@ -10,7 +10,6 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessControlUpgradeable, PausableUpgradeable {
-    
     address public override poolHelper;
     address public override vaultFactory;
     address public override elRewardSocializePool;

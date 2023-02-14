@@ -15,7 +15,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
-    
     using Math for uint256;
 
     address public poolHelper;
@@ -44,7 +43,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      * @dev deposit validator taking care of pool capacity
      * send back the excess amount of ETH back to poolManager
      */
-    function registerValidatorsOnBeacon() external override payable {
+    function registerValidatorsOnBeacon() external payable override {
         uint256 requiredValidators = address(this).balance / DEPOSIT_SIZE;
         (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolSelector(poolHelper).staderPool(2);
         requiredValidators = Math.min(requiredValidators, queuedValidatorKeys);
@@ -120,7 +119,11 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      * @dev only admin can call
      * @param _staderStakePoolManager address of stader stake pool manager
      */
-    function updateStaderStakePoolManager(address _staderStakePoolManager) external override onlyRole(PERMISSIONED_POOL_ADMIN) {
+    function updateStaderStakePoolManager(address _staderStakePoolManager)
+        external
+        override
+        onlyRole(PERMISSIONED_POOL_ADMIN)
+    {
         Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = _staderStakePoolManager;
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);

@@ -360,7 +360,11 @@ contract PermissionedNodeRegistry is
      * @dev only NOs registry can call
      * @param _staderPoolSelector address of poolHelper
      */
-    function updatePoolSelector(address _staderPoolSelector) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
+    function updatePoolSelector(address _staderPoolSelector)
+        external
+        override
+        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
+    {
         Address.checkNonZeroAddress(_staderPoolSelector);
         poolHelper = _staderPoolSelector;
         emit UpdatedPoolHelper(_staderPoolSelector);

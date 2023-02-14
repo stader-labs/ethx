@@ -15,7 +15,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
-    
     using Math for uint256;
 
     address public poolHelper;
@@ -47,7 +46,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @dev deposit validator taking care of pool capacity
      * send back the excess amount of ETH back to poolManager
      */
-    function registerValidatorsOnBeacon() external override payable {
+    function registerValidatorsOnBeacon() external payable override {
         uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - NODE_BOND);
         (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolSelector(poolHelper).staderPool(1);
 
@@ -157,5 +156,4 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         if (32 == _b.length) return BytesLib.concat(_b, zero32);
         else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
     }
-
 }
