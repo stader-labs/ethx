@@ -6,7 +6,7 @@ import './library/ValidatorStatus.sol';
 
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IDepositContract.sol';
-import './interfaces/IStaderPoolSelector.sol';
+import './interfaces/IPoolSelector.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
@@ -48,7 +48,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function registerValidatorsOnBeacon() external payable override {
         uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - NODE_BOND);
-        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolSelector(poolHelper).staderPool(1);
+        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IPoolSelector(poolHelper).staderPool(1);
 
         requiredValidators = Math.min(queuedValidatorKeys, requiredValidators);
         if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
@@ -86,8 +86,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             emit ValidatorRegisteredOnBeacon(validatorId, pubKey);
         }
 
-        IStaderPoolSelector(poolHelper).reduceQueuedValidatorKeys(1, requiredValidators);
-        IStaderPoolSelector(poolHelper).incrementActiveValidatorKeys(1, requiredValidators);
+        IPoolSelector(poolHelper).reduceQueuedValidatorKeys(1, requiredValidators);
+        IPoolSelector(poolHelper).incrementActiveValidatorKeys(1, requiredValidators);
         depositQueueStartIndex += requiredValidators;
         if (address(this).balance > 0) {
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(2);

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-interface IStaderUserWithdrawalManager {
+interface IUserWithdrawalManager {
     event WithdrawRequestReceived(
         address indexed _sender,
         address _recipient,

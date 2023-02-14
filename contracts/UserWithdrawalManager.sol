@@ -1,10 +1,10 @@
 pragma solidity ^0.8.16;
 
-import './interfaces/IStaderUserWithdrawalManager.sol';
+import './interfaces/IUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderUserWithdrawalManager is IStaderUserWithdrawalManager, Initializable, AccessControlUpgradeable {
+contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessControlUpgradeable {
     bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
 
     address public override staderOwner;

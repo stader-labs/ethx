@@ -6,8 +6,8 @@ import './ETHX.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IStaderPoolSelector.sol';
-import './interfaces/IStaderUserWithdrawalManager.sol';
+import './interfaces/IPoolSelector.sol';
+import './interfaces/IUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
@@ -23,10 +23,10 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
     using Math for uint256;
 
-    ETHX public ethX;
-    IStaderOracle public staderOracle;
-    IStaderUserWithdrawalManager public userWithdrawalManager;
-    IStaderPoolSelector public poolHelper;
+    address public ethX;
+    address public staderOracle;
+    address public userWithdrawalManager;
+    address public poolSelector;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minWithdrawAmount;
@@ -76,9 +76,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         __Pausable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        ethX = ETHX(_ethX);
-        staderOracle = IStaderOracle(_staderOracle);
-        userWithdrawalManager = IStaderUserWithdrawalManager(_userWithdrawManager);
+        ethX = _ethX;
+        staderOracle = _staderOracle;
+        userWithdrawalManager = _userWithdrawManager;
         _initialSetup();
     }
 
@@ -163,8 +163,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         checkNonZeroAddress(_ethX)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        ethX = ETHX(_ethX);
-        emit UpdatedEthXAddress(address(ethX));
+        ethX = _ethX;
+        emit UpdatedEthXAddress(ethX);
     }
 
     /**
@@ -177,8 +177,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         checkNonZeroAddress(_staderOracle)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        staderOracle = IStaderOracle(_staderOracle);
-        emit UpdatedStaderOracle(address(staderOracle));
+        staderOracle = _staderOracle;
+        emit UpdatedStaderOracle(staderOracle);
     }
 
     /**
@@ -191,22 +191,22 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         checkNonZeroAddress(_userWithdrawalManager)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        userWithdrawalManager = IStaderUserWithdrawalManager(_userWithdrawalManager);
-        emit UpdatedUserWithdrawalManager(address(userWithdrawalManager));
+        userWithdrawalManager = _userWithdrawalManager;
+        emit UpdatedUserWithdrawalManager(userWithdrawalManager);
     }
 
     /**
      * @dev update stader pool selector contract address
-     * @param _poolHelper stader pool selector contract
+     * @param _poolSelector stader pool selector contract
      */
-    function updatePoolSelector(address _poolHelper)
+    function updatePoolSelector(address _poolSelector)
         external
         override
-        checkNonZeroAddress(_poolHelper)
+        checkNonZeroAddress(_poolSelector)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        poolHelper = IStaderPoolSelector(_poolHelper);
-        emit UpdatedPoolSelector(address(_poolHelper));
+        poolSelector = _poolSelector;
+        emit UpdatedPoolSelector(_poolSelector);
     }
 
     /**
@@ -214,7 +214,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function getExchangeRate() public view override returns (uint256) {
         uint256 totalETH = totalAssets();
-        uint256 totalETHx = staderOracle.totalETHXSupply();
+        uint256 totalETHx = IStaderOracle(staderOracle).totalETHXSupply();
 
         if (totalETH == 0 || totalETHx == 0) {
             return 1 * DECIMALS;
@@ -224,7 +224,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view override returns (uint256) {
-        return staderOracle.totalETHBalance();
+        return IStaderOracle(staderOracle).totalETHBalance();
     }
 
     /** @dev See {IERC4626-convertToShares}. */
@@ -244,7 +244,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     /** @dev See {IERC4626-maxWithdraw}. */
     function maxWithdraw(address owner) public view override returns (uint256) {
-        return _convertToAssets(ethX.balanceOf(owner), Math.Rounding.Down);
+        return _convertToAssets(ETHX(ethX).balanceOf(owner), Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-previewDeposit}. */
@@ -270,8 +270,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function userWithdraw(uint256 _ethXAmount, address receiver) public override whenNotPaused {
         uint256 assets = previewWithdraw(_ethXAmount);
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
-        ethX.transferFrom(msg.sender, (address(userWithdrawalManager)), _ethXAmount);
-        userWithdrawalManager.withdraw(msg.sender, payable(receiver), assets, _ethXAmount);
+        ETHX(ethX).transferFrom(msg.sender, (address(userWithdrawalManager)), _ethXAmount);
+        IUserWithdrawalManager(userWithdrawalManager).withdraw(msg.sender, payable(receiver), assets, _ethXAmount);
         emit WithdrawRequested(msg.sender, receiver, assets, _ethXAmount);
     }
 
@@ -285,15 +285,16 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         if (!_slashingMode) {
             if (getExchangeRate() == 0) revert ProtocolNotHealthy();
             //batch ID to be finalized next
-            uint256 nextBatchIdToFinalize = userWithdrawalManager.nextBatchIdToFinalize();
+            uint256 nextBatchIdToFinalize = IUserWithdrawalManager(userWithdrawalManager).nextBatchIdToFinalize();
             //ongoing batch Id
-            uint256 latestBatchId = userWithdrawalManager.latestBatchId();
+            uint256 latestBatchId = IUserWithdrawalManager(userWithdrawalManager).latestBatchId();
             uint256 maxBatchIdToFinalize = Math.min(latestBatchId, nextBatchIdToFinalize + paginationLimit);
             uint256 lockedEthXToBurn;
             uint256 ethToSendToFinalizeBatch;
             uint256 batchId = 0;
             for (uint256 i = nextBatchIdToFinalize; i < maxBatchIdToFinalize; i++) {
-                (, , , uint256 requiredEth, uint256 lockedEthX) = userWithdrawalManager.batchRequest(batchId);
+                (, , , uint256 requiredEth, uint256 lockedEthX) = IUserWithdrawalManager(userWithdrawalManager)
+                    .batchRequest(batchId);
                 uint256 minEThRequiredToFinalizeBatch = Math.min(
                     requiredEth,
                     (lockedEthX * getExchangeRate()) / DECIMALS
@@ -308,8 +309,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
                 }
             }
             if (batchId >= nextBatchIdToFinalize) {
-                ethX.burnFrom(address(userWithdrawalManager), lockedEthXToBurn);
-                userWithdrawalManager.finalize{value: ethToSendToFinalizeBatch}(
+                ETHX(ethX).burnFrom(address(userWithdrawalManager), lockedEthXToBurn);
+                IUserWithdrawalManager(userWithdrawalManager).finalize{value: ethToSendToFinalizeBatch}(
                     batchId,
                     ethToSendToFinalizeBatch,
                     getExchangeRate()
@@ -333,11 +334,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function validatorBatchDeposit() external override whenNotPaused {
         uint256 pooledETH = depositedPooledETH - POOLED_ETH_BUFFER;
         if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
-        uint256[] memory poolWiseValidatorsToDeposit = poolHelper.computePoolWiseValidatorsToDeposit(pooledETH);
+        uint256[] memory poolWiseValidatorsToDeposit = IPoolSelector(poolSelector).computePoolWiseValidatorsToDeposit(
+            pooledETH
+        );
         for (uint8 i = 1; i < poolWiseValidatorsToDeposit.length; i++) {
             uint256 validatorToDeposit = poolWiseValidatorsToDeposit[i];
             if (validatorToDeposit == 0) continue;
-            (, string memory poolName, address poolAddress, , , , , ) = poolHelper.staderPool(i);
+            (, string memory poolName, address poolAddress, , , , , ) = IPoolSelector(poolSelector).staderPool(i);
             uint256 poolDepositSize = (i == 1) ? PERMISSIONLESS_DEPOSIT_SIZE : DEPOSIT_SIZE;
             IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: validatorToDeposit * poolDepositSize}();
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
@@ -379,7 +382,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * would represent an infinite amount of shares.
      */
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = staderOracle.totalETHXSupply();
+        uint256 supply = IStaderOracle(staderOracle).totalETHXSupply();
         return
             (assets == 0 || supply == 0)
                 ? _initialConvertToShares(assets, rounding)
@@ -402,7 +405,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = staderOracle.totalETHXSupply();
+        uint256 supply = IStaderOracle(staderOracle).totalETHXSupply();
         return
             (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
     }
@@ -428,7 +431,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 assets,
         uint256 shares
     ) internal {
-        ethX.mint(receiver, shares);
+        ETHX(ethX).mint(receiver, shares);
         depositedPooledETH += assets;
         emit Deposited(caller, receiver, assets, shares);
     }
@@ -437,6 +440,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
      */
     function _isVaultHealthy() private view returns (bool) {
-        return totalAssets() > 0 || staderOracle.totalETHXSupply() == 0;
+        return totalAssets() > 0 || IStaderOracle(staderOracle).totalETHXSupply() == 0;
     }
 }

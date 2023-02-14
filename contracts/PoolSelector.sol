@@ -1,12 +1,12 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './interfaces/IStaderPoolSelector.sol';
+import './interfaces/IPoolSelector.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderPoolSelector is IStaderPoolSelector, Initializable, AccessControlUpgradeable {
+contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable {
     using Math for uint256;
 
     uint8 public override poolCount;

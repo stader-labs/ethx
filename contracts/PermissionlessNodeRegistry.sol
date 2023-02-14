@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
-import './interfaces/IStaderPoolSelector.sol';
+import './interfaces/IPoolSelector.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
@@ -125,7 +125,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IStaderPoolSelector(poolHelper).incrementInitializedValidatorKeys(1, keyCount);
+        IPoolSelector(poolHelper).incrementInitializedValidatorKeys(1, keyCount);
     }
 
     /**
@@ -145,8 +145,8 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IStaderPoolSelector(poolHelper).reduceInitializedValidatorKeys(1, _pubKeys.length);
-        IStaderPoolSelector(poolHelper).incrementQueuedValidatorKeys(1, _pubKeys.length);
+        IPoolSelector(poolHelper).reduceInitializedValidatorKeys(1, _pubKeys.length);
+        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(1, _pubKeys.length);
     }
 
     /**
@@ -425,7 +425,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     function _sendValue(uint256 _amount) internal {
         if (address(this).balance < _amount) revert InSufficientBalance();
 
-        (, , address poolAddress, , , , , ) = IStaderPoolSelector(poolHelper).staderPool(1);
+        (, , address poolAddress, , , , , ) = IPoolSelector(poolHelper).staderPool(1);
 
         // solhint-disable-next-line
         (bool success, ) = payable(poolAddress).call{value: _amount}('');

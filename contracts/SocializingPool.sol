@@ -4,14 +4,14 @@ pragma solidity ^0.8.16;
 
 import './library/Address.sol';
 import './interfaces/ISocializingPool.sol';
-import './interfaces/IStaderPoolSelector.sol';
+import './interfaces/IPoolSelector.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable {
-    IStaderPoolSelector public poolHelper;
+    IPoolSelector public poolHelper;
     IStaderStakePoolManager public staderStakePoolManager;
     address public staderTreasury;
     uint256 public feePercentage;
@@ -80,7 +80,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
 
     function updatePoolSelector(address _poolHelper) external onlyRole(SOCIALIZE_POOL_OWNER) {
         Address.checkNonZeroAddress(_poolHelper);
-        poolHelper = IStaderPoolSelector(_poolHelper);
+        poolHelper = IPoolSelector(_poolHelper);
     }
 
     /**

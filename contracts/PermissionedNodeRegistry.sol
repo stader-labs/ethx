@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
-import './interfaces/IStaderPoolSelector.sol';
+import './interfaces/IPoolSelector.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -147,7 +147,7 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IStaderPoolSelector(poolHelper).incrementInitializedValidatorKeys(2, keyCount);
+        IPoolSelector(poolHelper).incrementInitializedValidatorKeys(2, keyCount);
     }
 
     /**
@@ -167,8 +167,8 @@ contract PermissionedNodeRegistry is
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IStaderPoolSelector(poolHelper).reduceInitializedValidatorKeys(2, _pubKeys.length);
-        IStaderPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, _pubKeys.length);
+        IPoolSelector(poolHelper).reduceInitializedValidatorKeys(2, _pubKeys.length);
+        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, _pubKeys.length);
     }
 
     /**
@@ -237,10 +237,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(msg.sender);
         if (operatorRegistry[_nodeOperator].active) revert OperatorAlreadyActive();
         operatorRegistry[_nodeOperator].active = true;
-        IStaderPoolSelector(poolHelper).incrementQueuedValidatorKeys(
-            2,
-            operatorRegistry[_nodeOperator].queuedValidatorCount
-        );
+        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
         totalActiveOperators++;
     }
 
@@ -257,10 +254,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(msg.sender);
         if (!operatorRegistry[_nodeOperator].active) revert OperatorNotActive();
         operatorRegistry[_nodeOperator].active = false;
-        IStaderPoolSelector(poolHelper).reduceQueuedValidatorKeys(
-            2,
-            operatorRegistry[_nodeOperator].queuedValidatorCount
-        );
+        IPoolSelector(poolHelper).reduceQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
         totalActiveOperators--;
     }
 
