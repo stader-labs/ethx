@@ -321,7 +321,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev get pool wise validator to deposit from pool helper and
      * transfer that much eth to individual pool to register on beacon chain
      */
-    function validatorBatchDeposit() external override {
+    function validatorBatchDeposit() external override whenNotPaused {
         uint256 pooledETH = depositedPooledETH - POOLED_ETH_BUFFER;
         if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
         uint256[] memory poolWiseValidatorsToDeposit = poolHelper.computePoolWiseValidatorToDeposit(pooledETH);

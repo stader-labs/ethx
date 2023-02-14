@@ -105,21 +105,27 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     /**
      * @notice add signing keys
      * @dev only accepts if bond of 4 ETH provided along with sufficient SD lockup
-     * @param _validatorPubKey public key of validator
-     * @param _validatorSignature signature of a validator
-     * @param _depositDataRoot deposit data root of validator
+     * @param _validatorPubKey public key of validators
+     * @param _validatorSignature signature of a validators
+     * @param _depositDataRoot deposit data root of validators
      */
     function addValidatorKeys(
-        bytes calldata _validatorPubKey,
-        bytes calldata _validatorSignature,
-        bytes32 _depositDataRoot
-    ) external payable override {
-        if (msg.value != collateralETH) revert InvalidBondEthValue();
+        bytes[] calldata _validatorPubKey,
+        bytes[] calldata _validatorSignature,
+        bytes32[] calldata _depositDataRoot
+    ) external payable override whenNotPaused {
+        if (_validatorPubKey.length != _validatorSignature.length || _validatorPubKey.length != _depositDataRoot.length)
+            revert InvalidSizeOfInputKeys();
+        uint256 keyCount = _validatorPubKey.length;
+        if (keyCount == 0) revert NoKeysProvided();
+        if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
         Operator storage operator = operatorRegistry[msg.sender];
         uint256 operatorId = operator.operatorId;
-        //TODO call SDlocker to check enough SD
         if (operatorId == 0) revert OperatorNotOnBoarded();
-        _addValidatorKey(_validatorPubKey, _validatorSignature, _depositDataRoot, operatorId);
+        //TODO call SDlocker to check enough SD
+        for (uint256 i = 0; i < keyCount; i++) {
+            _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
+        }
     }
 
     /**
@@ -130,6 +136,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     function markValidatorReadyToDeposit(bytes[] calldata _pubKeys)
         external
         override
+        whenNotPaused
         onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
     {
         for (uint256 i = 0; i < _pubKeys.length; i++) {
@@ -235,7 +242,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @dev only permissionless pool can call
      * @param _amount amount of eth to send to permissionless pool
      */
-    function transferCollateralToPool(uint256 _amount) external override onlyRole(STADER_NETWORK_POOL) {
+    function transferCollateralToPool(uint256 _amount) external override whenNotPaused onlyRole(STADER_NETWORK_POOL) {
         _sendValue(_amount);
     }
 

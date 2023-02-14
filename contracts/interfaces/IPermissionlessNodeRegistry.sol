@@ -14,6 +14,8 @@ interface IPermissionlessNodeRegistry {
     error OperatorAlreadyOnBoarded();
     error NoQueuedValidatorLeft();
     error NoActiveValidatorLeft();
+    error NoKeysProvided();
+    error InvalidSizeOfInputKeys();
     error ValidatorInPreDepositState();
 
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
@@ -89,9 +91,9 @@ interface IPermissionlessNodeRegistry {
     ) external returns (address mevFeeRecipientAddress);
 
     function addValidatorKeys(
-        bytes calldata _validatorPubKey,
-        bytes calldata _validatorSignature,
-        bytes32 _depositDataRoot
+        bytes[] calldata _validatorPubKey,
+        bytes[] calldata _validatorSignature,
+        bytes32[] calldata _depositDataRoot
     ) external payable;
 
     function markValidatorReadyToDeposit(bytes[] calldata _pubKeys) external;
