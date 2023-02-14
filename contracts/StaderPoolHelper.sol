@@ -87,7 +87,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
             if (totalTarget > TOTAL_TARGET) revert InvalidNewTargetInput();
             staderPool[i + 1].targetShare = _newTargetShares[i];
         }
-        if(totalTarget != TOTAL_TARGET) revert InvalidSumOfPoolTargets();
+        if (totalTarget != TOTAL_TARGET) revert InvalidSumOfPoolTargets();
 
         Pool storage _newPool = staderPool[poolCount + 1];
         _newPool.poolName = _newPoolName;
@@ -99,10 +99,10 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     /**
      * @notice calculates the amount of validator number to be deposited on beacon chain based on target weight
      * @dev first loop allot validators to match the target share with the constraint of capacity and
-     * second loop uses FIFO to keep on exhausting the capacity and updating the starting index of pool for FIFO
+     * second loop uses sequential looping over all pool starting from a particular poolId and keep on exhausting the capacity and updating the starting poolId for next iteration
      * @param _pooledEth amount of eth ready to deposit on pool manager
      */
-    function computePoolWiseValidatorToDeposit(uint256 _pooledEth)
+    function computePoolWiseValidatorsToDeposit(uint256 _pooledEth)
         external
         onlyRole(STADER_NETWORK_POOL)
         returns (uint256[] memory poolWiseValidatorsToDeposit)
@@ -130,8 +130,8 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
             validatorSpunCount += poolWiseValidatorsToDeposit[i];
         }
 
-        // check for more validators to deposit and select pools with excess supply in FIFO
-        // and update the starting index of pool for FIFO after every iteration
+        // check for more validators to deposit and select pool with excess supply in a sequential order
+        // and update the starting index of pool for next sequence after every iteration
         if (validatorSpunCount < newValidatorsToDeposit) {
             uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
             uint8[] memory poolQueue;
@@ -164,7 +164,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @dev only admin can call
      * @param _poolTarget new target weights of pools
      */
-    function updatePoolWeights(uint8[] calldata _poolTarget) external onlyRole(POOL_HELPER_ADMIN){
+    function updatePoolWeights(uint8[] calldata _poolTarget) external onlyRole(POOL_HELPER_ADMIN) {
         if (poolCount != _poolTarget.length) revert InvalidNewPoolInput();
         uint8 totalTarget;
         for (uint8 i = 0; i < _poolTarget.length; i++) {
@@ -172,7 +172,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
             if (totalTarget > TOTAL_TARGET) revert InvalidNewTargetInput();
             staderPool[i + 1].targetShare = _poolTarget[i];
         }
-        if(totalTarget !=TOTAL_TARGET) revert InvalidSumOfPoolTargets();
+        if (totalTarget != TOTAL_TARGET) revert InvalidSumOfPoolTargets();
     }
 
     /**
@@ -202,14 +202,18 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
         if (_poolId > poolCount) revert InvalidPoolId();
         staderPool[_poolId].nodeRegistry = _nodeRegistry;
     }
-    
+
     /**
      * @notice increase the initialized validator count for `_poolId` pool
      * @dev only accept call from stader network pools
      * @param _poolId Id of the pool
      */
-    function incrementInitializedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        staderPool[_poolId].initializedValidatorKeys++;
+    function incrementInitializedValidatorKeys(uint8 _poolId, uint256 _amount)
+        external
+        override
+        onlyRole(STADER_NETWORK_POOL)
+    {
+        staderPool[_poolId].initializedValidatorKeys += _amount;
         emit UpdatedTotalValidatorKeys(_poolId, staderPool[_poolId].initializedValidatorKeys);
     }
 
@@ -218,9 +222,13 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @dev only accept call from stader network pools
      * @param _poolId Id of the pool
      */
-    function reduceInitializedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        if (staderPool[_poolId].initializedValidatorKeys == 0) revert NoInitializedValidators();
-        staderPool[_poolId].initializedValidatorKeys--;
+    function reduceInitializedValidatorKeys(uint8 _poolId, uint256 _amount)
+        external
+        override
+        onlyRole(STADER_NETWORK_POOL)
+    {
+        if (staderPool[_poolId].initializedValidatorKeys < _amount) revert NotEnoughInitializedValidators();
+        staderPool[_poolId].initializedValidatorKeys -= _amount;
         emit UpdatedTotalValidatorKeys(_poolId, staderPool[_poolId].initializedValidatorKeys);
     }
 
@@ -229,8 +237,12 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @dev only accept call from stader network pools
      * @param _poolId Id of the pool
      */
-    function incrementQueuedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        staderPool[_poolId].queuedValidatorKeys++;
+    function incrementQueuedValidatorKeys(uint8 _poolId, uint256 _amount)
+        external
+        override
+        onlyRole(STADER_NETWORK_POOL)
+    {
+        staderPool[_poolId].queuedValidatorKeys += _amount;
         emit UpdatedTotalValidatorKeys(_poolId, staderPool[_poolId].queuedValidatorKeys);
     }
 
@@ -239,9 +251,9 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @dev only accept call from stader network pools
      * @param _poolId Id of the pool
      */
-    function reduceQueuedValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        if (staderPool[_poolId].queuedValidatorKeys == 0) revert NoQueuedValidators();
-        staderPool[_poolId].queuedValidatorKeys--;
+    function reduceQueuedValidatorKeys(uint8 _poolId, uint256 _amount) external override onlyRole(STADER_NETWORK_POOL) {
+        if (staderPool[_poolId].queuedValidatorKeys < _amount) revert NotEnoughQueuedValidators();
+        staderPool[_poolId].queuedValidatorKeys -= _amount;
         emit UpdatedTotalValidatorKeys(_poolId, staderPool[_poolId].queuedValidatorKeys);
     }
 
@@ -250,8 +262,12 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @dev only accept call from stader network pools
      * @param _poolId Id of the pool
      */
-    function incrementActiveValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        staderPool[_poolId].activeValidatorKeys++;
+    function incrementActiveValidatorKeys(uint8 _poolId, uint256 _amount)
+        external
+        override
+        onlyRole(STADER_NETWORK_POOL)
+    {
+        staderPool[_poolId].activeValidatorKeys += _amount;
         emit UpdatedUsedValidatorKeys(_poolId, staderPool[_poolId].activeValidatorKeys);
     }
 
@@ -260,9 +276,9 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @dev only accept call from stader network pools
      * @param _poolId Id of the pool
      */
-    function reduceActiveValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        if (staderPool[_poolId].activeValidatorKeys == 0) revert NoActiveValidators();
-        staderPool[_poolId].activeValidatorKeys--;
+    function reduceActiveValidatorKeys(uint8 _poolId, uint256 _amount) external override onlyRole(STADER_NETWORK_POOL) {
+        if (staderPool[_poolId].activeValidatorKeys < _amount) revert NotEnoughActiveValidators();
+        staderPool[_poolId].activeValidatorKeys -= _amount;
         emit UpdatedUsedValidatorKeys(_poolId, staderPool[_poolId].activeValidatorKeys);
     }
 
@@ -271,8 +287,12 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @dev only accept call from stader network pools
      * @param _poolId Id of the pool
      */
-    function incrementWithdrawnValidatorKeys(uint8 _poolId) external override onlyRole(STADER_NETWORK_POOL) {
-        staderPool[_poolId].withdrawnValidatorKeys++;
+    function incrementWithdrawnValidatorKeys(uint8 _poolId, uint256 _amount)
+        external
+        override
+        onlyRole(STADER_NETWORK_POOL)
+    {
+        staderPool[_poolId].withdrawnValidatorKeys += _amount;
         emit UpdatedWithdrawnValidatorKeys(_poolId, staderPool[_poolId].withdrawnValidatorKeys);
     }
 

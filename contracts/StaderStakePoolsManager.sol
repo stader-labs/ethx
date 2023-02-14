@@ -105,6 +105,15 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /**
+     * @notice receive the excess ETH from Pools
+     * @param _poolId ID of the pool
+     */
+    function receiveExcessEthFromPool(uint8 _poolId) external payable override {
+        depositedPooledETH += msg.value;
+        emit ReceivedExcessEthFromPool(_poolId);
+    }
+
+    /**
      * @dev update the minimum stake amount
      * @param _minDepositAmount minimum deposit value
      */
@@ -324,7 +333,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function validatorBatchDeposit() external override whenNotPaused {
         uint256 pooledETH = depositedPooledETH - POOLED_ETH_BUFFER;
         if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
-        uint256[] memory poolWiseValidatorsToDeposit = poolHelper.computePoolWiseValidatorToDeposit(pooledETH);
+        uint256[] memory poolWiseValidatorsToDeposit = poolHelper.computePoolWiseValidatorsToDeposit(pooledETH);
         for (uint8 i = 1; i < poolWiseValidatorsToDeposit.length; i++) {
             uint256 validatorToDeposit = poolWiseValidatorsToDeposit[i];
             if (validatorToDeposit == 0) continue;

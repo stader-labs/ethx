@@ -2,21 +2,19 @@ pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
-interface IPermissionlessNodeRegistry {
-    error InvalidIndex();
-    error TransferFailed();
+interface IPermissionedNodeRegistry {
+    error NoKeysProvided();
     error EmptyNameString();
-    error NameCrossedMaxLength();
+    error OperatorNotActive();
     error PubKeyDoesNotExist();
+    error OperatorAlreadyActive();
     error OperatorNotOnBoarded();
-    error InvalidBondEthValue();
-    error InSufficientBalance();
-    error OperatorAlreadyOnBoarded();
+    error NameCrossedMaxLength();
     error NoQueuedValidatorLeft();
     error NoActiveValidatorLeft();
-    error NoKeysProvided();
     error InvalidSizeOfInputKeys();
-    error ValidatorInPreDepositState();
+    error OperatorAlreadyOnBoarded();
+    error NotAPermissionedNodeOperator();
 
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubKey, uint256 _validatorId);
@@ -27,12 +25,10 @@ interface IPermissionlessNodeRegistry {
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
     event UpdatedPoolHelper(address _poolHelper);
     event UpdatedVaultFactory(address _vaultFactory);
+    event UpdatedValidatorStatus(bytes indexed _pubKey, ValidatorStatus _status);
+    event UpdatedQueuedValidatorIndex(address indexed _nodeOperator, uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorName(address indexed _nodeOperator, string _operatorName);
     event UpdatedOperatorRewardAddress(address indexed _nodeOperator, address _rewardAddress);
-
-    function PERMISSIONLESS_NODE_REGISTRY_OWNER() external returns (bytes32);
-
-    function STADER_NETWORK_POOL() external returns (bytes32);
 
     function poolHelper() external view returns (address);
 
@@ -44,11 +40,15 @@ interface IPermissionlessNodeRegistry {
 
     function nextValidatorId() external view returns (uint256);
 
-    function queuedValidatorsSize() external view returns (uint256);
+    function totalActiveOperators() external view returns (uint256);
 
-    function collateralETH() external view returns (uint256);
+    function operatorIdForExcessValidators() external view returns (uint256);
 
     function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
+
+    function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
+
+    function STADER_NETWORK_POOL() external view returns (bytes32);
 
     function validatorRegistry(uint256)
         external
@@ -59,23 +59,20 @@ interface IPermissionlessNodeRegistry {
             bytes calldata pubKey,
             bytes calldata signature,
             bytes calldata withdrawalAddress,
-            uint256 operatorId,
-            uint256 bondEth,
-            uint256 penaltyCount
+            uint256 operatorId
         );
 
     function validatorIdByPubKey(bytes calldata _pubKey) external view returns (uint256);
-
-    function queueToDeposit(uint256) external view returns (uint256);
 
     function operatorRegistry(address)
         external
         view
         returns (
-            bool optedForSocializingPool,
+            bool active,
             string calldata operatorName,
             address payable operatorRewardAddress,
             uint256 operatorId,
+            uint256 nextQueuedValidatorIndex,
             uint256 initializedValidatorCount,
             uint256 queuedValidatorCount,
             uint256 activeValidatorCount,
@@ -84,11 +81,15 @@ interface IPermissionlessNodeRegistry {
 
     function operatorByOperatorId(uint256) external view returns (address);
 
-    function onboardNodeOperator(
-        bool _optInForMevSocialize,
-        string calldata _operatorName,
-        address payable _operatorRewardAddress
-    ) external returns (address mevFeeRecipientAddress);
+    function permissionedNodeOperator(address) external view returns (bool);
+
+    function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external;
+
+    function operatorQueuedValidators(uint256, uint256) external view returns (uint256);
+
+    function onboardNodeOperator(string calldata _operatorName, address payable _operatorRewardAddress)
+        external
+        returns (address mevFeeRecipientAddress);
 
     function addValidatorKeys(
         bytes[] calldata _validatorPubKey,
@@ -98,7 +99,9 @@ interface IPermissionlessNodeRegistry {
 
     function markValidatorReadyToDeposit(bytes[] calldata _pubKeys) external;
 
-    function deleteDepositedQueueValidator(uint256 _keyCount, uint256 _index) external;
+    function computeOperatorWiseValidatorsToDeposit(uint256 _validatorRequiredToDeposit)
+        external
+        returns (uint256[] memory operatorWiseValidatorsToDeposit);
 
     function reduceQueuedValidatorsCount(address _nodeOperator) external;
 
@@ -108,11 +111,15 @@ interface IPermissionlessNodeRegistry {
 
     function incrementWithdrawValidatorsCount(address _nodeOperator) external;
 
+    function activateNodeOperator(address _nodeOperator) external;
+
+    function deactivateNodeOperator(address _nodeOperator) external;
+
     function getOperatorCount() external view returns (uint256 _operatorCount);
 
     function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 
-    function transferCollateralToPool(uint256 _amount) external;
+    function updateQueuedValidatorIndex(address _nodeOperator, uint256 _nextQueuedValidatorIndex) external;
 
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
 

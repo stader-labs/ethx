@@ -4,33 +4,33 @@ import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IStaderPoolHelper.sol';
-import './interfaces/IPermissionlessNodeRegistry.sol';
+import './interfaces/IPermissionedNodeRegistry.sol';
 
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionedNodeRegistry is
+    IPermissionedNodeRegistry,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable
+{
+    using Math for uint256;
+
     address public override poolHelper;
     address public override vaultFactory;
     address public override elRewardSocializePool;
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
-    uint256 public override queuedValidatorsSize;
-    uint256 public constant override collateralETH = 4 ether;
+    uint256 public override totalActiveOperators;
+    uint256 public override operatorIdForExcessValidators;
 
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
 
-    bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY_OWNER =
-        keccak256('PERMISSIONLESS_NODE_REGISTRY_OWNER');
+    bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
-
-    mapping(uint256 => Validator) public override validatorRegistry;
-    mapping(bytes => uint256) public override validatorIdByPubKey;
-    mapping(uint256 => uint256) public override queueToDeposit;
-
-    mapping(address => Operator) public override operatorRegistry;
-    mapping(uint256 => address) public override operatorByOperatorId;
 
     struct Validator {
         ValidatorStatus status; // state of validator
@@ -39,29 +39,34 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         bytes signature; //signature for deposit to Ethereum Deposit contract
         bytes withdrawalAddress; //eth1 withdrawal address for validator
         uint256 operatorId; // stader network assigned Id
-        uint256 bondEth; // amount of bond eth in gwei
-        uint256 penaltyCount; // penalty for MEV theft or any other wrong doing
     }
 
     struct Operator {
-        bool optedForSocializingPool; // operator opted for socializing pool
+        bool active; // operator status
         string operatorName; // name of the operator
         address payable operatorRewardAddress; //Eth1 address of node for reward
         uint256 operatorId; //pool wise unique ID given by stader network
+        uint256 nextQueuedValidatorIndex; //index of validator to pick from queuedValidators of a operator
         uint256 initializedValidatorCount; //validator whose keys added but not given pre signed msg for withdrawal
         uint256 queuedValidatorCount; // validator queued for deposit
         uint256 activeValidatorCount; // registered validator on beacon chain
         uint256 withdrawnValidatorCount; //withdrawn validator count
     }
 
-    /**
-     * @dev Stader Staking Pool validator registry is initialized with following variables
-     */
+    mapping(uint256 => Validator) public override validatorRegistry;
+    mapping(bytes => uint256) public override validatorIdByPubKey;
+
+    mapping(address => Operator) public override operatorRegistry;
+    mapping(uint256 => address) public override operatorByOperatorId;
+    mapping(address => bool) public override permissionedNodeOperator;
+    mapping(uint256 => uint256[]) public override operatorQueuedValidators;
+
     function initialize(
         address _adminOwner,
         address _vaultFactory,
         address _elRewardSocializePool
     ) external initializer {
+        Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_vaultFactory);
         Address.checkNonZeroAddress(_elRewardSocializePool);
         __AccessControl_init_unchained();
@@ -70,34 +75,45 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         elRewardSocializePool = _elRewardSocializePool;
         nextOperatorId = 1;
         nextValidatorId = 1;
+        operatorIdForExcessValidators = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
     /**
+     * @notice white list the permissioned node operator
+     * @dev only admin can call
+     * @param _permissionedNOs array of permissioned NOs address
+     */
+    function whitelistPermissionedNOs(address[] calldata _permissionedNOs)
+        external
+        override
+        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
+    {
+        for (uint256 i = 0; i < _permissionedNOs.length; i++) {
+            Address.checkNonZeroAddress(_permissionedNOs[i]);
+            permissionedNodeOperator[_permissionedNOs[i]] = true;
+        }
+    }
+
+    /**
      * @notice onboard a node operator
-     * @dev any one call, permissionless
-     * @param _optInForMevSocialize opted in or not to socialize mev and priority fee
+     * @dev any one call, check for whiteListOperator in case of permissionedPool
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
      * @return mevFeeRecipientAddress fee recipient address for all validator clients
      */
-    function onboardNodeOperator(
-        bool _optInForMevSocialize,
-        string calldata _operatorName,
-        address payable _operatorRewardAddress
-    ) external override whenNotPaused returns (address mevFeeRecipientAddress) {
+    function onboardNodeOperator(string calldata _operatorName, address payable _operatorRewardAddress)
+        external
+        override
+        whenNotPaused
+        returns (address mevFeeRecipientAddress)
+    {
         onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_operatorRewardAddress);
+        if (!permissionedNodeOperator[msg.sender]) revert NotAPermissionedNodeOperator();
         if (operatorRegistry[msg.sender].operatorId != 0) revert OperatorAlreadyOnBoarded();
         mevFeeRecipientAddress = elRewardSocializePool;
-        if (!_optInForMevSocialize) {
-            mevFeeRecipientAddress = IVaultFactory(vaultFactory).deployNodeELRewardVault(
-                1,
-                nextOperatorId,
-                payable(_operatorRewardAddress)
-            );
-        }
-        _onboardOperator(_optInForMevSocialize, _operatorName, _operatorRewardAddress);
+        _onboardOperator(_operatorName, _operatorRewardAddress);
         return mevFeeRecipientAddress;
     }
 
@@ -113,11 +129,11 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         bytes[] calldata _validatorSignature,
         bytes32[] calldata _depositDataRoot
     ) external payable override whenNotPaused {
+        if (!permissionedNodeOperator[msg.sender]) revert NotAPermissionedNodeOperator();
         if (_validatorPubKey.length != _validatorSignature.length || _validatorPubKey.length != _depositDataRoot.length)
             revert InvalidSizeOfInputKeys();
         uint256 keyCount = _validatorPubKey.length;
         if (keyCount == 0) revert NoKeysProvided();
-        if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
         Operator storage operator = operatorRegistry[msg.sender];
         uint256 operatorId = operator.operatorId;
         if (operatorId == 0) revert OperatorNotOnBoarded();
@@ -125,7 +141,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IStaderPoolHelper(poolHelper).incrementInitializedValidatorKeys(1, keyCount);
+        IStaderPoolHelper(poolHelper).incrementInitializedValidatorKeys(2, keyCount);
     }
 
     /**
@@ -137,7 +153,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         external
         override
         whenNotPaused
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
+        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
     {
         for (uint256 i = 0; i < _pubKeys.length; i++) {
             uint256 validatorId = validatorIdByPubKey[_pubKeys[i]];
@@ -145,27 +161,101 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IStaderPoolHelper(poolHelper).reduceInitializedValidatorKeys(1, _pubKeys.length);
-        IStaderPoolHelper(poolHelper).incrementQueuedValidatorKeys(1, _pubKeys.length);
+        IStaderPoolHelper(poolHelper).reduceInitializedValidatorKeys(2, _pubKeys.length);
+        IStaderPoolHelper(poolHelper).incrementQueuedValidatorKeys(2, _pubKeys.length);
     }
 
     /**
-     * @notice deletes the queued keys which are deposited to reduce the space
-     * @dev only admin can call, will revert if any key is not deposited
-     * @param _keyCount count of keys to delete
-     * @param _index starting index of queue to delete keys
+     * @notice operator selection logic
+     * @dev first iteration is round robin based on capacity,
+     * second iteration exhaust the capacity in sequential manner and
+     * update the operatorId to pick operator for next sequence in next cycle
+     * @param _validatorRequiredToDeposit validator to deposit with permissioned pool
+     * @return operatorWiseValidatorsToDeposit operator wise count of validator to deposit
      */
-    function deleteDepositedQueueValidator(uint256 _keyCount, uint256 _index)
+    function computeOperatorWiseValidatorsToDeposit(uint256 _validatorRequiredToDeposit)
         external
         override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
+        onlyRole(STADER_NETWORK_POOL)
+        returns (uint256[] memory operatorWiseValidatorsToDeposit)
     {
-        if (_index + _keyCount > queuedValidatorsSize) revert InvalidIndex();
-        for (uint256 i = _index; i < _index + _keyCount; i++) {
-            if (validatorRegistry[queueToDeposit[_index]].status == ValidatorStatus.PRE_DEPOSIT)
-                revert ValidatorInPreDepositState();
-            delete (queueToDeposit[_index]);
+        uint256 totalOperators = nextOperatorId - 1;
+        uint256 validatorPerOperator = _validatorRequiredToDeposit / totalActiveOperators;
+        uint256[] memory operatorCapacity;
+        uint256 totalValidatorToDeposit;
+        for (uint256 i = 1; i < totalOperators; i++) {
+            address operator = operatorByOperatorId[i];
+            if (!operatorRegistry[operator].active) continue;
+            operatorCapacity[i] = operatorRegistry[operator].queuedValidatorCount;
+            operatorWiseValidatorsToDeposit[i] = Math.min(operatorCapacity[i], validatorPerOperator);
+            totalValidatorToDeposit += operatorWiseValidatorsToDeposit[i];
+            operatorCapacity[i] -= operatorWiseValidatorsToDeposit[i];
         }
+
+        // check for more validators to deposit and select operators with excess supply in a sequential order
+        // and update the starting index of operator for next sequence after every iteration
+        if (_validatorRequiredToDeposit > totalValidatorToDeposit) {
+            uint256 remainingValidatorsToDeposit = _validatorRequiredToDeposit - totalValidatorToDeposit;
+            uint256[] memory operatorIdQueue;
+            uint256 counter;
+            for (uint256 i = operatorIdForExcessValidators; i <= totalOperators; i++) {
+                operatorIdQueue[counter++] = i;
+            }
+            for (uint256 i = 1; i < operatorIdForExcessValidators; i++) {
+                operatorIdQueue[counter++] = i;
+            }
+
+            for (uint256 i = 0; i < operatorIdQueue.length; i++) {
+                address operator = operatorByOperatorId[operatorIdQueue[i]];
+                if (!operatorRegistry[operator].active) continue;
+                uint256 moreValidatorToDepositForOperator = Math.min(
+                    operatorCapacity[operatorIdQueue[i]],
+                    remainingValidatorsToDeposit
+                );
+                operatorWiseValidatorsToDeposit[operatorIdQueue[i]] += moreValidatorToDepositForOperator;
+                remainingValidatorsToDeposit -= moreValidatorToDepositForOperator;
+                if (remainingValidatorsToDeposit == 0) {
+                    operatorIdForExcessValidators = operatorIdQueue[(i + 1) % operatorIdQueue.length];
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * @notice activate a node operator for running new validator clients
+     * @dev only accept call from admin
+     * @param _nodeOperator address of the operator to activate
+     */
+    function activateNodeOperator(address _nodeOperator) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
+        onlyOnboardedOperator(msg.sender);
+        if (operatorRegistry[_nodeOperator].active) revert OperatorAlreadyActive();
+        operatorRegistry[_nodeOperator].active = true;
+        IStaderPoolHelper(poolHelper).incrementQueuedValidatorKeys(
+            2,
+            operatorRegistry[_nodeOperator].queuedValidatorCount
+        );
+        totalActiveOperators++;
+    }
+
+    /**
+     * @notice deactivate a node operator from running new validator clients
+     * @dev only accept call from admin
+     * @param _nodeOperator address of the operator to deactivate
+     */
+    function deactivateNodeOperator(address _nodeOperator)
+        external
+        override
+        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
+    {
+        onlyOnboardedOperator(msg.sender);
+        if (!operatorRegistry[_nodeOperator].active) revert OperatorNotActive();
+        operatorRegistry[_nodeOperator].active = false;
+        IStaderPoolHelper(poolHelper).reduceQueuedValidatorKeys(
+            2,
+            operatorRegistry[_nodeOperator].queuedValidatorCount
+        );
+        totalActiveOperators--;
     }
 
     /**
@@ -174,8 +264,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @param _nodeOperator operator ID
      */
     function reduceQueuedValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(_nodeOperator);
-
+        onlyOnboardedOperator(msg.sender);
         if (operatorRegistry[_nodeOperator].queuedValidatorCount == 0) revert NoQueuedValidatorLeft();
         operatorRegistry[_nodeOperator].queuedValidatorCount--;
         emit ReducedQueuedValidatorsCount(
@@ -190,8 +279,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @param _nodeOperator operator ID
      */
     function incrementActiveValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(_nodeOperator);
-
+        onlyOnboardedOperator(msg.sender);
         operatorRegistry[_nodeOperator].activeValidatorCount++;
         emit IncrementedActiveValidatorsCount(
             operatorRegistry[_nodeOperator].operatorId,
@@ -205,8 +293,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @param _nodeOperator operator ID
      */
     function reduceActiveValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(_nodeOperator);
-
+        onlyOnboardedOperator(msg.sender);
         if (operatorRegistry[_nodeOperator].activeValidatorCount == 0) revert NoActiveValidatorLeft();
         operatorRegistry[_nodeOperator].activeValidatorCount--;
         emit ReducedActiveValidatorsCount(
@@ -221,7 +308,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @param _nodeOperator operator ID
      */
     function incrementWithdrawValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(_nodeOperator);
+        onlyOnboardedOperator(msg.sender);
         operatorRegistry[_nodeOperator].withdrawnValidatorCount++;
         emit IncrementedWithdrawnValidatorsCount(
             operatorRegistry[_nodeOperator].operatorId,
@@ -230,38 +317,24 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     }
 
     /**
-     * @notice returns the total operator count
+     * @notice update the `nextQueuedValidatorIndex` for operator
+     * @dev only stader network can call
+     * @param _nodeOperator address of the node operator
+     * @param _nextQueuedValidatorIndex updated next index of queued validator per operator
      */
-    function getOperatorCount() public view override returns (uint256 _operatorCount) {
-        _operatorCount = nextOperatorId - 1;
-    }
-
-    /**
-     * @notice get the total deposited keys for an operator
-     * @dev add queued, active and withdrawn validator to get total validators keys
-     * @param _nodeOperator owner of operator
-     */
-    function getTotalValidatorKeys(address _nodeOperator) public view override returns (uint256 _totalKeys) {
-        onlyOnboardedOperator(_nodeOperator);
-        _totalKeys =
-            operatorRegistry[_nodeOperator].initializedValidatorCount +
-            operatorRegistry[_nodeOperator].queuedValidatorCount +
-            operatorRegistry[_nodeOperator].activeValidatorCount +
-            operatorRegistry[_nodeOperator].withdrawnValidatorCount;
-    }
-
-    /**
-     * @notice transfer the `_amount` to permissionless pool
-     * @dev only permissionless pool can call
-     * @param _amount amount of eth to send to permissionless pool
-     */
-    function transferCollateralToPool(uint256 _amount) external override whenNotPaused onlyRole(STADER_NETWORK_POOL) {
-        _sendValue(_amount);
+    function updateQueuedValidatorIndex(address _nodeOperator, uint256 _nextQueuedValidatorIndex)
+        external
+        override
+        onlyRole(STADER_NETWORK_POOL)
+    {
+        onlyOnboardedOperator(msg.sender);
+        operatorRegistry[_nodeOperator].nextQueuedValidatorIndex = _nextQueuedValidatorIndex;
+        emit UpdatedQueuedValidatorIndex(_nodeOperator, _nextQueuedValidatorIndex);
     }
 
     /**
      * @notice update the status of a validator
-     * @dev only oracle can call
+     * @dev only stader network can call
      * @param _pubKey public key of the validator
      * @param _status updated status of validator
      */
@@ -273,6 +346,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         uint256 validatorId = validatorIdByPubKey[_pubKey];
         if (validatorId == 0) revert PubKeyDoesNotExist();
         validatorRegistry[validatorId].status = _status;
+        emit UpdatedValidatorStatus(_pubKey, _status);
     }
 
     /**
@@ -280,11 +354,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @dev only NOs registry can call
      * @param _staderPoolHelper address of poolHelper
      */
-    function updatePoolHelper(address _staderPoolHelper)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updatePoolHelper(address _staderPoolHelper) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_staderPoolHelper);
         poolHelper = _staderPoolHelper;
         emit UpdatedPoolHelper(_staderPoolHelper);
@@ -295,7 +365,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @dev only admin can call
      * @param _vaultFactory address of vault factory
      */
-    function updateVaultAddress(address _vaultFactory) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
+    function updateVaultAddress(address _vaultFactory) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_vaultFactory);
         vaultFactory = _vaultFactory;
         emit UpdatedVaultFactory(_vaultFactory);
@@ -329,7 +399,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
+    function pause() external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         _pause();
     }
 
@@ -337,26 +407,45 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
+    function unpause() external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         _unpause();
     }
 
-    function _onboardOperator(
-        bool _optInForMevSocialize,
-        string calldata _operatorName,
-        address payable _operatorRewardAddress
-    ) internal {
+    /**
+     * @notice returns the total operator count
+     */
+    function getOperatorCount() public view override returns (uint256 _operatorCount) {
+        _operatorCount = nextOperatorId - 1;
+    }
+
+    /**
+     * @notice get the total deposited keys for an operator
+     * @dev add queued, active and withdrawn validator to get total validators keys
+     * @param _nodeOperator owner of operator
+     */
+    function getTotalValidatorKeys(address _nodeOperator) public view returns (uint256 _totalKeys) {
+        onlyOnboardedOperator(_nodeOperator);
+        _totalKeys =
+            operatorRegistry[_nodeOperator].initializedValidatorCount +
+            operatorRegistry[_nodeOperator].queuedValidatorCount +
+            operatorRegistry[_nodeOperator].activeValidatorCount +
+            operatorRegistry[_nodeOperator].withdrawnValidatorCount;
+    }
+
+    function _onboardOperator(string calldata _operatorName, address payable _operatorRewardAddress) internal {
         operatorRegistry[msg.sender] = Operator(
-            _optInForMevSocialize,
+            true,
             _operatorName,
             _operatorRewardAddress,
             nextOperatorId,
             0,
             0,
             0,
+            0,
             0
         );
         operatorByOperatorId[nextOperatorId] = msg.sender;
+        totalActiveOperators++;
         emit OnboardedOperator(msg.sender, nextOperatorId);
         nextOperatorId++;
     }
@@ -368,19 +457,17 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         uint256 _operatorId
     ) internal {
         uint256 totalKeys = getTotalValidatorKeys(msg.sender);
-        address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(1, _operatorId, totalKeys);
+        address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(2, _operatorId, totalKeys);
         bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(withdrawVault);
         _validateKeys(_pubKey, withdrawCredential, _signature, _depositDataRoot);
-        IVaultFactory(vaultFactory).deployWithdrawVault(1, _operatorId, totalKeys);
+        IVaultFactory(vaultFactory).deployWithdrawVault(2, _operatorId, totalKeys);
         validatorRegistry[nextValidatorId] = Validator(
             ValidatorStatus.INITIALIZED,
             false,
             _pubKey,
             _signature,
             withdrawCredential,
-            _operatorId,
-            msg.value,
-            0
+            _operatorId
         );
         validatorIdByPubKey[_pubKey] = nextValidatorId;
         operatorRegistry[msg.sender].initializedValidatorCount++;
@@ -390,11 +477,11 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
 
     function _markKeyReadyToDeposit(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
-        queueToDeposit[queuedValidatorsSize] = _validatorId;
-        address nodeOperator = operatorByOperatorId[validatorRegistry[_validatorId].operatorId];
+        uint256 operatorId = validatorRegistry[_validatorId].operatorId;
+        operatorQueuedValidators[operatorId].push(_validatorId);
+        address nodeOperator = operatorByOperatorId[operatorId];
         operatorRegistry[nodeOperator].initializedValidatorCount--;
         operatorRegistry[nodeOperator].queuedValidatorCount++;
-        queuedValidatorsSize++;
     }
 
     function _validateKeys(
@@ -422,16 +509,6 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             node == deposit_data_root,
             'DepositContract: reconstructed DepositData does not match supplied deposit_data_root'
         );
-    }
-
-    function _sendValue(uint256 _amount) internal {
-        if (address(this).balance < _amount) revert InSufficientBalance();
-
-        (, , address poolAddress, , , , , ) = IStaderPoolHelper(poolHelper).staderPool(1);
-
-        // solhint-disable-next-line
-        (bool success, ) = payable(poolAddress).call{value: _amount}('');
-        if (!success) revert TransferFailed();
     }
 
     function onlyOnboardedOperator(address _nodeOperator) internal view {

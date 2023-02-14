@@ -2,13 +2,13 @@ pragma solidity ^0.8.16;
 
 interface IStaderPoolHelper {
     error InvalidPoolId();
-    error NoQueuedValidators();
-    error NoActiveValidators();
+    error NotEnoughQueuedValidators();
+    error NotEnoughActiveValidators();
     error InvalidNewPoolInput();
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
     error InvalidSumOfPoolTargets();
-    error NoInitializedValidators();
+    error NotEnoughInitializedValidators();
 
     event PoolAddressUpdated(uint8 indexed poolType, address poolAddress);
     event NewPoolAdded(uint8 poolType, address poolAddress);
@@ -43,7 +43,7 @@ interface IStaderPoolHelper {
         address _nodeRegistry
     ) external;
 
-    function computePoolWiseValidatorToDeposit(uint256 _pooledEth)
+    function computePoolWiseValidatorsToDeposit(uint256 _pooledEth)
         external
         returns (uint256[] memory poolWiseValidatorsToDeposit);
 
@@ -51,19 +51,19 @@ interface IStaderPoolHelper {
 
     function updatePoolNodeRegistry(uint8 _poolId, address _nodeRegistry) external;
 
-    function incrementInitializedValidatorKeys(uint8 _poolId) external;
+    function incrementInitializedValidatorKeys(uint8 _poolId, uint256 _count) external;
 
-    function reduceInitializedValidatorKeys(uint8 _poolId) external;
+    function reduceInitializedValidatorKeys(uint8 _poolId, uint256 _count) external;
 
-    function incrementQueuedValidatorKeys(uint8 _poolId) external;
+    function incrementQueuedValidatorKeys(uint8 _poolId, uint256 _count) external;
 
-    function reduceQueuedValidatorKeys(uint8 _poolId) external;
+    function reduceQueuedValidatorKeys(uint8 _poolId, uint256 _count) external;
 
-    function incrementActiveValidatorKeys(uint8 _poolId) external;
+    function incrementActiveValidatorKeys(uint8 _poolId, uint256 _count) external;
 
-    function reduceActiveValidatorKeys(uint8 _poolId) external;
+    function reduceActiveValidatorKeys(uint8 _poolId, uint256 _count) external;
 
-    function incrementWithdrawnValidatorKeys(uint8 _poolId) external;
+    function incrementWithdrawnValidatorKeys(uint8 _poolId, uint256 _count) external;
 
     function getQueuedValidator(uint8 _poolId) external view returns (uint256);
 

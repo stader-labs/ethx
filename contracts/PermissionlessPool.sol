@@ -2,62 +2,60 @@ pragma solidity ^0.8.16;
 
 import './library/Address.sol';
 import './library/BytesLib.sol';
+import './library/ValidatorStatus.sol';
 import './interfaces/IDepositContract.sol';
 import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionlessPool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
     using Math for uint256;
 
-    IStaderPoolHelper public poolHelper;
+    address public poolHelper;
+    address public staderStakePoolManager;
+    address public ethValidatorDeposit;
     uint256 public depositQueueStartIndex;
-    IDepositContract public ethValidatorDeposit;
 
-    bytes32 public constant PERMISSION_LESS_POOL_ADMIN = keccak256('PERMISSION_LESS_POOL_ADMIN');
+    bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
 
     uint256 public constant NODE_BOND = 4 ether;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
 
-    error NotEnoughCapacity();
-    error NotSufficientETHToSpinValidator();
-
-    event DepositToDepositContract(bytes indexed pubKey);
-    event ReceivedETH(address indexed from, uint256 amount);
-    event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
-    event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
-
-    /**
-     * @dev Stader managed stake Pool is initialized with following variables
-     */
     function initialize(address _adminOwner, address _ethValidatorDeposit) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_ethValidatorDeposit);
         __Pausable_init();
         __AccessControl_init_unchained();
-        ethValidatorDeposit = IDepositContract(_ethValidatorDeposit);
+        ethValidatorDeposit = _ethValidatorDeposit;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
+    // receive to get bond ETH from permissionless node registry
     receive() external payable {}
 
-    /// @dev deposit 32 ETH in ethereum deposit contract
+    /**
+     * @notice receives eth from pool Manager to register validators
+     * @dev deposit validator taking care of pool capacity
+     * send back the excess amount of ETH back to poolManager
+     */
     function registerValidatorsOnBeacon() external payable {
-        uint256 validatorToSpin = address(this).balance / 28 ether;
-        if (validatorToSpin == 0) revert NotSufficientETHToSpinValidator();
-        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = poolHelper
-            .staderPool(1);
-        if (queuedValidatorKeys < validatorToSpin) revert NotEnoughCapacity();
-        IPermissionlessNodeRegistry(nodeRegistry).transferCollateralToPool(validatorToSpin * NODE_BOND);
-        for (uint256 i = depositQueueStartIndex; i < validatorToSpin + depositQueueStartIndex; i++) {
+        uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - NODE_BOND);
+        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolHelper(poolHelper).staderPool(1);
+
+        requiredValidators = Math.min(queuedValidatorKeys, requiredValidators);
+        if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
+
+        IPermissionlessNodeRegistry(nodeRegistry).transferCollateralToPool(requiredValidators * NODE_BOND);
+        for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistry).queueToDeposit(i);
             (
-                ,
+                ValidatorStatus status,
                 ,
                 bytes memory pubKey,
                 bytes memory signature,
@@ -66,24 +64,57 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
                 ,
 
             ) = IPermissionlessNodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-            //TODO should be add a check if that status should be PRE_DEPOSIT
+
+            // node operator might withdraw validator in queue
+            if (status != ValidatorStatus.PRE_DEPOSIT) continue;
             bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawalAddress);
-            ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawalAddress, signature, depositDataRoot);
+            IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
+                pubKey,
+                withdrawalAddress,
+                signature,
+                depositDataRoot
+            );
 
             address nodeOperator = IPermissionlessNodeRegistry(nodeRegistry).operatorByOperatorId(operatorId);
 
             IPermissionlessNodeRegistry(nodeRegistry).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
             IPermissionlessNodeRegistry(nodeRegistry).reduceQueuedValidatorsCount(nodeOperator);
             IPermissionlessNodeRegistry(nodeRegistry).incrementActiveValidatorsCount(nodeOperator);
-            poolHelper.reduceQueuedValidatorKeys(1);
-            poolHelper.incrementActiveValidatorKeys(1);
+
+            emit ValidatorRegisteredOnBeacon(validatorId, pubKey);
         }
-        depositQueueStartIndex += validatorToSpin;
+
+        IStaderPoolHelper(poolHelper).reduceQueuedValidatorKeys(1, requiredValidators);
+        IStaderPoolHelper(poolHelper).incrementActiveValidatorKeys(1, requiredValidators);
+        depositQueueStartIndex += requiredValidators;
+        if (address(this).balance > 0) {
+            IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(2);
+        }
     }
 
-    function updatePoolHelper(address _poolHelper) external onlyRole(PERMISSION_LESS_POOL_ADMIN) {
+    /**
+     * @notice update the address of pool Helper
+     * @dev only admin can call
+     * @param _poolHelper address of pool helper
+     */
+    function updatePoolHelper(address _poolHelper) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
         Address.checkNonZeroAddress(_poolHelper);
-        poolHelper = IStaderPoolHelper(_poolHelper);
+        poolHelper = _poolHelper;
+        emit UpdatedPoolHelper(poolHelper);
+    }
+
+    /**
+     * @notice update the stader stake pool manager address
+     * @dev only admin can call
+     * @param _staderStakePoolManager address of stader stake pool manager
+     */
+    function updateStaderStakePoolManager(address _staderStakePoolManager)
+        external
+        onlyRole(PERMISSIONLESS_POOL_ADMIN)
+    {
+        Address.checkNonZeroAddress(_staderStakePoolManager);
+        staderStakePoolManager = _staderStakePoolManager;
+        emit UpdatedStaderStakePoolManager(staderStakePoolManager);
     }
 
     function _computeDepositDataRoot(
@@ -122,4 +153,12 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
         if (32 == _b.length) return BytesLib.concat(_b, zero32);
         else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
     }
+
+    error NotEnoughCapacity();
+    error ValidatorNotInQueue();
+    error NotEnoughValidatorToDeposit();
+
+    event UpdatedPoolHelper(address _poolHelper);
+    event UpdatedStaderStakePoolManager(address _staderStakePoolManager);
+    event ValidatorRegisteredOnBeacon(uint256 indexed _validatorId, bytes _pubKey);
 }
