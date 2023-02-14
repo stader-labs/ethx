@@ -35,7 +35,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public maxDepositAmount;
     uint256 public depositedPooledETH;
     uint256 public paginationLimit;
-    uint256 public permissionLessPoolUserDeposit;
+    uint256 public POOLED_ETH_BUFFER;
+    uint256 public PERMISSIONLESS_DEPOSIT_SIZE;
     /**
      * @notice Check for zero address
      * @dev Modifier
@@ -317,13 +318,21 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     /**
      * @notice spinning off validators in different pools
-     * @dev select a pool based on poolWeight
+     * @dev get pool wise validator to deposit from pool helper and
+     * transfer that much eth to individual pool to register on beacon chain
      */
-    function transferToPools(uint256 _validatorToSpin) external override onlyRole(EXECUTOR_ROLE) {
-        require(_validatorToSpin * 28 ether <= address(this).balance, 'insufficient balance');
-        (, string memory poolName, address poolAddress, , , , , , ) = poolHelper.staderPool(1);
-        IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: _validatorToSpin * 28 ether}();
-        emit TransferredToPool(poolName, poolAddress, _validatorToSpin * 28 ether);
+    function validatorBatchDeposit() external override {
+        uint256 pooledETH = depositedPooledETH - POOLED_ETH_BUFFER;
+        if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
+        uint256[] memory poolWiseValidatorsToDeposit = poolHelper.computePoolWiseValidatorToDeposit(pooledETH);
+        for (uint8 i = 1; i < poolWiseValidatorsToDeposit.length; i++) {
+            uint256 validatorToDeposit = poolWiseValidatorsToDeposit[i];
+            if (validatorToDeposit == 0) continue;
+            (, string memory poolName, address poolAddress, , , , , , ) = poolHelper.staderPool(i);
+            uint256 poolDepositSize = (i == 1) ? PERMISSIONLESS_DEPOSIT_SIZE : DEPOSIT_SIZE;
+            IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: validatorToDeposit * poolDepositSize}();
+            emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
+        }
     }
 
     /**
@@ -351,7 +360,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         minWithdrawAmount = 100;
         maxWithdrawAmount = 10 ether;
         paginationLimit = 50;
-        permissionLessPoolUserDeposit = 28 ether;
+        PERMISSIONLESS_DEPOSIT_SIZE = 28 ether;
     }
 
     /**

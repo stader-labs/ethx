@@ -7,12 +7,11 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgradeable {
-    
     using Math for uint256;
 
     uint8 public override poolCount;
     uint8 public poolIdForExcessSupply;
-    uint16 public maxValidatorPerBlock;
+    uint16 public BATCH_LIMIT;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
@@ -64,7 +63,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
             0
         );
         poolCount = 1;
-        poolIdForExcessSupply =1;
+        poolIdForExcessSupply = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
@@ -89,7 +88,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
         uint8 totalTarget;
         for (uint8 i = 1; i < _newTargetShares.length; i++) {
             totalTarget += _newTargetShares[i - 1];
-            if(totalTarget > 100) revert InvalidNewTargetInput();
+            if (totalTarget > 100) revert InvalidNewTargetInput();
             staderPool[i].targetShare = _newTargetShares[i - 1];
         }
         staderPool[poolCount + 1] = Pool(
@@ -107,47 +106,62 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     }
 
     /**
-     * @notice calculates the amount of Eth for each value based on target
+     * @notice calculates the amount of validator number to be deposited on beacon chain based on target weight
+     * @dev first loop allot validators to match the target share with the constraint of capacity and
+     * second loop uses FIFO to keep on exhausting the capacity and updating the starting index of pool for FIFO
      * @param _pooledEth amount of eth ready to deposit on pool manager
-\     */
-    function delegateToPool(uint256 _pooledEth) external returns(uint256[] memory validatorsToSpin){
+     */
+    function computePoolWiseValidatorToDeposit(uint256 _pooledEth)
+        external
+        onlyRole(STADER_NETWORK_POOL)
+        returns (uint256[] memory poolWiseValidatorsToDeposit)
+    {
         uint256 depositedETh;
-        for(uint8 i =0;i<=poolCount;i++){
-            depositedETh += (staderPool[i].activeValidatorKeys)* DEPOSIT_SIZE;
+        for (uint8 i = 1; i <= poolCount; i++) {
+            depositedETh += (staderPool[i].activeValidatorKeys) * DEPOSIT_SIZE;
         }
         uint256 totalEth = depositedETh + _pooledEth;
-        uint256 totalValidatorsRequired = totalEth/DEPOSIT_SIZE ;
-        uint256 newValidatorToSpin = _pooledEth/DEPOSIT_SIZE;
-        uint256[] memory validatorCapacity;
+        uint256 totalValidatorsRequired = totalEth / DEPOSIT_SIZE;
+        // new validators to register on beacon chain with `_pooledEth` taking `BATCH_LIMIT` into consideration
+        uint256 newValidatorsToDeposit = Math.min(BATCH_LIMIT, _pooledEth / DEPOSIT_SIZE);
+        // `validatorsToDeposit` array start with index 1
+        uint256[] memory poolCapacity;
         uint256 validatorSpunCount;
-        for(uint8 i =1; i<=poolCount && validatorSpunCount<maxValidatorPerBlock; i++){
-            validatorCapacity[i] = staderPool[i].queuedValidatorKeys;
+        for (uint8 i = 1; i <= poolCount && validatorSpunCount < newValidatorsToDeposit; i++) {
+            poolCapacity[i] = staderPool[i].queuedValidatorKeys;
             uint256 currentActiveValidators = staderPool[i].activeValidatorKeys;
-            uint256 poolTotalTarget = (staderPool[i].targetShare*totalValidatorsRequired)/100 ;
-            validatorsToSpin[i-1] = Math.min(Math.min(validatorCapacity[i],poolTotalTarget-currentActiveValidators),maxValidatorPerBlock-validatorSpunCount);
-            validatorCapacity[i] -= validatorsToSpin[i-1];
-            validatorSpunCount += validatorsToSpin[i-1];
-            newValidatorToSpin -= validatorsToSpin[i-1];
-            if(newValidatorToSpin == 0) break;
+            uint256 poolTotalTarget = (staderPool[i].targetShare * totalValidatorsRequired) / 100;
+            poolWiseValidatorsToDeposit[i] = Math.min(
+                Math.min(poolCapacity[i], poolTotalTarget - currentActiveValidators),
+                newValidatorsToDeposit - validatorSpunCount
+            );
+            poolCapacity[i] -= poolWiseValidatorsToDeposit[i];
+            validatorSpunCount += poolWiseValidatorsToDeposit[i];
         }
 
-        if(validatorSpunCount <maxValidatorPerBlock && validatorSpunCount <totalValidatorsRequired){
-
-            uint256 totalExcessValidatorCount = Math.min(maxValidatorPerBlock-validatorSpunCount, newValidatorToSpin);
-            uint8[] memory poolQueue ;
+        // check for more validators to deposit and select pools with excess supply in FIFO
+        // and update the starting index of pool for FIFO after every iteration
+        if (validatorSpunCount < newValidatorsToDeposit) {
+            uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
+            uint8[] memory poolQueue;
             uint8 counter;
-            for(uint8 i=poolIdForExcessSupply;i<=poolCount;i++){
+            for (uint8 i = poolIdForExcessSupply; i <= poolCount; i++) {
                 poolQueue[counter++] = i;
             }
-            for(uint8 i=1;i<poolIdForExcessSupply;i++){
+            for (uint8 i = 1; i < poolIdForExcessSupply; i++) {
                 poolQueue[counter++] = i;
             }
-            for(uint8 i = 0;i<=poolQueue.length;i++){
-                uint256 extraValidatorToSpin = Math.min(Math.min(validatorCapacity[poolQueue[i]],totalExcessValidatorCount),maxValidatorPerBlock-validatorSpunCount);
-                validatorsToSpin[poolQueue[i]] += extraValidatorToSpin;
-                totalExcessValidatorCount -= extraValidatorToSpin;
-                if(totalExcessValidatorCount ==0){
-                    poolIdForExcessSupply = poolQueue[(i+1)%poolQueue.length];
+            for (uint8 i = 0; i <= poolQueue.length; i++) {
+                uint256 extraValidatorToDepositInAPool = Math.min(
+                    poolCapacity[poolQueue[i]],
+                    remainingValidatorsToDeposit
+                );
+                poolWiseValidatorsToDeposit[poolQueue[i]] += extraValidatorToDepositInAPool;
+                remainingValidatorsToDeposit -= extraValidatorToDepositInAPool;
+                // Don't have to update poolID if the `remainingValidatorsToDeposit` does not become 0
+                // As we have scanned through all pool, will start from same pool in same iteration
+                if (remainingValidatorsToDeposit == 0) {
+                    poolIdForExcessSupply = poolQueue[(i + 1) % poolQueue.length];
                     break;
                 }
             }

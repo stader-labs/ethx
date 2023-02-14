@@ -43,6 +43,10 @@ interface IStaderPoolHelper {
         address _validatorRegistry
     ) external;
 
+    function computePoolWiseValidatorToDeposit(uint256 _pooledEth)
+        external
+        returns (uint256[] memory poolWiseValidatorsToDeposit);
+
     function updatePoolAddress(uint8 _poolType, address _poolAddress) external;
 
     function updatePoolOperatorRegistry(uint8 _poolId, address _operatorRegistry) external;
