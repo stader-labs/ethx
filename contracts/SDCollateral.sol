@@ -4,16 +4,13 @@ pragma solidity ^0.8.16;
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '../contracts/interfaces/ISDStaking.sol';
+import '../contracts/interfaces/IPriceFetcher.sol';
 
 contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    struct SDBalanceInfo {
-        uint256 sdBalance;
-        uint8 poolId;
-    }
+    using SafeERC20 for IERC20;
 
     struct PoolThresholdInfo {
         uint256 lower;
@@ -21,14 +18,18 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         string units;
     }
 
-    IERC20Upgradeable public sdERC20;
-    uint256 public totalShares;
-    uint256 public totalSDCollateral;
-    // TODO: is this SD Collateral stored in this contract, if yes then we can instead use sdBalnce(address(this))
+    IERC20 public sdERC20;
+    IERC20 public xsdERC20;
+    address public sdStakingContract;
+    IPriceFetcher public priceFetcher;
 
-    mapping(address => SDBalanceInfo) public pubKeyToSDBalanceMap;
-    mapping(uint8 => PoolThresholdInfo) public poolThreshold;
-    mapping(address => uint256) public validatorShares;
+    uint256 public totalShares;
+    uint256 public totalXSDCollateral;
+    // TODO: we can instead use xsdBalnce(address(this))
+
+    mapping(address => uint256) public xsdBalanceByOperator;
+    mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
+    mapping(address => uint256) public operatorShares;
 
     /**
      * @notice Check for zero address
@@ -46,62 +47,58 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     }
 
     function initialize(
+        address _admin,
         address _sdERC20Addr,
-        address _admin
-    ) external initializer checkZeroAddress(_sdERC20Addr) checkZeroAddress(_admin) {
+        address _xsdERC20Addr,
+        address _priceFetcherAddr
+    )
+        external
+        initializer
+        checkZeroAddress(_admin)
+        checkZeroAddress(_sdERC20Addr)
+        checkZeroAddress(_xsdERC20Addr)
+        checkZeroAddress(_priceFetcherAddr)
+    {
         __AccessControl_init();
         __Pausable_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
 
-        sdERC20 = IERC20Upgradeable(_sdERC20Addr);
+        sdERC20 = IERC20(_sdERC20Addr);
+        xsdERC20 = IERC20(_xsdERC20Addr);
+        priceFetcher = IPriceFetcher(_priceFetcherAddr);
     }
 
     /**
-     * @param _pubKey Unique Public Key of Validator
-     * @param _sdAmount SD Token Amount to Deposit
-     * @param _poolId Pool ID
-     * @dev sender should approve this contract for spending SD
+     * @param _xsdAmount xSD Token Amount to Deposit
+     * @dev sender should approve this contract for spending xSD
      */
-    function depositSDAsCollateral(address _pubKey, uint256 _sdAmount, uint8 _poolId) external {
-        uint256 currSDBalance = getSDBalance(_pubKey);
-        uint256 newSDBalance = _sdAmount + currSDBalance;
-        require(checkPoolThreshold(_poolId, newSDBalance), 'sd balance oor');
+    function depositXSDAsCollateral(uint256 _xsdAmount) external {
+        address operator = msg.sender;
+        totalXSDCollateral += _xsdAmount;
+        xsdBalanceByOperator[operator] += _xsdAmount;
 
-        SDBalanceInfo storage sdBalanceInfo = pubKeyToSDBalanceMap[_pubKey];
-        // TODO: check if sdBalanceInfo exists, i.e. check if its a new entry
-        // if new pool, add a entry,
-        // else require _poolId == sdBalanceInfo.poolId
-
-        sdBalanceInfo.sdBalance = newSDBalance;
-        totalSDCollateral += _sdAmount;
-
-        uint256 numShares = convertSDToShares(_sdAmount);
-        validatorShares[_pubKey] += numShares;
+        uint256 numShares = convertXSDToShares(_xsdAmount);
         totalShares += numShares;
+        operatorShares[operator] += numShares;
 
-        sdERC20.safeTransferFrom(msg.sender, address(this), _sdAmount);
+        xsdERC20.safeTransferFrom(operator, address(this), _xsdAmount);
     }
 
-    function withdraw(
-        address _pubKey,
-        address _recipient,
-        uint256 _sdAmountToWithdraw
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        SDBalanceInfo storage sdBalanceInfo = pubKeyToSDBalanceMap[_pubKey];
-        sdBalanceInfo.sdBalance -= _sdAmountToWithdraw;
-        totalSDCollateral -= _sdAmountToWithdraw;
+    function withdraw(address _operator, uint256 _xsdAmountToWithdraw) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        xsdBalanceByOperator[_operator] -= _xsdAmountToWithdraw;
+        totalXSDCollateral -= _xsdAmountToWithdraw;
 
-        uint256 numShares = convertSDToShares(_sdAmountToWithdraw);
-        validatorShares[_pubKey] -= numShares;
+        uint256 numShares = convertXSDToShares(_xsdAmountToWithdraw);
+        operatorShares[_operator] -= numShares;
         totalShares -= numShares;
 
-        sdERC20.safeTransfer(payable(_recipient), _sdAmountToWithdraw);
+        xsdERC20.safeTransfer(payable(_operator), _xsdAmountToWithdraw);
     }
 
-    function addRewards(uint256 _sdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        totalSDCollateral += _sdAmount;
-        sdERC20.safeTransferFrom(msg.sender, address(this), _sdAmount);
+    function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        totalXSDCollateral += _xsdAmount;
+        xsdERC20.safeTransferFrom(msg.sender, address(this), _xsdAmount);
     }
 
     // SETTERS
@@ -112,50 +109,61 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         uint256 _upper,
         string memory _units
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        poolThreshold[_poolId] = PoolThresholdInfo({lower: _lower, upper: _upper, units: _units});
+        poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({lower: _lower, upper: _upper, units: _units});
     }
 
     // GETTERS
 
-    function hasEnoughSDCollateral(address _pubKey, uint8 _poolId) public view returns (bool) {
-        uint256 sdBalance = getSDBalance(_pubKey);
-        return checkPoolThreshold(_poolId, sdBalance);
+    function hasEnoughXSDCollateral(address _operator, uint8 _poolId) public view returns (bool) {
+        uint256 xsdBalance = xsdBalanceByOperator[_operator];
+        return _checkPoolThreshold(_poolId, xsdBalance);
     }
 
     // HELPER FUNCTIONS
 
-    function checkPoolThreshold(uint8 _poolId, uint256 _sdBalance) public view returns (bool) {
-        uint256 eqEthBalance = convertSDToETH(_sdBalance);
-        PoolThresholdInfo storage poolThresholdInfo = poolThreshold[_poolId];
+    function _checkPoolThreshold(uint8 _poolId, uint256 _xsdBalance) private view returns (bool) {
+        uint256 sdBalance = convertXSDToSD(_xsdBalance);
+        uint256 eqEthBalance = convertSDToETH(sdBalance);
+
+        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
         return (eqEthBalance >= poolThresholdInfo.lower && eqEthBalance <= poolThresholdInfo.upper);
     }
 
-    function getSDBalance(address _pubKey) public view returns (uint256) {
-        SDBalanceInfo storage sdBalanceInfo = pubKeyToSDBalanceMap[_pubKey];
-        return sdBalanceInfo.sdBalance;
+    function convertXSDToSD(uint256 _xsdAmount) public view returns (uint256) {
+        uint256 er = ISDStaking(sdStakingContract).getExchangeRate(); // 1 xSD = er/1e18 SD
+
+        return (er * _xsdAmount) / 1e18;
     }
 
-    function convertSDToETH(uint256 _sdAmount) public pure returns (uint256) {
-        // TODO: fetch price from Oracle and write proper conversion logic
-        return _sdAmount;
+    function convertSDToXSD(uint256 _sdAmount) public view returns (uint256) {
+        uint256 er = ISDStaking(sdStakingContract).getExchangeRate(); // 1 xSD = er/1e18 SD
+
+        return (_sdAmount * 1e18) / er;
     }
 
-    function convertETHToSD(uint256 _ethAmount) public pure returns (uint256) {
-        // TODO: fetch price from Oracle and write proper conversion logic
-        return _ethAmount;
+    function convertSDToETH(uint256 _sdAmount) public view returns (uint256) {
+        uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
+        uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
+
+        return (_sdAmount * sdPriceInUSD) / ethPriceInUSD;
     }
 
-    function convertSDToShares(uint256 _sdAmount) public view returns (uint256) {
+    function convertETHToSD(uint256 _ethAmount) public view returns (uint256) {
+        uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
+        uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
+        return (_ethAmount * ethPriceInUSD) / sdPriceInUSD;
+    }
+
+    function convertXSDToShares(uint256 _xsdAmount) public view returns (uint256) {
         uint256 totalShares_ = totalShares == 0 ? 1 : totalShares;
-        uint256 totalSDCollateral_ = totalSDCollateral == 0 ? 1 : totalSDCollateral;
-
-        return (_sdAmount * totalShares_) / totalSDCollateral_;
+        uint256 totalXSDCollateral_ = totalXSDCollateral == 0 ? 1 : totalXSDCollateral;
+        return (_xsdAmount * totalShares_) / totalXSDCollateral_;
     }
 
-    function convertSharesToSD(uint256 _numShares) public view returns (uint256) {
+    function convertSharesToXSD(uint256 _numShares) public view returns (uint256) {
         uint256 totalShares_ = totalShares == 0 ? 1 : totalShares;
-        uint256 totalSDCollateral_ = totalSDCollateral == 0 ? 1 : totalSDCollateral;
-
-        return (_numShares * totalSDCollateral_) / totalShares_;
+        uint256 totalXSDCollateral_ = totalXSDCollateral == 0 ? 1 : totalXSDCollateral;
+        return (_numShares * totalXSDCollateral_) / totalShares_;
     }
 }
