@@ -6,7 +6,7 @@ import './ETHX.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderPoolSelector.sol';
 import './interfaces/IStaderUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -26,7 +26,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     ETHX public ethX;
     IStaderOracle public staderOracle;
     IStaderUserWithdrawalManager public userWithdrawalManager;
-    IStaderPoolHelper public poolHelper;
+    IStaderPoolSelector public poolHelper;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minWithdrawAmount;
@@ -199,13 +199,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update stader pool selector contract address
      * @param _poolHelper stader pool selector contract
      */
-    function updatePoolHelper(address _poolHelper)
+    function updatePoolSelector(address _poolHelper)
         external
         override
         checkNonZeroAddress(_poolHelper)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
-        poolHelper = IStaderPoolHelper(_poolHelper);
+        poolHelper = IStaderPoolSelector(_poolHelper);
         emit UpdatedPoolSelector(address(_poolHelper));
     }
 

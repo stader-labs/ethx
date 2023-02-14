@@ -116,7 +116,7 @@ interface IPermissionlessNodeRegistry {
 
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
 
-    function updatePoolHelper(address _staderPoolHelper) external;
+    function updatePoolSelector(address _staderPoolSelector) external;
 
     function updateVaultAddress(address _vaultFactory) external;
 

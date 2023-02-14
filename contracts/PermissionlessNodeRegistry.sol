@@ -3,13 +3,14 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
-import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderPoolSelector.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessControlUpgradeable, PausableUpgradeable {
+    
     address public override poolHelper;
     address public override vaultFactory;
     address public override elRewardSocializePool;
@@ -125,7 +126,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IStaderPoolHelper(poolHelper).incrementInitializedValidatorKeys(1, keyCount);
+        IStaderPoolSelector(poolHelper).incrementInitializedValidatorKeys(1, keyCount);
     }
 
     /**
@@ -145,8 +146,8 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IStaderPoolHelper(poolHelper).reduceInitializedValidatorKeys(1, _pubKeys.length);
-        IStaderPoolHelper(poolHelper).incrementQueuedValidatorKeys(1, _pubKeys.length);
+        IStaderPoolSelector(poolHelper).reduceInitializedValidatorKeys(1, _pubKeys.length);
+        IStaderPoolSelector(poolHelper).incrementQueuedValidatorKeys(1, _pubKeys.length);
     }
 
     /**
@@ -175,7 +176,6 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      */
     function reduceQueuedValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
         onlyOnboardedOperator(_nodeOperator);
-
         if (operatorRegistry[_nodeOperator].queuedValidatorCount == 0) revert NoQueuedValidatorLeft();
         operatorRegistry[_nodeOperator].queuedValidatorCount--;
         emit ReducedQueuedValidatorsCount(
@@ -191,7 +191,6 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
      */
     function incrementActiveValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
         onlyOnboardedOperator(_nodeOperator);
-
         operatorRegistry[_nodeOperator].activeValidatorCount++;
         emit IncrementedActiveValidatorsCount(
             operatorRegistry[_nodeOperator].operatorId,
@@ -278,16 +277,16 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     /**
      * @notice updates the address of pool helper
      * @dev only NOs registry can call
-     * @param _staderPoolHelper address of poolHelper
+     * @param _staderPoolSelector address of poolHelper
      */
-    function updatePoolHelper(address _staderPoolHelper)
+    function updatePoolSelector(address _staderPoolSelector)
         external
         override
         onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
     {
-        Address.checkNonZeroAddress(_staderPoolHelper);
-        poolHelper = _staderPoolHelper;
-        emit UpdatedPoolHelper(_staderPoolHelper);
+        Address.checkNonZeroAddress(_staderPoolSelector);
+        poolHelper = _staderPoolSelector;
+        emit UpdatedPoolHelper(_staderPoolSelector);
     }
 
     /**
@@ -427,7 +426,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     function _sendValue(uint256 _amount) internal {
         if (address(this).balance < _amount) revert InSufficientBalance();
 
-        (, , address poolAddress, , , , , ) = IStaderPoolHelper(poolHelper).staderPool(1);
+        (, , address poolAddress, , , , , ) = IStaderPoolSelector(poolHelper).staderPool(1);
 
         // solhint-disable-next-line
         (bool success, ) = payable(poolAddress).call{value: _amount}('');

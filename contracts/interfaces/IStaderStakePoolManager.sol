@@ -56,7 +56,7 @@ interface IStaderStakePoolManager {
 
     function updateUserWithdrawalManager(address _userWithdrawalManager) external;
 
-    function updatePoolHelper(address _poolSelector) external;
+    function updatePoolSelector(address _poolSelector) external;
 
     function getExchangeRate() external view returns (uint256);
 

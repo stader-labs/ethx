@@ -3,8 +3,10 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './library/BytesLib.sol';
 import './library/ValidatorStatus.sol';
+
+import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IDepositContract.sol';
-import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderPoolSelector.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
@@ -12,7 +14,8 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract PermissionedPool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+    
     using Math for uint256;
 
     address public poolHelper;
@@ -41,9 +44,9 @@ contract PermissionedPool is Initializable, AccessControlUpgradeable, PausableUp
      * @dev deposit validator taking care of pool capacity
      * send back the excess amount of ETH back to poolManager
      */
-    function registerValidatorsOnBeacon() external payable {
+    function registerValidatorsOnBeacon() external override payable {
         uint256 requiredValidators = address(this).balance / DEPOSIT_SIZE;
-        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolHelper(poolHelper).staderPool(2);
+        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolSelector(poolHelper).staderPool(2);
         requiredValidators = Math.min(requiredValidators, queuedValidatorKeys);
 
         if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
@@ -89,8 +92,8 @@ contract PermissionedPool is Initializable, AccessControlUpgradeable, PausableUp
                 emit ValidatorRegisteredOnBeacon(validatorId, pubKey);
             }
 
-            IStaderPoolHelper(poolHelper).reduceQueuedValidatorKeys(2, validatorToDeposit);
-            IStaderPoolHelper(poolHelper).incrementActiveValidatorKeys(2, validatorToDeposit);
+            IStaderPoolSelector(poolHelper).reduceQueuedValidatorKeys(2, validatorToDeposit);
+            IStaderPoolSelector(poolHelper).incrementActiveValidatorKeys(2, validatorToDeposit);
             IPermissionedNodeRegistry(nodeRegistry).updateQueuedValidatorIndex(
                 operator,
                 nextQueuedValidatorIndex + validatorToDeposit
@@ -106,7 +109,7 @@ contract PermissionedPool is Initializable, AccessControlUpgradeable, PausableUp
      * @dev only admin can call
      * @param _poolHelper address of pool helper
      */
-    function updatePoolHelper(address _poolHelper) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+    function updatePoolSelector(address _poolHelper) external override onlyRole(PERMISSIONED_POOL_ADMIN) {
         Address.checkNonZeroAddress(_poolHelper);
         poolHelper = _poolHelper;
         emit UpdatedPoolHelper(poolHelper);
@@ -117,12 +120,13 @@ contract PermissionedPool is Initializable, AccessControlUpgradeable, PausableUp
      * @dev only admin can call
      * @param _staderStakePoolManager address of stader stake pool manager
      */
-    function updateStaderStakePoolManager(address _staderStakePoolManager) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+    function updateStaderStakePoolManager(address _staderStakePoolManager) external override onlyRole(PERMISSIONED_POOL_ADMIN) {
         Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = _staderStakePoolManager;
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
     }
 
+    /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
     function _computeDepositDataRoot(
         bytes memory _pubKey,
         bytes memory _signature,
@@ -159,11 +163,4 @@ contract PermissionedPool is Initializable, AccessControlUpgradeable, PausableUp
         if (32 == _b.length) return BytesLib.concat(_b, zero32);
         else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
     }
-
-    error ValidatorNotInQueue();
-    error NotEnoughValidatorToDeposit();
-
-    event UpdatedPoolHelper(address _poolHelper);
-    event UpdatedStaderStakePoolManager(address _staderStakePoolManager);
-    event ValidatorRegisteredOnBeacon(uint256 indexed _validatorId, bytes _pubKey);
 }

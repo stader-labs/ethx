@@ -7,6 +7,7 @@ interface IPermissionedNodeRegistry {
     error EmptyNameString();
     error OperatorNotActive();
     error PubKeyDoesNotExist();
+    error maxKeyLimitReached();
     error OperatorAlreadyActive();
     error OperatorNotOnBoarded();
     error NameCrossedMaxLength();
@@ -41,6 +42,8 @@ interface IPermissionedNodeRegistry {
     function nextValidatorId() external view returns (uint256);
 
     function totalActiveOperators() external view returns (uint256);
+
+    function KEY_DEPOSIT_LIMIT() external view returns (uint256);
 
     function operatorIdForExcessValidators() external view returns (uint256);
 
@@ -103,6 +106,10 @@ interface IPermissionedNodeRegistry {
         external
         returns (uint256[] memory operatorWiseValidatorsToDeposit);
 
+    function activateNodeOperator(address _nodeOperator) external;
+
+    function deactivateNodeOperator(address _nodeOperator) external;
+
     function reduceQueuedValidatorsCount(address _nodeOperator) external;
 
     function incrementActiveValidatorsCount(address _nodeOperator) external;
@@ -111,25 +118,21 @@ interface IPermissionedNodeRegistry {
 
     function incrementWithdrawValidatorsCount(address _nodeOperator) external;
 
-    function activateNodeOperator(address _nodeOperator) external;
-
-    function deactivateNodeOperator(address _nodeOperator) external;
-
-    function getOperatorCount() external view returns (uint256 _operatorCount);
-
-    function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
-
     function updateQueuedValidatorIndex(address _nodeOperator, uint256 _nextQueuedValidatorIndex) external;
 
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
 
-    function updatePoolHelper(address _staderPoolHelper) external;
+    function updatePoolSelector(address _staderPoolSelector) external;
 
     function updateVaultAddress(address _vaultFactory) external;
 
     function updateOperatorRewardAddress(address payable _rewardAddress) external;
 
     function updateOperatorName(string calldata _operatorName) external;
+
+    function getOperatorCount() external view returns (uint256 _operatorCount);
+
+    function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 
     function pause() external;
 

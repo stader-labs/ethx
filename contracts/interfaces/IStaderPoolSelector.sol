@@ -1,6 +1,6 @@
 pragma solidity ^0.8.16;
 
-interface IStaderPoolHelper {
+interface IStaderPoolSelector {
     error InvalidPoolId();
     error NotEnoughQueuedValidators();
     error NotEnoughActiveValidators();

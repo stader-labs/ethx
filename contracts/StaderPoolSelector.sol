@@ -1,12 +1,12 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderPoolSelector.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgradeable {
+contract StaderPoolSelector is IStaderPoolSelector, Initializable, AccessControlUpgradeable {
     using Math for uint256;
 
     uint8 public override poolCount;
@@ -40,14 +40,20 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      */
     function initialize(
         uint8 _permissionLessTarget,
+        uint8 _permissionedTarget,
         address _adminOwner,
         address _permissionLessPoolAddress,
-        address _permissionLessNodeRegistry
+        address _permissionLessNodeRegistry,
+        address _permissionedPoolAddress,
+        address _permissionedNodeRegistry
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_permissionLessPoolAddress);
         Address.checkNonZeroAddress(_permissionLessNodeRegistry);
-        if (_permissionLessTarget != TOTAL_TARGET) revert InvalidTargetWeight();
+        Address.checkNonZeroAddress(_permissionedPoolAddress);
+        Address.checkNonZeroAddress(_permissionedNodeRegistry);
+
+        if (_permissionLessTarget + _permissionedTarget != TOTAL_TARGET) revert InvalidTargetWeight();
         __AccessControl_init_unchained();
         staderPool[1] = Pool(
             _permissionLessTarget,
@@ -59,7 +65,17 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
             0,
             0
         );
-        poolCount = 1;
+        staderPool[2] = Pool(
+            _permissionLessTarget,
+            'PERMISSIONED',
+            _permissionedPoolAddress,
+            _permissionedNodeRegistry,
+            0,
+            0,
+            0,
+            0
+        );
+        poolCount = 2;
         poolIdForExcessSupply = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
-import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderPoolSelector.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -24,6 +24,7 @@ contract PermissionedNodeRegistry is
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
     uint256 public override totalActiveOperators;
+    uint256 public override KEY_DEPOSIT_LIMIT;
     uint256 public override operatorIdForExcessValidators;
 
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
@@ -76,6 +77,7 @@ contract PermissionedNodeRegistry is
         nextOperatorId = 1;
         nextValidatorId = 1;
         operatorIdForExcessValidators = 1;
+        KEY_DEPOSIT_LIMIT = 100; //TODO decide on the value
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
@@ -134,6 +136,10 @@ contract PermissionedNodeRegistry is
             revert InvalidSizeOfInputKeys();
         uint256 keyCount = _validatorPubKey.length;
         if (keyCount == 0) revert NoKeysProvided();
+        if (
+            (getTotalValidatorKeys(msg.sender) - operatorRegistry[msg.sender].withdrawnValidatorCount + keyCount) >
+            KEY_DEPOSIT_LIMIT
+        ) revert maxKeyLimitReached();
         Operator storage operator = operatorRegistry[msg.sender];
         uint256 operatorId = operator.operatorId;
         if (operatorId == 0) revert OperatorNotOnBoarded();
@@ -141,7 +147,7 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IStaderPoolHelper(poolHelper).incrementInitializedValidatorKeys(2, keyCount);
+        IStaderPoolSelector(poolHelper).incrementInitializedValidatorKeys(2, keyCount);
     }
 
     /**
@@ -161,8 +167,8 @@ contract PermissionedNodeRegistry is
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IStaderPoolHelper(poolHelper).reduceInitializedValidatorKeys(2, _pubKeys.length);
-        IStaderPoolHelper(poolHelper).incrementQueuedValidatorKeys(2, _pubKeys.length);
+        IStaderPoolSelector(poolHelper).reduceInitializedValidatorKeys(2, _pubKeys.length);
+        IStaderPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, _pubKeys.length);
     }
 
     /**
@@ -231,7 +237,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(msg.sender);
         if (operatorRegistry[_nodeOperator].active) revert OperatorAlreadyActive();
         operatorRegistry[_nodeOperator].active = true;
-        IStaderPoolHelper(poolHelper).incrementQueuedValidatorKeys(
+        IStaderPoolSelector(poolHelper).incrementQueuedValidatorKeys(
             2,
             operatorRegistry[_nodeOperator].queuedValidatorCount
         );
@@ -251,7 +257,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(msg.sender);
         if (!operatorRegistry[_nodeOperator].active) revert OperatorNotActive();
         operatorRegistry[_nodeOperator].active = false;
-        IStaderPoolHelper(poolHelper).reduceQueuedValidatorKeys(
+        IStaderPoolSelector(poolHelper).reduceQueuedValidatorKeys(
             2,
             operatorRegistry[_nodeOperator].queuedValidatorCount
         );
@@ -352,12 +358,12 @@ contract PermissionedNodeRegistry is
     /**
      * @notice updates the address of pool helper
      * @dev only NOs registry can call
-     * @param _staderPoolHelper address of poolHelper
+     * @param _staderPoolSelector address of poolHelper
      */
-    function updatePoolHelper(address _staderPoolHelper) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
-        Address.checkNonZeroAddress(_staderPoolHelper);
-        poolHelper = _staderPoolHelper;
-        emit UpdatedPoolHelper(_staderPoolHelper);
+    function updatePoolSelector(address _staderPoolSelector) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
+        Address.checkNonZeroAddress(_staderPoolSelector);
+        poolHelper = _staderPoolSelector;
+        emit UpdatedPoolHelper(_staderPoolSelector);
     }
 
     /**

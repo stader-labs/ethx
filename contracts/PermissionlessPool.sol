@@ -3,8 +3,10 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './library/BytesLib.sol';
 import './library/ValidatorStatus.sol';
+
+import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IDepositContract.sol';
-import './interfaces/IStaderPoolHelper.sol';
+import './interfaces/IStaderPoolSelector.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
@@ -12,7 +14,8 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract PermissionlessPool is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+    
     using Math for uint256;
 
     address public poolHelper;
@@ -44,9 +47,9 @@ contract PermissionlessPool is Initializable, AccessControlUpgradeable, Pausable
      * @dev deposit validator taking care of pool capacity
      * send back the excess amount of ETH back to poolManager
      */
-    function registerValidatorsOnBeacon() external payable {
+    function registerValidatorsOnBeacon() external override payable {
         uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - NODE_BOND);
-        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolHelper(poolHelper).staderPool(1);
+        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = IStaderPoolSelector(poolHelper).staderPool(1);
 
         requiredValidators = Math.min(queuedValidatorKeys, requiredValidators);
         if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
@@ -65,7 +68,7 @@ contract PermissionlessPool is Initializable, AccessControlUpgradeable, Pausable
 
             ) = IPermissionlessNodeRegistry(nodeRegistry).validatorRegistry(validatorId);
 
-            // node operator might withdraw validator in queue
+            // node operator might withdraw validator which is in queue
             if (status != ValidatorStatus.PRE_DEPOSIT) continue;
             bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawalAddress);
             IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
@@ -84,8 +87,8 @@ contract PermissionlessPool is Initializable, AccessControlUpgradeable, Pausable
             emit ValidatorRegisteredOnBeacon(validatorId, pubKey);
         }
 
-        IStaderPoolHelper(poolHelper).reduceQueuedValidatorKeys(1, requiredValidators);
-        IStaderPoolHelper(poolHelper).incrementActiveValidatorKeys(1, requiredValidators);
+        IStaderPoolSelector(poolHelper).reduceQueuedValidatorKeys(1, requiredValidators);
+        IStaderPoolSelector(poolHelper).incrementActiveValidatorKeys(1, requiredValidators);
         depositQueueStartIndex += requiredValidators;
         if (address(this).balance > 0) {
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(2);
@@ -97,7 +100,7 @@ contract PermissionlessPool is Initializable, AccessControlUpgradeable, Pausable
      * @dev only admin can call
      * @param _poolHelper address of pool helper
      */
-    function updatePoolHelper(address _poolHelper) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+    function updatePoolSelector(address _poolHelper) external override onlyRole(PERMISSIONLESS_POOL_ADMIN) {
         Address.checkNonZeroAddress(_poolHelper);
         poolHelper = _poolHelper;
         emit UpdatedPoolHelper(poolHelper);
@@ -117,6 +120,7 @@ contract PermissionlessPool is Initializable, AccessControlUpgradeable, Pausable
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
     }
 
+    /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
     function _computeDepositDataRoot(
         bytes memory _pubKey,
         bytes memory _signature,
@@ -154,11 +158,4 @@ contract PermissionlessPool is Initializable, AccessControlUpgradeable, Pausable
         else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
     }
 
-    error NotEnoughCapacity();
-    error ValidatorNotInQueue();
-    error NotEnoughValidatorToDeposit();
-
-    event UpdatedPoolHelper(address _poolHelper);
-    event UpdatedStaderStakePoolManager(address _staderStakePoolManager);
-    event ValidatorRegisteredOnBeacon(uint256 indexed _validatorId, bytes _pubKey);
 }
