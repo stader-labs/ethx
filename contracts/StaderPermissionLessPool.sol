@@ -17,9 +17,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     uint256 public depositQueueStartIndex;
     IDepositContract public ethValidatorDeposit;
 
-    bytes32 public constant STADER_PERMISSION_LESS_POOL_ADMIN = keccak256('STADER_PERMISSION_LESS_POOL_ADMIN');
-    bytes32 public constant PERMISSION_LESS_OPERATOR = keccak256('PERMISSION_LESS_OPERATOR');
-    bytes32 public constant PERMISSION_LESS_POOL = keccak256('PERMISSION_LESS_POOL');
+    bytes32 public constant PERMISSION_LESS_POOL_ADMIN = keccak256('PERMISSION_LESS_POOL_ADMIN');
 
     uint256 public constant NODE_BOND = 4 ether;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
@@ -52,12 +50,12 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     function registerValidatorsOnBeacon() external payable {
         uint256 validatorToSpin = address(this).balance / 28 ether;
         if (validatorToSpin == 0) revert NotSufficientETHToSpinValidator();
-        (, , , address operatorRegistry, address validatorRegistry, , uint256 queuedValidatorKeys, , ) = poolHelper
+        (, , , address nodeRegistry, , uint256 queuedValidatorKeys, , ) = poolHelper
             .staderPool(1);
         if (queuedValidatorKeys < validatorToSpin) revert NotEnoughCapacity();
-        IPermissionlessNodeRegistry(validatorRegistry).transferCollateralToPool(validatorToSpin * NODE_BOND);
+        IPermissionlessNodeRegistry(nodeRegistry).transferCollateralToPool(validatorToSpin * NODE_BOND);
         for (uint256 i = depositQueueStartIndex; i < validatorToSpin + depositQueueStartIndex; i++) {
-            uint256 validatorId = IPermissionlessNodeRegistry(validatorRegistry).queueToDeposit(i);
+            uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistry).queueToDeposit(i);
             (
                 ,
                 ,
@@ -67,23 +65,23 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
                 uint256 operatorId,
                 ,
 
-            ) = IPermissionlessNodeRegistry(validatorRegistry).validatorRegistry(validatorId);
+            ) = IPermissionlessNodeRegistry(nodeRegistry).validatorRegistry(validatorId);
             //TODO should be add a check if that status should be PRE_DEPOSIT
             bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawalAddress);
             ethValidatorDeposit.deposit{value: DEPOSIT_SIZE}(pubKey, withdrawalAddress, signature, depositDataRoot);
 
-            address nodeOperator = IPermissionlessNodeRegistry(operatorRegistry).operatorByOperatorId(operatorId);
+            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistry).operatorByOperatorId(operatorId);
 
-            IPermissionlessNodeRegistry(validatorRegistry).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
-            IPermissionlessNodeRegistry(operatorRegistry).reduceQueuedValidatorsCount(nodeOperator);
-            IPermissionlessNodeRegistry(operatorRegistry).incrementActiveValidatorsCount(nodeOperator);
+            IPermissionlessNodeRegistry(nodeRegistry).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
+            IPermissionlessNodeRegistry(nodeRegistry).reduceQueuedValidatorsCount(nodeOperator);
+            IPermissionlessNodeRegistry(nodeRegistry).incrementActiveValidatorsCount(nodeOperator);
             poolHelper.reduceQueuedValidatorKeys(1);
             poolHelper.incrementActiveValidatorKeys(1);
         }
         depositQueueStartIndex += validatorToSpin;
     }
 
-    function updatePoolHelper(address _poolHelper) external onlyRole(STADER_PERMISSION_LESS_POOL_ADMIN) {
+    function updatePoolHelper(address _poolHelper) external onlyRole(PERMISSION_LESS_POOL_ADMIN) {
         Address.checkNonZeroAddress(_poolHelper);
         poolHelper = IStaderPoolHelper(_poolHelper);
     }

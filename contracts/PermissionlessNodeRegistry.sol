@@ -17,7 +17,6 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     uint256 public override nextValidatorId;
     uint256 public override queuedValidatorsSize;
     uint256 public constant override collateralETH = 4 ether;
-    uint256 public constant override DEPOSIT_SIZE = 32 ether;
 
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
@@ -76,11 +75,11 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
 
     /**
      * @notice onboard a node operator
-     * @dev any one call, check for whiteListOperator in case of permissionedPool
+     * @dev any one call, permissionless 
      * @param _optInForMevSocialize opted in or not to socialize mev and priority fee
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
-     * @return mevFeeRecipientAddress fee recipient address
+     * @return mevFeeRecipientAddress fee recipient address for all validator clients
      */
     function onboardNodeOperator(
         bool _optInForMevSocialize,
@@ -220,6 +219,9 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         );
     }
 
+    /**
+     * @notice returns the total operator count
+     */
     function getOperatorCount() public view override returns (uint256 _operatorCount) {
         _operatorCount = nextOperatorId - 1;
     }
@@ -393,7 +395,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     function _sendValue(uint256 _amount) internal {
         if (address(this).balance < _amount) revert InSufficientBalance();
 
-        (, , address poolAddress, , , , , , ) = IStaderPoolHelper(poolHelper).staderPool(1);
+        (, , address poolAddress, , , , , ) = IStaderPoolHelper(poolHelper).staderPool(1);
 
         // solhint-disable-next-line
         (bool success, ) = payable(poolAddress).call{value: _amount}('');

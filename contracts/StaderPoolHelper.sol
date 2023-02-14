@@ -1,7 +1,7 @@
 pragma solidity ^0.8.16;
 
-import './interfaces/IStaderPoolHelper.sol';
 import './library/Address.sol';
+import './interfaces/IStaderPoolHelper.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -13,15 +13,15 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     uint8 public poolIdForExcessSupply;
     uint16 public BATCH_LIMIT;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
-    bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
+    uint8 public constant TOTAL_TARGET = 100;
+    bytes32 public constant override POOL_HELPER_ADMIN = keccak256('POOL_HELPER_ADMIN');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
 
     struct Pool {
         uint8 targetShare; // shares of total active validators for the pool
         string poolName; // pool name
         address poolAddress; //pool contract address
-        address operatorRegistry; //address of operator registry
-        address validatorRegistry; // address of validator registry
+        address nodeRegistry; //node registry of the pool
         uint256 initializedValidatorKeys; //validator waiting for pre-signed messages to submit
         uint256 queuedValidatorKeys; //validator in the pool ready to deposit
         uint256 activeValidatorKeys; //validator registered on beacon chain for the pool
@@ -36,28 +36,24 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @param _permissionLessTarget target weight of permissionless pool
      * @param _adminOwner admin address for pool selector
      * @param _permissionLessPoolAddress permissionLess pool contract address
-     * @param _permissionLessOperatorRegistry permissionLess operator registry
-     * @param _permissionLessValidatorRegistry permissionLess validator registry
+     * @param _permissionLessNodeRegistry permissionLess node registry
      */
     function initialize(
         uint8 _permissionLessTarget,
         address _adminOwner,
         address _permissionLessPoolAddress,
-        address _permissionLessOperatorRegistry,
-        address _permissionLessValidatorRegistry
+        address _permissionLessNodeRegistry
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_permissionLessPoolAddress);
-        Address.checkNonZeroAddress(_permissionLessOperatorRegistry);
-        Address.checkNonZeroAddress(_permissionLessValidatorRegistry);
-        if (_permissionLessTarget != 100) revert InvalidTargetWeight();
+        Address.checkNonZeroAddress(_permissionLessNodeRegistry);
+        if (_permissionLessTarget != TOTAL_TARGET) revert InvalidTargetWeight();
         __AccessControl_init_unchained();
         staderPool[1] = Pool(
             _permissionLessTarget,
             'PERMISSIONLESS',
             _permissionLessPoolAddress,
-            _permissionLessOperatorRegistry,
-            _permissionLessValidatorRegistry,
+            _permissionLessNodeRegistry,
             0,
             0,
             0,
@@ -74,30 +70,29 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @param _newTargetShares new targets for all pool including new one
      * @param _newPoolName name of new pool
      * @param _newPoolAddress new pool contract address
-     * @param _operatorRegistry operator registry of the new pool
-     * @param _validatorRegistry validator registry of new pool
+     * @param _nodeRegistry node registry of the new pool
      */
     function addNewPool(
         uint8[] calldata _newTargetShares,
         string calldata _newPoolName,
         address _newPoolAddress,
-        address _operatorRegistry,
-        address _validatorRegistry
-    ) external override onlyRole(POOL_SELECTOR_ADMIN) {
+        address _nodeRegistry
+    ) external override onlyRole(POOL_HELPER_ADMIN) {
         Address.checkNonZeroAddress(_newPoolAddress);
+        Address.checkNonZeroAddress(_nodeRegistry);
         if (poolCount + 1 != _newTargetShares.length) revert InvalidNewPoolInput();
         uint8 totalTarget;
         for (uint8 i = 0; i < _newTargetShares.length; i++) {
             totalTarget += _newTargetShares[i];
-            if (totalTarget > 100) revert InvalidNewTargetInput();
+            if (totalTarget > TOTAL_TARGET) revert InvalidNewTargetInput();
             staderPool[i + 1].targetShare = _newTargetShares[i];
         }
+        if(totalTarget != TOTAL_TARGET) revert InvalidSumOfPoolTargets();
 
         Pool storage _newPool = staderPool[poolCount + 1];
         _newPool.poolName = _newPoolName;
         _newPool.poolAddress = _newPoolAddress;
-        _newPool.operatorRegistry = _operatorRegistry;
-        _newPool.validatorRegistry = _validatorRegistry;
+        _newPool.nodeRegistry = _nodeRegistry;
         poolCount++;
     }
 
@@ -165,12 +160,28 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     }
 
     /**
+     * @notice update the target weights of existing pools
+     * @dev only admin can call
+     * @param _poolTarget new target weights of pools
+     */
+    function updatePoolWeights(uint8[] calldata _poolTarget) external onlyRole(POOL_HELPER_ADMIN){
+        if (poolCount != _poolTarget.length) revert InvalidNewPoolInput();
+        uint8 totalTarget;
+        for (uint8 i = 0; i < _poolTarget.length; i++) {
+            totalTarget += _poolTarget[i];
+            if (totalTarget > TOTAL_TARGET) revert InvalidNewTargetInput();
+            staderPool[i + 1].targetShare = _poolTarget[i];
+        }
+        if(totalTarget !=TOTAL_TARGET) revert InvalidSumOfPoolTargets();
+    }
+
+    /**
      * @notice updated the pool address for pool `_poolId`
      * @dev only admin can call
      * @param _poolId Id of the pool
      * @param _poolAddress updated address of the pool
      */
-    function updatePoolAddress(uint8 _poolId, address _poolAddress) external override onlyRole(POOL_SELECTOR_ADMIN) {
+    function updatePoolAddress(uint8 _poolId, address _poolAddress) external override onlyRole(POOL_HELPER_ADMIN) {
         Address.checkNonZeroAddress(_poolAddress);
         if (_poolId > poolCount) revert InvalidPoolId();
         staderPool[_poolId].poolAddress = _poolAddress;
@@ -180,34 +191,18 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
      * @notice updated the operator registry address for pool `_poolId`
      * @dev only admin can call
      * @param _poolId Id of the pool
-     * @param _operatorRegistry updated operator registry address for the pool
+     * @param _nodeRegistry updated node registry address for the pool
      */
-    function updatePoolOperatorRegistry(uint8 _poolId, address _operatorRegistry)
+    function updatePoolNodeRegistry(uint8 _poolId, address _nodeRegistry)
         external
         override
-        onlyRole(POOL_SELECTOR_ADMIN)
+        onlyRole(POOL_HELPER_ADMIN)
     {
-        Address.checkNonZeroAddress(_operatorRegistry);
+        Address.checkNonZeroAddress(_nodeRegistry);
         if (_poolId > poolCount) revert InvalidPoolId();
-        staderPool[_poolId].operatorRegistry = _operatorRegistry;
+        staderPool[_poolId].nodeRegistry = _nodeRegistry;
     }
-
-    /**
-     * @notice updated the validator registry address for pool `_poolId`
-     * @dev only admin can call
-     * @param _poolId Id of the pool
-     * @param _validatorRegistry updated validator registry address for the pool
-     */
-    function updatePoolValidatorRegistry(uint8 _poolId, address _validatorRegistry)
-        external
-        override
-        onlyRole(POOL_SELECTOR_ADMIN)
-    {
-        Address.checkNonZeroAddress(_validatorRegistry);
-        if (_poolId > poolCount) revert InvalidPoolId();
-        staderPool[_poolId].validatorRegistry = _validatorRegistry;
-    }
-
+    
     /**
      * @notice increase the initialized validator count for `_poolId` pool
      * @dev only accept call from stader network pools

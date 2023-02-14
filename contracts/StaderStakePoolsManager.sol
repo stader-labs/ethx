@@ -328,7 +328,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         for (uint8 i = 1; i < poolWiseValidatorsToDeposit.length; i++) {
             uint256 validatorToDeposit = poolWiseValidatorsToDeposit[i];
             if (validatorToDeposit == 0) continue;
-            (, string memory poolName, address poolAddress, , , , , , ) = poolHelper.staderPool(i);
+            (, string memory poolName, address poolAddress, , , , , ) = poolHelper.staderPool(i);
             uint256 poolDepositSize = (i == 1) ? PERMISSIONLESS_DEPOSIT_SIZE : DEPOSIT_SIZE;
             IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: validatorToDeposit * poolDepositSize}();
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);

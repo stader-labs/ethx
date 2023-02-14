@@ -7,6 +7,7 @@ interface IStaderPoolHelper {
     error InvalidNewPoolInput();
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
+    error InvalidSumOfPoolTargets();
     error NoInitializedValidators();
 
     event PoolAddressUpdated(uint8 indexed poolType, address poolAddress);
@@ -17,7 +18,7 @@ interface IStaderPoolHelper {
 
     function poolCount() external view returns (uint8);
 
-    function POOL_SELECTOR_ADMIN() external view returns (bytes32);
+    function POOL_HELPER_ADMIN() external view returns (bytes32);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
 
@@ -28,8 +29,7 @@ interface IStaderPoolHelper {
             uint8 targetShare,
             string calldata poolName,
             address poolAddress,
-            address operatorRegistry,
-            address validatorRegistry,
+            address nodeRegistry,
             uint256 initializedValidatorKeys,
             uint256 queuedValidatorKeys,
             uint256 activeValidatorKeys,
@@ -40,8 +40,7 @@ interface IStaderPoolHelper {
         uint8[] calldata _targetSharesstring,
         string calldata _newPoolName,
         address _newPoolAddress,
-        address _operatorRegistry,
-        address _validatorRegistry
+        address _nodeRegistry
     ) external;
 
     function computePoolWiseValidatorToDeposit(uint256 _pooledEth)
@@ -50,9 +49,7 @@ interface IStaderPoolHelper {
 
     function updatePoolAddress(uint8 _poolType, address _poolAddress) external;
 
-    function updatePoolOperatorRegistry(uint8 _poolId, address _operatorRegistry) external;
-
-    function updatePoolValidatorRegistry(uint8 _poolId, address _validatorRegistry) external;
+    function updatePoolNodeRegistry(uint8 _poolId, address _nodeRegistry) external;
 
     function incrementInitializedValidatorKeys(uint8 _poolId) external;
 

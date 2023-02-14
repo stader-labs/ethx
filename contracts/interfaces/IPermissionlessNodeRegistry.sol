@@ -46,8 +46,6 @@ interface IPermissionlessNodeRegistry {
 
     function collateralETH() external view returns (uint256);
 
-    function DEPOSIT_SIZE() external view returns (uint256);
-
     function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
 
     function validatorRegistry(uint256)
