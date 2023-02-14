@@ -4,7 +4,8 @@ interface IStaderPoolHelper {
     error InvalidPoolId();
     error NoQueuedValidators();
     error NoActiveValidators();
-    error InvalidNewPoodInput();
+    error InvalidNewPoolInput();
+    error InvalidTargetWeight();
     error InvalidNewTargetInput();
     error NoInitializedValidators();
 

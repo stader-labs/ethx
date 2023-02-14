@@ -141,18 +141,17 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     }
 
     /**
-     * @notice removes the keys after they are deposited on beacon chain
-     * @param _keyCount count of used keys from queue that we want to delete
-     * @param _index starting index to delete keys
+     * @notice deletes the queued keys which are deposited to reduce the space
+     * @dev only admin can call, will revert if any key is not deposited
+     * @param _keyCount count of keys to delete
+     * @param _index starting index of queue to delete keys
      */
-
-    //TODO check the math of condition
     function deleteDepositedQueueValidator(uint256 _keyCount, uint256 _index)
         external
         override
         onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
     {
-        if (_index + _keyCount >= queuedValidatorsSize) revert InvalidIndex();
+        if (_index + _keyCount > queuedValidatorsSize) revert InvalidIndex();
         for (uint256 i = _index; i < _index + _keyCount; i++) {
             if (validatorRegistry[queueToDeposit[_index]].status == ValidatorStatus.PRE_DEPOSIT)
                 revert ValidatorInPreDepositState();

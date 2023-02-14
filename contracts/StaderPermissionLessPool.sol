@@ -37,10 +37,7 @@ contract StaderPermissionLessStakePool is Initializable, AccessControlUpgradeabl
     /**
      * @dev Stader managed stake Pool is initialized with following variables
      */
-    function initialize(
-        address _adminOwner,
-        address _ethValidatorDeposit
-    ) external initializer {
+    function initialize(address _adminOwner, address _ethValidatorDeposit) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_ethValidatorDeposit);
         __Pausable_init();

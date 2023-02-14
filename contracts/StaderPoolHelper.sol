@@ -50,6 +50,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
         Address.checkNonZeroAddress(_permissionLessPoolAddress);
         Address.checkNonZeroAddress(_permissionLessOperatorRegistry);
         Address.checkNonZeroAddress(_permissionLessValidatorRegistry);
+        if (_permissionLessTarget != 100) revert InvalidTargetWeight();
         __AccessControl_init_unchained();
         staderPool[1] = Pool(
             _permissionLessTarget,
@@ -70,7 +71,7 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
     /**
      * @notice add a new pool in pool selector logic
      * @dev pass all previous pool new updated weights, only callable by admin
-     * @param _newTargetShares new targets for all pool including new
+     * @param _newTargetShares new targets for all pool including new one
      * @param _newPoolName name of new pool
      * @param _newPoolAddress new pool contract address
      * @param _operatorRegistry operator registry of the new pool
@@ -84,24 +85,19 @@ contract StaderPoolHelper is IStaderPoolHelper, Initializable, AccessControlUpgr
         address _validatorRegistry
     ) external override onlyRole(POOL_SELECTOR_ADMIN) {
         Address.checkNonZeroAddress(_newPoolAddress);
-        if (poolCount + 1 != _newTargetShares.length) revert InvalidNewPoodInput();
+        if (poolCount + 1 != _newTargetShares.length) revert InvalidNewPoolInput();
         uint8 totalTarget;
-        for (uint8 i = 1; i < _newTargetShares.length; i++) {
-            totalTarget += _newTargetShares[i - 1];
+        for (uint8 i = 0; i < _newTargetShares.length; i++) {
+            totalTarget += _newTargetShares[i];
             if (totalTarget > 100) revert InvalidNewTargetInput();
-            staderPool[i].targetShare = _newTargetShares[i - 1];
+            staderPool[i + 1].targetShare = _newTargetShares[i];
         }
-        staderPool[poolCount + 1] = Pool(
-            _newTargetShares[poolCount],
-            _newPoolName,
-            _newPoolAddress,
-            _operatorRegistry,
-            _validatorRegistry,
-            0,
-            0,
-            0,
-            0
-        );
+
+        Pool storage _newPool = staderPool[poolCount + 1];
+        _newPool.poolName = _newPoolName;
+        _newPool.poolAddress = _newPoolAddress;
+        _newPool.operatorRegistry = _operatorRegistry;
+        _newPool.validatorRegistry = _validatorRegistry;
         poolCount++;
     }
 
