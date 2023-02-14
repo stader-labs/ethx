@@ -4,12 +4,13 @@ pragma solidity ^0.8.16;
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../contracts/interfaces/ISDStaking.sol';
 import '../contracts/interfaces/IPriceFetcher.sol';
 
-contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     struct PoolThresholdInfo {
@@ -85,6 +86,22 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         xsdERC20.safeTransferFrom(operator, address(this), _xsdAmount);
     }
 
+    /**
+     * @param _sdAmount xSD Token Amount to Deposit
+     * @dev sender should approve this contract for spending SD
+     */
+    function depositSDAsCollateral(uint256 _sdAmount) external nonReentrant {
+        address operator = msg.sender;
+        uint256 xsdAmount = _stakeSD(operator, _sdAmount);
+
+        totalXSDCollateral += xsdAmount;
+        xsdBalanceByOperator[operator] += xsdAmount;
+
+        uint256 numShares = convertXSDToShares(xsdAmount);
+        totalShares += numShares;
+        operatorShares[operator] += numShares;
+    }
+
     function withdraw(address _operator, uint256 _xsdAmountToWithdraw) external onlyRole(DEFAULT_ADMIN_ROLE) {
         xsdBalanceByOperator[_operator] -= _xsdAmountToWithdraw;
         totalXSDCollateral -= _xsdAmountToWithdraw;
@@ -121,13 +138,21 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     // HELPER FUNCTIONS
 
-    function _checkPoolThreshold(uint8 _poolId, uint256 _xsdBalance) private view returns (bool) {
+    function _checkPoolThreshold(uint8 _poolId, uint256 _xsdBalance) internal view returns (bool) {
         uint256 sdBalance = convertXSDToSD(_xsdBalance);
         uint256 eqEthBalance = convertSDToETH(sdBalance);
 
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
         PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
         return (eqEthBalance >= poolThresholdInfo.lower && eqEthBalance <= poolThresholdInfo.upper);
+    }
+
+    function _stakeSD(address _operator, uint256 _sdAmount) internal returns (uint256 xsdAmount) {
+        uint256 xsdBalanceBefore = xsdERC20.balanceOf(address(this));
+        sdERC20.safeTransferFrom(_operator, address(this), _sdAmount);
+        ISDStaking(sdStakingContract).stake(_sdAmount);
+        uint256 xsdBalanceAfter = xsdERC20.balanceOf(address(this));
+        xsdAmount = xsdBalanceAfter - xsdBalanceBefore;
     }
 
     function convertXSDToSD(uint256 _xsdAmount) public view returns (uint256) {
