@@ -1,15 +1,18 @@
-//SPDX-License-Identifier: MIT
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.16;
 
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import '@uniswap/v3-core/contracts/libraries/TickMath.sol';
-import '@uniswap/v3-core/contracts/libraries/FixedPoint96.sol';
-import '@uniswap/v3-core/contracts/libraries/FullMath.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '../contracts/interfaces/ITWAPGetter.sol';
 
-contract PriceFetcher {
+contract PriceFetcher is Initializable {
+    address public sdERC20;
+    address public usdcERC20;
+    address public wethERC20;
+
+    address public wethUSDCPool;
     address public sdUSDCPool;
-    address public ethUSDCPool;
-    uint32 public twapInterval;
+    ITWAPGetter public twapGetter;
 
     /**
      * @notice Check for zero address
@@ -21,50 +24,41 @@ contract PriceFetcher {
         _;
     }
 
-    constructor(
-        uint32 _twapInterval,
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
+        address _sdERC20Addr,
+        address _usdcERC20Addr,
+        address _wethERC20Addr,
         address _sdUSDCPool,
-        address _ethUSDCPool
-    ) checkZeroAddress(_sdUSDCPool) checkZeroAddress(_ethUSDCPool) {
-        twapInterval = _twapInterval;
+        address _wethUSDCPool,
+        address _twapGetterAddr
+    )
+        external
+        initializer
+        checkZeroAddress(_sdERC20Addr)
+        checkZeroAddress(_usdcERC20Addr)
+        checkZeroAddress(_wethERC20Addr)
+        checkZeroAddress(_sdUSDCPool)
+        checkZeroAddress(_wethUSDCPool)
+        checkZeroAddress(_twapGetterAddr)
+    {
+        sdERC20 = _sdERC20Addr;
+        usdcERC20 = _usdcERC20Addr;
+        wethERC20 = _wethERC20Addr;
+        wethUSDCPool = _wethUSDCPool;
         sdUSDCPool = _sdUSDCPool;
-        ethUSDCPool = _ethUSDCPool;
+        twapGetter = ITWAPGetter(_twapGetterAddr);
     }
 
-    function getSDPriceInUSD() public view returns (uint256 sdPrice) {
-        uint160 sqrtPriceX96 = _getSqrtTwapX96(sdUSDCPool, twapInterval);
-        return _sqrtPriceX96ToUint(sqrtPriceX96);
+    function getSDPriceInUSD(uint32 _twapInterval) external view returns (uint256) {
+        return twapGetter.getPrice(sdUSDCPool, sdERC20, usdcERC20, _twapInterval);
     }
 
-    function getEthPriceInUSD() public view returns (uint256 ethPrice) {
-        uint160 sqrtPriceX96 = _getSqrtTwapX96(ethUSDCPool, twapInterval);
-        return _sqrtPriceX96ToUint(sqrtPriceX96);
-    }
-
-    function _getSqrtTwapX96(
-        address _uniswapV3Pool,
-        uint32 _twapInterval
-    ) internal view returns (uint160 sqrtPriceX96) {
-        if (_twapInterval == 0) {
-            // return the current price if twapInterval == 0
-            (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(_uniswapV3Pool).slot0();
-        } else {
-            uint32[] memory secondsAgos = new uint32[](2);
-            secondsAgos[0] = _twapInterval; // from (before)
-            secondsAgos[1] = 0; // to (now)
-
-            (int56[] memory tickCumulatives, ) = IUniswapV3Pool(_uniswapV3Pool).observe(secondsAgos);
-
-            // tick(imprecise as it's an integer) to price
-            sqrtPriceX96 = TickMath.getSqrtRatioAtTick(
-                int24((tickCumulatives[1] - tickCumulatives[0]) / _twapInterval)
-            );
-        }
-    }
-
-    function _sqrtPriceX96ToUint(uint160 _sqrtPriceX96) internal pure returns (uint256) {
-        uint256 numerator1 = uint256(_sqrtPriceX96) * uint256(_sqrtPriceX96);
-        uint256 numerator2 = 1e18;
-        return FullMath.mulDiv(numerator1, numerator2, 1 << 192);
+    function getEthPriceInUSD(uint32 _twapInterval) external view returns (uint256) {
+        return twapGetter.getPrice(wethUSDCPool, wethERC20, usdcERC20, _twapInterval);
     }
 }
