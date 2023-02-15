@@ -98,7 +98,7 @@ interface IPermissionedNodeRegistry {
         bytes[] calldata _validatorPubKey,
         bytes[] calldata _validatorSignature,
         bytes32[] calldata _depositDataRoot
-    ) external payable;
+    ) external;
 
     function markValidatorReadyToDeposit(bytes[] calldata _pubKeys) external;
 

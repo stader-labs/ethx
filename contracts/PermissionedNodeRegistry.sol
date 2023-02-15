@@ -130,7 +130,7 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _validatorPubKey,
         bytes[] calldata _validatorSignature,
         bytes32[] calldata _depositDataRoot
-    ) external payable override whenNotPaused {
+    ) external override whenNotPaused {
         if (!permissionedNodeOperator[msg.sender]) revert NotAPermissionedNodeOperator();
         if (_validatorPubKey.length != _validatorSignature.length || _validatorPubKey.length != _depositDataRoot.length)
             revert InvalidSizeOfInputKeys();
