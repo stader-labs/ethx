@@ -4,6 +4,7 @@ import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolSelector.sol';
+import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -11,12 +12,18 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PermissionedNodeRegistry is
+    INodeRegistry,
     IPermissionedNodeRegistry,
     Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable
 {
     using Math for uint256;
+
+    uint256 public initializedValidatorCount;
+    uint256 public queuedValidatorCount;
+    uint256 public activeValidatorCount;
+    uint256 public withdrawnValidatorCount;
 
     address public override poolHelper;
     address public override vaultFactory;
@@ -147,7 +154,7 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IPoolSelector(poolHelper).incrementInitializedValidatorKeys(2, keyCount);
+        initializedValidatorCount += keyCount;
     }
 
     /**
@@ -167,8 +174,8 @@ contract PermissionedNodeRegistry is
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IPoolSelector(poolHelper).reduceInitializedValidatorKeys(2, _pubKeys.length);
-        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, _pubKeys.length);
+        initializedValidatorCount -= _pubKeys.length;
+        queuedValidatorCount += _pubKeys.length;
     }
 
     /**
@@ -237,7 +244,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(msg.sender);
         if (operatorRegistry[_nodeOperator].active) revert OperatorAlreadyActive();
         operatorRegistry[_nodeOperator].active = true;
-        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
+        queuedValidatorCount += operatorRegistry[_nodeOperator].queuedValidatorCount;
         totalActiveOperators++;
     }
 
@@ -254,7 +261,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(msg.sender);
         if (!operatorRegistry[_nodeOperator].active) revert OperatorNotActive();
         operatorRegistry[_nodeOperator].active = false;
-        IPoolSelector(poolHelper).reduceQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
+        queuedValidatorCount -= operatorRegistry[_nodeOperator].queuedValidatorCount;
         totalActiveOperators--;
     }
 
@@ -420,6 +427,30 @@ contract PermissionedNodeRegistry is
      */
     function getOperatorCount() public view override returns (uint256 _operatorCount) {
         _operatorCount = nextOperatorId - 1;
+    }
+
+    function getTotalValidatorCount() public view override returns (uint256 _validatorCount) {
+        return
+            this.getInitializedValidatorCount() +
+            this.getQueuedValidatorCount() +
+            this.getActiveValidatorCount() +
+            this.getWithdrawnValidatorCount();
+    }
+
+    function getInitializedValidatorCount() public view override returns (uint256 _validatorCount) {
+        return initializedValidatorCount;
+    }
+
+    function getQueuedValidatorCount() public view override returns (uint256 _validatorCount) {
+        return queuedValidatorCount;
+    }
+
+    function getActiveValidatorCount() public view override returns (uint256 _validatorCount) {
+        return activeValidatorCount;
+    }
+
+    function getWithdrawnValidatorCount() public view override returns (uint256 _validatorCount) {
+        return withdrawnValidatorCount;
     }
 
     /**

@@ -17,7 +17,7 @@ async function main() {
     permissionlessPool,
     permissionlessNodeRegistry,
     permissionedPool,
-    permissionedNodeRegistry
+    permissionedNodeRegistry,
   ])
   await poolHelper.deployed()
   console.log('Stader pool selector deployed to:', poolHelper.address)

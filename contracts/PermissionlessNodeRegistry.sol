@@ -4,13 +4,26 @@ import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolSelector.sol';
+import './interfaces/IPoolFactory.sol';
+import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionlessNodeRegistry is
+    INodeRegistry,
+    IPermissionlessNodeRegistry,
+    AccessControlUpgradeable,
+    PausableUpgradeable
+{
+    uint256 public initializedValidatorCount;
+    uint256 public queuedValidatorCount;
+    uint256 public activeValidatorCount;
+    uint256 public withdrawnValidatorCount;
+
     address public override poolHelper;
+    address public poolFactoryAddress;
     address public override vaultFactory;
     address public override elRewardSocializePool;
     uint256 public override nextOperatorId;
@@ -60,14 +73,17 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     function initialize(
         address _adminOwner,
         address _vaultFactory,
-        address _elRewardSocializePool
+        address _elRewardSocializePool,
+        address _poolFactoryAddress
     ) external initializer {
         Address.checkNonZeroAddress(_vaultFactory);
         Address.checkNonZeroAddress(_elRewardSocializePool);
+        Address.checkNonZeroAddress(_poolFactoryAddress);
         __AccessControl_init_unchained();
         __Pausable_init();
         vaultFactory = _vaultFactory;
         elRewardSocializePool = _elRewardSocializePool;
+        poolFactoryAddress = _poolFactoryAddress;
         nextOperatorId = 1;
         nextValidatorId = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
@@ -125,7 +141,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IPoolSelector(poolHelper).incrementInitializedValidatorKeys(1, keyCount);
+        initializedValidatorCount += keyCount;
     }
 
     /**
@@ -145,8 +161,9 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IPoolSelector(poolHelper).reduceInitializedValidatorKeys(1, _pubKeys.length);
-        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(1, _pubKeys.length);
+
+        initializedValidatorCount -= _pubKeys.length;
+        queuedValidatorCount += _pubKeys.length;
     }
 
     /**
@@ -339,6 +356,30 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         _unpause();
     }
 
+    function getTotalValidatorCount() public view override returns (uint256 _validatorCount) {
+        return
+            this.getInitializedValidatorCount() +
+            this.getQueuedValidatorCount() +
+            this.getActiveValidatorCount() +
+            this.getWithdrawnValidatorCount();
+    }
+
+    function getInitializedValidatorCount() public view override returns (uint256 _validatorCount) {
+        return initializedValidatorCount;
+    }
+
+    function getQueuedValidatorCount() public view override returns (uint256 _validatorCount) {
+        return queuedValidatorCount;
+    }
+
+    function getActiveValidatorCount() public view override returns (uint256 _validatorCount) {
+        return activeValidatorCount;
+    }
+
+    function getWithdrawnValidatorCount() public view override returns (uint256 _validatorCount) {
+        return withdrawnValidatorCount;
+    }
+
     function _onboardOperator(
         bool _optInForMevSocialize,
         string calldata _operatorName,
@@ -425,7 +466,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     function _sendValue(uint256 _amount) internal {
         if (address(this).balance < _amount) revert InSufficientBalance();
 
-        (, , address poolAddress, , , , , ) = IPoolSelector(poolHelper).staderPool(1);
+        (, address poolAddress) = IPoolFactory(poolFactoryAddress).pools(1);
 
         // solhint-disable-next-line
         (bool success, ) = payable(poolAddress).call{value: _amount}('');

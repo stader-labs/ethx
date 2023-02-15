@@ -17,7 +17,7 @@ async function main() {
     [owner.address, owner.address],
     [owner.address, owner.address],
     owner.address,
-    10
+    10,
   ])
 
   await stakingManager.deployed()

@@ -7,6 +7,7 @@ import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolSelector.sol';
+import './interfaces/IPoolFactory.sol';
 import './interfaces/IUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -27,6 +28,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     address public staderOracle;
     address public userWithdrawalManager;
     address public poolSelector;
+    address public poolFactory;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minWithdrawAmount;
@@ -340,7 +342,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         for (uint8 i = 1; i < poolWiseValidatorsToDeposit.length; i++) {
             uint256 validatorToDeposit = poolWiseValidatorsToDeposit[i];
             if (validatorToDeposit == 0) continue;
-            (, string memory poolName, address poolAddress, , , , , ) = IPoolSelector(poolSelector).staderPool(i);
+            (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
             uint256 poolDepositSize = (i == 1) ? PERMISSIONLESS_DEPOSIT_SIZE : DEPOSIT_SIZE;
             IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: validatorToDeposit * poolDepositSize}();
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
