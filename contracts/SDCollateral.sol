@@ -21,14 +21,14 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     IERC20 public sdERC20;
     IERC20 public xsdERC20;
-    address public sdStakingContract;
+
+    address public sdStakingContractAddr;
     IPriceFetcher public priceFetcher;
 
     uint256 public totalShares;
     uint256 public totalXSDCollateral;
-    // TODO: we can instead use xsdBalnce(address(this))
+    // TODO: Manoj we can instead use xsdBalnce(address(this))
 
-    mapping(address => uint256) public xsdBalanceByOperator;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public operatorShares;
 
@@ -51,7 +51,8 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         address _admin,
         address _sdERC20Addr,
         address _xsdERC20Addr,
-        address _priceFetcherAddr
+        address _priceFetcherAddr,
+        address _sdStakingContractAddr
     )
         external
         initializer
@@ -59,6 +60,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         checkZeroAddress(_sdERC20Addr)
         checkZeroAddress(_xsdERC20Addr)
         checkZeroAddress(_priceFetcherAddr)
+        checkZeroAddress(_sdStakingContractAddr)
     {
         __AccessControl_init();
         __Pausable_init();
@@ -68,6 +70,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         sdERC20 = IERC20(_sdERC20Addr);
         xsdERC20 = IERC20(_xsdERC20Addr);
         priceFetcher = IPriceFetcher(_priceFetcherAddr);
+        sdStakingContractAddr = _sdStakingContractAddr;
     }
 
     /**
@@ -77,12 +80,12 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function depositXSDAsCollateral(uint256 _xsdAmount) external {
         address operator = msg.sender;
         totalXSDCollateral += _xsdAmount;
-        xsdBalanceByOperator[operator] += _xsdAmount;
 
         uint256 numShares = convertXSDToShares(_xsdAmount);
         totalShares += numShares;
         operatorShares[operator] += numShares;
 
+        // TODO: Manoj check if the below line could be moved to start of this method
         xsdERC20.safeTransferFrom(operator, address(this), _xsdAmount);
     }
 
@@ -95,7 +98,6 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         uint256 xsdAmount = _stakeSD(operator, _sdAmount);
 
         totalXSDCollateral += xsdAmount;
-        xsdBalanceByOperator[operator] += xsdAmount;
 
         uint256 numShares = convertXSDToShares(xsdAmount);
         totalShares += numShares;
@@ -103,7 +105,8 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     }
 
     function withdraw(address _operator, uint256 _xsdAmountToWithdraw) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        xsdBalanceByOperator[_operator] -= _xsdAmountToWithdraw;
+        require(5 == 2, 'wip');
+
         totalXSDCollateral -= _xsdAmountToWithdraw;
 
         uint256 numShares = convertXSDToShares(_xsdAmountToWithdraw);
@@ -113,10 +116,10 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         xsdERC20.safeTransfer(payable(_operator), _xsdAmountToWithdraw);
     }
 
-    function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        totalXSDCollateral += _xsdAmount;
-        xsdERC20.safeTransferFrom(msg.sender, address(this), _xsdAmount);
-    }
+    // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //     totalXSDCollateral += _xsdAmount;
+    //     xsdERC20.safeTransferFrom(msg.sender, address(this), _xsdAmount);
+    // }
 
     // SETTERS
 
@@ -132,7 +135,8 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     // GETTERS
 
     function hasEnoughXSDCollateral(address _operator, uint8 _poolId) public view returns (bool) {
-        uint256 xsdBalance = xsdBalanceByOperator[_operator];
+        uint256 numShares = operatorShares[_operator];
+        uint256 xsdBalance = convertSharesToXSD(numShares);
         return _checkPoolThreshold(_poolId, xsdBalance);
     }
 
@@ -150,19 +154,19 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function _stakeSD(address _operator, uint256 _sdAmount) internal returns (uint256 xsdAmount) {
         uint256 xsdBalanceBefore = xsdERC20.balanceOf(address(this));
         sdERC20.safeTransferFrom(_operator, address(this), _sdAmount);
-        ISDStaking(sdStakingContract).stake(_sdAmount);
+        ISDStaking(sdStakingContractAddr).stake(_sdAmount);
         uint256 xsdBalanceAfter = xsdERC20.balanceOf(address(this));
         xsdAmount = xsdBalanceAfter - xsdBalanceBefore;
     }
 
     function convertXSDToSD(uint256 _xsdAmount) public view returns (uint256) {
-        uint256 er = ISDStaking(sdStakingContract).getExchangeRate(); // 1 xSD = er/1e18 SD
+        uint256 er = ISDStaking(sdStakingContractAddr).getExchangeRate(); // 1 xSD = er/1e18 SD
 
         return (er * _xsdAmount) / 1e18;
     }
 
     function convertSDToXSD(uint256 _sdAmount) public view returns (uint256) {
-        uint256 er = ISDStaking(sdStakingContract).getExchangeRate(); // 1 xSD = er/1e18 SD
+        uint256 er = ISDStaking(sdStakingContractAddr).getExchangeRate(); // 1 xSD = er/1e18 SD
 
         return (_sdAmount * 1e18) / er;
     }
