@@ -35,7 +35,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public maxDepositAmount;
     uint256 public depositedPooledETH;
     uint256 public paginationLimit;
-    uint256 public POOLED_ETH_BUFFER;
     uint256 public PERMISSIONLESS_DEPOSIT_SIZE;
     /**
      * @notice Check for zero address
@@ -332,7 +331,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * transfer that much eth to individual pool to register on beacon chain
      */
     function validatorBatchDeposit() external override whenNotPaused {
-        uint256 pooledETH = depositedPooledETH - POOLED_ETH_BUFFER;
+        uint256 pooledETH = depositedPooledETH;
         if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
         uint256[] memory poolWiseValidatorsToDeposit = IPoolSelector(poolSelector).computePoolWiseValidatorsToDeposit(
             pooledETH

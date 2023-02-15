@@ -176,6 +176,7 @@ contract PermissionedNodeRegistry is
      * @dev first iteration is round robin based on capacity,
      * second iteration exhaust the capacity in sequential manner and
      * update the operatorId to pick operator for next sequence in next cycle
+     * all array start with index 1
      * @param _validatorRequiredToDeposit validator to deposit with permissioned pool
      * @return operatorWiseValidatorsToDeposit operator wise count of validator to deposit
      */
@@ -186,8 +187,9 @@ contract PermissionedNodeRegistry is
         returns (uint256[] memory operatorWiseValidatorsToDeposit)
     {
         uint256 totalOperators = nextOperatorId - 1;
+        operatorWiseValidatorsToDeposit = new uint256[](totalOperators + 1);
         uint256 validatorPerOperator = _validatorRequiredToDeposit / totalActiveOperators;
-        uint256[] memory operatorCapacity;
+        uint256[] memory operatorCapacity = new uint256[](totalOperators + 1);
         uint256 totalValidatorToDeposit;
         for (uint256 i = 1; i < totalOperators; i++) {
             address operator = operatorByOperatorId[i];
@@ -202,7 +204,7 @@ contract PermissionedNodeRegistry is
         // and update the starting index of operator for next sequence after every iteration
         if (_validatorRequiredToDeposit > totalValidatorToDeposit) {
             uint256 remainingValidatorsToDeposit = _validatorRequiredToDeposit - totalValidatorToDeposit;
-            uint256[] memory operatorIdQueue;
+            uint256[] memory operatorIdQueue = new uint256[](totalOperators);
             uint256 counter;
             for (uint256 i = operatorIdForExcessValidators; i <= totalOperators; i++) {
                 operatorIdQueue[counter++] = i;

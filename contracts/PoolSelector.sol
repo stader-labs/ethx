@@ -115,7 +115,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     /**
      * @notice calculates the amount of validator number to be deposited on beacon chain based on target weight
      * @dev first loop allot validators to match the target share with the constraint of capacity and
-     * second loop uses sequential looping over all pool starting from a particular poolId and keep on exhausting the capacity and updating the starting poolId for next iteration
+     * second loop uses sequential looping over all pool starting from a particular poolId and keep on exhausting the capacity
+     * and updating the starting poolId for next iteration
+     * * all array start with index 1
      * @param _pooledEth amount of eth ready to deposit on pool manager
      */
     function computePoolWiseValidatorsToDeposit(uint256 _pooledEth)
@@ -123,6 +125,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         onlyRole(STADER_NETWORK_POOL)
         returns (uint256[] memory poolWiseValidatorsToDeposit)
     {
+        poolWiseValidatorsToDeposit = new uint256[](poolCount + 1);
+
         uint256 depositedETh;
         for (uint8 i = 1; i <= poolCount; i++) {
             depositedETh += (staderPool[i].activeValidatorKeys) * DEPOSIT_SIZE;
@@ -131,8 +135,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256 totalValidatorsRequired = totalEth / DEPOSIT_SIZE;
         // new validators to register on beacon chain with `_pooledEth` taking `BATCH_LIMIT` into consideration
         uint256 newValidatorsToDeposit = Math.min(BATCH_LIMIT, _pooledEth / DEPOSIT_SIZE);
-        // `validatorsToDeposit` array start with index 1
-        uint256[] memory poolCapacity;
+        // `poolCapacity` array start with index 1
+        uint256[] memory poolCapacity = new uint256[](poolCount + 1);
+
         uint256 validatorSpunCount;
         for (uint8 i = 1; i <= poolCount && validatorSpunCount < newValidatorsToDeposit; i++) {
             poolCapacity[i] = staderPool[i].queuedValidatorKeys;
@@ -150,7 +155,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         // and update the starting index of pool for next sequence after every iteration
         if (validatorSpunCount < newValidatorsToDeposit) {
             uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
-            uint8[] memory poolQueue;
+            uint8[] memory poolQueue = new uint8[](poolCount);
             uint8 counter;
             for (uint8 i = poolIdForExcessSupply; i <= poolCount; i++) {
                 poolQueue[counter++] = i;
@@ -158,7 +163,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
             for (uint8 i = 1; i < poolIdForExcessSupply; i++) {
                 poolQueue[counter++] = i;
             }
-            for (uint8 i = 0; i <= poolQueue.length; i++) {
+            for (uint8 i = 0; i < poolQueue.length; i++) {
                 uint256 extraValidatorToDepositInAPool = Math.min(
                     poolCapacity[poolQueue[i]],
                     remainingValidatorsToDeposit
@@ -203,7 +208,13 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         staderPool[_poolId].poolAddress = _poolAddress;
     }
 
-    function updateBatchLimit(uint16 _batchLimit) external onlyRole(POOL_SELECTOR_ADMIN){
+    /**
+     * @notice updates the BATCH_LIMIT on pool wise validator selection
+     * @dev only admin can call
+     * @param _batchLimit new value of batch limit
+     */
+    function updateBatchLimit(uint16 _batchLimit) external onlyRole(POOL_SELECTOR_ADMIN) {
+        if (_batchLimit == BATCH_LIMIT) revert InputBatchLimitIsIdenticalToCurrent();
         BATCH_LIMIT = _batchLimit;
     }
 

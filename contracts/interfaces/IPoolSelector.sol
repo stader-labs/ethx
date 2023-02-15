@@ -9,6 +9,7 @@ interface IPoolSelector {
     error InvalidNewTargetInput();
     error InvalidSumOfPoolTargets();
     error NotEnoughInitializedValidators();
+    error InputBatchLimitIsIdenticalToCurrent();
 
     event PoolAddressUpdated(uint8 indexed poolType, address poolAddress);
     event NewPoolAdded(uint8 poolType, address poolAddress);
