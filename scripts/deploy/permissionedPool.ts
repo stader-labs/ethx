@@ -4,19 +4,15 @@ const hre = require('hardhat')
 async function main() {
   const [owner] = await ethers.getSigners()
   const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT
-  const validatorRegistry = process.env.VALIDATOR_REGISTRY
-  const operatorRegistry = process.env.OPERATOR_REGISTRY
-  const rewardFactory = process.env.REWARD_FACTORY
-  const staderManagedPoolFactory = await ethers.getContractFactory('StaderPermissionedStakePool')
-  const staderManagedStakePool = await upgrades.deployProxy(staderManagedPoolFactory, [
-    ethDepositContract,
-    operatorRegistry,
-    validatorRegistry,
+  const poolManager = process.env.STADER_STAKING_POOL_MANAGER
+  const staderPermissinedPoolFactory = await ethers.getContractFactory('PermissionedPool')
+  const staderPermissionedPool = await upgrades.deployProxy(staderPermissinedPoolFactory, [
     owner.address,
-    rewardFactory
+    ethDepositContract,
+    poolManager
   ])
-  await staderManagedStakePool.deployed()
-  console.log('Stader Permission Pool deployed to:', staderManagedStakePool.address)
+  await staderPermissionedPool.deployed()
+  console.log('Stader permissioned Less Pool deployed to:', staderPermissionedPool.address)
 }
 
 main()

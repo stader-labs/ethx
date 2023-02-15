@@ -29,12 +29,15 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint256 internal constant SIGNATURE_LENGTH = 96;
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
 
-    function initialize(address _adminOwner, address _ethValidatorDeposit) external initializer {
+    function initialize(address _adminOwner, address _ethValidatorDeposit,
+    address _staderStakePoolManger) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_ethValidatorDeposit);
+        Address.checkNonZeroAddress(_staderStakePoolManger);
         __Pausable_init();
         __AccessControl_init_unchained();
         ethValidatorDeposit = _ethValidatorDeposit;
+        staderStakePoolManager = _staderStakePoolManger;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 

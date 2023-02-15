@@ -5,8 +5,7 @@ async function main() {
   const [owner] = await ethers.getSigners()
   const ethXAddress = process.env.ETHX_CONTRACT
   const oracle = process.env.STADER_ORACLE
-const userWithdrawManager = process.env.WITHDRAW_MANAGER
-const poolHelper = process.env.POOL_HELPER
+  const userWithdrawManager = process.env.WITHDRAW_MANAGER
 
   const ethXFactory = await hre.ethers.getContractFactory('ETHX')
   const ethX = await ethXFactory.attach(ethXAddress)
