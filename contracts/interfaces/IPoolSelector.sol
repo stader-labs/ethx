@@ -18,7 +18,7 @@ interface IPoolSelector {
 
     function poolCount() external view returns (uint8);
 
-    function POOL_HELPER_ADMIN() external view returns (bytes32);
+    function POOL_SELECTOR_ADMIN() external view returns (bytes32);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
 

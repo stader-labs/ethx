@@ -24,7 +24,7 @@ interface IPermissionedNodeRegistry {
     event IncrementedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event ReducedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
-    event UpdatedPoolHelper(address _poolHelper);
+    event UpdatedPoolHelper(address _poolSelector);
     event UpdatedVaultFactory(address _vaultFactory);
     event UpdatedValidatorStatus(bytes indexed _pubKey, ValidatorStatus _status);
     event UpdatedQueuedValidatorIndex(address indexed _nodeOperator, uint256 _nextQueuedValidatorIndex);

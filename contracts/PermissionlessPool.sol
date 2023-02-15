@@ -100,11 +100,11 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /**
      * @notice update the address of pool Helper
      * @dev only admin can call
-     * @param _poolHelper address of pool helper
+     * @param _poolSelector address of pool helper
      */
-    function updatePoolSelector(address _poolHelper) external override onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        Address.checkNonZeroAddress(_poolHelper);
-        poolHelper = _poolHelper;
+    function updatePoolSelector(address _poolSelector) external override onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+        Address.checkNonZeroAddress(_poolSelector);
+        poolHelper = _poolSelector;
         emit UpdatedPoolHelper(poolHelper);
     }
 

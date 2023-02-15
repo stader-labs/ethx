@@ -25,7 +25,7 @@ interface IPermissionlessNodeRegistry {
     event IncrementedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event ReducedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
-    event UpdatedPoolHelper(address _poolHelper);
+    event UpdatedPoolHelper(address _poolSelector);
     event UpdatedVaultFactory(address _vaultFactory);
     event UpdatedOperatorName(address indexed _nodeOperator, string _operatorName);
     event UpdatedOperatorRewardAddress(address indexed _nodeOperator, address _rewardAddress);

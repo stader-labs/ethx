@@ -78,9 +78,9 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     //     staderStakePoolManager.receiveExecutionLayerRewards{value: address(this).balance}();
     // }
 
-    function updatePoolSelector(address _poolHelper) external onlyRole(SOCIALIZE_POOL_OWNER) {
-        Address.checkNonZeroAddress(_poolHelper);
-        poolHelper = IPoolSelector(_poolHelper);
+    function updatePoolSelector(address _poolSelector) external onlyRole(SOCIALIZE_POOL_OWNER) {
+        Address.checkNonZeroAddress(_poolSelector);
+        poolHelper = IPoolSelector(_poolSelector);
     }
 
     /**

@@ -14,7 +14,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     uint16 public BATCH_LIMIT;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint8 public constant TOTAL_TARGET = 100;
-    bytes32 public constant override POOL_HELPER_ADMIN = keccak256('POOL_HELPER_ADMIN');
+    bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
 
     struct Pool {
@@ -66,7 +66,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
             0
         );
         staderPool[2] = Pool(
-            _permissionLessTarget,
+            _permissionedTarget,
             'PERMISSIONED',
             _permissionedPoolAddress,
             _permissionedNodeRegistry,
@@ -93,7 +93,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         string calldata _newPoolName,
         address _newPoolAddress,
         address _nodeRegistry
-    ) external override onlyRole(POOL_HELPER_ADMIN) {
+    ) external override onlyRole(POOL_SELECTOR_ADMIN) {
         Address.checkNonZeroAddress(_newPoolAddress);
         Address.checkNonZeroAddress(_nodeRegistry);
         if (poolCount + 1 != _newTargetShares.length) revert InvalidNewPoolInput();
@@ -180,7 +180,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @dev only admin can call
      * @param _poolTarget new target weights of pools
      */
-    function updatePoolWeights(uint8[] calldata _poolTarget) external onlyRole(POOL_HELPER_ADMIN) {
+    function updatePoolWeights(uint8[] calldata _poolTarget) external onlyRole(POOL_SELECTOR_ADMIN) {
         if (poolCount != _poolTarget.length) revert InvalidNewPoolInput();
         uint8 totalTarget;
         for (uint8 i = 0; i < _poolTarget.length; i++) {
@@ -197,10 +197,14 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @param _poolId Id of the pool
      * @param _poolAddress updated address of the pool
      */
-    function updatePoolAddress(uint8 _poolId, address _poolAddress) external override onlyRole(POOL_HELPER_ADMIN) {
+    function updatePoolAddress(uint8 _poolId, address _poolAddress) external override onlyRole(POOL_SELECTOR_ADMIN) {
         Address.checkNonZeroAddress(_poolAddress);
         if (_poolId > poolCount) revert InvalidPoolId();
         staderPool[_poolId].poolAddress = _poolAddress;
+    }
+
+    function updateBatchLimit(uint16 _batchLimit) external onlyRole(POOL_SELECTOR_ADMIN){
+        BATCH_LIMIT = _batchLimit;
     }
 
     /**
@@ -212,7 +216,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     function updatePoolNodeRegistry(uint8 _poolId, address _nodeRegistry)
         external
         override
-        onlyRole(POOL_HELPER_ADMIN)
+        onlyRole(POOL_SELECTOR_ADMIN)
     {
         Address.checkNonZeroAddress(_nodeRegistry);
         if (_poolId > poolCount) revert InvalidPoolId();
