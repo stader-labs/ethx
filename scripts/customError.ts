@@ -1,5 +1,5 @@
-import { Interface } from "@ethersproject/abi";
-const axios = require('axios').default;
+import { Interface } from '@ethersproject/abi'
+const axios = require('axios').default
 
 
 async function errorDecode(){
@@ -12,4 +12,4 @@ async function errorDecode(){
 
 }
 
-errorDecode();
+errorDecode()

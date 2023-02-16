@@ -9,7 +9,7 @@ async function main() {
   const staderPermissionLessPool = await upgrades.deployProxy(staderPermissionLessPoolFactory, [
     owner.address,
     ethDepositContract,
-    poolManager
+    poolManager,
   ])
   await staderPermissionLessPool.deployed()
   console.log('Stader Permission Less Pool deployed to:', staderPermissionLessPool.address)

@@ -31,8 +31,6 @@ interface IPermissionedNodeRegistry {
     event UpdatedOperatorName(address indexed _nodeOperator, string _operatorName);
     event UpdatedOperatorRewardAddress(address indexed _nodeOperator, address _rewardAddress);
 
-    function poolHelper() external view returns (address);
-
     function vaultFactory() external view returns (address);
 
     function elRewardSocializePool() external view returns (address);
@@ -121,8 +119,6 @@ interface IPermissionedNodeRegistry {
     function updateQueuedValidatorIndex(address _nodeOperator, uint256 _nextQueuedValidatorIndex) external;
 
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
-
-    function updatePoolSelector(address _staderPoolSelector) external;
 
     function updateVaultAddress(address _vaultFactory) external;
 

@@ -25,7 +25,7 @@ interface IPermissionlessNodeRegistry {
     event IncrementedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event ReducedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
-    event UpdatedPoolHelper(address _poolSelector);
+    event UpdatedPoolFactoryAddress(address _poolFactoryAddress);
     event UpdatedVaultFactory(address _vaultFactory);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorName(address indexed _nodeOperator, string _operatorName);
@@ -35,7 +35,7 @@ interface IPermissionlessNodeRegistry {
 
     function STADER_NETWORK_POOL() external returns (bytes32);
 
-    function poolHelper() external view returns (address);
+    function poolFactoryAddress() external view returns (address);
 
     function vaultFactory() external view returns (address);
 
@@ -121,7 +121,7 @@ interface IPermissionlessNodeRegistry {
 
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
 
-    function updatePoolSelector(address _staderPoolSelector) external;
+    function updatePoolFactoryAddress(address _staderPoolSelector) external;
 
     function updateVaultAddress(address _vaultFactory) external;
 
