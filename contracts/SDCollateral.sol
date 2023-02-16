@@ -134,21 +134,30 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     // GETTERS
 
-    function hasEnoughXSDCollateral(address _operator, uint8 _poolId) public view returns (bool) {
+    function hasEnoughXSDCollateral(
+        address _operator,
+        uint8 _poolId,
+        uint32 _numValidators
+    ) public view returns (bool) {
         uint256 numShares = operatorShares[_operator];
         uint256 xsdBalance = convertSharesToXSD(numShares);
-        return _checkPoolThreshold(_poolId, xsdBalance);
+        return _checkPoolThreshold(_poolId, xsdBalance, _numValidators);
     }
 
     // HELPER FUNCTIONS
 
-    function _checkPoolThreshold(uint8 _poolId, uint256 _xsdBalance) internal view returns (bool) {
+    function _checkPoolThreshold(
+        uint8 _poolId,
+        uint256 _xsdBalance,
+        uint32 _numValidators
+    ) internal view returns (bool) {
         uint256 sdBalance = convertXSDToSD(_xsdBalance);
         uint256 eqEthBalance = convertSDToETH(sdBalance);
 
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
         PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
-        return (eqEthBalance >= poolThresholdInfo.lower && eqEthBalance <= poolThresholdInfo.upper);
+        return (eqEthBalance >= (poolThresholdInfo.lower * _numValidators) &&
+            eqEthBalance <= (poolThresholdInfo.upper * _numValidators));
     }
 
     function _stakeSD(address _operator, uint256 _sdAmount) internal returns (uint256 xsdAmount) {
