@@ -1,6 +1,7 @@
 pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
+import './INodeRegistry.sol';
 
 interface IPermissionlessNodeRegistry {
     error InvalidIndex();
@@ -49,20 +50,6 @@ interface IPermissionlessNodeRegistry {
     function collateralETH() external view returns (uint256);
 
     function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
-
-    function validatorRegistry(uint256)
-        external
-        view
-        returns (
-            ValidatorStatus status,
-            bool isWithdrawal,
-            bytes calldata pubKey,
-            bytes calldata signature,
-            bytes calldata withdrawalAddress,
-            uint256 operatorId,
-            uint256 bondEth,
-            uint256 penaltyCount
-        );
 
     function validatorIdByPubKey(bytes calldata _pubKey) external view returns (uint256);
 

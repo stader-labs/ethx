@@ -1,5 +1,7 @@
 pragma solidity ^0.8.16;
 
+import './INodeRegistry.sol';
+
 interface IStaderPoolBase {
     error NotEnoughCapacity();
     error ValidatorNotInQueue();
@@ -14,6 +16,8 @@ interface IStaderPoolBase {
     function updatePoolSelector(address _poolSelector) external;
 
     function updateStaderStakePoolManager(address _staderStakePoolManager) external;
+
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory);
 
     function getTotalValidatorCount() external view returns (uint256); // returns the total number of validators across all operators
 

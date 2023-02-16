@@ -1,7 +1,6 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolSelector.sol';
 import './interfaces/INodeRegistry.sol';
@@ -40,15 +39,6 @@ contract PermissionedNodeRegistry is
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
 
-    struct Validator {
-        ValidatorStatus status; // state of validator
-        bool isWithdrawal; //status of validator readiness to withdraw
-        bytes pubKey; //public Key of the validator
-        bytes signature; //signature for deposit to Ethereum Deposit contract
-        bytes withdrawalAddress; //eth1 withdrawal address for validator
-        uint256 operatorId; // stader network assigned Id
-    }
-
     struct Operator {
         bool active; // operator status
         string operatorName; // name of the operator
@@ -61,7 +51,7 @@ contract PermissionedNodeRegistry is
         uint256 withdrawnValidatorCount; //withdrawn validator count
     }
 
-    mapping(uint256 => Validator) public override validatorRegistry;
+    mapping(uint256 => Validator) public validatorRegistry;
     mapping(bytes => uint256) public override validatorIdByPubKey;
 
     mapping(address => Operator) public override operatorRegistry;
@@ -422,6 +412,14 @@ contract PermissionedNodeRegistry is
         _unpause();
     }
 
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+        return validatorRegistry[validatorIdByPubKey[_pubkey]];
+    }
+
+    function getValidator(uint256 _validatorId) external view returns (Validator memory) {
+        return validatorRegistry[_validatorId];
+    }
+
     /**
      * @notice returns the total operator count
      */
@@ -502,7 +500,8 @@ contract PermissionedNodeRegistry is
             _pubKey,
             _signature,
             withdrawCredential,
-            _operatorId
+            _operatorId,
+            0
         );
         validatorIdByPubKey[_pubKey] = nextValidatorId;
         operatorRegistry[msg.sender].initializedValidatorCount++;

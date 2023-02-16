@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderPoolBase.sol';
+import './interfaces/INodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
@@ -123,6 +124,21 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         returns (uint256)
     {
         return IStaderPoolBase(pools[_poolId].poolAddress).getActiveValidatorCount();
+    }
+
+    function retrieveValidator(bytes memory _pubkey) public view override returns (Validator memory) {
+        for (uint8 i = 1; i <= poolCount; i++) {
+            if (getValidatorByPool(i, _pubkey).pubKey.length == 0) continue;
+
+            return getValidatorByPool(i, _pubkey);
+        }
+        Validator memory emptyValidator;
+
+        return emptyValidator;
+    }
+
+    function getValidatorByPool(uint8 _poolId, bytes memory _pubkey) public view override returns (Validator memory) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
     // Modifiers

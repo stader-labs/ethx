@@ -67,34 +67,34 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(requiredValidators * NODE_BOND);
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queueToDeposit(i);
-            (
-                ValidatorStatus status,
-                ,
-                bytes memory pubKey,
-                bytes memory signature,
-                bytes memory withdrawalAddress,
-                uint256 operatorId,
-                ,
-
-            ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
+            Validator memory validator = INodeRegistry(nodeRegistryAddress).getValidator(validatorId);
 
             // node operator might withdraw validator which is in queue
-            if (status != ValidatorStatus.PRE_DEPOSIT) continue;
-            bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawalAddress);
+            if (validator.status != ValidatorStatus.PRE_DEPOSIT) continue;
+            bytes32 depositDataRoot = _computeDepositDataRoot(
+                validator.pubKey,
+                validator.signature,
+                validator.withdrawalAddress
+            );
             IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
-                pubKey,
-                withdrawalAddress,
-                signature,
+                validator.pubKey,
+                validator.withdrawalAddress,
+                validator.signature,
                 depositDataRoot
             );
 
-            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistryAddress).operatorByOperatorId(operatorId);
+            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistryAddress).operatorByOperatorId(
+                validator.operatorId
+            );
 
-            IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
+            IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(
+                validator.pubKey,
+                ValidatorStatus.DEPOSITED
+            );
             IPermissionlessNodeRegistry(nodeRegistryAddress).reduceQueuedValidatorsCount(nodeOperator);
             IPermissionlessNodeRegistry(nodeRegistryAddress).incrementActiveValidatorsCount(nodeOperator);
 
-            emit ValidatorRegisteredOnBeacon(validatorId, pubKey);
+            emit ValidatorRegisteredOnBeacon(validatorId, validator.pubKey);
         }
 
         depositQueueStartIndex += requiredValidators;
@@ -126,6 +126,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = _staderStakePoolManager;
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
+    }
+
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+        return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
     }
 
     function getTotalValidatorCount() external view returns (uint256) {

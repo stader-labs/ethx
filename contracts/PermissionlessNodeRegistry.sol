@@ -38,23 +38,12 @@ contract PermissionlessNodeRegistry is
         keccak256('PERMISSIONLESS_NODE_REGISTRY_OWNER');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
 
-    mapping(uint256 => Validator) public override validatorRegistry;
+    mapping(uint256 => Validator) public validatorRegistry;
     mapping(bytes => uint256) public override validatorIdByPubKey;
     mapping(uint256 => uint256) public override queueToDeposit;
 
     mapping(address => Operator) public override operatorRegistry;
     mapping(uint256 => address) public override operatorByOperatorId;
-
-    struct Validator {
-        ValidatorStatus status; // state of validator
-        bool isWithdrawal; //status of validator readiness to withdraw
-        bytes pubKey; //public Key of the validator
-        bytes signature; //signature for deposit to Ethereum Deposit contract
-        bytes withdrawalAddress; //eth1 withdrawal address for validator
-        uint256 operatorId; // stader network assigned Id
-        uint256 bondEth; // amount of bond eth in gwei
-        uint256 penaltyCount; // penalty for MEV theft or any other wrong doing
-    }
 
     struct Operator {
         bool optedForSocializingPool; // operator opted for socializing pool
@@ -356,6 +345,14 @@ contract PermissionlessNodeRegistry is
         _unpause();
     }
 
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+        return validatorRegistry[validatorIdByPubKey[_pubkey]];
+    }
+
+    function getValidator(uint256 _validatorId) external view returns (Validator memory) {
+        return validatorRegistry[_validatorId];
+    }
+
     function getTotalValidatorCount() public view override returns (uint256 _validatorCount) {
         return
             this.getInitializedValidatorCount() +
@@ -418,8 +415,7 @@ contract PermissionlessNodeRegistry is
             _signature,
             withdrawCredential,
             _operatorId,
-            msg.value,
-            0
+            msg.value
         );
         validatorIdByPubKey[_pubKey] = nextValidatorId;
         operatorRegistry[msg.sender].initializedValidatorCount++;

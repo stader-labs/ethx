@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
+import './INodeRegistry.sol';
+
 // Interface for the PoolFactory contract
 interface IPoolFactory {
     // Events
@@ -20,6 +22,10 @@ interface IPoolFactory {
     function addNewPool(string calldata _poolName, address _poolAddress) external;
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
+
+    function retrieveValidator(bytes memory _pubkey) external view returns (Validator memory);
+
+    function getValidatorByPool(uint8 _poolId, bytes memory _pubkey) external view returns (Validator memory);
 
     // Pool getters
     function poolCount() external view returns (uint8); // returns the number of pools in the factory
