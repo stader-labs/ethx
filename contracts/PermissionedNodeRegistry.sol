@@ -58,7 +58,7 @@ contract PermissionedNodeRegistry is
     mapping(bytes => uint256) public override validatorIdByPubKey;
 
     mapping(address => Operator) public override operatorRegistry;
-    mapping(uint256 => address) public override operatorAddressByOperatorId;
+    mapping(uint256 => address) public override operatorByOperatorId;
     mapping(address => bool) public override permissionedNodeOperator;
     mapping(uint256 => uint256[]) public override operatorQueuedValidators;
 
@@ -191,8 +191,8 @@ contract PermissionedNodeRegistry is
         uint256 validatorPerOperator = _validatorRequiredToDeposit / totalActiveOperators;
         uint256[] memory operatorCapacity = new uint256[](totalOperators + 1);
         uint256 totalValidatorToDeposit;
-        for (uint256 i = 1; i < totalOperators; i++) {
-            address operator = operatorAddressByOperatorId[i];
+        for (uint256 i = 1; i <= totalOperators; i++) {
+            address operator = operatorByOperatorId[i];
             if (!operatorRegistry[operator].active) continue;
             operatorCapacity[i] = operatorRegistry[operator].queuedValidatorCount;
             operatorWiseValidatorsToDeposit[i] = Math.min(operatorCapacity[i], validatorPerOperator);
@@ -214,7 +214,7 @@ contract PermissionedNodeRegistry is
             }
 
             for (uint256 i = 0; i < operatorIdQueue.length; i++) {
-                address operator = operatorAddressByOperatorId[operatorIdQueue[i]];
+                address operator = operatorByOperatorId[operatorIdQueue[i]];
                 if (!operatorRegistry[operator].active) continue;
                 uint256 moreValidatorToDepositForOperator = Math.min(
                     operatorCapacity[operatorIdQueue[i]],
@@ -236,7 +236,7 @@ contract PermissionedNodeRegistry is
      * @param _nodeOperator address of the operator to activate
      */
     function activateNodeOperator(address _nodeOperator) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
-        onlyOnboardedOperator(msg.sender);
+        onlyOnboardedOperator(_nodeOperator);
         if (operatorRegistry[_nodeOperator].active) revert OperatorAlreadyActive();
         operatorRegistry[_nodeOperator].active = true;
         IPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
@@ -253,7 +253,7 @@ contract PermissionedNodeRegistry is
         override
         onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
     {
-        onlyOnboardedOperator(msg.sender);
+        onlyOnboardedOperator(_nodeOperator);
         if (!operatorRegistry[_nodeOperator].active) revert OperatorNotActive();
         operatorRegistry[_nodeOperator].active = false;
         IPoolSelector(poolHelper).reduceQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
@@ -266,7 +266,6 @@ contract PermissionedNodeRegistry is
      * @param _nodeOperator operator ID
      */
     function reduceQueuedValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(msg.sender);
         if (operatorRegistry[_nodeOperator].queuedValidatorCount == 0) revert NoQueuedValidatorLeft();
         operatorRegistry[_nodeOperator].queuedValidatorCount--;
         emit ReducedQueuedValidatorsCount(
@@ -281,7 +280,6 @@ contract PermissionedNodeRegistry is
      * @param _nodeOperator operator ID
      */
     function incrementActiveValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(msg.sender);
         operatorRegistry[_nodeOperator].activeValidatorCount++;
         emit IncrementedActiveValidatorsCount(
             operatorRegistry[_nodeOperator].operatorId,
@@ -295,7 +293,6 @@ contract PermissionedNodeRegistry is
      * @param _nodeOperator operator ID
      */
     function reduceActiveValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(msg.sender);
         if (operatorRegistry[_nodeOperator].activeValidatorCount == 0) revert NoActiveValidatorLeft();
         operatorRegistry[_nodeOperator].activeValidatorCount--;
         emit ReducedActiveValidatorsCount(
@@ -310,7 +307,6 @@ contract PermissionedNodeRegistry is
      * @param _nodeOperator operator ID
      */
     function incrementWithdrawValidatorsCount(address _nodeOperator) external override onlyRole(STADER_NETWORK_POOL) {
-        onlyOnboardedOperator(msg.sender);
         operatorRegistry[_nodeOperator].withdrawnValidatorCount++;
         emit IncrementedWithdrawnValidatorsCount(
             operatorRegistry[_nodeOperator].operatorId,
@@ -329,7 +325,6 @@ contract PermissionedNodeRegistry is
         override
         onlyRole(STADER_NETWORK_POOL)
     {
-        onlyOnboardedOperator(msg.sender);
         operatorRegistry[_nodeOperator].nextQueuedValidatorIndex = _nextQueuedValidatorIndex;
         emit UpdatedQueuedValidatorIndex(_nodeOperator, _nextQueuedValidatorIndex);
     }
@@ -450,7 +445,7 @@ contract PermissionedNodeRegistry is
             0,
             0
         );
-        operatorAddressByOperatorId[nextOperatorId] = msg.sender;
+        operatorByOperatorId[nextOperatorId] = msg.sender;
         totalActiveOperators++;
         emit OnboardedOperator(msg.sender, nextOperatorId);
         nextOperatorId++;
@@ -485,7 +480,7 @@ contract PermissionedNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorQueuedValidators[operatorId].push(_validatorId);
-        address nodeOperator = operatorAddressByOperatorId[operatorId];
+        address nodeOperator = operatorByOperatorId[operatorId];
         operatorRegistry[nodeOperator].initializedValidatorCount--;
         operatorRegistry[nodeOperator].queuedValidatorCount++;
     }

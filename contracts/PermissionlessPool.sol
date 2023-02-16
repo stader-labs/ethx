@@ -83,7 +83,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 depositDataRoot
             );
 
-            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistry).operatorAddressByOperatorId(operatorId);
+            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistry).operatorByOperatorId(operatorId);
 
             IPermissionlessNodeRegistry(nodeRegistry).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
             IPermissionlessNodeRegistry(nodeRegistry).reduceQueuedValidatorsCount(nodeOperator);

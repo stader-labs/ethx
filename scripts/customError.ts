@@ -4,10 +4,10 @@ const axios = require('axios').default;
 
 async function errorDecode(){
 
-    const stakingContractJson = require('../artifacts/contracts/PermissionedNodeRegistry.sol/PermissionedNodeRegistry.json');
+    const stakingContractJson = require('../artifacts/contracts/PermissionedPool.sol/PermissionedPool.json');
     let interfaces = new Interface(stakingContractJson.abi)
 
-    let error_msg = interfaces.getError("0xc4a3c169");
+    let error_msg = interfaces.getError("0x481d7ab2");
     console.log("error is ", error_msg.name);
 
 }

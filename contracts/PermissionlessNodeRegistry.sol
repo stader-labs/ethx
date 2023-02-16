@@ -31,7 +31,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     mapping(uint256 => uint256) public override queuedValidators;
 
     mapping(address => Operator) public override operatorRegistry;
-    mapping(uint256 => address) public override operatorAddressByOperatorId;
+    mapping(uint256 => address) public override operatorByOperatorId;
 
     struct Validator {
         ValidatorStatus status; // state of validator
@@ -365,7 +365,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             0,
             0
         );
-        operatorAddressByOperatorId[nextOperatorId] = msg.sender;
+        operatorByOperatorId[nextOperatorId] = msg.sender;
         emit OnboardedOperator(msg.sender, nextOperatorId);
         nextOperatorId++;
     }
@@ -400,7 +400,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     function _markKeyReadyToDeposit(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
         queuedValidators[validatorQueueSize] = _validatorId;
-        address nodeOperator = operatorAddressByOperatorId[validatorRegistry[_validatorId].operatorId];
+        address nodeOperator = operatorByOperatorId[validatorRegistry[_validatorId].operatorId];
         operatorRegistry[nodeOperator].initializedValidatorCount--;
         operatorRegistry[nodeOperator].queuedValidatorCount++;
         validatorQueueSize++;
