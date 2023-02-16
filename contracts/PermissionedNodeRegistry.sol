@@ -197,7 +197,7 @@ contract PermissionedNodeRegistry is
         uint256 validatorPerOperator = _validatorRequiredToDeposit / totalActiveOperators;
         uint256[] memory operatorCapacity = new uint256[](totalOperators + 1);
         uint256 totalValidatorToDeposit;
-        for (uint256 i = 1; i < totalOperators; i++) {
+        for (uint256 i = 1; i <= totalOperators; i++) {
             address operator = operatorAddressByOperatorId[i];
             if (!operatorRegistry[operator].active) continue;
             operatorCapacity[i] = operatorRegistry[operator].queuedValidatorCount;
