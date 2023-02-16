@@ -82,7 +82,7 @@ interface IPermissionedNodeRegistry {
             uint256 withdrawnValidatorCount
         );
 
-    function operatorByOperatorId(uint256) external view returns (address);
+    function operatorAddressByOperatorId(uint256) external view returns (address);
 
     function permissionedNodeOperator(address) external view returns (bool);
 

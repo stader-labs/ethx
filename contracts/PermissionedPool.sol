@@ -61,7 +61,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         for (uint256 i = 1; i < operatorWiseValidatorToDeposit.length; i++) {
             uint256 validatorToDeposit = operatorWiseValidatorToDeposit[i];
             if (validatorToDeposit == 0) continue;
-            address operator = IPermissionedNodeRegistry(nodeRegistry).operatorByOperatorId(i);
+            address operator = IPermissionedNodeRegistry(nodeRegistry).operatorAddressByOperatorId(i);
             (, , , , uint256 nextQueuedValidatorIndex, , , , ) = IPermissionedNodeRegistry(nodeRegistry)
                 .operatorRegistry(operator);
 

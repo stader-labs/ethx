@@ -27,6 +27,7 @@ interface IPermissionlessNodeRegistry {
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
     event UpdatedPoolHelper(address _poolSelector);
     event UpdatedVaultFactory(address _vaultFactory);
+    event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorName(address indexed _nodeOperator, string _operatorName);
     event UpdatedOperatorRewardAddress(address indexed _nodeOperator, address _rewardAddress);
 
@@ -44,7 +45,9 @@ interface IPermissionlessNodeRegistry {
 
     function nextValidatorId() external view returns (uint256);
 
-    function queuedValidatorsSize() external view returns (uint256);
+    function validatorQueueSize() external view returns (uint256);
+
+    function nextQueuedValidatorIndex() external view returns (uint256);
 
     function collateralETH() external view returns (uint256);
 
@@ -66,7 +69,7 @@ interface IPermissionlessNodeRegistry {
 
     function validatorIdByPubKey(bytes calldata _pubKey) external view returns (uint256);
 
-    function queueToDeposit(uint256) external view returns (uint256);
+    function queuedValidators(uint256) external view returns (uint256);
 
     function operatorRegistry(address)
         external
@@ -82,7 +85,7 @@ interface IPermissionlessNodeRegistry {
             uint256 withdrawnValidatorCount
         );
 
-    function operatorByOperatorId(uint256) external view returns (address);
+    function operatorAddressByOperatorId(uint256) external view returns (address);
 
     function onboardNodeOperator(
         bool _optInForMevSocialize,
@@ -107,6 +110,8 @@ interface IPermissionlessNodeRegistry {
     function reduceActiveValidatorsCount(address _nodeOperator) external;
 
     function incrementWithdrawValidatorsCount(address _nodeOperator) external;
+
+    function updateNextQueuedValidatorIndex(uint256 _count) external;
 
     function getOperatorCount() external view returns (uint256 _operatorCount);
 

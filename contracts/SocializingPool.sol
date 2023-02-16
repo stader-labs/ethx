@@ -58,7 +58,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     //     require(totalValidatorRegistered > 0, 'No active validator on beacon chain');
     //     uint256 operatorCount = staderOperatorRegistry.getOperatorCount();
     //     for (uint256 index = 0; index < operatorCount; ++index) {
-    //         address nodeOperator = staderOperatorRegistry.operatorByOperatorId(index);
+    //         address nodeOperator = staderOperatorRegistry.operatorAddressByOperatorId(index);
     //         (, , address operatorRewardAddress, , , , uint256 activeValidatorCount, ) = staderOperatorRegistry
     //             .operatorRegistry(nodeOperator);
     //         if (activeValidatorCount > 0) {

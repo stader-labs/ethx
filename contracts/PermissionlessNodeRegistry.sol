@@ -15,7 +15,8 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
     address public override elRewardSocializePool;
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
-    uint256 public override queuedValidatorsSize;
+    uint256 public override validatorQueueSize;
+    uint256 public override nextQueuedValidatorIndex;
     uint256 public constant override collateralETH = 4 ether;
 
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
@@ -27,10 +28,10 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
 
     mapping(uint256 => Validator) public override validatorRegistry;
     mapping(bytes => uint256) public override validatorIdByPubKey;
-    mapping(uint256 => uint256) public override queueToDeposit;
+    mapping(uint256 => uint256) public override queuedValidators;
 
     mapping(address => Operator) public override operatorRegistry;
-    mapping(uint256 => address) public override operatorByOperatorId;
+    mapping(uint256 => address) public override operatorAddressByOperatorId;
 
     struct Validator {
         ValidatorStatus status; // state of validator
@@ -160,11 +161,11 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
         override
         onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
     {
-        if (_index + _keyCount > queuedValidatorsSize) revert InvalidIndex();
+        if (_index + _keyCount > validatorQueueSize) revert InvalidIndex();
         for (uint256 i = _index; i < _index + _keyCount; i++) {
-            if (validatorRegistry[queueToDeposit[_index]].status == ValidatorStatus.PRE_DEPOSIT)
+            if (validatorRegistry[queuedValidators[_index]].status == ValidatorStatus.PRE_DEPOSIT)
                 revert ValidatorInPreDepositState();
-            delete (queueToDeposit[_index]);
+            delete (queuedValidators[_index]);
         }
     }
 
@@ -225,6 +226,16 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             operatorRegistry[_nodeOperator].operatorId,
             operatorRegistry[_nodeOperator].withdrawnValidatorCount
         );
+    }
+
+    /**
+     * @notice update the next queued validator index by a count
+     * @dev accept call from permissionless pool
+     * @param _count count of validators picked from queue, nextIndex after `_count`
+     */
+    function updateNextQueuedValidatorIndex(uint256 _count) external onlyRole(STADER_NETWORK_POOL) {
+        nextQueuedValidatorIndex += _count;
+        emit UpdatedNextQueuedValidatorIndex(nextQueuedValidatorIndex);
     }
 
     /**
@@ -354,7 +365,7 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
             0,
             0
         );
-        operatorByOperatorId[nextOperatorId] = msg.sender;
+        operatorAddressByOperatorId[nextOperatorId] = msg.sender;
         emit OnboardedOperator(msg.sender, nextOperatorId);
         nextOperatorId++;
     }
@@ -388,11 +399,11 @@ contract PermissionlessNodeRegistry is IPermissionlessNodeRegistry, AccessContro
 
     function _markKeyReadyToDeposit(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
-        queueToDeposit[queuedValidatorsSize] = _validatorId;
-        address nodeOperator = operatorByOperatorId[validatorRegistry[_validatorId].operatorId];
+        queuedValidators[validatorQueueSize] = _validatorId;
+        address nodeOperator = operatorAddressByOperatorId[validatorRegistry[_validatorId].operatorId];
         operatorRegistry[nodeOperator].initializedValidatorCount--;
         operatorRegistry[nodeOperator].queuedValidatorCount++;
-        queuedValidatorsSize++;
+        validatorQueueSize++;
     }
 
     function _validateKeys(

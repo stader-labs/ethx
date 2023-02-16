@@ -20,7 +20,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     address public poolHelper;
     address public staderStakePoolManager;
     address public ethValidatorDeposit;
-    uint256 public depositQueueStartIndex;
 
     bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
 
@@ -58,10 +57,11 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
         requiredValidators = Math.min(queuedValidatorKeys, requiredValidators);
         if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
-
         IPermissionlessNodeRegistry(nodeRegistry).transferCollateralToPool(requiredValidators * NODE_BOND);
+
+        uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistry).nextQueuedValidatorIndex();
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
-            uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistry).queueToDeposit(i);
+            uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistry).queuedValidators(i);
             (
                 ValidatorStatus status,
                 ,
@@ -83,7 +83,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 depositDataRoot
             );
 
-            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistry).operatorByOperatorId(operatorId);
+            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistry).operatorAddressByOperatorId(operatorId);
 
             IPermissionlessNodeRegistry(nodeRegistry).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
             IPermissionlessNodeRegistry(nodeRegistry).reduceQueuedValidatorsCount(nodeOperator);
@@ -94,7 +94,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
         IPoolSelector(poolHelper).reduceQueuedValidatorKeys(1, requiredValidators);
         IPoolSelector(poolHelper).incrementActiveValidatorKeys(1, requiredValidators);
-        depositQueueStartIndex += requiredValidators;
+        IPermissionlessNodeRegistry(nodeRegistry).updateNextQueuedValidatorIndex(requiredValidators);
         if (address(this).balance > 0) {
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(2);
         }

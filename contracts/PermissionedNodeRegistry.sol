@@ -58,7 +58,7 @@ contract PermissionedNodeRegistry is
     mapping(bytes => uint256) public override validatorIdByPubKey;
 
     mapping(address => Operator) public override operatorRegistry;
-    mapping(uint256 => address) public override operatorByOperatorId;
+    mapping(uint256 => address) public override operatorAddressByOperatorId;
     mapping(address => bool) public override permissionedNodeOperator;
     mapping(uint256 => uint256[]) public override operatorQueuedValidators;
 
@@ -192,7 +192,7 @@ contract PermissionedNodeRegistry is
         uint256[] memory operatorCapacity = new uint256[](totalOperators + 1);
         uint256 totalValidatorToDeposit;
         for (uint256 i = 1; i < totalOperators; i++) {
-            address operator = operatorByOperatorId[i];
+            address operator = operatorAddressByOperatorId[i];
             if (!operatorRegistry[operator].active) continue;
             operatorCapacity[i] = operatorRegistry[operator].queuedValidatorCount;
             operatorWiseValidatorsToDeposit[i] = Math.min(operatorCapacity[i], validatorPerOperator);
@@ -214,7 +214,7 @@ contract PermissionedNodeRegistry is
             }
 
             for (uint256 i = 0; i < operatorIdQueue.length; i++) {
-                address operator = operatorByOperatorId[operatorIdQueue[i]];
+                address operator = operatorAddressByOperatorId[operatorIdQueue[i]];
                 if (!operatorRegistry[operator].active) continue;
                 uint256 moreValidatorToDepositForOperator = Math.min(
                     operatorCapacity[operatorIdQueue[i]],
@@ -450,7 +450,7 @@ contract PermissionedNodeRegistry is
             0,
             0
         );
-        operatorByOperatorId[nextOperatorId] = msg.sender;
+        operatorAddressByOperatorId[nextOperatorId] = msg.sender;
         totalActiveOperators++;
         emit OnboardedOperator(msg.sender, nextOperatorId);
         nextOperatorId++;
@@ -485,7 +485,7 @@ contract PermissionedNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorQueuedValidators[operatorId].push(_validatorId);
-        address nodeOperator = operatorByOperatorId[operatorId];
+        address nodeOperator = operatorAddressByOperatorId[operatorId];
         operatorRegistry[nodeOperator].initializedValidatorCount--;
         operatorRegistry[nodeOperator].queuedValidatorCount++;
     }
