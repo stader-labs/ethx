@@ -77,7 +77,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         );
         poolCount = 2;
         poolIdForExcessSupply = 1;
-        BATCH_LIMIT = 100;
+        // BATCH_LIMIT = 100;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 

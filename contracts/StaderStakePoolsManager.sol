@@ -342,8 +342,13 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             (, string memory poolName, address poolAddress, , , , , ) = IPoolSelector(poolSelector).staderPool(i);
             uint256 poolDepositSize = (i == 1) ? PERMISSIONLESS_DEPOSIT_SIZE : DEPOSIT_SIZE;
             IStaderPoolBase(poolAddress).registerValidatorsOnBeacon{value: validatorToDeposit * poolDepositSize}();
+            depositedPooledETH -= validatorToDeposit * poolDepositSize;
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
         }
+    }
+
+    function updateDepositPoolETH(uint56 _depositPoolEth) external onlyRole(EXECUTOR_ROLE){
+        depositedPooledETH = _depositPoolEth;
     }
 
     /**
