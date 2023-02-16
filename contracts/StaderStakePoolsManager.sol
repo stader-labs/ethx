@@ -35,6 +35,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public maxDepositAmount;
     uint256 public depositedPooledETH;
     uint256 public paginationLimit;
+    uint256 public POOLED_ETH_BUFFER;
     uint256 public PERMISSIONLESS_DEPOSIT_SIZE;
     /**
      * @notice Check for zero address
@@ -345,10 +346,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
         }
-    }
-
-    function updateDepositPoolETH(uint56 _depositPoolEth) external onlyRole(EXECUTOR_ROLE){
-        depositedPooledETH = _depositPoolEth;
     }
 
     /**
