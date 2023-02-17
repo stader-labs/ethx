@@ -6,13 +6,10 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../contracts/interfaces/ISDStaking.sol';
 import '../contracts/interfaces/IPriceFetcher.sol';
 
 contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeERC20 for IERC20;
-
     struct PoolThresholdInfo {
         uint256 lower;
         uint256 upper;
@@ -86,7 +83,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         operatorShares[operator] += numShares;
 
         // TODO: Manoj check if the below line could be moved to start of this method
-        xsdERC20.safeTransferFrom(operator, address(this), _xsdAmount);
+        require(xsdERC20.transferFrom(operator, address(this), _xsdAmount), 'xsd transfer failed');
     }
 
     /**
@@ -113,7 +110,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         operatorShares[_operator] -= numShares;
         totalShares -= numShares;
 
-        xsdERC20.safeTransfer(payable(_operator), _xsdAmountToWithdraw);
+        require(xsdERC20.transfer(payable(_operator), _xsdAmountToWithdraw), 'xsd transfer failed');
     }
 
     // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -162,7 +159,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     function _stakeSD(address _operator, uint256 _sdAmount) internal returns (uint256 xsdAmount) {
         uint256 xsdBalanceBefore = xsdERC20.balanceOf(address(this));
-        sdERC20.safeTransferFrom(_operator, address(this), _sdAmount);
+        require(sdERC20.transferFrom(_operator, address(this), _sdAmount), 'sd transfer failed');
         ISDStaking(sdStakingContractAddr).stake(_sdAmount);
         uint256 xsdBalanceAfter = xsdERC20.balanceOf(address(this));
         xsdAmount = xsdBalanceAfter - xsdBalanceBefore;
