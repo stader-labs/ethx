@@ -138,13 +138,14 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _validatorSignature,
         bytes32[] calldata _depositDataRoot
     ) external payable override whenNotPaused {
+        onlyOnboardedOperator(msg.sender);
         if (_validatorPubKey.length != _validatorSignature.length || _validatorPubKey.length != _depositDataRoot.length)
             revert InvalidSizeOfInputKeys();
+
         uint256 keyCount = _validatorPubKey.length;
         if (keyCount == 0) revert NoKeysProvided();
 
         uint256 operatorId = operatorIDByAddress[msg.sender];
-        if (operatorId == 0) revert OperatorNotOnBoarded();
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
         uint256 totalKeysExceptWithdrawn = operatorStructById[operatorId].totalKeys -
@@ -269,7 +270,7 @@ contract PermissionlessNodeRegistry is
      * @dev only permissionless pool can call
      * @param _amount amount of eth to send to permissionless pool
      */
-    //TODO decide on the role
+    //TODO decide on the role name
     function transferCollateralToPool(uint256 _amount) external override whenNotPaused onlyRole(STADER_NETWORK_POOL) {
         _sendValue(_amount);
     }

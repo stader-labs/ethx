@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 import '../library/ValidatorStatus.sol';
 
 interface IPermissionedNodeRegistry {
+    // Error events
     error NoKeysProvided();
     error EmptyNameString();
     error NOActiveOperator();
@@ -16,6 +17,7 @@ interface IPermissionedNodeRegistry {
     error OperatorAlreadyOnBoarded();
     error NotAPermissionedNodeOperator();
 
+    //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubKey, uint256 _validatorId);
     event ValidatorMarkedReadyToDeposit(bytes _pubKey, uint256 _validatorId);
@@ -29,6 +31,8 @@ interface IPermissionedNodeRegistry {
     event UpdatedValidatorStatus(bytes indexed _pubKey, ValidatorStatus _status);
     event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+
+    // Getters
 
     function poolId() external view returns (uint8);
 
@@ -88,6 +92,12 @@ interface IPermissionedNodeRegistry {
 
     function permissionList(address) external view returns (bool);
 
+    function getTotalActiveOperatorCount() external view returns (uint256 _operatorCount);
+
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
+
+    // Setters
+
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external;
 
     function operatorQueuedValidators(uint256, uint256) external view returns (uint256);
@@ -127,10 +137,6 @@ interface IPermissionedNodeRegistry {
     function updateVaultFactoryAddress(address _vaultFactory) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
-
-    function getTotalActiveOperatorCount() external view returns (uint256 _operatorCount);
-
-    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     function pause() external;
 

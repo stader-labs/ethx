@@ -8,11 +8,15 @@ import './interfaces/IStaderPoolBase.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
+    bytes32 public constant POOL_FACTORY_ADMIN = keccak256('POOL_FACTORY_ADMIN');
+
     mapping(uint8 => Pool) public override pools;
     uint8 public override poolCount;
 
-    function initialize() external initializer {
+    function initialize(address _admin) external initializer {
+        Address.checkNonZeroAddress(_admin);
         __AccessControl_init_unchained();
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -21,7 +25,11 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
      * @param _poolName The name of the new pool.
      * @param _poolAddress The address of the new pool contract.
      */
-    function addNewPool(string calldata _poolName, address _poolAddress) external override {
+    function addNewPool(string calldata _poolName, address _poolAddress)
+        external
+        override
+        onlyRole(POOL_FACTORY_ADMIN)
+    {
         require(bytes(_poolName).length > 0, 'Pool name cannot be empty');
         Address.checkNonZeroAddress(_poolAddress);
 
@@ -37,7 +45,12 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
      * @param _poolId The ID of the pool to update.
      * @param _newPoolAddress The updated address of the pool.
      */
-    function updatePoolAddress(uint8 _poolId, address _newPoolAddress) external override validPoolId(_poolId) {
+    function updatePoolAddress(uint8 _poolId, address _newPoolAddress)
+        external
+        override
+        validPoolId(_poolId)
+        onlyRole(POOL_FACTORY_ADMIN)
+    {
         Address.checkNonZeroAddress(_newPoolAddress);
 
         pools[_poolId].poolAddress = _newPoolAddress;

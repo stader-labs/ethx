@@ -137,14 +137,14 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _validatorSignature,
         bytes32[] calldata _depositDataRoot
     ) external override whenNotPaused {
-        uint256 operatorId = operatorIDByAddress[msg.sender];
-        if (operatorId == 0) revert OperatorNotOnBoarded();
-
+        onlyOnboardedOperator(msg.sender);
         if (_validatorPubKey.length != _validatorSignature.length || _validatorPubKey.length != _depositDataRoot.length)
             revert InvalidSizeOfInputKeys();
+
         uint256 keyCount = _validatorPubKey.length;
         if (keyCount == 0) revert NoKeysProvided();
 
+        uint256 operatorId = operatorIDByAddress[msg.sender];
         uint256 totalKeysExceptWithdrawn = this.getOperatorTotalKeys(operatorId) -
             operatorStructById[operatorId].withdrawnValidatorCount;
 
@@ -338,10 +338,12 @@ contract PermissionedNodeRegistry is
      * @param _pubKey public key of the validator
      * @param _status updated status of validator
      */
+
+    //TODO decide on role as oracle might also call it along with permissioned pool
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status)
         external
         override
-        onlyRole(PERMISSIONED_POOL_CONTRACT)
+        onlyRole(STADER_NETWORK_POOL)
     {
         uint256 validatorId = validatorIdByPubKey[_pubKey];
         if (validatorId == 0) revert PubKeyDoesNotExist();

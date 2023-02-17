@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 import '../library/ValidatorStatus.sol';
 
 interface IPermissionlessNodeRegistry {
+    // Error events
     error InvalidIndex();
     error TransferFailed();
     error EmptyNameString();
@@ -18,6 +19,7 @@ interface IPermissionlessNodeRegistry {
     error InvalidSizeOfInputKeys();
     error ValidatorInPreDepositState();
 
+    //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubKey, uint256 _validatorId);
     event ValidatorMarkedReadyToDeposit(bytes _pubKey, uint256 _validatorId);
@@ -29,6 +31,8 @@ interface IPermissionlessNodeRegistry {
     event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+
+    //Getters
 
     function PERMISSIONLESS_NODE_REGISTRY_OWNER() external returns (bytes32);
 
@@ -91,6 +95,10 @@ interface IPermissionlessNodeRegistry {
 
     function operatorIDByAddress(address) external view returns (uint256);
 
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
+
+    //Setters
+
     function onboardNodeOperator(
         bool _optInForMevSocialize,
         string calldata _operatorName,
@@ -116,8 +124,6 @@ interface IPermissionlessNodeRegistry {
     function increaseTotalWithdrawValidatorsCount(uint256 _operatorId, uint256 _count) external;
 
     function updateNextQueuedValidatorIndex(uint256 _count) external;
-
-    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     function transferCollateralToPool(uint256 _amount) external;
 

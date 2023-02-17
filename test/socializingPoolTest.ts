@@ -19,7 +19,7 @@ describe('socializing pool tests', () => {
     env = await setupEnvironment(adr.staderOwner, adr.ssvOwner)
   })
 
-  it('onboard validators both permissioned and permissionLess', async function () {
+  it('onboard validators both permissioned and permissionless', async function () {
     await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staker1.address, 0)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staker2.address, 1, '4')
     await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staker1.address, 2)
@@ -92,9 +92,9 @@ describe('socializing pool tests', () => {
     const permissionedOperator = await env.operatorRegistry.operatorRegistry(permissionedOperatorIndex)
     expect(permissionedOperator.activeValidatorCount).to.be.equal(1)
 
-    const permissionLessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
-    const permissionLessOperator = await env.operatorRegistry.operatorRegistry(permissionLessOperatorIndex)
-    expect(permissionLessOperator.activeValidatorCount).to.be.equal(1)
+    const permissionlessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
+    const permissionlessOperator = await env.operatorRegistry.operatorRegistry(permissionlessOperatorIndex)
+    expect(permissionlessOperator.activeValidatorCount).to.be.equal(1)
 
     const tx = {
       to: env.socializePool.address,
@@ -107,7 +107,7 @@ describe('socializing pool tests', () => {
     expect(await env.ethxToken.balanceOf(permissionedOperator.operatorRewardAddress)).to.be.equal(
       ethers.utils.parseEther('0.15')
     )
-    expect(await env.ethxToken.balanceOf(permissionLessOperator.operatorRewardAddress)).to.be.equal(
+    expect(await env.ethxToken.balanceOf(permissionlessOperator.operatorRewardAddress)).to.be.equal(
       ethers.utils.parseEther('0.05')
     )
 

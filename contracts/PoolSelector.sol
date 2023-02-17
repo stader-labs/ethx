@@ -19,7 +19,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     mapping(uint8 => uint256) public poolTargets;
 
     bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
-    bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
+    bytes32 public constant override STADER_STAKE_POOL_MANAGER = keccak256('STADER_STAKE_POOL_MANAGER');
 
     /**
      * @notice initialize with permissioned and permissionLess Pool
@@ -59,7 +59,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      */
     function computePoolWiseValidatorsToDeposit(uint256 _pooledEth)
         external
-        onlyRole(STADER_NETWORK_POOL)
+        onlyRole(STADER_STAKE_POOL_MANAGER)
         returns (uint256[] memory poolWiseValidatorsToDeposit)
     {
         uint8 poolCount = IPoolFactory(poolFactoryAddress).poolCount();

@@ -6,7 +6,10 @@ async function main() {
   const permissionedNodeRegistryFactory = await ethers.getContractFactory('PermissionedNodeRegistry')
   const permissionedNodeRegistryInstance = await permissionedNodeRegistryFactory.attach(permissionedNodeRegistry)
 
-  const permissionedNodeRegistryUpgraded = await upgrades.upgradeProxy(permissionedNodeRegistryInstance, permissionedNodeRegistryFactory)
+  const permissionedNodeRegistryUpgraded = await upgrades.upgradeProxy(
+    permissionedNodeRegistryInstance,
+    permissionedNodeRegistryFactory
+  )
 
   console.log('new implementation address ', permissionedNodeRegistryUpgraded.address)
 

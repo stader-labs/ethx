@@ -16,7 +16,7 @@ interface IPoolSelector {
 
     function POOL_SELECTOR_ADMIN() external view returns (bytes32);
 
-    function STADER_NETWORK_POOL() external view returns (bytes32);
+    function STADER_STAKE_POOL_MANAGER() external view returns (bytes32);
 
     function computePoolWiseValidatorsToDeposit(uint256 _pooledEth)
         external
