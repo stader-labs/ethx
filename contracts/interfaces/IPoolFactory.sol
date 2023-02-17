@@ -23,9 +23,9 @@ interface IPoolFactory {
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
 
-    function retrieveValidator(bytes memory _pubkey) external view returns (Validator memory);
+    function retrieveValidator(bytes calldata _pubkey) external view returns (Validator memory);
 
-    function getValidatorByPool(uint8 _poolId, bytes memory _pubkey) external view returns (Validator memory);
+    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) external view returns (Validator memory);
 
     // Pool getters
     function poolCount() external view returns (uint8); // returns the number of pools in the factory

@@ -126,7 +126,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getActiveValidatorCount();
     }
 
-    function retrieveValidator(bytes memory _pubkey) public view override returns (Validator memory) {
+    function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (getValidatorByPool(i, _pubkey).pubKey.length == 0) continue;
 
@@ -137,7 +137,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return emptyValidator;
     }
 
-    function getValidatorByPool(uint8 _poolId, bytes memory _pubkey) public view override returns (Validator memory) {
+    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) public view override returns (Validator memory) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
