@@ -24,7 +24,7 @@ interface IPermissionedNodeRegistry {
     event ReducedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
     event UpdatedPoolHelper(address _poolSelector);
-    event UpdatedVaultFactory(address _vaultFactory);
+    event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
     event UpdatedKeyDepositLimit(uint256 _keyDepositLimit);
     event UpdatedValidatorStatus(bytes indexed _pubKey, ValidatorStatus _status);
     event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
@@ -32,7 +32,7 @@ interface IPermissionedNodeRegistry {
 
     function poolId() external view returns (uint8);
 
-    function vaultFactory() external view returns (address);
+    function vaultFactoryAddress() external view returns (address);
 
     function sdCollateral() external view returns (address);
 
@@ -63,7 +63,7 @@ interface IPermissionedNodeRegistry {
             ValidatorStatus status,
             bytes calldata pubKey,
             bytes calldata signature,
-            bytes calldata withdrawalAddress,
+            address withdrawVaultAddress,
             uint256 operatorId
         );
 
@@ -124,7 +124,7 @@ interface IPermissionedNodeRegistry {
 
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
 
-    function updateVaultAddress(address _vaultFactory) external;
+    function updateVaultFactoryAddress(address _vaultFactory) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 

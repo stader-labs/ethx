@@ -5,10 +5,16 @@ interface IStaderPoolBase {
     error ValidatorNotInQueue();
     error NotEnoughValidatorToDeposit();
 
+    event UpdatedNodeRegistryAddress(address _nodeRegistryAddress);
+    event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
     event UpdatedStaderStakePoolManager(address _staderStakePoolManager);
     event ValidatorRegisteredOnBeacon(uint256 indexed _validatorId, bytes _pubKey);
 
     function registerValidatorsOnBeacon() external payable;
+
+    function updateNodeRegistryAddress(address _nodeRegistryAddress) external;
+
+    function updateVaultFactoryAddress(address _vaultFactoryAddress) external;
 
     function updateStaderStakePoolManager(address _staderStakePoolManager) external;
 

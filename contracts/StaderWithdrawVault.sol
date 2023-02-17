@@ -28,16 +28,16 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
     }
 
     function transferUserShareToPoolManager(
-        uint256 _operatorID,
         uint256 _userDeposit,
-        bytes memory _pubKey,
-        bool _withdrawStatus
+        bool _withdrawStatus,
+        address payable _operatorRewardAddress
     ) external onlyRole(POOL_MANAGER) {
         uint256 userShare = calculateUserShare(_userDeposit, _withdrawStatus);
         uint256 staderFeeShare = calculateStaderFee(_userDeposit, _withdrawStatus);
         uint256 nodeShare = calculateNodeShare(validatorDeposit - _userDeposit, _userDeposit, _withdrawStatus);
         IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(staderTreasury, staderFeeShare);
+        _sendValue(_operatorRewardAddress, nodeShare);
         //TODO transfer node commission
     }
 

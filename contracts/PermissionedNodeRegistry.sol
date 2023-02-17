@@ -23,7 +23,7 @@ contract PermissionedNodeRegistry is
     uint8 public constant override poolId = 2;
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
 
-    address public override vaultFactory;
+    address public override vaultFactoryAddress;
     address public override sdCollateral;
     address public override elRewardSocializePool;
     uint256 public override nextOperatorId;
@@ -42,7 +42,7 @@ contract PermissionedNodeRegistry is
         ValidatorStatus status; // state of validator
         bytes pubKey; //public Key of the validator
         bytes signature; //signature for deposit to Ethereum Deposit contract
-        bytes withdrawalAddress; //eth1 withdrawal address for validator
+        address withdrawVaultAddress; //eth1 withdrawal address for validator
         uint256 operatorId; // stader network assigned Id
     }
 
@@ -69,15 +69,15 @@ contract PermissionedNodeRegistry is
 
     function initialize(
         address _adminOwner,
-        address _vaultFactory,
+        address _vaultFactoryAddress,
         address _elRewardSocializePool
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
-        Address.checkNonZeroAddress(_vaultFactory);
+        Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_elRewardSocializePool);
         __AccessControl_init_unchained();
         __Pausable_init();
-        vaultFactory = _vaultFactory;
+        vaultFactoryAddress = _vaultFactoryAddress;
         elRewardSocializePool = _elRewardSocializePool;
         nextOperatorId = 1;
         nextValidatorId = 1;
@@ -352,12 +352,16 @@ contract PermissionedNodeRegistry is
     /**
      * @notice update the address of vault factory
      * @dev only admin can call
-     * @param _vaultFactory address of vault factory
+     * @param _vaultFactoryAddress address of vault factory
      */
-    function updateVaultAddress(address _vaultFactory) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
-        Address.checkNonZeroAddress(_vaultFactory);
-        vaultFactory = _vaultFactory;
-        emit UpdatedVaultFactory(_vaultFactory);
+    function updateVaultFactoryAddress(address _vaultFactoryAddress)
+        external
+        override
+        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
+    {
+        Address.checkNonZeroAddress(_vaultFactoryAddress);
+        vaultFactoryAddress = _vaultFactoryAddress;
+        emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
     /**
@@ -513,15 +517,21 @@ contract PermissionedNodeRegistry is
         uint256 _operatorId
     ) internal {
         uint256 totalKeys = this.getOperatorTotalKeys(_operatorId);
-        address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(poolId, _operatorId, totalKeys);
-        bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(withdrawVault);
+        address withdrawVault = IVaultFactory(vaultFactoryAddress).computeWithdrawVaultAddress(
+            poolId,
+            _operatorId,
+            totalKeys
+        );
+        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+            withdrawVault
+        );
         _validateKeys(_pubKey, withdrawCredential, _signature, _depositDataRoot);
-        IVaultFactory(vaultFactory).deployWithdrawVault(poolId, _operatorId, totalKeys);
+        IVaultFactory(vaultFactoryAddress).deployWithdrawVault(poolId, _operatorId, totalKeys);
         validatorRegistry[nextValidatorId] = Validator(
             ValidatorStatus.INITIALIZED,
             _pubKey,
             _signature,
-            withdrawCredential,
+            withdrawVault,
             _operatorId
         );
         validatorIdByPubKey[_pubKey] = nextValidatorId;

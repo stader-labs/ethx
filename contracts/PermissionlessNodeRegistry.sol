@@ -22,7 +22,7 @@ contract PermissionlessNodeRegistry is
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
 
     address public poolFactoryAddress;
-    address public override vaultFactory;
+    address public override vaultFactoryAddress;
     address public override sdCollateral;
     address public override elRewardSocializePool;
 
@@ -58,7 +58,7 @@ contract PermissionlessNodeRegistry is
         ValidatorStatus status; // state of validator
         bytes pubKey; //public Key of the validator
         bytes signature; //signature for deposit to Ethereum Deposit contract
-        bytes withdrawalAddress; //eth1 withdrawal address for validator
+        address withdrawVaultAddress; //eth1 withdrawal address for validator
         uint256 operatorId; // stader network assigned Id
         uint256 bondEth; // amount of bond eth in gwei
         uint256 penaltyCount; // penalty for MEV theft or any other wrong doing
@@ -78,16 +78,16 @@ contract PermissionlessNodeRegistry is
      */
     function initialize(
         address _adminOwner,
-        address _vaultFactory,
+        address _vaultFactoryAddress,
         address _elRewardSocializePool,
         address _poolFactoryAddress
     ) external initializer {
-        Address.checkNonZeroAddress(_vaultFactory);
+        Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_elRewardSocializePool);
         Address.checkNonZeroAddress(_poolFactoryAddress);
         __AccessControl_init_unchained();
         __Pausable_init();
-        vaultFactory = _vaultFactory;
+        vaultFactoryAddress = _vaultFactoryAddress;
         elRewardSocializePool = _elRewardSocializePool;
         poolFactoryAddress = _poolFactoryAddress;
         nextOperatorId = 1;
@@ -116,7 +116,7 @@ contract PermissionlessNodeRegistry is
 
         mevFeeRecipientAddress = elRewardSocializePool;
         if (!_optInForMevSocialize) {
-            mevFeeRecipientAddress = IVaultFactory(vaultFactory).deployNodeELRewardVault(
+            mevFeeRecipientAddress = IVaultFactory(vaultFactoryAddress).deployNodeELRewardVault(
                 poolId,
                 nextOperatorId,
                 payable(_operatorRewardAddress)
@@ -308,12 +308,16 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice update the address of vault factory
      * @dev only admin can call
-     * @param _vaultFactory address of vault factory
+     * @param _vaultFactoryAddress address of vault factory
      */
-    function updateVaultAddress(address _vaultFactory) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
-        Address.checkNonZeroAddress(_vaultFactory);
-        vaultFactory = _vaultFactory;
-        emit UpdatedVaultFactory(_vaultFactory);
+    function updateVaultFactoryAddress(address _vaultFactoryAddress)
+        external
+        override
+        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
+    {
+        Address.checkNonZeroAddress(_vaultFactoryAddress);
+        vaultFactoryAddress = _vaultFactoryAddress;
+        emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
     /**
@@ -334,9 +338,9 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice computes total keys for permissioned pool
+     * @notice computes total keys for permissionless pool
      * @dev compute by looping over the total initialized, queued, active and withdrawn keys
-     * @return _validatorCount total validator keys on permissioned pool
+     * @return _validatorCount total validator keys on permissionless pool
      */
     function getTotalValidatorCount() public view override returns (uint256 _validatorCount) {
         return
@@ -347,36 +351,32 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice computes total initialized keys for permissioned pool
-     * @dev compute by looping over all the initialized keys of all operators
-     * @return _validatorCount initialized validator count
+     * @notice return total initialized keys for permissionless pool
+     * @return _validatorCount total initialized validator count
      */
     function getTotalInitializedValidatorCount() public view override returns (uint256 _validatorCount) {
         return totalInitializedValidatorCount;
     }
 
     /**
-     * @notice computes total queued keys for permissioned pool
-     * @dev compute by looping over all the queued keys of all operators
-     * @return _validatorCount queued validator count
+     * @notice return total queued keys for permissionless pool
+     * @return _validatorCount total queued validator count
      */
     function getTotalQueuedValidatorCount() public view override returns (uint256 _validatorCount) {
         return totalQueuedValidatorCount;
     }
 
     /**
-     * @notice computes total active keys for permissioned pool
-     * @dev compute by looping over all the active keys of all operators
-     * @return _validatorCount active validator count
+     * @notice return total active keys for permissionless pool
+     * @return _validatorCount total active validator count
      */
     function getTotalActiveValidatorCount() public view override returns (uint256 _validatorCount) {
         return totalActiveValidatorCount;
     }
 
     /**
-     * @notice computes total withdrawn keys for permissioned pool
-     * @dev compute by looping over all the withdrawn keys of all operators
-     * @return _validatorCount withdrawn validator count
+     * @notice return total withdrawn keys for permissionless pool
+     * @return _validatorCount total withdrawn validator count
      */
     function getTotalWithdrawnValidatorCount() public view override returns (uint256 _validatorCount) {
         return totalWithdrawnValidatorCount;
@@ -423,15 +423,21 @@ contract PermissionlessNodeRegistry is
         uint256 _operatorId
     ) internal {
         uint256 totalKeys = this.getOperatorTotalKeys(_operatorId);
-        address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(poolId, _operatorId, totalKeys);
-        bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(withdrawVault);
+        address withdrawVault = IVaultFactory(vaultFactoryAddress).computeWithdrawVaultAddress(
+            poolId,
+            _operatorId,
+            totalKeys
+        );
+        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+            withdrawVault
+        );
         _validateKeys(_pubKey, withdrawCredential, _signature, _depositDataRoot);
-        IVaultFactory(vaultFactory).deployWithdrawVault(poolId, _operatorId, totalKeys);
+        IVaultFactory(vaultFactoryAddress).deployWithdrawVault(poolId, _operatorId, totalKeys);
         validatorRegistry[nextValidatorId] = Validator(
             ValidatorStatus.INITIALIZED,
             _pubKey,
             _signature,
-            withdrawCredential,
+            withdrawVault,
             _operatorId,
             msg.value,
             0

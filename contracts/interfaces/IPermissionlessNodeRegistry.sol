@@ -26,7 +26,7 @@ interface IPermissionlessNodeRegistry {
     event ReducedActiveValidatorsCount(uint256 _operatorId, uint256 _activeValidatorCount);
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
     event UpdatedPoolFactoryAddress(address _poolFactoryAddress);
-    event UpdatedVaultFactory(address _vaultFactory);
+    event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
 
@@ -42,7 +42,7 @@ interface IPermissionlessNodeRegistry {
 
     function poolFactoryAddress() external view returns (address);
 
-    function vaultFactory() external view returns (address);
+    function vaultFactoryAddress() external view returns (address);
 
     function sdCollateral() external view returns (address);
 
@@ -67,7 +67,7 @@ interface IPermissionlessNodeRegistry {
             ValidatorStatus status,
             bytes calldata pubKey,
             bytes calldata signature,
-            bytes calldata withdrawalAddress,
+            address withdrawVaultAddress,
             uint256 operatorId,
             uint256 bondEth,
             uint256 penaltyCount
@@ -125,7 +125,7 @@ interface IPermissionlessNodeRegistry {
 
     function updatePoolFactoryAddress(address _staderPoolSelector) external;
 
-    function updateVaultAddress(address _vaultFactory) external;
+    function updateVaultFactoryAddress(address _vaultFactoryAddress) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 

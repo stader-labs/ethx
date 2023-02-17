@@ -4,9 +4,10 @@ import './library/Address.sol';
 import './library/BytesLib.sol';
 import './library/ValidatorStatus.sol';
 
+import './interfaces/IVaultFactory.sol';
+import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IDepositContract.sol';
-import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
@@ -18,9 +19,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     using Math for uint256;
 
     uint8 public constant poolId = 1;
-    address public staderStakePoolManager;
-    address public ethValidatorDeposit;
     address public nodeRegistryAddress;
+    address public ethValidatorDeposit;
+    address public vaultFactoryAddress;
+    address public staderStakePoolManager;
 
     bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
 
@@ -31,19 +33,22 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     function initialize(
         address _adminOwner,
+        address _nodeRegistryAddress,
         address _ethValidatorDeposit,
-        address _staderStakePoolManger,
-        address _nodeRegistryAddress
+        address _vaultFactoryAddress,
+        address _staderStakePoolManager
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
-        Address.checkNonZeroAddress(_ethValidatorDeposit);
-        Address.checkNonZeroAddress(_staderStakePoolManger);
         Address.checkNonZeroAddress(_nodeRegistryAddress);
+        Address.checkNonZeroAddress(_ethValidatorDeposit);
+        Address.checkNonZeroAddress(_vaultFactoryAddress);
+        Address.checkNonZeroAddress(_staderStakePoolManager);
         __Pausable_init();
         __AccessControl_init_unchained();
-        ethValidatorDeposit = _ethValidatorDeposit;
-        staderStakePoolManager = _staderStakePoolManger;
         nodeRegistryAddress = _nodeRegistryAddress;
+        ethValidatorDeposit = _ethValidatorDeposit;
+        vaultFactoryAddress = _vaultFactoryAddress;
+        staderStakePoolManager = _staderStakePoolManager;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
@@ -71,16 +76,20 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 ,
                 bytes memory pubKey,
                 bytes memory signature,
-                bytes memory withdrawalAddress,
+                address withdrawVaultAddress,
                 ,
                 ,
 
             ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
 
-            bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawalAddress);
+            bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+                withdrawVaultAddress
+            );
+
+            bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawCredential);
             IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
                 pubKey,
-                withdrawalAddress,
+                withdrawCredential,
                 signature,
                 depositDataRoot
             );
@@ -100,6 +109,45 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     /**
+     * @notice return total keys for permissionless pool
+     */
+    function getTotalValidatorCount() external view override returns (uint256) {
+        return
+            this.getTotalInitializedValidatorCount() +
+            this.getTotalActiveValidatorCount() +
+            this.getTotalQueuedValidatorCount() +
+            this.getTotalWithdrawnValidatorCount();
+    }
+
+    /**
+     * @notice return total initialized keys for permissionless pool
+     */
+    function getTotalInitializedValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalInitializedValidatorCount();
+    }
+
+    /**
+     * @notice return total queued keys for permissionless pool
+     */
+    function getTotalQueuedValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalQueuedValidatorCount();
+    }
+
+    /**
+     * @notice return total active keys for permissionless pool
+     */
+    function getTotalActiveValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalActiveValidatorCount();
+    }
+
+    /**
+     * @notice return total withdrawn keys for permissionless pool
+     */
+    function getTotalWithdrawnValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalWithdrawnValidatorCount();
+    }
+
+    /**
      * @notice update the stader stake pool manager address
      * @dev only admin can call
      * @param _staderStakePoolManager address of stader stake pool manager
@@ -114,28 +162,34 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
     }
 
-    function getTotalValidatorCount() external view override returns (uint256) {
-        return
-            this.getTotalInitializedValidatorCount() +
-            this.getTotalActiveValidatorCount() +
-            this.getTotalQueuedValidatorCount() +
-            this.getTotalWithdrawnValidatorCount();
+    /**
+     * @notice update the node registry address
+     * @dev only admin can call
+     * @param _nodeRegistryAddress address of node registry
+     */
+    function updateNodeRegistryAddress(address _nodeRegistryAddress)
+        external
+        override
+        onlyRole(PERMISSIONLESS_POOL_ADMIN)
+    {
+        Address.checkNonZeroAddress(_nodeRegistryAddress);
+        nodeRegistryAddress = _nodeRegistryAddress;
+        emit UpdatedNodeRegistryAddress(_nodeRegistryAddress);
     }
 
-    function getTotalInitializedValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalInitializedValidatorCount();
-    }
-
-    function getTotalActiveValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalActiveValidatorCount();
-    }
-
-    function getTotalQueuedValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalQueuedValidatorCount();
-    }
-
-    function getTotalWithdrawnValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalWithdrawnValidatorCount();
+    /**
+     * @notice update the vault factory address
+     * @dev only admin can call
+     * @param _vaultFactoryAddress address of vault factory
+     */
+    function updateVaultFactoryAddress(address _vaultFactoryAddress)
+        external
+        override
+        onlyRole(PERMISSIONLESS_POOL_ADMIN)
+    {
+        Address.checkNonZeroAddress(_vaultFactoryAddress);
+        vaultFactoryAddress = _vaultFactoryAddress;
+        emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
     /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
