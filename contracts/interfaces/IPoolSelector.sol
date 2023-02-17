@@ -6,6 +6,8 @@ interface IPoolSelector {
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
     error InvalidSumOfPoolTargets();
+    error NotEnoughInitializedValidators();
+    error InputBatchLimitIsIdenticalToCurrent();
 
     // Getters
     function poolIdForExcessSupply() external view returns (uint8); // returns the ID of the pool with excess supply

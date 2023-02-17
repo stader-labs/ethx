@@ -5,8 +5,13 @@ async function errorDecode() {
   const stakingContractJson = require('../artifacts/contracts/StaderValidatorRegistry.sol/StaderValidatorRegistry.json')
   let interfaces = new Interface(stakingContractJson.abi)
 
-  let error_msg = interfaces.getError('0xe92c469f')
-  console.log('error is ', error_msg.name)
+async function errorDecode(){
+
+    const stakingContractJson = require('../artifacts/contracts/PermissionedPool.sol/PermissionedPool.json');
+    let interfaces = new Interface(stakingContractJson.abi)
+
+    let error_msg = interfaces.getError("0x481d7ab2");
+    console.log("error is ", error_msg.name);
 }
 
 errorDecode()

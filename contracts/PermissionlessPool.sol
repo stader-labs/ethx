@@ -21,7 +21,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     address public poolHelper;
     address public staderStakePoolManager;
     address public ethValidatorDeposit;
-    uint256 public depositQueueStartIndex;
     address public nodeRegistryAddress;
 
     bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
@@ -64,9 +63,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         requiredValidators = Math.min(queuedValidatorKeys, requiredValidators);
         if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
 
+        uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistry).nextQueuedValidatorIndex();
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(requiredValidators * NODE_BOND);
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
-            uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queueToDeposit(i);
+            uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
             Validator memory validator = INodeRegistry(nodeRegistryAddress).getValidator(validatorId);
 
             // node operator might withdraw validator which is in queue
@@ -97,7 +97,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             emit ValidatorRegisteredOnBeacon(validatorId, validator.pubKey);
         }
 
-        depositQueueStartIndex += requiredValidators;
+        IPermissionlessNodeRegistry(nodeRegistry).updateNextQueuedValidatorIndex(requiredValidators);
         if (address(this).balance > 0) {
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(2);
         }

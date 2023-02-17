@@ -1,12 +1,21 @@
 import { ethers } from 'hardhat'
 
 async function main() {
-  const validatorRegistry = process.env.VALIDATOR_REGISTRY ?? ''
-  const validatorRegistryFactory = await ethers.getContractFactory('PermissionLessValidatorRegistry')
+
+  const validatorRegistry = process.env.PERMISSIONLESS_NODE_REGISTRY ?? ''
+  const validatorRegistryFactory = await ethers.getContractFactory('PermissionlessNodeRegistry')
   const validatorRegistryInstance = await validatorRegistryFactory.attach(validatorRegistry)
-  // const porAddressList = await validatorRegistryInstance.addValidatorKeys('0x80b6fc1815407e009a48f02a1dcae0934927b86855ddccb91c2b5cf20d658256986e4996e5d34ef40deba358d7b94162',
-  // '0x873ffefed0334f07e7bd4356e8cb01902eddc80600a2da51feb66c3359491f470df4b603ba9822809b112cd66efe2123032d80ffdbb448da137952b4f235f8635e6bf31313d1320640a2420a2a43d615564b2b57c73da17178f64c2b5c3f7b39',
-  // '0x0becaf15c2f7d2d7e8247eeb88e31a3b41636d2bce9c7880a5b3d08ac655c443',{ value: ethers.utils.parseEther('4') })
-  console.log('added keys')
+
+  //   const porAddressList = await validatorRegistryInstance.addValidatorKeys(
+  // ['0xa5dfd1c85461531c3bc9dc3fe21becd6f90f39bc550cfef143a3d3b74b6f548961138576af46ddc30c7fcbd0336850be'],
+  // ['0x90ad43c8aff4d8ef1579cae8c43b9832e417b8aff0d037775f0fcf803af48cbcb741d1a461aaaeec52cdb2a56be0746903d7240ff03d2c7947a5fe90e33de80641f0bf4b1f6a1a0b9a5b151e817506c0ae4d7a28702d053bb3533defbde6721f'],
+  // ['0xeed8d5ea163c423019d652b08abdd27caa55c9b69f043851e5868092b9100532'])
+
+  const porAddressList = await validatorRegistryInstance.addValidatorKeys(
+  ['0x8d5465707bf0a1cda82e6c275044bd4992cae8b971f284ae934396f98d8aaa500cf06c808891fb66ce55478b52cb5aca','0x97de06821f635d9d234e311090bbad8e00512c85c6b57cae188ccfd633a67970849c2f461282639c18a0675a704244a3','0xaff4a319f9ea46181a60b57bb601fcfa428a2aecdfeade93f2d063d17432dd39de84e51c1525ee93176e590ef2c22944'],
+  ['0x974d7a68b37e346540e4030db6b286060d4b4565eda40bd05a0afa94e6e656e23fb4d0d67e41791dc5fe9b7dbeee5a27050f0c9a9e295fdb59323935ffd5d8c0624f76c937e17b0b0c7ce40a9c6414fef7de1dbfb1884d475e9a4ab2c2a6d726','0x858618f6575e6b660e7eab3bc520ad2899efdce972772c5ef9e5e4930bb54ce0d330ad5a7bd08392a15fbe60716b436c08e6907b406844494c9b2787758cf677049f31377dde95eebf92389b083fd16be79b1e4c7516ae0d921e79efa949096d','0xad0d57a75819ff76aa069cafd66232c467a655daa59f37e618e26301cd371489a122a2f22ab15ed0a291d733cc4af43419e8ee31f86cf83274490c2f3465d0a241e8ec70334b0832e8778ac3db9e733281122245f202fb2e614f89c2926675de'],
+  ['0x94aa9d7a781b096fecd7bc9ab01f3a36b2d2fdb53b6478e594d73494092290d9','0xbb9ce776d0558b49a8b13402919316117af596276a64736db04203f3a77de01e','0xd1f7d641882c68db57aad109d7b414b501129cd9be6e0e3aba5932af3d94a094'],{ value: ethers.utils.parseEther('12') })
+  
+  console.log('added keys');
 }
 main()
