@@ -30,9 +30,11 @@ interface IPermissionedNodeRegistry {
     event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
 
-    function poolID() external view returns (uint8);
+    function poolId() external view returns (uint8);
 
     function vaultFactory() external view returns (address);
+
+    function sdCollateral() external view returns (address);
 
     function elRewardSocializePool() external view returns (address);
 

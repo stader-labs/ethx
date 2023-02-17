@@ -6,6 +6,7 @@ import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolSelector.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
@@ -22,6 +23,7 @@ contract PermissionlessNodeRegistry is
 
     address public poolFactoryAddress;
     address public override vaultFactory;
+    address public override sdCollateral;
     address public override elRewardSocializePool;
 
     uint256 public totalInitializedValidatorCount;
@@ -67,7 +69,8 @@ contract PermissionlessNodeRegistry is
         string operatorName; // name of the operator
         address payable operatorRewardAddress; //Eth1 address of node for reward
         address operatorAddress; //address of operator to interact with stader
-        uint256 totalKeys; //total keys added by a permissionless NO
+        uint256 totalKeys; //total keys added by a permissionless Node Operator
+        uint256 withdrawnKeys; //count of withdrawn keys
     }
 
     /**
@@ -144,7 +147,12 @@ contract PermissionlessNodeRegistry is
         if (operatorId == 0) revert OperatorNotOnBoarded();
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
-        //TODO call SDlocker to check enough SD
+        uint256 totalKeysExceptWithdrawn = operatorStructById[operatorId].totalKeys -
+            operatorStructById[operatorId].withdrawnKeys;
+
+        //check if operator has enough SD collateral for adding `keyCount` keys
+        ISDCollateral(sdCollateral).hasEnoughXSDCollateral(msg.sender, poolId, totalKeysExceptWithdrawn + keyCount);
+
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
@@ -221,12 +229,18 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice increase the pool total withdrawn validator count
+     * @notice increase the withdrawn keys count of node operator and update totalWithdrawn keys
      * @dev only accept call from stader network contract
-     * @param _count count of keys to increase value of `totalWithdrawnValidatorCount`
+     * @param _operatorId operator ID of the node
+     * @param _count count of keys to increase value of operator withdrawn keys and `totalWithdrawnValidatorCount`
      */
     //TODO decide on the role
-    function increaseTotalWithdrawValidatorsCount(uint256 _count) external override onlyRole(STADER_NETWORK_POOL) {
+    function increaseTotalWithdrawValidatorsCount(uint256 _operatorId, uint256 _count)
+        external
+        override
+        onlyRole(STADER_NETWORK_POOL)
+    {
+        operatorStructById[_operatorId].withdrawnKeys += _count;
         totalWithdrawnValidatorCount += _count;
     }
 
@@ -394,6 +408,7 @@ contract PermissionlessNodeRegistry is
             _operatorName,
             _operatorRewardAddress,
             msg.sender,
+            0,
             0
         );
         operatorIDByAddress[msg.sender] = nextOperatorId;

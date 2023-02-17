@@ -4,6 +4,7 @@ import './library/Address.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -19,10 +20,11 @@ contract PermissionedNodeRegistry is
 {
     using Math for uint256;
 
-    uint8 public constant override poolID = 2;
+    uint8 public constant override poolId = 2;
     uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
 
     address public override vaultFactory;
+    address public override sdCollateral;
     address public override elRewardSocializePool;
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
@@ -143,12 +145,14 @@ contract PermissionedNodeRegistry is
         uint256 keyCount = _validatorPubKey.length;
         if (keyCount == 0) revert NoKeysProvided();
 
-        if (
-            (this.getOperatorTotalKeys(operatorId) -
-                operatorStructById[operatorId].withdrawnValidatorCount +
-                keyCount) > KEY_DEPOSIT_LIMIT
-        ) revert maxKeyLimitReached();
-        //TODO call SDlocker to check enough SD
+        uint256 totalKeysExceptWithdrawn = this.getOperatorTotalKeys(operatorId) -
+            operatorStructById[operatorId].withdrawnValidatorCount;
+
+        if ((totalKeysExceptWithdrawn + keyCount) > KEY_DEPOSIT_LIMIT) revert maxKeyLimitReached();
+
+        //check if operator has enough SD collateral for adding `keyCount` keys
+        ISDCollateral(sdCollateral).hasEnoughXSDCollateral(msg.sender, poolId, totalKeysExceptWithdrawn + keyCount);
+
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
@@ -509,10 +513,10 @@ contract PermissionedNodeRegistry is
         uint256 _operatorId
     ) internal {
         uint256 totalKeys = this.getOperatorTotalKeys(_operatorId);
-        address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(poolID, _operatorId, totalKeys);
+        address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(poolId, _operatorId, totalKeys);
         bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(withdrawVault);
         _validateKeys(_pubKey, withdrawCredential, _signature, _depositDataRoot);
-        IVaultFactory(vaultFactory).deployWithdrawVault(poolID, _operatorId, totalKeys);
+        IVaultFactory(vaultFactory).deployWithdrawVault(poolId, _operatorId, totalKeys);
         validatorRegistry[nextValidatorId] = Validator(
             ValidatorStatus.INITIALIZED,
             _pubKey,

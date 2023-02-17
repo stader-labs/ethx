@@ -44,6 +44,8 @@ interface IPermissionlessNodeRegistry {
 
     function vaultFactory() external view returns (address);
 
+    function sdCollateral() external view returns (address);
+
     function elRewardSocializePool() external view returns (address);
 
     function nextOperatorId() external view returns (uint256);
@@ -83,7 +85,8 @@ interface IPermissionlessNodeRegistry {
             string calldata operatorName,
             address payable operatorRewardAddress,
             address operatorAddress,
-            uint256 totalKeys
+            uint256 totalKeys,
+            uint256 withdrawnKeys
         );
 
     function operatorIDByAddress(address) external view returns (uint256);
@@ -110,7 +113,7 @@ interface IPermissionlessNodeRegistry {
 
     function reduceTotalActiveValidatorsCount(uint256 _count) external;
 
-    function increaseTotalWithdrawValidatorsCount(uint256 _count) external;
+    function increaseTotalWithdrawValidatorsCount(uint256 _operatorId, uint256 _count) external;
 
     function updateNextQueuedValidatorIndex(uint256 _count) external;
 

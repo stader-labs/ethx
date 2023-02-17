@@ -7,7 +7,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
     bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
-    address public nodeRegistry;
     address payable public staderPoolManager;
     address payable public nodeWithdrawManager;
     address payable public staderTreasury;
@@ -37,13 +36,9 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
         uint256 userShare = calculateUserShare(_userDeposit, _withdrawStatus);
         uint256 staderFeeShare = calculateStaderFee(_userDeposit, _withdrawStatus);
         uint256 nodeShare = calculateNodeShare(validatorDeposit - _userDeposit, _userDeposit, _withdrawStatus);
-        (, , address operatorRewardAddress, , ) = IPermissionlessNodeRegistry(nodeRegistry).operatorStructById(
-            _operatorID
-        );
         IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(staderTreasury, staderFeeShare);
-        if (_withdrawStatus) IStaderNodeWithdrawManager(nodeWithdrawManager).processNodeWithdraw(_pubKey);
-        else _sendValue(payable(operatorRewardAddress), nodeShare);
+        //TODO transfer node commission
     }
 
     function calculateUserShare(uint256 _userDeposit, bool _withdrawStatus) public view returns (uint256) {
