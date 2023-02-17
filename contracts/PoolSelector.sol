@@ -61,7 +61,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         onlyRole(STADER_NETWORK_POOL)
         returns (uint256[] memory poolWiseValidatorsToDeposit)
     {
-        poolWiseValidatorsToDeposit = new uint256[](poolCount + 1);
+        poolWiseValidatorsToDeposit = new uint256[](IPoolFactory(poolFactoryAddress).poolCount() + 1);
 
         uint256 depositedETh;
         for (uint8 i = 1; i <= IPoolFactory(poolFactoryAddress).poolCount(); i++) {
@@ -72,7 +72,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         // new validators to register on beacon chain with `_pooledEth` taking `BATCH_LIMIT` into consideration
         uint256 newValidatorsToDeposit = Math.min(BATCH_LIMIT, _pooledEth / DEPOSIT_SIZE);
         // `poolCapacity` array start with index 1
-        uint256[] memory poolCapacity = new uint256[](poolCount + 1);
+        uint256[] memory poolCapacity = new uint256[](IPoolFactory(poolFactoryAddress).poolCount() + 1);
 
         uint256 validatorSpunCount;
         for (
@@ -95,7 +95,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         // and update the starting index of pool for next sequence after every iteration
         if (validatorSpunCount < newValidatorsToDeposit) {
             uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
-            uint8[] memory poolQueue = new uint8[](poolCount);
+            uint8[] memory poolQueue = new uint8[](IPoolFactory(poolFactoryAddress).poolCount());
             uint8 counter;
             for (uint8 i = poolIdForExcessSupply; i <= IPoolFactory(poolFactoryAddress).poolCount(); i++) {
                 poolQueue[counter++] = i;
