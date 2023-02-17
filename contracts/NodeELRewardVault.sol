@@ -9,12 +9,18 @@ contract NodeELRewardVault is Initializable, AccessControlUpgradeable {
 
     event ETHReceived(uint256 amout);
 
-    function initialize(address payable _nodeRecipient, address payable _staderTreasury) external initializer {
+    function initialize(
+        address _owner,
+        address payable _nodeRecipient,
+        address payable _staderTreasury
+    ) external initializer {
+        Address.checkNonZeroAddress(_owner);
         Address.checkNonZeroAddress(_nodeRecipient);
         Address.checkNonZeroAddress(_staderTreasury);
         __AccessControl_init_unchained();
         staderTreasury = _staderTreasury;
         nodeRecipient = _nodeRecipient;
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
     /**

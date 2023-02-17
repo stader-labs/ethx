@@ -6,9 +6,8 @@ import './library/ValidatorStatus.sol';
 
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IDepositContract.sol';
-import './interfaces/IPoolSelector.sol';
-import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -18,10 +17,9 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     using Math for uint256;
 
-    address public poolHelper;
+    uint8 public constant poolId = 1;
     address public staderStakePoolManager;
     address public ethValidatorDeposit;
-    uint256 public depositQueueStartIndex;
     address public nodeRegistryAddress;
 
     bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
@@ -59,7 +57,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function registerValidatorsOnBeacon() external payable override {
         uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - NODE_BOND);
-        uint256 queuedValidatorKeys = INodeRegistry(nodeRegistryAddress).getQueuedValidatorCount();
+        uint256 queuedValidatorKeys = INodeRegistry(nodeRegistryAddress).getTotalQueuedValidatorCount();
 
         requiredValidators = Math.min(queuedValidatorKeys, requiredValidators);
         if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
@@ -70,18 +68,15 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
             (
-                ValidatorStatus status,
                 ,
                 bytes memory pubKey,
                 bytes memory signature,
                 bytes memory withdrawalAddress,
-                uint256 operatorId,
+                ,
                 ,
 
             ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
 
-            // node operator might withdraw validator which is in queue
-            if (status != ValidatorStatus.PRE_DEPOSIT) continue;
             bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawalAddress);
             IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
                 pubKey,
@@ -90,30 +85,18 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 depositDataRoot
             );
 
-            address nodeOperator = IPermissionlessNodeRegistry(nodeRegistryAddress).operatorAddressByOperatorId(operatorId);
-
             IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
-            IPermissionlessNodeRegistry(nodeRegistryAddress).reduceQueuedValidatorsCount(nodeOperator);
-            IPermissionlessNodeRegistry(nodeRegistryAddress).incrementActiveValidatorsCount(nodeOperator);
-
             emit ValidatorRegisteredOnBeacon(validatorId, pubKey);
         }
 
+        IPermissionlessNodeRegistry(nodeRegistryAddress).reduceTotalQueuedValidatorsCount(requiredValidators);
+        IPermissionlessNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorsCount(requiredValidators);
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(requiredValidators);
         if (address(this).balance > 0) {
-            IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(1);
+            IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
+                poolId
+            );
         }
-    }
-
-    /**
-     * @notice update the address of pool Helper
-     * @dev only admin can call
-     * @param _poolSelector address of pool helper
-     */
-    function updatePoolSelector(address _poolSelector) external override onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        Address.checkNonZeroAddress(_poolSelector);
-        poolHelper = _poolSelector;
-        emit UpdatedPoolHelper(poolHelper);
     }
 
     /**
@@ -123,6 +106,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function updateStaderStakePoolManager(address _staderStakePoolManager)
         external
+        override
         onlyRole(PERMISSIONLESS_POOL_ADMIN)
     {
         Address.checkNonZeroAddress(_staderStakePoolManager);
@@ -130,28 +114,28 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
     }
 
-    function getTotalValidatorCount() external view returns (uint256) {
+    function getTotalValidatorCount() external view override returns (uint256) {
         return
-            this.getInitializedValidatorCount() +
-            this.getActiveValidatorCount() +
-            this.getQueuedValidatorCount() +
-            this.getWithdrawnValidatorCount();
+            this.getTotalInitializedValidatorCount() +
+            this.getTotalActiveValidatorCount() +
+            this.getTotalQueuedValidatorCount() +
+            this.getTotalWithdrawnValidatorCount();
     }
 
-    function getInitializedValidatorCount() external view returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getInitializedValidatorCount();
+    function getTotalInitializedValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalInitializedValidatorCount();
     }
 
-    function getActiveValidatorCount() external view returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getActiveValidatorCount();
+    function getTotalActiveValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalActiveValidatorCount();
     }
 
-    function getQueuedValidatorCount() external view returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getQueuedValidatorCount();
+    function getTotalQueuedValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalQueuedValidatorCount();
     }
 
-    function getWithdrawnValidatorCount() external view returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getWithdrawnValidatorCount();
+    function getTotalWithdrawnValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalWithdrawnValidatorCount();
     }
 
     /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential

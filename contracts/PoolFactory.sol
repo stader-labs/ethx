@@ -38,7 +38,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
      * @param _newPoolAddress The updated address of the pool.
      */
     function updatePoolAddress(uint8 _poolId, address _newPoolAddress) external override validPoolId(_poolId) {
-         Address.checkNonZeroAddress(_newPoolAddress);
+        Address.checkNonZeroAddress(_newPoolAddress);
 
         pools[_poolId].poolAddress = _newPoolAddress;
 
@@ -56,7 +56,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     function getInitializedValidatorCount() external view override returns (uint256) {
         uint256 total;
         for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getInitializedValidatorCount();
+            total += IStaderPoolBase(pools[i].poolAddress).getTotalInitializedValidatorCount();
         }
         return total;
     }
@@ -64,7 +64,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     function getQueuedValidatorCount() external view override returns (uint256) {
         uint256 total;
         for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getQueuedValidatorCount();
+            total += IStaderPoolBase(pools[i].poolAddress).getTotalQueuedValidatorCount();
         }
         return total;
     }
@@ -72,7 +72,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     function getActiveValidatorCount() external view override returns (uint256) {
         uint256 total;
         for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getActiveValidatorCount();
+            total += IStaderPoolBase(pools[i].poolAddress).getTotalActiveValidatorCount();
         }
         return total;
     }
@@ -80,7 +80,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     function getWithdrawnValidatorCount() external view override returns (uint256) {
         uint256 total;
         for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getWithdrawnValidatorCount();
+            total += IStaderPoolBase(pools[i].poolAddress).getTotalWithdrawnValidatorCount();
         }
         return total;
     }
@@ -92,7 +92,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         validPoolId(_poolId)
         returns (uint256)
     {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getInitializedValidatorCount();
+        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalInitializedValidatorCount();
     }
 
     function getWithdrawnValidatorCountByPool(uint8 _poolId)
@@ -102,7 +102,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         validPoolId(_poolId)
         returns (uint256)
     {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getWithdrawnValidatorCount();
+        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalWithdrawnValidatorCount();
     }
 
     function getQueuedValidatorCountByPool(uint8 _poolId)
@@ -112,7 +112,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         validPoolId(_poolId)
         returns (uint256)
     {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getQueuedValidatorCount();
+        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalQueuedValidatorCount();
     }
 
     function getActiveValidatorCountByPool(uint8 _poolId)
@@ -122,7 +122,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         validPoolId(_poolId)
         returns (uint256)
     {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getActiveValidatorCount();
+        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalActiveValidatorCount();
     }
 
     // Modifiers

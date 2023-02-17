@@ -5,14 +5,13 @@ import '../library/ValidatorStatus.sol';
 interface IPermissionedNodeRegistry {
     error NoKeysProvided();
     error EmptyNameString();
+    error NOActiveOperator();
     error OperatorNotActive();
     error PubKeyDoesNotExist();
     error maxKeyLimitReached();
     error OperatorAlreadyActive();
     error OperatorNotOnBoarded();
     error NameCrossedMaxLength();
-    error NoQueuedValidatorLeft();
-    error NoActiveValidatorLeft();
     error InvalidSizeOfInputKeys();
     error OperatorAlreadyOnBoarded();
     error NotAPermissionedNodeOperator();
@@ -26,10 +25,12 @@ interface IPermissionedNodeRegistry {
     event IncrementedWithdrawnValidatorsCount(uint256 _operatorId, uint256 _withdrawnValidators);
     event UpdatedPoolHelper(address _poolSelector);
     event UpdatedVaultFactory(address _vaultFactory);
+    event UpdatedKeyDepositLimit(uint256 _keyDepositLimit);
     event UpdatedValidatorStatus(bytes indexed _pubKey, ValidatorStatus _status);
-    event UpdatedQueuedValidatorIndex(address indexed _nodeOperator, uint256 _nextQueuedValidatorIndex);
-    event UpdatedOperatorName(address indexed _nodeOperator, string _operatorName);
-    event UpdatedOperatorRewardAddress(address indexed _nodeOperator, address _rewardAddress);
+    event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
+    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+
+    function poolID() external view returns (uint8);
 
     function vaultFactory() external view returns (address);
 
@@ -38,8 +39,6 @@ interface IPermissionedNodeRegistry {
     function nextOperatorId() external view returns (uint256);
 
     function nextValidatorId() external view returns (uint256);
-
-    function totalActiveOperators() external view returns (uint256);
 
     function KEY_DEPOSIT_LIMIT() external view returns (uint256);
 
@@ -51,12 +50,15 @@ interface IPermissionedNodeRegistry {
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
 
+    function STADER_MANAGER_BOT() external view returns (bytes32);
+
+    function PERMISSIONED_POOL_CONTRACT() external view returns (bytes32);
+
     function validatorRegistry(uint256)
         external
         view
         returns (
             ValidatorStatus status,
-            bool isWithdrawal,
             bytes calldata pubKey,
             bytes calldata signature,
             bytes calldata withdrawalAddress,
@@ -65,14 +67,14 @@ interface IPermissionedNodeRegistry {
 
     function validatorIdByPubKey(bytes calldata _pubKey) external view returns (uint256);
 
-    function operatorRegistry(address)
+    function operatorStructById(uint256)
         external
         view
         returns (
             bool active,
             string calldata operatorName,
             address payable operatorRewardAddress,
-            uint256 operatorId,
+            address operatorAddress,
             uint256 nextQueuedValidatorIndex,
             uint256 initializedValidatorCount,
             uint256 queuedValidatorCount,
@@ -80,9 +82,9 @@ interface IPermissionedNodeRegistry {
             uint256 withdrawnValidatorCount
         );
 
-    function operatorAddressByOperatorId(uint256) external view returns (address);
+    function operatorIDByAddress(address) external view returns (uint256);
 
-    function permissionedNodeOperator(address) external view returns (bool);
+    function permissionList(address) external view returns (bool);
 
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external;
 
@@ -100,35 +102,33 @@ interface IPermissionedNodeRegistry {
 
     function markValidatorReadyToDeposit(bytes[] calldata _pubKeys) external;
 
-    function computeOperatorWiseValidatorsToDeposit(uint256 _validatorRequiredToDeposit)
+    function computeOperatorAllocationForDeposit(uint256 numValidators)
         external
-        returns (uint256[] memory operatorWiseValidatorsToDeposit);
+        returns (uint256[] memory selectedOperatorCapacity);
 
-    function activateNodeOperator(address _nodeOperator) external;
+    function activateNodeOperator(uint256 _operatorId) external;
 
-    function deactivateNodeOperator(address _nodeOperator) external;
+    function deactivateNodeOperator(uint256 _operatorId) external;
 
-    function reduceQueuedValidatorsCount(address _nodeOperator) external;
+    function reduceQueuedValidatorsCount(uint256 _operatorId, uint256 _count) external;
 
-    function incrementActiveValidatorsCount(address _nodeOperator) external;
+    function increaseActiveValidatorsCount(uint256 _operatorId, uint256 _count) external;
 
-    function reduceActiveValidatorsCount(address _nodeOperator) external;
+    function reduceActiveValidatorsCount(uint256 _operatorId, uint256 _count) external;
 
-    function incrementWithdrawValidatorsCount(address _nodeOperator) external;
+    function increaseWithdrawnValidatorsCount(uint256 _operatorId, uint256 _count) external;
 
-    function updateQueuedValidatorIndex(address _nodeOperator, uint256 _nextQueuedValidatorIndex) external;
+    function updateQueuedValidatorIndex(uint256 _operatorId, uint256 _nextQueuedValidatorIndex) external;
 
     function updateValidatorStatus(bytes calldata _pubKey, ValidatorStatus _status) external;
 
     function updateVaultAddress(address _vaultFactory) external;
 
-    function updateOperatorRewardAddress(address payable _rewardAddress) external;
+    function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 
-    function updateOperatorName(string calldata _operatorName) external;
+    function getTotalActiveOperatorCount() external view returns (uint256 _operatorCount);
 
-    function getOperatorCount() external view returns (uint256 _operatorCount);
-
-    function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     function pause() external;
 

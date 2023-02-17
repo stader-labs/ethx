@@ -28,12 +28,17 @@ interface IPermissionlessNodeRegistry {
     event UpdatedPoolFactoryAddress(address _poolFactoryAddress);
     event UpdatedVaultFactory(address _vaultFactory);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
-    event UpdatedOperatorName(address indexed _nodeOperator, string _operatorName);
-    event UpdatedOperatorRewardAddress(address indexed _nodeOperator, address _rewardAddress);
+    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
 
     function PERMISSIONLESS_NODE_REGISTRY_OWNER() external returns (bytes32);
 
     function STADER_NETWORK_POOL() external returns (bytes32);
+
+    function PERMISSIONLESS_POOL() external returns (bytes32);
+
+    function STADER_MANAGER_BOT() external returns (bytes32);
+
+    function poolId() external view returns (uint8);
 
     function poolFactoryAddress() external view returns (address);
 
@@ -58,7 +63,6 @@ interface IPermissionlessNodeRegistry {
         view
         returns (
             ValidatorStatus status,
-            bool isWithdrawal,
             bytes calldata pubKey,
             bytes calldata signature,
             bytes calldata withdrawalAddress,
@@ -71,21 +75,18 @@ interface IPermissionlessNodeRegistry {
 
     function queuedValidators(uint256) external view returns (uint256);
 
-    function operatorRegistry(address)
+    function operatorStructById(uint256)
         external
         view
         returns (
             bool optedForSocializingPool,
             string calldata operatorName,
             address payable operatorRewardAddress,
-            uint256 operatorId,
-            uint256 initializedValidatorCount,
-            uint256 queuedValidatorCount,
-            uint256 activeValidatorCount,
-            uint256 withdrawnValidatorCount
+            address operatorAddress,
+            uint256 totalKeys
         );
 
-    function operatorAddressByOperatorId(uint256) external view returns (address);
+    function operatorIDByAddress(address) external view returns (uint256);
 
     function onboardNodeOperator(
         bool _optInForMevSocialize,
@@ -103,19 +104,17 @@ interface IPermissionlessNodeRegistry {
 
     function deleteDepositedQueueValidator(uint256 _keyCount, uint256 _index) external;
 
-    function reduceQueuedValidatorsCount(address _nodeOperator) external;
+    function reduceTotalQueuedValidatorsCount(uint256 _count) external;
 
-    function incrementActiveValidatorsCount(address _nodeOperator) external;
+    function increaseTotalActiveValidatorsCount(uint256 _count) external;
 
-    function reduceActiveValidatorsCount(address _nodeOperator) external;
+    function reduceTotalActiveValidatorsCount(uint256 _count) external;
 
-    function incrementWithdrawValidatorsCount(address _nodeOperator) external;
+    function increaseTotalWithdrawValidatorsCount(uint256 _count) external;
 
     function updateNextQueuedValidatorIndex(uint256 _count) external;
 
-    function getOperatorCount() external view returns (uint256 _operatorCount);
-
-    function getTotalValidatorKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     function transferCollateralToPool(uint256 _amount) external;
 
@@ -125,9 +124,7 @@ interface IPermissionlessNodeRegistry {
 
     function updateVaultAddress(address _vaultFactory) external;
 
-    function updateOperatorRewardAddress(address payable _rewardAddress) external;
-
-    function updateOperatorName(string calldata _operatorName) external;
+    function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 
     function pause() external;
 
