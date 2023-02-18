@@ -1,9 +1,9 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolSelector.sol';
+import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
@@ -11,12 +11,18 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PermissionedNodeRegistry is
+    INodeRegistry,
     IPermissionedNodeRegistry,
     Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable
 {
     using Math for uint256;
+
+    uint256 public initializedValidatorCount;
+    uint256 public queuedValidatorCount;
+    uint256 public activeValidatorCount;
+    uint256 public withdrawnValidatorCount;
 
     address public override poolHelper;
     address public override vaultFactory;
@@ -33,15 +39,6 @@ contract PermissionedNodeRegistry is
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
     bytes32 public constant override STADER_NETWORK_POOL = keccak256('STADER_NETWORK_POOL');
 
-    struct Validator {
-        ValidatorStatus status; // state of validator
-        bool isWithdrawal; //status of validator readiness to withdraw
-        bytes pubKey; //public Key of the validator
-        bytes signature; //signature for deposit to Ethereum Deposit contract
-        bytes withdrawalAddress; //eth1 withdrawal address for validator
-        uint256 operatorId; // stader network assigned Id
-    }
-
     struct Operator {
         bool active; // operator status
         string operatorName; // name of the operator
@@ -54,7 +51,7 @@ contract PermissionedNodeRegistry is
         uint256 withdrawnValidatorCount; //withdrawn validator count
     }
 
-    mapping(uint256 => Validator) public override validatorRegistry;
+    mapping(uint256 => Validator) public validatorRegistry;
     mapping(bytes => uint256) public override validatorIdByPubKey;
 
     mapping(address => Operator) public override operatorRegistry;
@@ -147,7 +144,7 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_validatorPubKey[i], _validatorSignature[i], _depositDataRoot[i], operatorId);
         }
-        IPoolSelector(poolHelper).incrementInitializedValidatorKeys(2, keyCount);
+        initializedValidatorCount += keyCount;
     }
 
     /**
@@ -167,8 +164,8 @@ contract PermissionedNodeRegistry is
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubKeys[i], validatorId);
         }
-        IPoolSelector(poolHelper).reduceInitializedValidatorKeys(2, _pubKeys.length);
-        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, _pubKeys.length);
+        initializedValidatorCount -= _pubKeys.length;
+        queuedValidatorCount += _pubKeys.length;
     }
 
     /**
@@ -239,7 +236,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(_nodeOperator);
         if (operatorRegistry[_nodeOperator].active) revert OperatorAlreadyActive();
         operatorRegistry[_nodeOperator].active = true;
-        IPoolSelector(poolHelper).incrementQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
+        queuedValidatorCount += operatorRegistry[_nodeOperator].queuedValidatorCount;
         totalActiveOperators++;
     }
 
@@ -256,7 +253,7 @@ contract PermissionedNodeRegistry is
         onlyOnboardedOperator(_nodeOperator);
         if (!operatorRegistry[_nodeOperator].active) revert OperatorNotActive();
         operatorRegistry[_nodeOperator].active = false;
-        IPoolSelector(poolHelper).reduceQueuedValidatorKeys(2, operatorRegistry[_nodeOperator].queuedValidatorCount);
+        queuedValidatorCount -= operatorRegistry[_nodeOperator].queuedValidatorCount;
         totalActiveOperators--;
     }
 
@@ -412,11 +409,43 @@ contract PermissionedNodeRegistry is
         _unpause();
     }
 
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+        return validatorRegistry[validatorIdByPubKey[_pubkey]];
+    }
+
+    function getValidator(uint256 _validatorId) external view returns (Validator memory) {
+        return validatorRegistry[_validatorId];
+    }
+
     /**
      * @notice returns the total operator count
      */
     function getOperatorCount() public view override returns (uint256 _operatorCount) {
         _operatorCount = nextOperatorId - 1;
+    }
+
+    function getTotalValidatorCount() public view override returns (uint256 _validatorCount) {
+        return
+            this.getInitializedValidatorCount() +
+            this.getQueuedValidatorCount() +
+            this.getActiveValidatorCount() +
+            this.getWithdrawnValidatorCount();
+    }
+
+    function getInitializedValidatorCount() public view override returns (uint256 _validatorCount) {
+        return initializedValidatorCount;
+    }
+
+    function getQueuedValidatorCount() public view override returns (uint256 _validatorCount) {
+        return queuedValidatorCount;
+    }
+
+    function getActiveValidatorCount() public view override returns (uint256 _validatorCount) {
+        return activeValidatorCount;
+    }
+
+    function getWithdrawnValidatorCount() public view override returns (uint256 _validatorCount) {
+        return withdrawnValidatorCount;
     }
 
     /**
@@ -468,7 +497,8 @@ contract PermissionedNodeRegistry is
             _pubKey,
             _signature,
             withdrawCredential,
-            _operatorId
+            _operatorId,
+            0
         );
         validatorIdByPubKey[_pubKey] = nextValidatorId;
         operatorRegistry[msg.sender].initializedValidatorCount++;

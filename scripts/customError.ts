@@ -1,6 +1,9 @@
-import { Interface } from "@ethersproject/abi";
-const axios = require('axios').default;
+import { Interface } from '@ethersproject/abi'
+const axios = require('axios').default
 
+async function errorDecode() {
+  const stakingContractJson = require('../artifacts/contracts/StaderValidatorRegistry.sol/StaderValidatorRegistry.json')
+  let interfaces = new Interface(stakingContractJson.abi)
 
 async function errorDecode(){
 
@@ -9,7 +12,6 @@ async function errorDecode(){
 
     let error_msg = interfaces.getError("0x481d7ab2");
     console.log("error is ", error_msg.name);
-
 }
 
-errorDecode();
+errorDecode()

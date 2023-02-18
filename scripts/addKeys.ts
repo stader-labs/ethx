@@ -17,6 +17,5 @@ async function main() {
   ['0x94aa9d7a781b096fecd7bc9ab01f3a36b2d2fdb53b6478e594d73494092290d9','0xbb9ce776d0558b49a8b13402919316117af596276a64736db04203f3a77de01e','0xd1f7d641882c68db57aad109d7b414b501129cd9be6e0e3aba5932af3d94a094'],{ value: ethers.utils.parseEther('12') })
   
   console.log('added keys');
-
 }
 main()

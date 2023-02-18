@@ -1,6 +1,7 @@
 pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
+import './INodeRegistry.sol';
 
 interface IPermissionedNodeRegistry {
     error NoKeysProvided();
@@ -52,18 +53,6 @@ interface IPermissionedNodeRegistry {
     function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
 
     function STADER_NETWORK_POOL() external view returns (bytes32);
-
-    function validatorRegistry(uint256)
-        external
-        view
-        returns (
-            ValidatorStatus status,
-            bool isWithdrawal,
-            bytes calldata pubKey,
-            bytes calldata signature,
-            bytes calldata withdrawalAddress,
-            uint256 operatorId
-        );
 
     function validatorIdByPubKey(bytes calldata _pubKey) external view returns (uint256);
 

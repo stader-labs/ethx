@@ -17,8 +17,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     uint256 public override balanceUpdateFrequency;
     /// @inheritdoc IStaderOracle
-    uint256 public override protocolFee;
-    /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
@@ -38,8 +36,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         uint256 _block,
         uint256 _totalEth,
         uint256 _stakingEth,
-        uint256 _ethxSupply,
-        uint256 _protocolFee
+        uint256 _ethxSupply
     ) external override {
         require(isTrustedNode[msg.sender], 'Not a trusted node');
         // Check block
@@ -49,27 +46,24 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         require(_stakingEth <= _totalEth, 'Invalid network balances');
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, _protocolFee)
+            abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply)
         );
-        bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply, _protocolFee)
-        );
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply));
         // Check & update node submission status
         require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
         nodeSubmissionKeys[nodeSubmissionKey] = true;
         submissionCountKeys[submissionCountKey]++;
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
         // Emit balances submitted event
-        emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, _protocolFee, block.timestamp);
+        emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
         if (submissionCount >= trustedNodesCount / 2 + 1) {
             // Update balances
             lastBlockNumber = _block;
             totalETHBalance = _totalEth;
             totalStakingETHBalance = _stakingEth;
             totalETHXSupply = _ethxSupply;
-            protocolFee = _protocolFee;
             // Emit balances updated event
-            emit BalancesUpdated(_block, _totalEth, _stakingEth, _ethxSupply, _protocolFee, block.timestamp);
+            emit BalancesUpdated(_block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
         }
     }
 
