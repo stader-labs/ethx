@@ -15,6 +15,8 @@ struct Validator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
+    function getAllValidators() external view returns (Validator[] memory);
+
     function getValidator(bytes memory _pubkey) external view returns (Validator memory);
 
     function getValidator(uint256 _validatorId) external view returns (Validator memory);

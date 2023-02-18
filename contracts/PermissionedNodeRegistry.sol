@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
@@ -407,6 +408,16 @@ contract PermissionedNodeRegistry is
      */
     function unpause() external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         _unpause();
+    }
+
+    function getAllValidators() public view override returns (Validator[] memory) {
+        Validator[] memory validators = new Validator[](this.getTotalValidatorCount());
+        uint256 validatorCount = 0;
+        for (uint256 i = 1; i < nextValidatorId; i++) {
+            validators[validatorCount] = validatorRegistry[i];
+            validatorCount++;
+        }
+        return validators;
     }
 
     function getValidator(bytes memory _pubkey) external view returns (Validator memory) {

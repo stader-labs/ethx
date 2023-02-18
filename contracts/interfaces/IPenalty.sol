@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.16;
+
 // Interface for the Penalty contract
 interface IPenalty {
     function penaltyOracleAddress() external view returns (address);

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
 import './INodeRegistry.sol';
@@ -16,6 +17,8 @@ interface IStaderPoolBase {
     function updatePoolSelector(address _poolSelector) external;
 
     function updateStaderStakePoolManager(address _staderStakePoolManager) external;
+
+    function getAllValidators() external view returns (Validator[] memory);
 
     function getValidator(bytes memory _pubkey) external view returns (Validator memory);
 

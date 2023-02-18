@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
@@ -136,6 +137,10 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = _staderStakePoolManager;
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
+    }
+
+    function getAllValidators() public view override returns (Validator[] memory) {
+        return INodeRegistry(nodeRegistryAddress).getAllValidators();
     }
 
     function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
