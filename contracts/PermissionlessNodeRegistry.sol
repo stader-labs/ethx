@@ -48,11 +48,15 @@ contract PermissionlessNodeRegistry is
     bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY_OWNER =
         keccak256('PERMISSIONLESS_NODE_REGISTRY_OWNER');
 
+    // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
+    // mapping of validator public key and validator Id
     mapping(bytes => uint256) public override validatorIdBypubkey;
+    // Queued Validator queue
     mapping(uint256 => uint256) public override queuedValidators;
-
+    // mapping of operator Id and Operator struct
     mapping(uint256 => Operator) public override operatorStructById;
+    // mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
 
     struct Validator {
@@ -424,9 +428,11 @@ contract PermissionlessNodeRegistry is
             _signature,
             withdrawVault,
             _operatorId,
-            msg.value,
+            collateralETH,
             0
         );
+
+        //slither-disable-next-line arbitrary-send-eth
         IPermissionlessPool(permissionlessPool).preDepositOnBeacon{value: PRE_DEPOSIT}(
             _pubkey,
             _signature,
@@ -461,7 +467,7 @@ contract PermissionlessNodeRegistry is
     function _sendValue(address receiver, uint256 _amount) internal {
         if (address(this).balance < _amount) revert InSufficientBalance();
 
-        // solhint-disable-next-line
+        //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = payable(receiver).call{value: _amount}('');
         if (!success) revert TransferFailed();
     }

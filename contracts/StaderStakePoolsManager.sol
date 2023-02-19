@@ -311,6 +311,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             }
             if (batchId >= nextBatchIdToFinalize) {
                 ETHX(ethX).burnFrom(address(userWithdrawalManager), lockedEthXToBurn);
+
+                //slither-disable-next-line arbitrary-send-eth
                 IUserWithdrawalManager(userWithdrawalManager).finalize{value: ethToSendToFinalizeBatch}(
                     batchId,
                     ethToSendToFinalizeBatch,
@@ -343,6 +345,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             if (validatorToDeposit == 0) continue;
             (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
             uint256 poolDepositSize = (i == 1) ? PERMISSIONLESS_DEPOSIT_SIZE : DEPOSIT_SIZE;
+
+            //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).registerOnBeaconChain{value: validatorToDeposit * poolDepositSize}();
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);

@@ -35,6 +35,7 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
         uint256 userShare = calculateUserShare(_userDeposit, _withdrawStatus);
         uint256 staderFeeShare = calculateStaderFee(_userDeposit, _withdrawStatus);
         uint256 nodeShare = calculateNodeShare(validatorDeposit - _userDeposit, _userDeposit, _withdrawStatus);
+        //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(staderTreasury, staderFeeShare);
         _sendValue(_operatorRewardAddress, nodeShare);
@@ -97,7 +98,7 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
     function _sendValue(address payable recipient, uint256 amount) internal {
         require(address(this).balance >= amount, 'Address: insufficient balance');
 
-        // solhint-disable-next-line
+        //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = recipient.call{value: amount}('');
         require(success, 'Address: unable to send value, recipient may have reverted');
     }

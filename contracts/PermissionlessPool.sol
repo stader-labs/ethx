@@ -141,6 +141,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(requiredValidators);
         if (address(this).balance > 0) {
+            //slither-disable-next-line arbitrary-send-eth
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
                 poolId
             );

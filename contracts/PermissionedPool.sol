@@ -74,9 +74,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     receive() external payable {}
 
     /**
-     * @notice receives eth from pool Manager to register validators
-     * @dev deposit validator taking care of pool capacity
-     * send back the excess amount of ETH back to poolManager
+     * @notice receives eth from pool Manager to pre deposit validators
+     * @dev pre deposit validator taking care of pool capacity
      */
     function registerOnBeaconChain() external payable override onlyRole(POOL_MANAGER) {
         uint256 requiredValidators = msg.value / DEPOSIT_SIZE;
@@ -116,6 +115,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                     PRE_DEPOSIT_SIZE_IN_GWEI_LE64
                 );
 
+                //slither-disable-next-line arbitrary-send-eth
                 IDepositContract(ethValidatorDeposit).deposit{value: PRE_DEPOSIT_SIZE}(
                     pubkey,
                     withdrawCredential,
@@ -184,6 +184,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                     DEPOSIT_SIZE_IN_GWEI_LE64
                 );
 
+                //slither-disable-next-line arbitrary-send-eth
                 IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
                     pubkey,
                     withdrawCredential,
@@ -195,6 +196,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             nextDepositBatchId++;
         }
         if (nextDepositBatchId == depositBatchSize) {
+            //slither-disable-next-line arbitrary-send-eth
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
                 poolId
             );
@@ -260,7 +262,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
-    /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
+    /// @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
     function _computeDepositDataRoot(
         bytes memory _pubkey,
         bytes memory _signature,

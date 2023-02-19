@@ -63,13 +63,18 @@ contract PermissionedNodeRegistry is
         uint256 withdrawnValidatorCount; //withdrawn validator count
     }
 
+    // mapping of validator ID and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
+    // mapping of bytes public key and validator Id
     mapping(bytes => uint256) public override validatorIdBypubkey;
-
+    // mapping of operaot ID and Operator struct
     mapping(uint256 => Operator) public override operatorStructById;
+    // mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
 
+    // mapping of whitelisted permissioned node operator
     mapping(address => bool) public override permissionList;
+    //mapping of operator wise queued validator IDs arrays
     mapping(uint256 => uint256[]) public override operatorQueuedValidators;
 
     function initialize(
@@ -110,7 +115,7 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice onboard a node operator
-     * @dev any one call, check for whiteListOperator in case of permissionedPool
+     * @dev only whitelisted NOs can call
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
      * @return mevFeeRecipientAddress fee recipient address for all validator clients
@@ -133,7 +138,7 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice add signing keys
-     * @dev only accepts if bond of 4 ETH provided along with sufficient SD lockup
+     * @dev only accepts if bond of 4 ETH per key provided along with sufficient SD lockup
      * @param _validatorpubkey public key of validators
      * @param _validatorSignature signature of a validators
      */
@@ -248,7 +253,7 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice deactivate a node operator from running new validator clients
-     * @dev only accept call from admin
+     * @dev only accept call from address having `DEACTIVATE_OPERATOR_ROLE` role
      * @param _operatorID ID of the operator to deactivate
      */
     function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(DEACTIVATE_OPERATOR_ROLE) {
