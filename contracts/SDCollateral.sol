@@ -12,12 +12,13 @@ import '../contracts/interfaces/IPriceFetcher.sol';
 contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     struct PoolThresholdInfo {
         uint256 lower;
+        uint256 withdrawThreshold;
         uint256 upper;
         string units;
     }
+    bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
 
     IERC20 public sdERC20;
-
     IPriceFetcher public priceFetcher;
 
     uint256 public totalShares;
@@ -25,6 +26,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     // TODO: Manoj we can instead use sdBalnce(address(this))
 
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
+    mapping(address => uint8) public poolIdByOperator;
     mapping(address => uint256) public operatorShares;
 
     /**
@@ -72,16 +74,24 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         require(sdERC20.transferFrom(operator, address(this), _sdAmount), 'sd transfer failed');
     }
 
-    function withdraw(address _operator, uint256 _sdAmountToWithdraw) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(5 == 2, 'wip');
+    function withdraw(uint256 _requestedSD) external {
+        address operator = msg.sender;
+        uint256 numShares = operatorShares[operator];
+        uint256 sdBalance = convertSharesToSD(numShares);
 
-        totalSDCollateral -= _sdAmountToWithdraw;
+        uint8 poolId = poolIdByOperator[operator];
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
-        uint256 numShares = convertSDToShares(_sdAmountToWithdraw);
-        operatorShares[_operator] -= numShares;
+        uint256 validatorCount = 0; // TODO: Manoj :poolFactory.getPoolContract(poolId).getOnlineValidatorCount(operator);
+        uint256 withdrawableSD = sdBalance - convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+
+        require(_requestedSD <= withdrawableSD, 'withdraw less SD');
+
+        totalSDCollateral -= _requestedSD;
+        operatorShares[operator] -= numShares;
         totalShares -= numShares;
 
-        require(sdERC20.transfer(payable(_operator), _sdAmountToWithdraw), 'xsd transfer failed');
+        require(sdERC20.transfer(payable(operator), _requestedSD), 'sd transfer failed');
     }
 
     // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -94,10 +104,26 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function updatePoolThreshold(
         uint8 _poolId,
         uint256 _lower,
+        uint256 _withdrawThreshold,
         uint256 _upper,
         string memory _units
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({lower: _lower, upper: _upper, units: _units});
+        require(_lower <= _withdrawThreshold && _withdrawThreshold <= _upper, 'invalid limits');
+
+        poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({
+            lower: _lower,
+            withdrawThreshold: _withdrawThreshold,
+            upper: _upper,
+            units: _units
+        });
+    }
+
+    function updatePoolIdForOperator(
+        uint8 _poolId,
+        address _operator
+    ) public onlyRole(WHITELISTED_CONTRACT) checkZeroAddress(_operator) {
+        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+        poolIdByOperator[_operator] = _poolId;
     }
 
     // GETTERS
