@@ -335,7 +335,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function validatorBatchDeposit() external override whenNotPaused {
         uint256 pooledETH = depositedPooledETH;
         if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
-        uint256[] memory poolWiseValidatorsToDeposit = IPoolSelector(poolSelector).computePoolWiseValidatorsToDeposit(
+        uint256[] memory poolWiseValidatorsToDeposit = IPoolSelector(poolSelector).computePoolAllocationForDeposit(
             pooledETH
         );
         for (uint8 i = 1; i < poolWiseValidatorsToDeposit.length; i++) {

@@ -10,7 +10,7 @@ interface IPoolSelector {
     error InputBatchLimitIsIdenticalToCurrent();
 
     // Getters
-    function poolIdForExcessSupply() external view returns (uint8); // returns the ID of the pool with excess supply
+    function poolIdForExcessDeposit() external view returns (uint8); // returns the ID of the pool with excess supply
 
     function TOTAL_TARGET() external pure returns (uint8); // returns the total target for pools
 
@@ -18,7 +18,7 @@ interface IPoolSelector {
 
     function STADER_STAKE_POOL_MANAGER() external view returns (bytes32);
 
-    function computePoolWiseValidatorsToDeposit(uint256 _pooledEth)
+    function computePoolAllocationForDeposit(uint256 _pooledEth)
         external
         returns (uint256[] memory poolWiseValidatorsToDeposit);
 }

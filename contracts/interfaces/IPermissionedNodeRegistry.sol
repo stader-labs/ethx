@@ -48,7 +48,7 @@ interface IPermissionedNodeRegistry {
 
     function KEY_DEPOSIT_LIMIT() external view returns (uint256);
 
-    function operatorIdForExcessValidators() external view returns (uint256);
+    function operatorIdForExcessDeposit() external view returns (uint256);
 
     function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
 

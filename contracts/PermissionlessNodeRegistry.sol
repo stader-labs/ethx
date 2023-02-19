@@ -138,14 +138,14 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _validatorSignature,
         bytes32[] calldata _depositDataRoot
     ) external payable override whenNotPaused {
-        onlyOnboardedOperator(msg.sender);
+
+        uint256 operatorId = onlyOnboardedOperator(msg.sender);
         if (_validatorPubKey.length != _validatorSignature.length || _validatorPubKey.length != _depositDataRoot.length)
             revert InvalidSizeOfInputKeys();
 
         uint256 keyCount = _validatorPubKey.length;
         if (keyCount == 0) revert NoKeysProvided();
 
-        uint256 operatorId = operatorIDByAddress[msg.sender];
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
         uint256 totalKeysExceptWithdrawn = operatorStructById[operatorId].totalKeys -
@@ -492,9 +492,9 @@ contract PermissionlessNodeRegistry is
         if (!success) revert TransferFailed();
     }
 
-    function onlyOnboardedOperator(address _nodeOperator) internal view {
-        uint256 operatorId = operatorIDByAddress[_nodeOperator];
-        if (operatorId == 0) revert OperatorNotOnBoarded();
+    function onlyOnboardedOperator(address operAddr) internal view returns (uint256 _operatorId){
+        _operatorId = operatorIDByAddress[operAddr];
+        if (_operatorId == 0) revert OperatorNotOnBoarded();
     }
 
     function onlyValidName(string calldata _name) internal pure {

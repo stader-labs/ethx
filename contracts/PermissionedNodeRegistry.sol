@@ -29,7 +29,7 @@ contract PermissionedNodeRegistry is
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
     uint256 public override KEY_DEPOSIT_LIMIT;
-    uint256 public override operatorIdForExcessValidators;
+    uint256 public override operatorIdForExcessDeposit;
 
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
 
@@ -81,7 +81,7 @@ contract PermissionedNodeRegistry is
         elRewardSocializePool = _elRewardSocializePool;
         nextOperatorId = 1;
         nextValidatorId = 1;
-        operatorIdForExcessValidators = 1;
+        operatorIdForExcessDeposit = 1;
         KEY_DEPOSIT_LIMIT = 100; //TODO decide on the value
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
@@ -218,10 +218,10 @@ contract PermissionedNodeRegistry is
             uint256 remainingValidatorsToDeposit = numValidators - totalValidatorToDeposit;
             uint256[] memory operatorIdQueue = new uint256[](totalOperators);
             uint256 counter;
-            for (uint256 i = operatorIdForExcessValidators; i <= totalOperators; i++) {
+            for (uint256 i = operatorIdForExcessDeposit; i <= totalOperators; i++) {
                 operatorIdQueue[counter++] = i;
             }
-            for (uint256 i = 1; i < operatorIdForExcessValidators; i++) {
+            for (uint256 i = 1; i < operatorIdForExcessDeposit; i++) {
                 operatorIdQueue[counter++] = i;
             }
 
@@ -234,7 +234,7 @@ contract PermissionedNodeRegistry is
                 selectedOperatorCapacity[operatorIdQueue[i]] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
                 if (remainingValidatorsToDeposit == 0) {
-                    operatorIdForExcessValidators = operatorIdQueue[(i + 1) % operatorIdQueue.length];
+                    operatorIdForExcessDeposit = operatorIdQueue[(i + 1) % operatorIdQueue.length];
                     break;
                 }
             }
