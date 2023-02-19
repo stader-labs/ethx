@@ -1,26 +1,7 @@
-/* eslint-disable no-undef */
-/* eslint-disable arrow-body-style */
-/* eslint-disable no-await-in-loop */
-import deposit from '../scripts/deposits/deposit0.json'
 import { ethers, upgrades } from 'hardhat'
 
-const setupAddresses = async () => {
-  const [staderOwner, staker1, staker2, staker3, staker4, staker5] = await ethers.getSigners()
-
-  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-
-  return {
-    staderOwner,
-    staker1,
-    staker2,
-    staker3,
-    staker4,
-    staker5,
-    ZERO_ADDRESS,
-  }
-}
-
-const setupEnvironment = async (staderOwner: any) => {
+async function main() {
+  const [staderOwner] = await ethers.getSigners()
   const staderOracleFactory = await ethers.getContractFactory('StaderOracle')
   const staderOracle = await upgrades.deployProxy(staderOracleFactory)
 
@@ -184,25 +165,6 @@ const setupEnvironment = async (staderOwner: any) => {
   addPool2Txn.wait()
 
   console.log('permissioned pool added')
-
-  return {
-    ethDeposit,
-    ethxToken,
-    staderOracle,
-    userWithdrawManager,
-    staderStakingPoolManager,
-    socializingPoolContract,
-    vaultFactoryInstance,
-    poolFactoryInstance,
-    permissionedNodeRegistry,
-    permissionlessNodeRegistry,
-    staderPermissionedPool,
-    staderPermissionLessPool,
-    poolSelector,
-  }
 }
 
-module.exports = {
-  setupAddresses,
-  setupEnvironment,
-}
+main()

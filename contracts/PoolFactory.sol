@@ -58,66 +58,6 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
 
-    function getTotalValidatorCount() external view override returns (uint256) {
-        return
-            this.getInitializedValidatorCount() +
-            this.getQueuedValidatorCount() +
-            this.getActiveValidatorCount() +
-            this.getWithdrawnValidatorCount();
-    }
-
-    function getInitializedValidatorCount() external view override returns (uint256) {
-        uint256 total;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getTotalInitializedValidatorCount();
-        }
-        return total;
-    }
-
-    function getQueuedValidatorCount() external view override returns (uint256) {
-        uint256 total;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getTotalQueuedValidatorCount();
-        }
-        return total;
-    }
-
-    function getActiveValidatorCount() external view override returns (uint256) {
-        uint256 total;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getTotalActiveValidatorCount();
-        }
-        return total;
-    }
-
-    function getWithdrawnValidatorCount() external view override returns (uint256) {
-        uint256 total;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            total += IStaderPoolBase(pools[i].poolAddress).getTotalWithdrawnValidatorCount();
-        }
-        return total;
-    }
-
-    function getInitializedValidatorCountByPool(uint8 _poolId)
-        external
-        view
-        override
-        validPoolId(_poolId)
-        returns (uint256)
-    {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalInitializedValidatorCount();
-    }
-
-    function getWithdrawnValidatorCountByPool(uint8 _poolId)
-        external
-        view
-        override
-        validPoolId(_poolId)
-        returns (uint256)
-    {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalWithdrawnValidatorCount();
-    }
-
     function getQueuedValidatorCountByPool(uint8 _poolId)
         external
         view

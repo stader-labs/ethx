@@ -19,17 +19,22 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     using Math for uint256;
 
     uint8 public constant poolId = 1;
+    uint64 internal constant PRE_DEPOSIT_SIZE_IN_GWEI_LE64 = 0x00e40b5402000000;
+    uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0076be3707000000;
+
     address public nodeRegistryAddress;
     address public ethValidatorDeposit;
     address public vaultFactoryAddress;
     address public staderStakePoolManager;
 
     bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
+    bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
+    bytes32 public constant PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
 
-    uint256 public constant NODE_BOND = 4 ether;
-    uint256 public constant DEPOSIT_SIZE = 32 ether;
+    uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
+    uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
+    uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
-    uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0040597307000000;
 
     function initialize(
         address _adminOwner,
@@ -56,28 +61,58 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     receive() external payable {}
 
     /**
+     * @notice pre deposit for permission less validator to avoid front running
+     * @dev only permissionless node registry can call
+     * @param _pubkey public key of validator
+     * @param _signature signature of validator
+     * @param withdrawVault withdraw address to se set for validator
+     */
+    function preDepositOnBeacon(
+        bytes calldata _pubkey,
+        bytes calldata _signature,
+        address withdrawVault
+    ) external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
+        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+            withdrawVault
+        );
+
+        bytes32 depositDataRoot = _computeDepositDataRoot(
+            _pubkey,
+            _signature,
+            withdrawCredential,
+            PRE_DEPOSIT_SIZE_IN_GWEI_LE64
+        );
+        IDepositContract(ethValidatorDeposit).deposit{value: PRE_DEPOSIT_SIZE}(
+            _pubkey,
+            withdrawCredential,
+            _signature,
+            depositDataRoot
+        );
+        uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorIdBypubkey(_pubkey);
+        emit ValidatorPreDepositedOnBeaconChain(validatorId, _pubkey);
+    }
+
+    /**
      * @notice receives eth from pool Manager to register validators
      * @dev deposit validator taking care of pool capacity
      * send back the excess amount of ETH back to poolManager
      */
-    function registerValidatorsOnBeacon() external payable override {
-        uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - NODE_BOND);
-        uint256 queuedValidatorKeys = INodeRegistry(nodeRegistryAddress).getTotalQueuedValidatorCount();
-
-        requiredValidators = Math.min(queuedValidatorKeys, requiredValidators);
-        if (requiredValidators == 0) revert NotEnoughValidatorToDeposit();
-
-        IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(requiredValidators * NODE_BOND);
+    function registerOnBeaconChain() external payable onlyRole(POOL_MANAGER) {
+        uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
+        IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
+            requiredValidators * DEPOSIT_NODE_BOND
+        );
 
         uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistryAddress).nextQueuedValidatorIndex();
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
             (
                 ,
-                bytes memory pubKey,
+                ,
+                bytes memory pubkey,
                 bytes memory signature,
                 address withdrawVaultAddress,
-                ,
+                uint256 operatorId,
                 ,
 
             ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
@@ -86,44 +121,30 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 withdrawVaultAddress
             );
 
-            bytes32 depositDataRoot = _computeDepositDataRoot(pubKey, signature, withdrawCredential);
+            bytes32 depositDataRoot = _computeDepositDataRoot(
+                pubkey,
+                signature,
+                withdrawCredential,
+                DEPOSIT_SIZE_IN_GWEI_LE64
+            );
             IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
-                pubKey,
+                pubkey,
                 withdrawCredential,
                 signature,
                 depositDataRoot
             );
 
-            IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubKey, ValidatorStatus.DEPOSITED);
-            emit ValidatorRegisteredOnBeacon(validatorId, pubKey);
+            IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
+            IPermissionlessNodeRegistry(nodeRegistryAddress).updateQueuedAndActiveValidatorsCount(operatorId);
+            emit ValidatorDepositedOnBeaconChain(validatorId, pubkey);
         }
 
-        IPermissionlessNodeRegistry(nodeRegistryAddress).reduceTotalQueuedValidatorsCount(requiredValidators);
-        IPermissionlessNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorsCount(requiredValidators);
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(requiredValidators);
         if (address(this).balance > 0) {
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
                 poolId
             );
         }
-    }
-
-    /**
-     * @notice return total keys for permissionless pool
-     */
-    function getTotalValidatorCount() external view override returns (uint256) {
-        return
-            this.getTotalInitializedValidatorCount() +
-            this.getTotalActiveValidatorCount() +
-            this.getTotalQueuedValidatorCount() +
-            this.getTotalWithdrawnValidatorCount();
-    }
-
-    /**
-     * @notice return total initialized keys for permissionless pool
-     */
-    function getTotalInitializedValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalInitializedValidatorCount();
     }
 
     /**
@@ -138,13 +159,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function getTotalActiveValidatorCount() external view override returns (uint256) {
         return INodeRegistry(nodeRegistryAddress).getTotalActiveValidatorCount();
-    }
-
-    /**
-     * @notice return total withdrawn keys for permissionless pool
-     */
-    function getTotalWithdrawnValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalWithdrawnValidatorCount();
     }
 
     /**
@@ -194,11 +208,12 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
     function _computeDepositDataRoot(
-        bytes memory _pubKey,
+        bytes memory _pubkey,
         bytes memory _signature,
-        bytes memory _withdrawCredential
+        bytes memory _withdrawCredential,
+        uint64 _AMOUNT_IN_GWEI_LE64
     ) private pure returns (bytes32) {
-        bytes32 publicKeyRoot = sha256(_pad64(_pubKey));
+        bytes32 publicKeyRoot = sha256(_pad64(_pubkey));
         bytes32 signatureRoot = sha256(
             abi.encodePacked(
                 sha256(BytesLib.slice(_signature, 0, 64)),
@@ -210,7 +225,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             sha256(
                 abi.encodePacked(
                     sha256(abi.encodePacked(publicKeyRoot, _withdrawCredential)),
-                    sha256(abi.encodePacked(DEPOSIT_SIZE_IN_GWEI_LE64, bytes24(0), signatureRoot))
+                    sha256(abi.encodePacked(_AMOUNT_IN_GWEI_LE64, bytes24(0), signatureRoot))
                 )
             );
     }

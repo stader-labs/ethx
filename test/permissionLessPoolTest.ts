@@ -68,9 +68,9 @@ describe('permission less pool tests', () => {
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('14'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(2)
-    const permissionLessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
-    const permissionLessOperator = await env.operatorRegistry.operatorRegistry(permissionLessOperatorIndex)
-    expect(permissionLessOperator.activeValidatorCount).to.be.equal(2)
+    const permissionlessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
+    const permissionlessOperator = await env.operatorRegistry.operatorRegistry(permissionlessOperatorIndex)
+    expect(permissionlessOperator.activeValidatorCount).to.be.equal(2)
   })
 
   it('revert if permission less pool balance less than 32 eth', async function () {
@@ -86,7 +86,7 @@ describe('permission less pool tests', () => {
     await env.staderStakingPoolManager.selectPool()
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('32'))
     expect(env.staderPermissionLessPool.depositEthToDepositContract()).to.be.revertedWith(
-      'stand by permissionLess validator not available'
+      'stand by permissionless validator not available'
     )
   })
 

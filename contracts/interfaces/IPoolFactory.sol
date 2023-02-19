@@ -24,21 +24,7 @@ interface IPoolFactory {
     // Pool getters
     function poolCount() external view returns (uint8); // returns the number of pools in the factory
 
-    function getTotalValidatorCount() external view returns (uint256); // returns the total number of validators across all pools
-
-    function getInitializedValidatorCount() external view returns (uint256); // returns the total number of initialized validators across all pools
-
-    function getActiveValidatorCount() external view returns (uint256); // returns the total number of active validators across all pools
-
-    function getQueuedValidatorCount() external view returns (uint256); // returns the total number of queued validators across all pools
-
-    function getWithdrawnValidatorCount() external view returns (uint256); // returns the total number of withdrawn validators across all pools
-
-    function getInitializedValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of initialized validators in a specific pool
-
     function getActiveValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of active validators in a specific pool
 
     function getQueuedValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of queued validators in a specific pool
-
-    function getWithdrawnValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of withdrawn validators in a specific pool
 }

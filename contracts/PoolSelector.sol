@@ -61,7 +61,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @param _pooledEth amount of eth ready to deposit on pool manager
      */
     function computePoolAllocationForDeposit(uint256 _pooledEth)
-        external override
+        external
+        override
         onlyRole(STADER_STAKE_POOL_MANAGER)
         returns (uint256[] memory selectedPoolCapacity)
     {
