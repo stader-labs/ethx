@@ -20,8 +20,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     using Math for uint256;
 
     uint8 public constant poolId = 1;
-    uint64 internal constant PRE_DEPOSIT_SIZE_IN_GWEI_LE64 = 0x00e40b5402000000;
-    uint64 internal constant DEPOSIT_SIZE_IN_GWEI_LE64 = 0x0076be3707000000;
 
     address public nodeRegistryAddress;
     address public ethValidatorDeposit;
@@ -77,12 +75,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             withdrawVault
         );
 
-        bytes32 depositDataRoot = _computeDepositDataRoot(
-            _pubkey,
-            _signature,
-            withdrawCredential,
-            PRE_DEPOSIT_SIZE_IN_GWEI_LE64
-        );
+        bytes32 depositDataRoot = _computeDepositDataRoot(_pubkey, _signature, withdrawCredential, PRE_DEPOSIT_SIZE);
         IDepositContract(ethValidatorDeposit).deposit{value: PRE_DEPOSIT_SIZE}(
             _pubkey,
             withdrawCredential,
@@ -121,12 +114,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 withdrawVaultAddress
             );
 
-            bytes32 depositDataRoot = _computeDepositDataRoot(
-                pubkey,
-                signature,
-                withdrawCredential,
-                DEPOSIT_SIZE_IN_GWEI_LE64
-            );
+            bytes32 depositDataRoot = _computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
             IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
                 pubkey,
                 withdrawCredential,
@@ -227,8 +215,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         bytes memory _pubkey,
         bytes memory _signature,
         bytes memory _withdrawCredential,
-        uint64 _AMOUNT_IN_GWEI_LE64
+        uint256 _depositAmount
     ) private pure returns (bytes32) {
+        bytes memory amount = to_little_endian_64(_depositAmount);
         bytes32 publicKeyRoot = sha256(_pad64(_pubkey));
         bytes32 signatureRoot = sha256(
             abi.encodePacked(
@@ -241,7 +230,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             sha256(
                 abi.encodePacked(
                     sha256(abi.encodePacked(publicKeyRoot, _withdrawCredential)),
-                    sha256(abi.encodePacked(_AMOUNT_IN_GWEI_LE64, bytes24(0), signatureRoot))
+                    sha256(abi.encodePacked(amount, bytes24(0), signatureRoot))
                 )
             );
     }
@@ -259,5 +248,21 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
         if (32 == _b.length) return BytesLib.concat(_b, zero32);
         else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
+    }
+
+    function to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
+        uint64 value = uint64(_depositAmount / 1 gwei);
+
+        ret = new bytes(8);
+        bytes8 bytesValue = bytes8(value);
+        // Byteswapping during copying to bytes.
+        ret[0] = bytesValue[7];
+        ret[1] = bytesValue[6];
+        ret[2] = bytesValue[5];
+        ret[3] = bytesValue[4];
+        ret[4] = bytesValue[3];
+        ret[5] = bytesValue[2];
+        ret[6] = bytesValue[1];
+        ret[7] = bytesValue[0];
     }
 }
