@@ -25,6 +25,8 @@ interface IStaderPoolBase {
 
     function getAllActiveValidators() external view returns (Validator[] memory);
 
+    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator) external view returns (uint256);
+
     function registerOnBeaconChain() external payable;
 
     function updateNodeRegistryAddress(address _nodeRegistryAddress) external;

@@ -436,6 +436,22 @@ contract PermissionedNodeRegistry is
     }
 
     /**
+     * @notice get the total deposited keys for an operator
+     * @dev add initialized, queued, active and withdrawn validator key count to get total validators keys
+     * @param _nodeOperator address of node operator
+     */
+    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator)
+        external
+        view
+        override
+        returns (uint256 _totalKeys)
+    {
+        uint256 operatorId = operatorIDByAddress[_nodeOperator];
+        Operator memory operator = operatorStructById[operatorId];
+        _totalKeys = operator.initializedValidatorCount + operator.queuedValidatorCount + operator.activeValidatorCount;
+    }
+
+    /**
      * @dev Triggers stopped state.
      * should not be paused
      */

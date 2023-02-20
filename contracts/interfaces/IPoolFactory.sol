@@ -29,6 +29,8 @@ interface IPoolFactory {
 
     function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) external view returns (Validator memory);
 
+    function getOperatorTotalNonWithdrawnKeys(uint8 _poolId, address _nodeOperator) external view returns (uint256);
+
     // Pool getters
     function poolCount() external view returns (uint8); // returns the number of pools in the factory
 

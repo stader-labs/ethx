@@ -224,6 +224,22 @@ contract PermissionlessNodeRegistry is
      * @dev add initialized, queued, active and withdrawn validator key count to get total validators keys
      * @param _nodeOperator address of node operator
      */
+    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator)
+        external
+        view
+        override
+        returns (uint256 _totalKeys)
+    {
+        uint256 operatorId = operatorIDByAddress[_nodeOperator];
+        Operator memory operator = operatorStructById[operatorId];
+        _totalKeys = operator.initializedValidatorCount + operator.queuedValidatorCount + operator.activeValidatorCount;
+    }
+
+    /**
+     * @notice get the total non withdrawn keys for an operator
+     * @dev add initialized, queued and active validator key count to get total validators keys
+     * @param _nodeOperator address of node operator
+     */
     function getOperatorTotalKeys(address _nodeOperator) external view override returns (uint256 _totalKeys) {
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         _totalKeys =

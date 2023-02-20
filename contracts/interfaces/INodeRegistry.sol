@@ -33,6 +33,8 @@ interface INodeRegistry {
 
     function getValidator(uint256 _validatorId) external view returns (Validator memory);
 
+    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
+
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators

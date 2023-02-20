@@ -163,6 +163,13 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     /**
+     * @notice returns the total non withdrawn keys of a operator
+     */
+    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator) external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator);
+    }
+
+    /**
      * @notice update the stader stake pool manager address
      * @dev only admin can call
      * @param _staderStakePoolManager address of stader stake pool manager

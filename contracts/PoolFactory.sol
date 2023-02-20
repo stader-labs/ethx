@@ -115,6 +115,15 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
+    function getOperatorTotalNonWithdrawnKeys(uint8 _poolId, address _nodeOperator)
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator);
+    }
+
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
         require(_poolId > 0 && _poolId <= this.poolCount(), 'Invalid pool ID');
