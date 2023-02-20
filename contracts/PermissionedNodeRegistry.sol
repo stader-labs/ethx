@@ -42,27 +42,6 @@ contract PermissionedNodeRegistry is
     bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
 
-    struct Validator {
-        ValidatorStatus status; // state of validator
-        bool isFrontRun; // set to true by DAO if validator get front deposit
-        bytes pubkey; //public Key of the validator
-        bytes signature; //signature for deposit to Ethereum Deposit contract
-        address withdrawVaultAddress; //eth1 withdrawal address for validator
-        uint256 operatorId; // stader network assigned Id
-    }
-
-    struct Operator {
-        bool active; // operator status
-        string operatorName; // name of the operator
-        address payable operatorRewardAddress; //Eth1 address of node for reward
-        address operatorAddress; //address of operator to interact with stader
-        uint256 nextQueuedValidatorIndex; //index of validator to pick from queuedValidators of a operator
-        uint256 initializedValidatorCount; //validator whose keys added but not given pre signed msg for withdrawal
-        uint256 queuedValidatorCount; // validator queued for deposit
-        uint256 activeValidatorCount; // registered validator on beacon chain
-        uint256 withdrawnValidatorCount; //withdrawn validator count
-    }
-
     // mapping of validator ID and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
     // mapping of bytes public key and validator Id
@@ -71,11 +50,12 @@ contract PermissionedNodeRegistry is
     mapping(uint256 => Operator) public override operatorStructById;
     // mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
-
     // mapping of whitelisted permissioned node operator
     mapping(address => bool) public override permissionList;
     //mapping of operator wise queued validator IDs arrays
     mapping(uint256 => uint256[]) public override operatorQueuedValidators;
+    //mapping of operator ID and nextQueuedValidatorIndex
+    mapping(uint256 => uint256) public override nextQueuedValidatorIndexByOperatorId;
 
     function initialize(
         address _adminOwner,
@@ -154,7 +134,7 @@ contract PermissionedNodeRegistry is
 
         uint256 operatorId = _onlyOnboardedOperator(msg.sender);
 
-        Operator memory operator = operatorStructById[operatorId];
+        Operator storage operator = operatorStructById[operatorId];
 
         uint256 totalNonWithdrawnKeys = this.getOperatorTotalKeys(msg.sender) - operator.withdrawnValidatorCount;
 
@@ -270,7 +250,7 @@ contract PermissionedNodeRegistry is
         override
         onlyRole(PERMISSIONED_POOL)
     {
-        Operator memory operator = operatorStructById[_operatorID];
+        Operator storage operator = operatorStructById[_operatorID];
         operator.queuedValidatorCount -= _count;
         operator.activeValidatorCount += _count;
         emit UpdatedQueuedAndActiveValidatorsCount(
@@ -290,7 +270,7 @@ contract PermissionedNodeRegistry is
         override
         onlyRole(STADER_ORACLE)
     {
-        Operator memory operator = operatorStructById[_operatorID];
+        Operator storage operator = operatorStructById[_operatorID];
         operator.activeValidatorCount -= _count;
         operator.withdrawnValidatorCount += _count;
         emit UpdatedActiveAndWithdrawnValidatorsCount(
@@ -311,7 +291,7 @@ contract PermissionedNodeRegistry is
         override
         onlyRole(PERMISSIONED_POOL)
     {
-        operatorStructById[_operatorID].nextQueuedValidatorIndex = _nextQueuedValidatorIndex;
+        nextQueuedValidatorIndexByOperatorId[_operatorID] = _nextQueuedValidatorIndex;
         emit UpdatedQueuedValidatorIndex(_operatorID, _nextQueuedValidatorIndex);
     }
 
@@ -473,10 +453,10 @@ contract PermissionedNodeRegistry is
     function _onboardOperator(string calldata _operatorName, address payable _operatorRewardAddress) internal {
         operatorStructById[nextOperatorId] = Operator(
             true,
+            false,
             _operatorName,
             _operatorRewardAddress,
             msg.sender,
-            0,
             0,
             0,
             0,
@@ -502,7 +482,8 @@ contract PermissionedNodeRegistry is
             _pubkey,
             _signature,
             withdrawVault,
-            _operatorId
+            _operatorId,
+            0
         );
         validatorIdBypubkey[_pubkey] = nextValidatorId;
         nextValidatorId++;
@@ -527,12 +508,12 @@ contract PermissionedNodeRegistry is
         if (_operatorId == 0) revert OperatorNotOnBoarded();
     }
 
-    function _increaseInitializedValidatorCount(Operator memory _operator, uint256 _count) internal pure {
+    function _increaseInitializedValidatorCount(Operator storage _operator, uint256 _count) internal {
         _operator.initializedValidatorCount += _count;
     }
 
-    function _updateInitializedAndQueuedValidatorCount(uint256 _operatorId) internal view {
-        Operator memory operator = operatorStructById[_operatorId];
+    function _updateInitializedAndQueuedValidatorCount(uint256 _operatorId) internal {
+        Operator storage operator = operatorStructById[_operatorId];
         operator.initializedValidatorCount--;
         operator.queuedValidatorCount++;
     }

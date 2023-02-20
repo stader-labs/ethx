@@ -85,7 +85,8 @@ interface IPermissionedNodeRegistry {
             bytes calldata pubkey,
             bytes calldata signature,
             address withdrawVaultAddress,
-            uint256 operatorId
+            uint256 operatorId,
+            uint256 initialBondEth
         );
 
     function validatorIdBypubkey(bytes calldata _pubkey) external view returns (uint256);
@@ -95,15 +96,17 @@ interface IPermissionedNodeRegistry {
         view
         returns (
             bool active,
+            bool optedForSocializingPool,
             string calldata operatorName,
             address payable operatorRewardAddress,
             address operatorAddress,
-            uint256 nextQueuedValidatorIndex,
             uint256 initializedValidatorCount,
             uint256 queuedValidatorCount,
             uint256 activeValidatorCount,
             uint256 withdrawnValidatorCount
         );
+
+    function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);
 
     function operatorIDByAddress(address) external view returns (uint256);
 

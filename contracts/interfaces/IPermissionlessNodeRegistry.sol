@@ -94,8 +94,7 @@ interface IPermissionlessNodeRegistry {
             bytes calldata signature,
             address withdrawVaultAddress,
             uint256 operatorId,
-            uint256 bondEth,
-            uint256 penaltyCount
+            uint256 initialBondEth
         );
 
     function validatorIdBypubkey(bytes calldata _pubkey) external view returns (uint256);
@@ -106,6 +105,7 @@ interface IPermissionlessNodeRegistry {
         external
         view
         returns (
+            bool active,
             bool optedForSocializingPool,
             string calldata operatorName,
             address payable operatorRewardAddress,

@@ -86,8 +86,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         for (uint256 i = 1; i < selectedOperatorCapacity.length; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) continue;
-            (, , , , uint256 nextQueuedValidatorIndex, , , , ) = IPermissionedNodeRegistry(nodeRegistryAddress)
-                .operatorStructById(i);
+            uint256 nextQueuedValidatorIndex = IPermissionedNodeRegistry(nodeRegistryAddress)
+                .nextQueuedValidatorIndexByOperatorId(i);
 
             for (
                 uint256 index = nextQueuedValidatorIndex;
@@ -102,6 +102,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                     bytes memory pubkey,
                     bytes memory signature,
                     address withdrawVaultAddress,
+                    ,
 
                 ) = IPermissionedNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
 
@@ -161,7 +162,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                     bytes memory pubkey,
                     bytes memory signature,
                     address withdrawVaultAddress,
-                    uint256 operatorId
+                    uint256 operatorId,
+
                 ) = IPermissionedNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
                 if (isFrontRun) {
                     IPermissionedNodeRegistry(nodeRegistryAddress).updateActiveAndWithdrawnValidatorsCount(

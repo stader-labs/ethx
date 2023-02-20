@@ -59,28 +59,6 @@ contract PermissionlessNodeRegistry is
     // mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
 
-    struct Validator {
-        ValidatorStatus status; // state of validator
-        bool isFrontRun; // set to true by DAO if validator get front deposit
-        bytes pubkey; //public Key of the validator
-        bytes signature; //signature for deposit to Ethereum Deposit contract
-        address withdrawVaultAddress; //eth1 withdrawal address for validator
-        uint256 operatorId; // stader network assigned Id
-        uint256 bondEth; // amount of bond eth in gwei
-        uint256 penaltyCount; // penalty for MEV theft or any other wrong doing
-    }
-
-    struct Operator {
-        bool optedForSocializingPool; // operator opted for socializing pool
-        string operatorName; // name of the operator
-        address payable operatorRewardAddress; //Eth1 address of node for reward
-        address operatorAddress; //address of operator to interact with stader
-        uint256 initializedValidatorCount; //validator whose keys added but not given pre signed msg for withdrawal
-        uint256 queuedValidatorCount; // validator queued for deposit
-        uint256 activeValidatorCount; // registered validator on beacon chain
-        uint256 withdrawnValidatorCount; //withdrawn validator count
-    }
-
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
@@ -158,7 +136,7 @@ contract PermissionlessNodeRegistry is
 
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
-        Operator memory operator = operatorStructById[operatorId];
+        Operator storage operator = operatorStructById[operatorId];
 
         uint256 totalNonWithdrawnKeys = this.getOperatorTotalKeys(msg.sender) - operator.withdrawnValidatorCount;
 
@@ -227,7 +205,7 @@ contract PermissionlessNodeRegistry is
      * @param _operatorID operator ID
      */
     function updateQueuedAndActiveValidatorsCount(uint256 _operatorID) external override onlyRole(PERMISSIONLESS_POOL) {
-        Operator memory operator = operatorStructById[_operatorID];
+        Operator storage operator = operatorStructById[_operatorID];
         operator.queuedValidatorCount--;
         operator.activeValidatorCount++;
         emit UpdatedQueuedAndActiveValidatorsCount(
@@ -243,7 +221,7 @@ contract PermissionlessNodeRegistry is
      * @param _operatorID operator ID
      */
     function updateActiveAndWithdrawnValidatorsCount(uint256 _operatorID) external override onlyRole(STADER_ORACLE) {
-        Operator memory operator = operatorStructById[_operatorID];
+        Operator storage operator = operatorStructById[_operatorID];
         operator.activeValidatorCount--;
         operator.withdrawnValidatorCount++;
         emit UpdatedActiveAndWithdrawnValidatorsCount(
@@ -399,6 +377,7 @@ contract PermissionlessNodeRegistry is
         address payable _operatorRewardAddress
     ) internal {
         operatorStructById[nextOperatorId] = Operator(
+            true,
             _optInForMevSocialize,
             _operatorName,
             _operatorRewardAddress,
@@ -428,8 +407,7 @@ contract PermissionlessNodeRegistry is
             _signature,
             withdrawVault,
             _operatorId,
-            collateralETH,
-            0
+            collateralETH
         );
 
         //slither-disable-next-line arbitrary-send-eth
@@ -452,7 +430,7 @@ contract PermissionlessNodeRegistry is
     }
 
     function _handleFrontRun(uint256 _validatorId) internal {
-        Validator memory validator = validatorRegistry[_validatorId];
+        Validator storage validator = validatorRegistry[_validatorId];
         validator.isFrontRun = true;
         _updateInitializedAndWithdrawnValidatorCount(validator.operatorId);
         _sendValue(staderInsuranceFund, FRONT_RUN_PENALTY);
@@ -482,18 +460,18 @@ contract PermissionlessNodeRegistry is
         if (bytes(_name).length > OPERATOR_MAX_NAME_LENGTH) revert NameCrossedMaxLength();
     }
 
-    function _increaseInitializedValidatorCount(Operator memory _operator, uint256 _count) internal pure {
+    function _increaseInitializedValidatorCount(Operator storage _operator, uint256 _count) internal {
         _operator.initializedValidatorCount += _count;
     }
 
-    function _updateInitializedAndQueuedValidatorCount(uint256 _operatorId) internal view {
-        Operator memory operator = operatorStructById[_operatorId];
+    function _updateInitializedAndQueuedValidatorCount(uint256 _operatorId) internal {
+        Operator storage operator = operatorStructById[_operatorId];
         operator.initializedValidatorCount--;
         operator.queuedValidatorCount++;
     }
 
-    function _updateInitializedAndWithdrawnValidatorCount(uint256 _operatorId) internal view {
-        Operator memory operator = operatorStructById[_operatorId];
+    function _updateInitializedAndWithdrawnValidatorCount(uint256 _operatorId) internal {
+        Operator storage operator = operatorStructById[_operatorId];
         operator.initializedValidatorCount--;
         operator.withdrawnValidatorCount++;
     }

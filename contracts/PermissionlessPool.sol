@@ -113,7 +113,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 bytes memory signature,
                 address withdrawVaultAddress,
                 uint256 operatorId,
-                ,
 
             ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
 
