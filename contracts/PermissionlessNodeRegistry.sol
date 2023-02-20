@@ -35,10 +35,10 @@ contract PermissionlessNodeRegistry is
     uint256 public override nextValidatorId;
     uint256 public override validatorQueueSize;
     uint256 public override nextQueuedValidatorIndex;
-    uint256 internal totalInitializedValidatorCount;
-    uint256 internal totalQueuedValidatorCount;
-    uint256 internal totalActiveValidatorCount;
-    uint256 internal totalWithdrawnValidatorCount;
+    uint256 public override totalInitializedValidatorCount;
+    uint256 public override totalQueuedValidatorCount;
+    uint256 public override totalActiveValidatorCount;
+    uint256 public override totalWithdrawnValidatorCount;
     uint256 public constant override PRE_DEPOSIT = 1 ether;
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;

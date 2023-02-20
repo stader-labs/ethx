@@ -77,6 +77,14 @@ interface IPermissionlessNodeRegistry {
 
     function nextQueuedValidatorIndex() external view returns (uint256);
 
+    function totalInitializedValidatorCount() external view returns (uint256);
+
+    function totalQueuedValidatorCount() external view returns (uint256);
+
+    function totalActiveValidatorCount() external view returns (uint256);
+
+    function totalWithdrawnValidatorCount() external view returns (uint256);
+
     function PRE_DEPOSIT() external view returns (uint256);
 
     function FRONT_RUN_PENALTY() external view returns (uint256);
