@@ -1,6 +1,7 @@
 pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
+import './INodeRegistry.sol';
 
 interface IPermissionedNodeRegistry {
     // Error events
@@ -89,7 +90,7 @@ interface IPermissionedNodeRegistry {
             uint256 initialBondEth
         );
 
-    function validatorIdBypubkey(bytes calldata _pubkey) external view returns (uint256);
+    function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
     function operatorStructById(uint256)
         external

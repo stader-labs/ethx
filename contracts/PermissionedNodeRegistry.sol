@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
@@ -45,7 +46,7 @@ contract PermissionedNodeRegistry is
     // mapping of validator ID and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
     // mapping of bytes public key and validator Id
-    mapping(bytes => uint256) public override validatorIdBypubkey;
+    mapping(bytes => uint256) public override validatorIdByPubkey;
     // mapping of operaot ID and Operator struct
     mapping(uint256 => Operator) public override operatorStructById;
     // mapping of operator address and operator Id
@@ -162,7 +163,7 @@ contract PermissionedNodeRegistry is
         onlyRole(STADER_MANAGER_BOT)
     {
         for (uint256 i = 0; i < _pubkeys.length; i++) {
-            uint256 validatorId = validatorIdBypubkey[_pubkeys[i]];
+            uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_pubkeys[i], validatorId);
         }
@@ -319,7 +320,7 @@ contract PermissionedNodeRegistry is
         override
         onlyRole(VALIDATOR_STATUS_ROLE)
     {
-        uint256 validatorId = validatorIdBypubkey[_pubkey];
+        uint256 validatorId = validatorIdByPubkey[_pubkey];
         if (validatorId == 0) revert pubkeyDoesNotExist();
         validatorRegistry[validatorId].status = _status;
         emit UpdatedValidatorStatus(_pubkey, _status);
@@ -450,6 +451,26 @@ contract PermissionedNodeRegistry is
         _unpause();
     }
 
+    function getAllActiveValidators() public view override returns (Validator[] memory) {
+        Validator[] memory validators = new Validator[](this.getTotalActiveValidatorCount());
+        uint256 validatorCount = 0;
+        for (uint256 i = 1; i < nextValidatorId; i++) {
+            if (_isActiveValidator(i)) {
+                validators[validatorCount] = validatorRegistry[i];
+                validatorCount++;
+            }
+        }
+        return validators;
+    }
+
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+        return validatorRegistry[validatorIdByPubkey[_pubkey]];
+    }
+
+    function getValidator(uint256 _validatorId) external view returns (Validator memory) {
+        return validatorRegistry[_validatorId];
+    }
+
     function _onboardOperator(string calldata _operatorName, address payable _operatorRewardAddress) internal {
         operatorStructById[nextOperatorId] = Operator(
             true,
@@ -485,7 +506,7 @@ contract PermissionedNodeRegistry is
             _operatorId,
             0
         );
-        validatorIdBypubkey[_pubkey] = nextValidatorId;
+        validatorIdByPubkey[_pubkey] = nextValidatorId;
         nextValidatorId++;
         emit AddedKeys(msg.sender, _pubkey, nextValidatorId - 1);
     }
@@ -500,7 +521,7 @@ contract PermissionedNodeRegistry is
     function _validateKeys(bytes calldata pubkey, bytes calldata signature) private view {
         if (pubkey.length != pubkey_LENGTH) revert InvalidLengthOfpubkey();
         if (signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
-        if (validatorIdBypubkey[pubkey] != 0) revert pubkeyAlreadyExist();
+        if (validatorIdByPubkey[pubkey] != 0) revert pubkeyAlreadyExist();
     }
 
     function _onlyOnboardedOperator(address _operAddr) internal view returns (uint256 _operatorId) {
@@ -516,6 +537,16 @@ contract PermissionedNodeRegistry is
         Operator storage operator = operatorStructById[_operatorId];
         operator.initializedValidatorCount--;
         operator.queuedValidatorCount++;
+    }
+
+    function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
+        Validator memory validator = validatorRegistry[_validatorId];
+        if (
+            validator.status == ValidatorStatus.INITIALIZED ||
+            validator.status == ValidatorStatus.PRE_DEPOSIT ||
+            validator.status == ValidatorStatus.WITHDRAWN
+        ) return false;
+        return true;
     }
 
     function _onlyValidName(string calldata _name) internal pure {

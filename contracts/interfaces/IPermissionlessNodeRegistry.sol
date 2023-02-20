@@ -1,6 +1,7 @@
 pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
+import './INodeRegistry.sol';
 
 interface IPermissionlessNodeRegistry {
     // Error events
@@ -76,6 +77,14 @@ interface IPermissionlessNodeRegistry {
 
     function nextQueuedValidatorIndex() external view returns (uint256);
 
+    function totalInitializedValidatorCount() external view returns (uint256);
+
+    function totalQueuedValidatorCount() external view returns (uint256);
+
+    function totalActiveValidatorCount() external view returns (uint256);
+
+    function totalWithdrawnValidatorCount() external view returns (uint256);
+
     function PRE_DEPOSIT() external view returns (uint256);
 
     function FRONT_RUN_PENALTY() external view returns (uint256);
@@ -97,7 +106,7 @@ interface IPermissionlessNodeRegistry {
             uint256 initialBondEth
         );
 
-    function validatorIdBypubkey(bytes calldata _pubkey) external view returns (uint256);
+    function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
     function queuedValidators(uint256) external view returns (uint256);
 
@@ -131,8 +140,6 @@ interface IPermissionlessNodeRegistry {
     function addValidatorKeys(bytes[] calldata _validatorpubkey, bytes[] calldata _validatorSignature) external payable;
 
     function markValidatorReadyToDeposit(bytes[] calldata _pubkeys) external;
-
-    function deleteDepositedQueueValidator(uint256 _keyCount, uint256 _index) external;
 
     function updateQueuedAndActiveValidatorsCount(uint256 _operatorID) external;
 

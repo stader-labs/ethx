@@ -102,7 +102,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         // and update the starting index of pool for next sequence after every iteration
         if (validatorSpunCount < newValidatorsToDeposit) {
             uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
-            uint8[] memory poolQueue = new uint8[](poolCount);
+            uint8[] memory poolQueue = new uint8[](IPoolFactory(poolFactoryAddress).poolCount());
             uint8 counter;
             for (uint8 i = poolIdForExcessDeposit; i <= IPoolFactory(poolFactoryAddress).poolCount(); i++) {
                 poolQueue[counter++] = i;
