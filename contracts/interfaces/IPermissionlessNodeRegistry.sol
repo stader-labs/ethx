@@ -1,6 +1,7 @@
 pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
+import './INodeRegistry.sol';
 
 interface IPermissionlessNodeRegistry {
     // Error events
@@ -97,7 +98,7 @@ interface IPermissionlessNodeRegistry {
             uint256 initialBondEth
         );
 
-    function validatorIdBypubkey(bytes calldata _pubkey) external view returns (uint256);
+    function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
     function queuedValidators(uint256) external view returns (uint256);
 
@@ -119,6 +120,8 @@ interface IPermissionlessNodeRegistry {
     function operatorIDByAddress(address) external view returns (uint256);
 
     function getOperatorTotalKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
+
+    function getTotalWithdrawnValidatorCount() external view returns (uint256);
 
     //Setters
 

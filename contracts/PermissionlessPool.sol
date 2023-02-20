@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
@@ -88,7 +89,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             _signature,
             depositDataRoot
         );
-        uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorIdBypubkey(_pubkey);
+        uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey);
         emit ValidatorPreDepositedOnBeaconChain(validatorId, _pubkey);
     }
 
@@ -174,6 +175,14 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = _staderStakePoolManager;
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
+    }
+
+    function getAllActiveValidators() public view override returns (Validator[] memory) {
+        return INodeRegistry(nodeRegistryAddress).getAllActiveValidators();
+    }
+
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+        return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
     }
 
     /**

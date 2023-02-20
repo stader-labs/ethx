@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderPoolBase.sol';
+import './interfaces/INodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
@@ -58,6 +59,14 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
 
+    function getTotalActiveValidatorCount() external view override returns (uint256) {
+        uint256 totalActiveValidatorCount;
+        for (uint8 i = 1; i <= poolCount; i++) {
+            totalActiveValidatorCount += this.getActiveValidatorCountByPool(i);
+        }
+        return totalActiveValidatorCount;
+    }
+
     function getQueuedValidatorCountByPool(uint8 _poolId)
         external
         view
@@ -76,6 +85,34 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         returns (uint256)
     {
         return IStaderPoolBase(pools[_poolId].poolAddress).getTotalActiveValidatorCount();
+    }
+
+    function getAllActiveValidators() public view override returns (Validator[] memory) {
+        Validator[] memory allValidators = new Validator[](this.getTotalActiveValidatorCount());
+        uint256 index;
+        for (uint8 i = 1; i <= poolCount; i++) {
+            Validator[] memory validators = IStaderPoolBase(pools[i].poolAddress).getAllActiveValidators();
+            for (uint256 j = 0; j < validators.length; j++) {
+                allValidators[index] = validators[j];
+                index++;
+            }
+        }
+        return allValidators;
+    }
+
+    function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
+        for (uint8 i = 1; i <= poolCount; i++) {
+            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;
+
+            return getValidatorByPool(i, _pubkey);
+        }
+        Validator memory emptyValidator;
+
+        return emptyValidator;
+    }
+
+    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) public view override returns (Validator memory) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
     // Modifiers

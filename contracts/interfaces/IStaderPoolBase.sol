@@ -1,5 +1,7 @@
 pragma solidity ^0.8.16;
 
+import './INodeRegistry.sol';
+
 interface IStaderPoolBase {
     //Error events
 
@@ -21,7 +23,7 @@ interface IStaderPoolBase {
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
 
-    //Setters
+    function getAllActiveValidators() external view returns (Validator[] memory);
 
     function registerOnBeaconChain() external payable;
 
@@ -30,4 +32,6 @@ interface IStaderPoolBase {
     function updateVaultFactoryAddress(address _vaultFactoryAddress) external;
 
     function updateStaderStakePoolManager(address _staderStakePoolManager) external;
+
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory);
 }

@@ -3,29 +3,35 @@ pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
+struct Validator {
+    ValidatorStatus status; // state of validator
+    bool isFrontRun; // set to true by DAO if validator get front deposit
+    bytes pubkey; //public Key of the validator
+    bytes signature; //signature for deposit to Ethereum Deposit contract
+    address withdrawVaultAddress; //eth1 withdrawal address for validator
+    uint256 operatorId; // stader network assigned Id
+    uint256 initialBondEth; // amount of bond eth in gwei
+}
+
+struct Operator {
+    bool active; // operator status
+    bool optedForSocializingPool; // operator opted for socializing pool
+    string operatorName; // name of the operator
+    address payable operatorRewardAddress; //Eth1 address of node for reward
+    address operatorAddress; //address of operator to interact with stader
+    uint256 initializedValidatorCount; //validator whose keys added but not given pre signed msg for withdrawal
+    uint256 queuedValidatorCount; // validator queued for deposit
+    uint256 activeValidatorCount; // registered validator on beacon chain
+    uint256 withdrawnValidatorCount; //withdrawn validator count
+}
+
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
-    struct Validator {
-        ValidatorStatus status; // state of validator
-        bool isFrontRun; // set to true by DAO if validator get front deposit
-        bytes pubkey; //public Key of the validator
-        bytes signature; //signature for deposit to Ethereum Deposit contract
-        address withdrawVaultAddress; //eth1 withdrawal address for validator
-        uint256 operatorId; // stader network assigned Id
-        uint256 initialBondEth; // amount of bond eth in gwei
-    }
+    function getAllActiveValidators() external view returns (Validator[] memory);
 
-    struct Operator {
-        bool active; // operator status
-        bool optedForSocializingPool; // operator opted for socializing pool
-        string operatorName; // name of the operator
-        address payable operatorRewardAddress; //Eth1 address of node for reward
-        address operatorAddress; //address of operator to interact with stader
-        uint256 initializedValidatorCount; //validator whose keys added but not given pre signed msg for withdrawal
-        uint256 queuedValidatorCount; // validator queued for deposit
-        uint256 activeValidatorCount; // registered validator on beacon chain
-        uint256 withdrawnValidatorCount; //withdrawn validator count
-    }
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory);
+
+    function getValidator(uint256 _validatorId) external view returns (Validator memory);
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 
