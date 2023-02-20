@@ -121,8 +121,6 @@ interface IPermissionlessNodeRegistry {
 
     function getOperatorTotalKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 
-    function getTotalWithdrawnValidatorCount() external view returns (uint256);
-
     //Setters
 
     function onboardNodeOperator(
@@ -134,8 +132,6 @@ interface IPermissionlessNodeRegistry {
     function addValidatorKeys(bytes[] calldata _validatorpubkey, bytes[] calldata _validatorSignature) external payable;
 
     function markValidatorReadyToDeposit(bytes[] calldata _pubkeys) external;
-
-    function deleteDepositedQueueValidator(uint256 _keyCount, uint256 _index) external;
 
     function updateQueuedAndActiveValidatorsCount(uint256 _operatorID) external;
 
