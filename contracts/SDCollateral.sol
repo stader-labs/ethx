@@ -128,14 +128,15 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     // GETTERS
 
-    function hasEnoughXSDCollateral(
-        address _operator,
-        uint8 _poolId,
-        uint32 _numValidators
-    ) public view returns (bool) {
+    function hasEnoughSDCollateral(address _operator, uint8 _poolId, uint32 _numValidators) public view returns (bool) {
         uint256 numShares = operatorShares[_operator];
         uint256 sdBalance = convertSharesToSD(numShares);
         return _checkPoolThreshold(_poolId, sdBalance, _numValidators);
+    }
+
+    function getOperatorSDBalance(address _operator) public view returns (uint256) {
+        uint256 numShares = operatorShares[_operator];
+        return convertSharesToSD(numShares);
     }
 
     // HELPER FUNCTIONS
