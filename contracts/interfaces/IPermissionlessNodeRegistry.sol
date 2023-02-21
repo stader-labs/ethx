@@ -42,6 +42,7 @@ interface IPermissionlessNodeRegistry {
     event UpdatedPermissionlessPoolAddress(address _permissionlessPool);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+    event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 timestamp);
 
     //Getters
 
@@ -127,6 +128,8 @@ interface IPermissionlessNodeRegistry {
 
     function operatorIDByAddress(address) external view returns (uint256);
 
+    function socializingPoolStateChangeTimestamp(uint256) external view returns (uint256);
+
     function getOperatorTotalKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 
     //Setters
@@ -158,6 +161,8 @@ interface IPermissionlessNodeRegistry {
     function updatePermissionlessPoolAddress(address _permissionlessPool) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
+
+    function changeSocializingPoolState(bool _optedForSocializingPool) external;
 
     function pause() external;
 

@@ -63,6 +63,8 @@ contract PermissionlessNodeRegistry is
     mapping(uint256 => Operator) public override operatorStructById;
     // mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
+    // timestamp when operator opted for socializing pool
+    mapping(uint256 => uint256) public override socializingPoolStateChangeTimestamp;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -217,6 +219,19 @@ contract PermissionlessNodeRegistry is
     function updateNextQueuedValidatorIndex(uint256 _count) external onlyRole(PERMISSIONLESS_POOL) {
         nextQueuedValidatorIndex += _count;
         emit UpdatedNextQueuedValidatorIndex(nextQueuedValidatorIndex);
+    }
+
+    function changeSocializingPoolState(bool _optedForSocializingPool) external {
+        _onlyOnboardedOperator(msg.sender);
+        uint256 operatorId = operatorIDByAddress[msg.sender];
+        require(
+            operatorStructById[operatorId].optedForSocializingPool != _optedForSocializingPool,
+            'No change in state'
+        );
+
+        operatorStructById[operatorId].optedForSocializingPool = _optedForSocializingPool;
+        socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
+        emit UpdatedSocializingPoolState(operatorId, _optedForSocializingPool, block.timestamp);
     }
 
     /**
