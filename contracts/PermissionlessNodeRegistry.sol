@@ -146,11 +146,7 @@ contract PermissionlessNodeRegistry is
         uint256 operatorTotalKeys = this.getOperatorTotalKeys(operatorId);
         uint256 operatorTotalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughXSDCollateral(
-            msg.sender,
-            poolId,
-            operatorTotalNonWithdrawnKeys + keyCount
-        );
+        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, operatorTotalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_pubkey[i], _preDepositSignature[i], _depositSignature[i], operatorId);
@@ -164,12 +160,10 @@ contract PermissionlessNodeRegistry is
      * @param _readyToDepositPubkey array of pubkeys ready to be moved to PRE_DEPOSIT state
      * @param _frontRunnedPubkey array for pubkeys which got front deposit
      */
-    function markValidatorReadyToDeposit(bytes[] calldata _readyToDepositPubkey, bytes[] calldata _frontRunnedPubkey)
-        external
-        override
-        whenNotPaused
-        onlyRole(STADER_ORACLE)
-    {
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkey,
+        bytes[] calldata _frontRunnedPubkey
+    ) external override whenNotPaused onlyRole(STADER_ORACLE) {
         for (uint256 i = 0; i < _readyToDepositPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             _markKeyReadyToDeposit(validatorId);
@@ -230,11 +224,10 @@ contract PermissionlessNodeRegistry is
      * @param _pubkey public key of the validator
      * @param _status updated status of validator
      */
-    function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status)
-        external
-        override
-        onlyRole(VALIDATOR_STATUS_ROLE)
-    {
+    function updateValidatorStatus(
+        bytes calldata _pubkey,
+        ValidatorStatus _status
+    ) external override onlyRole(VALIDATOR_STATUS_ROLE) {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         validatorRegistry[validatorId].status = _status;
     }
@@ -244,11 +237,9 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _poolFactoryAddress address of pool factory
      */
-    function updatePoolFactoryAddress(address _poolFactoryAddress)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updatePoolFactoryAddress(
+        address _poolFactoryAddress
+    ) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_poolFactoryAddress);
         poolFactoryAddress = _poolFactoryAddress;
         emit UpdatedPoolFactoryAddress(poolFactoryAddress);
@@ -259,11 +250,9 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _sdCollateral address of sd collateral contract
      */
-    function updateSDCollateralAddress(address _sdCollateral)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updateSDCollateralAddress(
+        address _sdCollateral
+    ) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_sdCollateral);
         sdCollateral = _sdCollateral;
         emit UpdatedSDCollateralAddress(_sdCollateral);
@@ -274,11 +263,9 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _vaultFactoryAddress address of vault factory
      */
-    function updateVaultFactoryAddress(address _vaultFactoryAddress)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updateVaultFactoryAddress(
+        address _vaultFactoryAddress
+    ) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         vaultFactoryAddress = _vaultFactoryAddress;
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
@@ -290,11 +277,9 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can update
      * @param _permissionlessPool permission less pool address
      */
-    function updatePermissionlessPoolAddress(address _permissionlessPool)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updatePermissionlessPoolAddress(
+        address _permissionlessPool
+    ) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_permissionlessPool);
         permissionlessPool = _permissionlessPool;
         emit UpdatedPermissionlessPoolAddress(permissionlessPool);
@@ -305,11 +290,9 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _elRewardSocializePool address of permissionless EL reward socialize pool
      */
-    function updateELRewardSocializePool(address _elRewardSocializePool)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updateELRewardSocializePool(
+        address _elRewardSocializePool
+    ) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_elRewardSocializePool);
         elRewardSocializePool = _elRewardSocializePool;
         emit UpdatedELRewardSocializePool(_elRewardSocializePool);
@@ -320,11 +303,9 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _staderPenaltyFund address of stader penalty fund
      */
-    function updateStaderPenaltyFundAddress(address _staderPenaltyFund)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updateStaderPenaltyFundAddress(
+        address _staderPenaltyFund
+    ) external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_staderPenaltyFund);
         staderPenaltyFund = _staderPenaltyFund;
         emit UpdatedStaderPenaltyFund(_staderPenaltyFund);

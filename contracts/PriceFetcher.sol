@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '../contracts/interfaces/ITWAPGetter.sol';
+import '../contracts/interfaces/SDCollateral/ITWAPGetter.sol';
 
 contract PriceFetcher is Initializable {
     address public sdERC20;
