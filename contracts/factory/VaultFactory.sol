@@ -71,7 +71,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 validatorCount
     ) public view override returns (address) {
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
-        return Create2.computeAddress(salt, bytes32(type(StaderWithdrawVault).creationCode));
+        return Create2.computeAddress(salt, keccak256(type(StaderWithdrawVault).creationCode));
     }
 
     function computeNodeELRewardVaultAddress(uint8 poolType, uint256 operatorId)
@@ -81,7 +81,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         returns (address)
     {
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
-        return Create2.computeAddress(salt, bytes32(type(NodeELRewardVault).creationCode));
+        return Create2.computeAddress(salt, keccak256(type(NodeELRewardVault).creationCode));
     }
 
     function getValidatorWithdrawCredential(address _withdrawVault) public pure override returns (bytes memory) {
