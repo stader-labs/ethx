@@ -57,6 +57,7 @@ contract PermissionedNodeRegistry is
     mapping(uint256 => uint256[]) public override operatorQueuedValidators;
     //mapping of operator ID and nextQueuedValidatorIndex
     mapping(uint256 => uint256) public override nextQueuedValidatorIndexByOperatorId;
+    mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
 
     function initialize(
         address _adminOwner,
@@ -387,6 +388,11 @@ contract PermissionedNodeRegistry is
     }
 
     /// @inheritdoc INodeRegistry
+    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256) {
+        return socializingPoolStateChangeTimestamp[_operatorId];
+    }
+
+    /// @inheritdoc INodeRegistry
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         if (validatorId == 0) {
@@ -513,6 +519,7 @@ contract PermissionedNodeRegistry is
             0
         );
         operatorIDByAddress[msg.sender] = nextOperatorId;
+        socializingPoolStateChangeTimestamp[nextOperatorId] = block.timestamp;
         nextOperatorId++;
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
     }

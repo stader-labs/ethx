@@ -29,7 +29,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        bytes32 pubkeyRoot = this.getPubkeyRoot(_pubkey);
+        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
         require(additionalPenaltyAmount[pubkeyRoot] != _amount, 'Penalty: amount is unchanged');
 
         additionalPenaltyAmount[pubkeyRoot] = _amount;
@@ -43,7 +43,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        bytes32 pubkeyRoot = this.getPubkeyRoot(_pubkey);
+        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
         require(penaltyReversalAmount[pubkeyRoot] != _amount, 'Penalty: amount is unchanged');
 
         penaltyReversalAmount[pubkeyRoot] = _amount;
@@ -82,7 +82,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function calculatePenalty(bytes calldata _pubkey) external override returns (uint256) {
         // Retrieve the penalty for changing the fee recipient address based on Rated.network data.
         uint256 feeRecipientChangePenalty = calculateFeeRecipientChangePenalty(_pubkey);
-        bytes32 pubkeyRoot = this.getPubkeyRoot(_pubkey);
+        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
 
         // Compute the total penalty for the given validator public key,
         // taking into account additional penalties and penalty reversals from the DAO.
@@ -110,12 +110,12 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view override returns (uint256) {
-        return additionalPenaltyAmount[this.getPubkeyRoot(_pubkey)];
+        return additionalPenaltyAmount[getPubkeyRoot(_pubkey)];
     }
 
     /// @inheritdoc IPenalty
     function getPenaltyReversalAmount(bytes calldata _pubkey) external view override returns (uint256) {
-        return penaltyReversalAmount[this.getPubkeyRoot(_pubkey)];
+        return penaltyReversalAmount[getPubkeyRoot(_pubkey)];
     }
 
     /// @inheritdoc IPenalty

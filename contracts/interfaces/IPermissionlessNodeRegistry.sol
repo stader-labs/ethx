@@ -129,8 +129,6 @@ interface IPermissionlessNodeRegistry {
 
     function operatorIDByAddress(address) external view returns (uint256);
 
-    function socializingPoolStateChangeTimestamp(uint256) external view returns (uint256);
-
     function getOperatorTotalKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 
     //Setters
