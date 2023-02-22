@@ -13,6 +13,7 @@ contract PriceFetcher is Initializable {
     address public wethUSDCPool;
     address public sdUSDCPool;
     ITWAPGetter public twapGetter;
+    uint32 public twapInterval;
 
     /**
      * @notice Check for zero address
@@ -54,11 +55,15 @@ contract PriceFetcher is Initializable {
         twapGetter = ITWAPGetter(_twapGetterAddr);
     }
 
-    function getSDPriceInUSD(uint32 _twapInterval) external view returns (uint256) {
-        return twapGetter.getPrice(sdUSDCPool, sdERC20, usdcERC20, _twapInterval);
+    function setTwapInterval(uint32 _twapInterval) external {
+        twapInterval = _twapInterval;
     }
 
-    function getEthPriceInUSD(uint32 _twapInterval) external view returns (uint256) {
-        return twapGetter.getPrice(wethUSDCPool, wethERC20, usdcERC20, _twapInterval);
+    function getSDPriceInUSD() external view returns (uint256) {
+        return twapGetter.getPrice(sdUSDCPool, sdERC20, usdcERC20, twapInterval);
+    }
+
+    function getEthPriceInUSD() external view returns (uint256) {
+        return twapGetter.getPrice(wethUSDCPool, wethERC20, usdcERC20, twapInterval);
     }
 }

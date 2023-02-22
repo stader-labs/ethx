@@ -42,6 +42,14 @@ const config: HardhatUserConfig = {
       url: process.env.PROVIDER_URL ?? '',
       accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
     },
+    zang: {
+      url: process.env.PROVIDER_URL ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+    },
+    ethereum: {
+      url: process.env.PROVIDER_URL ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+    },
   },
   etherscan: {
     // Your API key for Etherscan

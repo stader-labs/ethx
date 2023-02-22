@@ -19,4 +19,6 @@ export async function deployUpgradeableContract(contractName: string, ...args: a
 
   console.log(`Proxy ${contractName} deployed to:`, contract.address)
   console.log(`Impl ${contractName} deployed to:`, contractImplAddress)
+
+  return contract.address
 }

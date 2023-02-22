@@ -6,8 +6,8 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '../contracts/interfaces/ISDStaking.sol';
 import '../contracts/interfaces/IPriceFetcher.sol';
+import '../contracts/interfaces/IPoolFactory.sol';
 
 contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     struct PoolThresholdInfo {
@@ -20,6 +20,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     IERC20 public sdERC20;
     IPriceFetcher public priceFetcher;
+    IPoolFactory public poolFactory;
 
     uint256 public totalShares;
     uint256 public totalSDCollateral;
@@ -47,8 +48,16 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function initialize(
         address _admin,
         address _sdERC20Addr,
-        address _priceFetcherAddr
-    ) external initializer checkZeroAddress(_admin) checkZeroAddress(_sdERC20Addr) checkZeroAddress(_priceFetcherAddr) {
+        address _priceFetcherAddr,
+        address _poolFactory
+    )
+        external
+        initializer
+        checkZeroAddress(_admin)
+        checkZeroAddress(_sdERC20Addr)
+        checkZeroAddress(_priceFetcherAddr)
+        checkZeroAddress(_poolFactory)
+    {
         __AccessControl_init();
         __Pausable_init();
 
@@ -56,6 +65,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
         sdERC20 = IERC20(_sdERC20Addr);
         priceFetcher = IPriceFetcher(_priceFetcherAddr);
+        poolFactory = IPoolFactory(_poolFactory);
     }
 
     /**
@@ -82,7 +92,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         uint8 poolId = poolIdByOperator[operator];
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
-        uint256 validatorCount = 0; // TODO: Manoj :poolFactory.getPoolContract(poolId).getOnlineValidatorCount(operator);
+        uint256 validatorCount = poolFactory.getOperatorTotalNonWithdrawnKeys(poolId, operator);
         uint256 withdrawableSD = sdBalance - convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
 
         require(_requestedSD <= withdrawableSD, 'withdraw less SD');
@@ -128,10 +138,11 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     // GETTERS
 
-    function hasEnoughSDCollateral(address _operator, uint8 _poolId, uint32 _numValidators) public view returns (bool) {
+    function hasEnoughSDCollateral(address _operator, uint8 _poolId) public view returns (bool) {
         uint256 numShares = operatorShares[_operator];
         uint256 sdBalance = convertSharesToSD(numShares);
-        return _checkPoolThreshold(_poolId, sdBalance, _numValidators);
+        uint256 numValidators = poolFactory.getOperatorTotalNonWithdrawnKeys(_poolId, _operator);
+        return _checkPoolThreshold(_poolId, sdBalance, numValidators);
     }
 
     function getOperatorSDBalance(address _operator) public view returns (uint256) {
@@ -144,7 +155,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function _checkPoolThreshold(
         uint8 _poolId,
         uint256 _sdBalance,
-        uint32 _numValidators
+        uint256 _numValidators
     ) internal view returns (bool) {
         uint256 eqEthBalance = convertSDToETH(_sdBalance);
 

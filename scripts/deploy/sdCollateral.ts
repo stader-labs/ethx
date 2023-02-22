@@ -3,13 +3,19 @@
 // link : 0xe9c4393a23246293a8D31BF7ab68c17d4CF90A29
 // weth: 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6
 // usdc: 0x65aFADD39029741B3b8f0756952C74678c9cEC93
+
+// ---------------------------------------------------------------
+//  MAINNET CONTRACTS
+// twapGetter: 0x318dA793Ca0E400CAb2B0f07b58B2e3Ec5b0Ba67
+// eth-usdc: 0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640 // max twap : 25100 secs ~ 7hr
+//
 import { ethers, upgrades } from 'hardhat'
 import { deployNonUpgradeableContract, deployUpgradeableContract } from '../utils'
 
 async function main() {
   const twapContractAddr = await deployNonUpgradeableContract('TWAPGetter')
 
-  const _sdERC20Addr = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6' // weth for now // required
+  const _sdERC20Addr = '0xD311878a010a94e4500eb5B056DfeaEcAc349AD2'
   const _usdcERC20Addr = '0x65aFADD39029741B3b8f0756952C74678c9cEC93'
   const _wethERC20Addr = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
   const _sdUSDCPool = '0x09a29d678e9c7e150c43045e24a6ef974381a4f9' // wethUSDC for now // required
@@ -24,17 +30,13 @@ async function main() {
     twapContractAddr
   )
 
-  // const [owner] = await ethers.getSigners()
-  // const _xsdERC20Addr = '' // required
-  // const _sdStakingContractAddr = '' // required
-  // const sdCollateralAddr = await deployUpgradeableContract(
-  //   'SDCollateral',
-  //   owner.address,
-  //   _sdERC20Addr,
-  //   _xsdERC20Addr,
-  //   priceFetcherAddr,
-  //   _sdStakingContractAddr
-  // )
+  const [owner] = await ethers.getSigners()
+  const sdCollateralAddr = await deployUpgradeableContract(
+    'SDCollateral',
+    owner.address,
+    _sdERC20Addr,
+    priceFetcherAddr
+  )
 }
 
 main()

@@ -16,11 +16,7 @@ interface ISDCollateral {
 
     function updatePoolIdForOperator(uint8 _poolId, address _operator) external;
 
-    function hasEnoughSDCollateral(
-        address _operator,
-        uint8 _poolId,
-        uint32 _numValidators
-    ) external view returns (bool);
+    function hasEnoughSDCollateral(address _operator, uint8 _poolId) external view returns (bool);
 
     function getOperatorSDBalance(address _operator) external view returns (uint256);
 }
