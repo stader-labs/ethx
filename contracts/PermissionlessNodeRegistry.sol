@@ -218,7 +218,6 @@ contract PermissionlessNodeRegistry is
         return operatorStructById[operatorId];
     }
 
-
     /**
      * @notice update the status of a validator
      * @dev only oracle can call

@@ -39,12 +39,12 @@ interface INodeRegistry {
     */
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
 
-/**
- * 
- * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
- * @param startIndex start index in validator queue to start with 
- * @param endIndex  up to end index of validator queue to to count
- */
+    /**
+     *
+     * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
+     * @param startIndex start index in validator queue to start with
+     * @param endIndex  up to end index of validator queue to to count
+     */
     function getOperatorTotalNonWithdrawnKeys(
         address _nodeOperator,
         uint256 startIndex,

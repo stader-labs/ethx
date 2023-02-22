@@ -213,7 +213,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
-
     /// @inheritdoc IStaderPoolBase
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
         return INodeRegistry(nodeRegistryAddress).getOperator(_pubkey);
