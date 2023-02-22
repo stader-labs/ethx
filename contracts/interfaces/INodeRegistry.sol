@@ -5,9 +5,9 @@ import '../library/ValidatorStatus.sol';
 
 struct Validator {
     ValidatorStatus status; // state of validator
-    bool isFrontRun; // set to true by DAO if validator get front deposit
     bytes pubkey; //public Key of the validator
-    bytes signature; //signature for deposit to Ethereum Deposit contract
+    bytes preDepositSignature; //signature for 1 ETH deposit to Ethereum Deposit contract
+    bytes depositSignature; //signature for 31 ETH deposit on Ethereum Deposit contract
     address withdrawVaultAddress; //eth1 withdrawal address for validator
     uint256 operatorId; // stader network assigned Id
     uint256 initialBondEth; // amount of bond eth in gwei
@@ -19,10 +19,6 @@ struct Operator {
     string operatorName; // name of the operator
     address payable operatorRewardAddress; //Eth1 address of node for reward
     address operatorAddress; //address of operator to interact with stader
-    uint256 initializedValidatorCount; //validator whose keys added but not given pre signed msg for withdrawal
-    uint256 queuedValidatorCount; // validator queued for deposit
-    uint256 activeValidatorCount; // registered validator on beacon chain
-    uint256 withdrawnValidatorCount; //withdrawn validator count
 }
 
 // Interface for the NodeRegistry contract
@@ -33,7 +29,11 @@ interface INodeRegistry {
 
     function getValidator(uint256 _validatorId) external view returns (Validator memory);
 
-    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
+    function getOperatorTotalNonWithdrawnKeys(
+        address _nodeOperator,
+        uint256 startIndex,
+        uint256 endIndex
+    ) external view returns (uint256);
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 

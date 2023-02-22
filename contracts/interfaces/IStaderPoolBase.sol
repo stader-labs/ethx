@@ -5,16 +5,13 @@ import './INodeRegistry.sol';
 interface IStaderPoolBase {
     //Error events
 
-    error NotEnoughCapacity();
-    error ValidatorNotInQueue();
-    error NotEnoughValidatorToDeposit();
-    error NotEnoughProcessedBatchToDeposit();
+    error NotEnoughValidatorReadyToDeposit();
 
     // Events
     event UpdatedNodeRegistryAddress(address _nodeRegistryAddress);
     event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
     event UpdatedStaderStakePoolManager(address _staderStakePoolManager);
-    event ValidatorPreDepositedOnBeaconChain(uint256 indexed _validatorId, bytes _pubKey);
+    event ValidatorPreDepositedOnBeaconChain(bytes indexed _pubKey);
     event ValidatorDepositedOnBeaconChain(uint256 indexed _validatorId, bytes _pubKey);
 
     //Getters
@@ -25,7 +22,11 @@ interface IStaderPoolBase {
 
     function getAllActiveValidators() external view returns (Validator[] memory);
 
-    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator) external view returns (uint256);
+    function getOperatorTotalNonWithdrawnKeys(
+        address _nodeOperator,
+        uint256 startIndex,
+        uint256 endIndex
+    ) external view returns (uint256);
 
     function registerOnBeaconChain() external payable;
 

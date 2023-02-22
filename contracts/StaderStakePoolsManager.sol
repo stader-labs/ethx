@@ -37,7 +37,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public maxDepositAmount;
     uint256 public depositedPooledETH;
     uint256 public paginationLimit;
-    uint256 public POOLED_ETH_BUFFER;
     uint256 public PERMISSIONLESS_DEPOSIT_SIZE;
     /**
      * @notice Check for zero address

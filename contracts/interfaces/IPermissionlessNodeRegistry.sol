@@ -5,40 +5,31 @@ import './INodeRegistry.sol';
 
 interface IPermissionlessNodeRegistry {
     // Error events
-    error InvalidIndex();
     error TransferFailed();
     error EmptyNameString();
     error NameCrossedMaxLength();
-    error pubkeyDoesNotExist();
     error OperatorNotOnBoarded();
     error InvalidBondEthValue();
     error InSufficientBalance();
     error OperatorAlreadyOnBoarded();
-    error NoQueuedValidatorLeft();
-    error NoActiveValidatorLeft();
     error NoKeysProvided();
     error pubkeyAlreadyExist();
+    error OperatorIsDeactivate();
     error InvalidLengthOfpubkey();
     error InvalidLengthOfSignature();
     error InvalidSizeOfInputKeys();
-    error ValidatorInPreDepositState();
 
     //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
     event ValidatorMarkedReadyToDeposit(bytes _pubkey, uint256 _validatorId);
-    event UpdatedQueuedAndActiveValidatorsCount(
-        uint256 _operatorId,
-        uint256 _queuedValidatorCount,
-        uint256 _activeValidatorCount
-    );
-    event UpdatedActiveAndWithdrawnValidatorsCount(
-        uint256 _operatorId,
-        uint256 _activeValidatorCount,
-        uint256 _withdrawnValidators
-    );
+    event ValidatorMarkedAsFrontRunned(bytes _frontRunnedPubkey, uint256 _validatorId);
+
     event UpdatedPoolFactoryAddress(address _poolFactoryAddress);
+    event UpdatedSDCollateralAddress(address _sdCollateral);
     event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
+    event UpdatedELRewardSocializePool(address _elRewardSocializePool);
+    event UpdatedStaderPenaltyFund(address _staderPenaltyFund);
     event UpdatedPermissionlessPoolAddress(address _permissionlessPool);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
@@ -53,8 +44,6 @@ interface IPermissionlessNodeRegistry {
 
     function PERMISSIONLESS_POOL() external returns (bytes32);
 
-    function STADER_MANAGER_BOT() external returns (bytes32);
-
     function poolId() external view returns (uint8);
 
     function poolFactoryAddress() external view returns (address);
@@ -67,7 +56,7 @@ interface IPermissionlessNodeRegistry {
 
     function permissionlessPool() external view returns (address);
 
-    function staderInsuranceFund() external view returns (address);
+    function staderPenaltyFund() external view returns (address);
 
     function nextOperatorId() external view returns (uint256);
 
@@ -77,13 +66,7 @@ interface IPermissionlessNodeRegistry {
 
     function nextQueuedValidatorIndex() external view returns (uint256);
 
-    function totalInitializedValidatorCount() external view returns (uint256);
-
-    function totalQueuedValidatorCount() external view returns (uint256);
-
     function totalActiveValidatorCount() external view returns (uint256);
-
-    function totalWithdrawnValidatorCount() external view returns (uint256);
 
     function PRE_DEPOSIT() external view returns (uint256);
 
@@ -98,9 +81,9 @@ interface IPermissionlessNodeRegistry {
         view
         returns (
             ValidatorStatus status,
-            bool isFrontRun,
             bytes calldata pubkey,
-            bytes calldata signature,
+            bytes calldata preDepositSignature,
+            bytes calldata depositSignature,
             address withdrawVaultAddress,
             uint256 operatorId,
             uint256 initialBondEth
@@ -118,16 +101,14 @@ interface IPermissionlessNodeRegistry {
             bool optedForSocializingPool,
             string calldata operatorName,
             address payable operatorRewardAddress,
-            address operatorAddress,
-            uint256 initializedValidatorCount,
-            uint256 queuedValidatorCount,
-            uint256 activeValidatorCount,
-            uint256 withdrawnValidatorCount
+            address operatorAddress
         );
 
     function operatorIDByAddress(address) external view returns (uint256);
 
-    function getOperatorTotalKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
+    function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
+
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     //Setters
 
@@ -137,15 +118,20 @@ interface IPermissionlessNodeRegistry {
         address payable _operatorRewardAddress
     ) external returns (address mevFeeRecipientAddress);
 
-    function addValidatorKeys(bytes[] calldata _validatorpubkey, bytes[] calldata _validatorSignature) external payable;
+    function addValidatorKeys(
+        bytes[] calldata _pubkey,
+        bytes[] calldata _preDepositSignature,
+        bytes[] calldata _depositSignature
+    ) external payable;
 
-    function markValidatorReadyToDeposit(bytes[] calldata _pubkeys) external;
+    function markValidatorReadyToDeposit(bytes[] calldata _readyToDepositPubkey, bytes[] calldata _frontRunnedPubkey)
+        external;
 
-    function updateQueuedAndActiveValidatorsCount(uint256 _operatorID) external;
+    function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external;
 
-    function updateActiveAndWithdrawnValidatorsCount(uint256 _operatorID) external;
+    function increaseTotalActiveValidatorCount(uint256 _count) external;
 
-    function updateNextQueuedValidatorIndex(uint256 _count) external;
+    function decreaseTotalActiveValidatorCount(uint256 _count) external;
 
     function transferCollateralToPool(uint256 _amount) external;
 
@@ -153,7 +139,13 @@ interface IPermissionlessNodeRegistry {
 
     function updatePoolFactoryAddress(address _staderPoolSelector) external;
 
+    function updateSDCollateralAddress(address _sdCollateral) external;
+
     function updateVaultFactoryAddress(address _vaultFactoryAddress) external;
+
+    function updateELRewardSocializePool(address _elRewardSocializePool) external;
+
+    function updateStaderPenaltyFundAddress(address _staderPenaltyFund) external;
 
     function updatePermissionlessPoolAddress(address _permissionlessPool) external;
 

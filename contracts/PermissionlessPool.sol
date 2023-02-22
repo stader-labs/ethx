@@ -82,8 +82,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             _signature,
             depositDataRoot
         );
-        uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey);
-        emit ValidatorPreDepositedOnBeaconChain(validatorId, _pubkey);
+        emit ValidatorPreDepositedOnBeaconChain(_pubkey);
     }
 
     /**
@@ -102,11 +101,11 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
             (
                 ,
-                ,
                 bytes memory pubkey,
-                bytes memory signature,
+                ,
+                bytes memory depositSignature,
                 address withdrawVaultAddress,
-                uint256 operatorId,
+                ,
 
             ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
 
@@ -114,47 +113,33 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 withdrawVaultAddress
             );
 
-            bytes32 depositDataRoot = _computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
+            bytes32 depositDataRoot = _computeDepositDataRoot(
+                pubkey,
+                depositSignature,
+                withdrawCredential,
+                DEPOSIT_SIZE
+            );
             IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
                 pubkey,
                 withdrawCredential,
-                signature,
+                depositSignature,
                 depositDataRoot
             );
 
             IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
-            IPermissionlessNodeRegistry(nodeRegistryAddress).updateQueuedAndActiveValidatorsCount(operatorId);
             emit ValidatorDepositedOnBeaconChain(validatorId, pubkey);
         }
-
-        IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(requiredValidators);
+        IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(
+            depositQueueStartIndex + requiredValidators
+        );
+        IPermissionlessNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
+        // TODO only use case i see for this is if some external account directly send to this contract
         if (address(this).balance > 0) {
             //slither-disable-next-line arbitrary-send-eth
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
                 poolId
             );
         }
-    }
-
-    /**
-     * @notice return total queued keys for permissionless pool
-     */
-    function getTotalQueuedValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalQueuedValidatorCount();
-    }
-
-    /**
-     * @notice return total active keys for permissionless pool
-     */
-    function getTotalActiveValidatorCount() external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getTotalActiveValidatorCount();
-    }
-
-    /**
-     * @notice returns the total non withdrawn keys of a operator
-     */
-    function getOperatorTotalNonWithdrawnKeys(address _nodeOperator) external view override returns (uint256) {
-        return INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator);
     }
 
     /**
@@ -170,14 +155,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = _staderStakePoolManager;
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
-    }
-
-    function getAllActiveValidators() public view override returns (Validator[] memory) {
-        return INodeRegistry(nodeRegistryAddress).getAllActiveValidators();
-    }
-
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
-        return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
     }
 
     /**
@@ -208,6 +185,47 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         vaultFactoryAddress = _vaultFactoryAddress;
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
+    }
+
+    /**
+     * @notice return total queued keys for permissionless pool
+     */
+    function getTotalQueuedValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalQueuedValidatorCount();
+    }
+
+    /**
+     * @notice return total active keys for permissionless pool
+     */
+    function getTotalActiveValidatorCount() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getTotalActiveValidatorCount();
+    }
+
+    /**
+     * @notice get all validator which has user balance on beacon chain
+     */
+    function getAllActiveValidators() public view override returns (Validator[] memory) {
+        return INodeRegistry(nodeRegistryAddress).getAllActiveValidators();
+    }
+
+    /**
+     * @notice retrive a validator with pubkey
+     * @param _pubkey pubkey of the validator
+     */
+    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+        return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
+    }
+
+    /**
+     * @notice returns the total non withdrawn keys of a operator
+     */
+    function getOperatorTotalNonWithdrawnKeys(
+        address _nodeOperator,
+        uint256 _startIndex,
+        uint256 _endIndex
+    ) external view override returns (uint256) {
+        return
+            INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
     /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
