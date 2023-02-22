@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-interface IStaderUserWithdrawalManager {
+interface IUserWithdrawalManager {
     event WithdrawRequestReceived(
         address indexed _sender,
         address _recipient,
@@ -28,19 +28,17 @@ interface IStaderUserWithdrawalManager {
 
     function POOL_MANAGER() external view returns (bytes32);
 
-    function poolManager() external view returns (address);
+    function staderOwner() external view returns (address);
 
     function lockedEtherAmount() external view returns (uint256);
 
-    function latestRequestId() external view returns (uint256);
+    function nextBatchIdToFinalize() external view returns (uint256);
 
-    function lastFinalizedBatch() external view returns (uint256);
-
-    function currentBatchNumber() external view returns (uint256);
+    function latestBatchId() external view returns (uint256);
 
     function DECIMAL() external view returns (uint256);
 
-    function requiredBatchEThThreshold() external view returns (uint256);
+    function lastIncrementBatchTime() external view returns (uint256);
 
     function batchRequest(uint256)
         external
@@ -61,12 +59,10 @@ interface IStaderUserWithdrawalManager {
     ) external;
 
     function finalize(
-        uint256 _finalizedBatchNumber,
+        uint256 _finalizeBatchId,
         uint256 _ethToLock,
         uint256 _finalizedExchangeRate
     ) external payable;
 
     function redeem(uint256 _requestId) external;
-
-    function changeRecipient(uint256 _requestId, address _newRecipient) external;
 }

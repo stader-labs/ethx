@@ -31,7 +31,7 @@ describe('stader pool manager tests', () => {
     expect(await env.ethxToken.balanceOf(adr.staker2.address)).to.be.equal(ethers.utils.parseEther('10'))
   })
 
-  it('onboard validators both permissioned and permissionLess', async function () {
+  it('onboard validators both permissioned and permissionless', async function () {
     await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 0)
     await onboardPermissionLessValidator(env.staderPermissionLessPool, adr.staderOwner.address, 1, '4')
     await onboardPermissionedValidator(env.staderPermissionedStakePool, adr.staderOwner.address, 2)
@@ -41,11 +41,11 @@ describe('stader pool manager tests', () => {
   })
 
   it('operator registry checks', async function () {
-    const permissionLessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
+    const permissionlessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
     const permissionedOperatorIndex = await env.operatorRegistry.getOperatorIndexById(1)
-    const permissionLessOperator = await env.operatorRegistry.operatorRegistry(permissionLessOperatorIndex)
-    expect(permissionLessOperator.validatorCount).to.be.equal(2)
-    expect(permissionLessOperator.activeValidatorCount).to.be.equal(0)
+    const permissionlessOperator = await env.operatorRegistry.operatorRegistry(permissionlessOperatorIndex)
+    expect(permissionlessOperator.validatorCount).to.be.equal(2)
+    expect(permissionlessOperator.activeValidatorCount).to.be.equal(0)
 
     const permissionedOperator = await env.operatorRegistry.operatorRegistry(permissionedOperatorIndex)
     expect(permissionedOperator.validatorCount).to.be.equal(2)
@@ -86,9 +86,9 @@ describe('stader pool manager tests', () => {
     expect(await provider.getBalance(env.staderPermissionLessPool.address)).to.be.equal(ethers.utils.parseEther('4'))
     expect(await provider.getBalance(env.ethDeposit.address)).to.be.equal(ethers.utils.parseEther('64'))
     expect(await env.validatorRegistry.registeredValidatorCount()).to.be.equal(2)
-    const permissionLessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
-    const permissionLessOperator = await env.operatorRegistry.operatorRegistry(permissionLessOperatorIndex)
-    expect(permissionLessOperator.activeValidatorCount).to.be.equal(1)
+    const permissionlessOperatorIndex = await env.operatorRegistry.getOperatorIndexById(0)
+    const permissionlessOperator = await env.operatorRegistry.operatorRegistry(permissionlessOperatorIndex)
+    expect(permissionlessOperator.activeValidatorCount).to.be.equal(1)
   })
 
   it('again select permissioned pool and register a validator', async function () {

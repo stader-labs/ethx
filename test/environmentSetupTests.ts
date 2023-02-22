@@ -14,19 +14,19 @@ describe('environmentSetupTest', () => {
   describe('when setting up the environment', () => {
     describe('when deploying stader contracts', () => {
       it('should not revert', async () => {
+        await expect(env.ethDeposit.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
         await expect(env.ethxToken.address).to.not.be.empty
       })
 
       it('should not revert', async () => {
-        await expect(env.validatorRegistry.address).to.not.be.empty
+        await expect(env.staderOracle.address).to.not.be.empty
       })
 
       it('should not revert', async () => {
-        await expect(env.staderPermissionLessPool.address).to.not.be.empty
-      })
-
-      it('should not revert', async () => {
-        await expect(env.staderPermissionedStakePool.address).to.not.be.empty
+        await expect(env.userWithdrawManager.address).to.not.be.empty
       })
 
       it('should not revert', async () => {
@@ -34,7 +34,35 @@ describe('environmentSetupTest', () => {
       })
 
       it('should not revert', async () => {
-        await expect(env.socializePool.address).to.not.be.empty
+        await expect(env.socializingPoolContract.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
+        await expect(env.vaultFactoryInstance.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
+        await expect(env.poolFactoryInstance.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
+        await expect(env.permissionedNodeRegistry.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
+        await expect(env.permissionlessNodeRegistry.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
+        await expect(env.staderPermissionedPool.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
+        await expect(env.staderPermissionLessPool.address).to.not.be.empty
+      })
+
+      it('should not revert', async () => {
+        await expect(env.poolSelector.address).to.not.be.empty
       })
     })
   })

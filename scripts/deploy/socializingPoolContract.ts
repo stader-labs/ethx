@@ -3,15 +3,11 @@ const hre = require('hardhat')
 
 async function main() {
   const [owner] = await ethers.getSigners()
-  const validatorRegistry = process.env.VALIDATOR_REGISTRY
-  const operatorRegistry = process.env.OPERATOR_REGISTRY
   const stakePoolManager = process.env.STADER_STAKING_POOL_MANAGER
-  const socializingPoolFactory = await ethers.getContractFactory('SocializingPoolContract')
+  const socializingPoolFactory = await ethers.getContractFactory('SocializingPool')
   const socializingPoolContract = await upgrades.deployProxy(socializingPoolFactory, [
-    operatorRegistry,
-    validatorRegistry,
-    stakePoolManager,
     owner.address,
+    stakePoolManager,
     owner.address,
   ])
 

@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IStaderOperatorRegistry.sol';
+import './interfaces/IPermissionlessNodeRegistry.sol';
 import './interfaces/IStaderNodeWithdrawManager.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
     bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
-    IStaderOperatorRegistry public staderOperatorRegistry;
     address payable public staderPoolManager;
     address payable public nodeWithdrawManager;
     address payable public staderTreasury;
@@ -16,6 +16,7 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
 
     function initialize(address _owner) external initializer {
         __AccessControl_init_unchained();
+        protocolCommission = 10;
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
@@ -28,20 +29,18 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
     }
 
     function transferUserShareToPoolManager(
-        uint256 _operatorID,
         uint256 _userDeposit,
-        bytes memory _pubKey,
-        bool _withdrawStatus
+        bool _withdrawStatus,
+        address payable _operatorRewardAddress
     ) external onlyRole(POOL_MANAGER) {
         uint256 userShare = calculateUserShare(_userDeposit, _withdrawStatus);
         uint256 staderFeeShare = calculateStaderFee(_userDeposit, _withdrawStatus);
         uint256 nodeShare = calculateNodeShare(validatorDeposit - _userDeposit, _userDeposit, _withdrawStatus);
-        address nodeOperator = staderOperatorRegistry.operatorByOperatorId(_operatorID);
-        (, , , address operatorRewardAddress, , , , ) = staderOperatorRegistry.operatorRegistry(nodeOperator);
+        //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(staderTreasury, staderFeeShare);
-        if (_withdrawStatus) IStaderNodeWithdrawManager(nodeWithdrawManager).processNodeWithdraw(_pubKey);
-        else _sendValue(payable(operatorRewardAddress), nodeShare);
+        _sendValue(_operatorRewardAddress, nodeShare);
+        //TODO transfer node commission
     }
 
     function calculateUserShare(uint256 _userDeposit, bool _withdrawStatus) public view returns (uint256) {
@@ -100,7 +99,7 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
     function _sendValue(address payable recipient, uint256 amount) internal {
         require(address(this).balance >= amount, 'Address: insufficient balance');
 
-        // solhint-disable-next-line
+        //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = recipient.call{value: amount}('');
         require(success, 'Address: unable to send value, recipient may have reverted');
     }

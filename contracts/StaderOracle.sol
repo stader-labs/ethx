@@ -7,7 +7,7 @@ import './interfaces/IStaderOracle.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
-    uint256 public override lastBlockNumber;
+    uint256 public override lastBlockNumberBalancesUpdated;
     /// @inheritdoc IStaderOracle
     uint256 public override totalETHBalance;
     /// @inheritdoc IStaderOracle
@@ -16,8 +16,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override totalETHXSupply;
     /// @inheritdoc IStaderOracle
     uint256 public override balanceUpdateFrequency;
-    /// @inheritdoc IStaderOracle
-    uint256 public override protocolFee;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     mapping(address => bool) public override isTrustedNode;
@@ -30,46 +28,72 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         balanceUpdateFrequency = 7200; // 24 hours
         isTrustedNode[msg.sender] = true;
         trustedNodesCount = 1;
+
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+
+        emit TrustedNodeAdded(msg.sender);
     }
 
-    // Submit network balances for a block
-    // Only accepts calls from trusted (oracle) nodes
+    /// @inheritdoc IStaderOracle
+    function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_nodeAddress != address(0), 'nodeAddress is zero');
+        require(!isTrustedNode[_nodeAddress], 'Node is already trusted');
+        isTrustedNode[_nodeAddress] = true;
+        trustedNodesCount++;
+
+        emit TrustedNodeAdded(_nodeAddress);
+    }
+
+    /// @inheritdoc IStaderOracle
+    function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_nodeAddress != address(0), 'nodeAddress is zero');
+        require(isTrustedNode[_nodeAddress], 'Node is not trusted');
+        isTrustedNode[_nodeAddress] = false;
+        trustedNodesCount--;
+
+        emit TrustedNodeRemoved(_nodeAddress);
+    }
+
+    function setUpdateFrequency(uint256 _balanceUpdateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_balanceUpdateFrequency > 0, 'Frequency is zero');
+        require(_balanceUpdateFrequency != balanceUpdateFrequency, 'Frequency is unchanged');
+        balanceUpdateFrequency = _balanceUpdateFrequency;
+
+        emit BalanceUpdateFrequencyUpdated(_balanceUpdateFrequency);
+    }
+
+    /// @inheritdoc IStaderOracle
     function submitBalances(
         uint256 _block,
         uint256 _totalEth,
         uint256 _stakingEth,
-        uint256 _ethxSupply,
-        uint256 _protocolFee
-    ) external override {
-        require(isTrustedNode[msg.sender], 'Not a trusted node');
+        uint256 _ethxSupply
+    ) external override trustedNodeOnly {
         // Check block
         require(_block < block.number, 'Balances can not be submitted for a future block');
-        require(_block > lastBlockNumber, 'Network balances for an equal or higher block are set');
+        require(_block > lastBlockNumberBalancesUpdated, 'Network balances for an equal or higher block are set');
         // Check balances
         require(_stakingEth <= _totalEth, 'Invalid network balances');
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, _protocolFee)
+            abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply)
         );
-        bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply, _protocolFee)
-        );
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply));
         // Check & update node submission status
         require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
         nodeSubmissionKeys[nodeSubmissionKey] = true;
         submissionCountKeys[submissionCountKey]++;
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
         // Emit balances submitted event
-        emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, _protocolFee, block.timestamp);
+        emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
         if (submissionCount >= trustedNodesCount / 2 + 1) {
             // Update balances
-            lastBlockNumber = _block;
+            lastBlockNumberBalancesUpdated = _block;
             totalETHBalance = _totalEth;
             totalStakingETHBalance = _stakingEth;
             totalETHXSupply = _ethxSupply;
-            protocolFee = _protocolFee;
             // Emit balances updated event
-            emit BalancesUpdated(_block, _totalEth, _stakingEth, _ethxSupply, _protocolFee, block.timestamp);
+            emit BalancesUpdated(_block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
         }
     }
 
@@ -79,7 +103,44 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
 
-    // TODO: Beacon chain status of validators
-    function submitStatus(uint256 _block) external {
+    /// @inheritdoc IStaderOracle
+    function submitStatus(bytes calldata _pubkey, ValidatorStatus _status) external override trustedNodeOnly {
+        // TODO: complete implementation
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _pubkey, _status));
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_pubkey, _status));
+        // Check & update node submission status
+        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[nodeSubmissionKey] = true;
+        submissionCountKeys[submissionCountKey]++;
+        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
+            // Update statuses
+        }
+    }
+
+    /// @inheritdoc IStaderOracle
+    function submitValidatorWithdrawalValidity(bytes calldata _pubkey, bool _isBadWithdrawal)
+        external
+        override
+        trustedNodeOnly
+    {
+        // TODO: complete implementation
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _pubkey, _isBadWithdrawal));
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_pubkey, _isBadWithdrawal));
+        // Check & update node submission status
+        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[nodeSubmissionKey] = true;
+        submissionCountKeys[submissionCountKey]++;
+        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
+            // Update bad validator
+        }
+    }
+
+    modifier trustedNodeOnly() {
+        require(isTrustedNode[msg.sender], 'Not a trusted node');
+        _;
     }
 }
