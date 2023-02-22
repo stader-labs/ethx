@@ -430,7 +430,9 @@ contract PermissionlessNodeRegistry is
             0
         );
         operatorIDByAddress[msg.sender] = nextOperatorId;
+        socializingPoolStateChangeTimestamp[nextOperatorId] = block.timestamp;
         nextOperatorId++;
+
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
     }
 
