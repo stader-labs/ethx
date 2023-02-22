@@ -155,7 +155,7 @@ async function deployPermissionlessNodeRegistry(owner: any, vaultFactory: any, s
 
 async function deployPoolFactory() {
   const poolFactory = await ethers.getContractFactory('PoolFactory')
-  const poolFactoryInstance = await poolFactory.deploy()
+  const poolFactoryInstance = await upgrades.deployProxy(poolFactory)
   await poolFactoryInstance.deployed()
   console.log('PoolFactory deployed to:', poolFactoryInstance.address)
 

@@ -35,6 +35,12 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
 
+    /// @inheritdoc IStaderPoolBase
+    uint256 public override protocolFeePercent;
+
+    /// @inheritdoc IStaderPoolBase
+    uint256 public override operatorFeePercent;
+
     function initialize(
         address _adminOwner,
         address _nodeRegistryAddress,
@@ -58,6 +64,26 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     // receive to get bond ETH from permissionless node registry
     receive() external payable {}
+
+    /// @inheritdoc IStaderPoolBase
+    function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+        require(_protocolFeePercent <= 100, 'Protocol fee percent should be less than 100');
+        require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
+
+        protocolFeePercent = _protocolFeePercent;
+
+        emit ProtocolFeePercentUpdated(_protocolFeePercent);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+        require(_operatorFeePercent <= 100, 'Operator fee percent should be less than 100');
+        require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
+
+        operatorFeePercent = _operatorFeePercent;
+
+        emit OperatorFeePercentUpdated(_operatorFeePercent);
+    }
 
     /**
      * @notice pre deposit for permission less validator to avoid front running

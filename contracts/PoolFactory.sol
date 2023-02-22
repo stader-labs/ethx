@@ -9,15 +9,13 @@ import './interfaces/INodeRegistry.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
-    bytes32 public constant POOL_FACTORY_ADMIN = keccak256('POOL_FACTORY_ADMIN');
-
     mapping(uint8 => Pool) public override pools;
     uint8 public override poolCount;
 
-    function initialize(address _admin) external initializer {
-        Address.checkNonZeroAddress(_admin);
+    function initialize() external initializer {
         __AccessControl_init_unchained();
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -29,7 +27,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     function addNewPool(string calldata _poolName, address _poolAddress)
         external
         override
-        onlyRole(POOL_FACTORY_ADMIN)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         require(bytes(_poolName).length > 0, 'Pool name cannot be empty');
         Address.checkNonZeroAddress(_poolAddress);
@@ -50,7 +48,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         external
         override
         validPoolId(_poolId)
-        onlyRole(POOL_FACTORY_ADMIN)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         Address.checkNonZeroAddress(_newPoolAddress);
 
@@ -59,14 +57,27 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
 
+    /// @inheritdoc IPoolFactory
+    function getProtocolFeePercent(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).protocolFeePercent();
+    }
+
+    /// @inheritdoc IPoolFactory
+    function getOperatorFeePercent(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).operatorFeePercent();
+    }
+
+    /// @inheritdoc IPoolFactory
     function getTotalActiveValidatorCount() external view override returns (uint256) {
         uint256 totalActiveValidatorCount;
         for (uint8 i = 1; i <= poolCount; i++) {
             totalActiveValidatorCount += this.getActiveValidatorCountByPool(i);
         }
+
         return totalActiveValidatorCount;
     }
 
+    /// @inheritdoc IPoolFactory
     function getQueuedValidatorCountByPool(uint8 _poolId)
         external
         view
@@ -77,6 +88,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getTotalQueuedValidatorCount();
     }
 
+    /// @inheritdoc IPoolFactory
     function getActiveValidatorCountByPool(uint8 _poolId)
         external
         view
@@ -87,6 +99,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getTotalActiveValidatorCount();
     }
 
+    /// @inheritdoc IPoolFactory
     function getAllActiveValidators() public view override returns (Validator[] memory) {
         Validator[] memory allValidators = new Validator[](this.getTotalActiveValidatorCount());
         uint256 index;
@@ -100,6 +113,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return allValidators;
     }
 
+    /// @inheritdoc IPoolFactory
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;
@@ -111,10 +125,12 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return emptyValidator;
     }
 
+    /// @inheritdoc IPoolFactory
     function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) public view override returns (Validator memory) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
+    /// @inheritdoc IPoolFactory
     function getOperatorTotalNonWithdrawnKeys(uint8 _poolId, address _nodeOperator)
         public
         view

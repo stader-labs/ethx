@@ -38,6 +38,12 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     uint256 public nextDepositBatchId;
     uint256 public nextProcessedBatchId;
 
+    /// @inheritdoc IStaderPoolBase
+    uint256 public override protocolFeePercent;
+
+    /// @inheritdoc IStaderPoolBase
+    uint256 public override operatorFeePercent;
+
     mapping(uint256 => uint256[]) public preDepositValidatorBatch;
     mapping(uint256 => bool) public deactivatedOperators;
 
@@ -71,6 +77,26 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     receive() external payable {}
+
+    /// @inheritdoc IStaderPoolBase
+    function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+        require(_protocolFeePercent <= 100, 'Protocol fee percent should be less than 100');
+        require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
+
+        protocolFeePercent = _protocolFeePercent;
+
+        emit ProtocolFeePercentUpdated(_protocolFeePercent);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+        require(_operatorFeePercent <= 100, 'Operator fee percent should be less than 100');
+        require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
+
+        operatorFeePercent = _operatorFeePercent;
+
+        emit OperatorFeePercentUpdated(_operatorFeePercent);
+    }
 
     /**
      * @notice receives eth from pool Manager to pre deposit validators

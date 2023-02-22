@@ -3,17 +3,17 @@ pragma solidity ^0.8.16;
 
 import './INodeRegistry.sol';
 
+// Struct representing a pool
+struct Pool {
+    string poolName;
+    address poolAddress;
+}
+
 // Interface for the PoolFactory contract
 interface IPoolFactory {
     // Events
     event PoolAdded(string poolName, address poolAddress);
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);
-
-    // Struct representing a pool
-    struct Pool {
-        string poolName;
-        address poolAddress;
-    }
 
     // returns the details of a specific pool
     function pools(uint8) external view returns (string calldata poolName, address poolAddress);
@@ -32,6 +32,10 @@ interface IPoolFactory {
     function getOperatorTotalNonWithdrawnKeys(uint8 _poolId, address _nodeOperator) external view returns (uint256);
 
     // Pool getters
+    function getProtocolFeePercent(uint8 _poolId) external view returns (uint256); // returns the protocol fee percent (0-100)
+
+    function getOperatorFeePercent(uint8 _poolId) external view returns (uint256); // returns the operator fee percent (0-100)
+
     function poolCount() external view returns (uint8); // returns the number of pools in the factory
 
     function getTotalActiveValidatorCount() external view returns (uint256); //returns total active validators across all pools
