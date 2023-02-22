@@ -92,7 +92,8 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         uint8 poolId = poolIdByOperator[operator];
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
-        uint256 validatorCount = poolFactory.getOperatorTotalNonWithdrawnKeys(poolId, operator);
+        // TODO: update startIndex, endIndex
+        uint256 validatorCount = poolFactory.getOperatorTotalNonWithdrawnKeys(poolId, operator, 0, 1000);
         uint256 withdrawableSD = sdBalance - convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
 
         require(_requestedSD <= withdrawableSD, 'withdraw less SD');
@@ -138,11 +139,14 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     // GETTERS
 
-    function hasEnoughSDCollateral(address _operator, uint8 _poolId) public view returns (bool) {
+    function hasEnoughSDCollateral(
+        address _operator,
+        uint8 _poolId,
+        uint32 _numValidators
+    ) external view returns (bool) {
         uint256 numShares = operatorShares[_operator];
         uint256 sdBalance = convertSharesToSD(numShares);
-        uint256 numValidators = poolFactory.getOperatorTotalNonWithdrawnKeys(_poolId, _operator);
-        return _checkPoolThreshold(_poolId, sdBalance, numValidators);
+        return _checkPoolThreshold(_poolId, sdBalance, _numValidators);
     }
 
     function getOperatorSDBalance(address _operator) public view returns (uint256) {
