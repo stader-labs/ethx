@@ -4,21 +4,20 @@ const hre = require('hardhat')
 async function main() {
   const [owner] = await ethers.getSigners()
   const ethXAddress = process.env.ETHX_CONTRACT
-  const staderManagedPool = process.env.STADER_MANAGED_POOL
-  const staderPermissionLessPool = process.env.STADER_PERMISSION_LESS_POOL
+  const oracle = process.env.STADER_ORACLE
+  const userWithdrawManager = process.env.WITHDRAW_MANAGER
+
   const ethXFactory = await hre.ethers.getContractFactory('ETHX')
   const ethX = await ethXFactory.attach(ethXAddress)
   const stakingManagerFactory = await ethers.getContractFactory('StaderStakePoolsManager')
   const stakingManager = await upgrades.deployProxy(stakingManagerFactory, [
     ethX.address,
-    staderPermissionLessPool,
-    staderManagedPool,
-    0,
-    100,
-    10,
+    oracle,
+    userWithdrawManager,
     [owner.address, owner.address],
     [owner.address, owner.address],
     owner.address,
+    10,
   ])
 
   await stakingManager.deployed()

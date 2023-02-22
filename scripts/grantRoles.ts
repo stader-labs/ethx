@@ -39,8 +39,8 @@ async function main() {
   await staderPermissionLessPoolInstance.grantRole(poolManagerRolePermissionLessPool, poolManager)
   console.log('level 4')
 
-  const permissionLessOperator = await staderPermissionLessPoolInstance.PERMISSION_LESS_OPERATOR()
-  await staderPermissionLessPoolInstance.grantRole(permissionLessOperator, owner.address)
+  const permissionlessOperator = await staderPermissionLessPoolInstance.PERMISSION_LESS_OPERATOR()
+  await staderPermissionLessPoolInstance.grantRole(permissionlessOperator, owner.address)
   console.log('level 5')
 
   const operatorRegistryFactory = await ethers.getContractFactory('StaderOperatorRegistry')
