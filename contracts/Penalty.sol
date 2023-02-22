@@ -30,7 +30,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         bytes32 pubkeyRoot = this.getPubkeyRoot(_pubkey);
-        require(additionalPenaltyAmount[pubkeyRoot)] != _amount, 'Penalty: amount is unchanged');
+        require(additionalPenaltyAmount[pubkeyRoot] != _amount, 'Penalty: amount is unchanged');
 
         additionalPenaltyAmount[pubkeyRoot] = _amount;
 

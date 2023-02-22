@@ -265,8 +265,18 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         return INodeRegistry(nodeRegistryAddress).getAllActiveValidators();
     }
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
         return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
+        return INodeRegistry(nodeRegistryAddress).getOperator(_pubkey);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function getSocializingPoolAddress() external view returns (address) {
+        return IPermissionedNodeRegistry(nodeRegistryAddress).elRewardSocializePool();
     }
 
     /**

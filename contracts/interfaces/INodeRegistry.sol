@@ -29,9 +29,16 @@ struct Operator {
 interface INodeRegistry {
     function getAllActiveValidators() external view returns (Validator[] memory);
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory);
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
 
     function getValidator(uint256 _validatorId) external view returns (Validator memory);
+
+    /**
+    @notice Returns the details of a specific operator.
+    @param _pubkey The public key of the validator whose operator details are to be retrieved.
+    @return An Operator struct containing the details of the specified operator.
+    */
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
 
     function getOperatorTotalNonWithdrawnKeys(address _nodeOperator) external view returns (uint256 _totalKeys);
 

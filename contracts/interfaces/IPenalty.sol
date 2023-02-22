@@ -31,14 +31,14 @@ interface IPenalty {
     function setOnePenalty(uint256 _onePenalty) external;
 
     /**
-     * @dev Sets the additional penalty amount given by the DAO for a given validator public key.
+     * @notice Sets the additional penalty amount given by the DAO for a given validator public key.
      * @param _pubkey The validator public key for which to set the additional penalty amount.
      * @param _amount The additional penalty amount to set for the given validator public key.
      */
     function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount) external;
 
     /**
-     * @dev Sets the penalty reversal amount given by the DAO for a given validator public key.
+     * @notice Sets the penalty reversal amount given by the DAO for a given validator public key.
      * @param _pubkey The validator public key for which to set the penalty reversal amount.
      * @param _amount The penalty reversal amount to set for the given validator public key.
      */
@@ -53,22 +53,22 @@ interface IPenalty {
     function getPenaltyReversalAmount(bytes calldata _pubkey) external view returns (uint256);
 
     /**
-     * @dev Computes the public key root.
+     * @notice Computes the public key root.
      * @param _pubkey The validator public key for which to compute the root.
      * @return The root of the public key.
      */
     function getPubkeyRoot(bytes calldata _pubkey) external pure returns (bytes32);
 
     /**
-     * @dev Calculates the total MEV penalty for a given public key.
+     * @notice Calculates the total MEV penalty for a given public key.
      * @param _pubkey The public key of the validator for which to calculate the penalty.
      * @return The total MEV penalty.
      */
     function calculatePenalty(bytes calldata _pubkey) external returns (uint256);
 
     /**
-     * @dev Calculates the penalty for changing the fee recipient address for a given public key
-     *      based on data from the Rated.network penalty oracle.
+     * @notice Calculates the penalty for changing the fee recipient address for a given public key
+     *         based on data from the Rated.network penalty oracle.
      * @param _pubkey The public key for which to calculate the penalty.
      * @return The penalty for changing the fee recipient address.
      */

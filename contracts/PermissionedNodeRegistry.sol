@@ -386,6 +386,19 @@ contract PermissionedNodeRegistry is
         emit UpdatedBatchKeyDepositLimit(BATCH_KEY_DEPOSIT_LIMIT);
     }
 
+    /// @inheritdoc INodeRegistry
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
+        uint256 validatorId = validatorIdByPubkey[_pubkey];
+        if (validatorId == 0) {
+            Operator memory emptyOperator;
+
+            return emptyOperator;
+        }
+
+        uint256 operatorId = validatorRegistry[validatorId].operatorId;
+        return operatorStructById[operatorId];
+    }
+
     /**
      * @notice returns the total active operator count
      */
@@ -479,7 +492,7 @@ contract PermissionedNodeRegistry is
         return validators;
     }
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
         return validatorRegistry[validatorIdByPubkey[_pubkey]];
     }
 

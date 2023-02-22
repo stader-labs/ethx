@@ -162,6 +162,16 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         }
     }
 
+    /// @inheritdoc IStaderPoolBase
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
+        return INodeRegistry(nodeRegistryAddress).getOperator(_pubkey);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function getSocializingPoolAddress() external view returns (address) {
+        return IPermissionlessNodeRegistry(nodeRegistryAddress).elRewardSocializePool();
+    }
+
     /**
      * @notice return total queued keys for permissionless pool
      */
@@ -202,7 +212,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         return INodeRegistry(nodeRegistryAddress).getAllActiveValidators();
     }
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
         return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
     }
 

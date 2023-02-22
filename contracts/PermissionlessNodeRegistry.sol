@@ -234,6 +234,19 @@ contract PermissionlessNodeRegistry is
         emit UpdatedSocializingPoolState(operatorId, _optedForSocializingPool, block.timestamp);
     }
 
+    /// @inheritdoc INodeRegistry
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
+        uint256 validatorId = validatorIdByPubkey[_pubkey];
+        if (validatorId == 0) {
+            Operator memory emptyOperator;
+
+            return emptyOperator;
+        }
+
+        uint256 operatorId = validatorRegistry[validatorId].operatorId;
+        return operatorStructById[operatorId];
+    }
+
     /**
      * @notice get the total deposited keys for an operator
      * @dev add initialized, queued, active and withdrawn validator key count to get total validators keys
@@ -392,7 +405,7 @@ contract PermissionlessNodeRegistry is
         return validators;
     }
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
         return validatorRegistry[validatorIdByPubkey[_pubkey]];
     }
 

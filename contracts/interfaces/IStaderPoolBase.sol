@@ -46,5 +46,14 @@ interface IStaderPoolBase {
 
     function updateStaderStakePoolManager(address _staderStakePoolManager) external;
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory);
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
+
+    /**
+    @notice Returns the details of a specific operator.
+    @param _pubkey The public key of the validator whose operator details are to be retrieved.
+    @return An Operator struct containing the details of the specified operator.
+    */
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
+
+    function getSocializingPoolAddress() external view returns (address);
 }
