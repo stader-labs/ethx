@@ -143,8 +143,14 @@ contract PermissionlessNodeRegistry is
 
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
+        uint256 operatorTotalKeys = this.getOperatorTotalKeys(operatorId);
+        uint256 operatorTotalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughXSDCollateral(msg.sender, poolId, keyCount);
+        ISDCollateral(sdCollateral).hasEnoughXSDCollateral(
+            msg.sender,
+            poolId,
+            operatorTotalNonWithdrawnKeys + keyCount
+        );
 
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_pubkey[i], _preDepositSignature[i], _depositSignature[i], operatorId);
@@ -372,7 +378,7 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice get the total non withdrawn keys for an operator
      * @dev loop over all keys of an operator from start index till
-     *  end index to get the count excluding the withdrawn keys
+     *  end index (exclusive) to get the count excluding the withdrawn keys
      * @param _nodeOperator address of node operator
      */
     function getOperatorTotalNonWithdrawnKeys(
@@ -385,9 +391,9 @@ contract PermissionlessNodeRegistry is
         }
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = this.getOperatorTotalKeys(operatorId);
-        endIndex = endIndex > validatorCount - 1 ? validatorCount - 1 : endIndex;
+        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
         uint256 totalNonWithdrawnKeyCount;
-        for (uint256 i = startIndex; i <= endIndex; i++) {
+        for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (_isWithdrawnValidator(validatorId)) continue;
             totalNonWithdrawnKeyCount++;

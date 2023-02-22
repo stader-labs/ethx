@@ -13,7 +13,6 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     address payable public override staderTreasury;
 
     bytes32 public constant override STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
-    bytes32 public constant override PERMISSION_LESS_POOL = keccak256('PERMISSION_LESS_POOL');
 
     /// @notice zero address check modifier
     modifier checkNonZeroAddress(address _address) {
@@ -56,7 +55,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint8 poolType,
         uint256 operatorId,
         address payable nodeRecipient
-    ) public override onlyRole(PERMISSION_LESS_POOL) returns (address) {
+    ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
         nodeELRewardVaultAddress = Create2.deploy(0, salt, type(NodeELRewardVault).creationCode);

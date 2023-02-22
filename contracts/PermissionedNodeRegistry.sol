@@ -39,7 +39,6 @@ contract PermissionedNodeRegistry is
     bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
     bytes32 public constant override VALIDATOR_STATUS_ROLE = keccak256('VALIDATOR_STATUS_ROLE');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
-    bytes32 public constant override OPERATOR_STATUS_ROLE = keccak256('OPERATOR_STATUS_ROLE');
     bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
 
@@ -140,14 +139,12 @@ contract PermissionedNodeRegistry is
 
         uint256 operatorId = _onlyActiveOperator(msg.sender);
 
-        //TODO need to check for that
-
-        // Operator storage operator = operatorStructById[operatorId];
-        // uint256 totalNonWithdrawnKeys = this.getOperatorTotalKeys(msg.sender) - operator.withdrawnValidatorCount;
-        // if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+        uint256 operatorTotalKeyCount = this.getOperatorTotalKeys(operatorId);
+        uint256 totalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeyCount);
+        if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
 
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughXSDCollateral(msg.sender, poolId, keyCount);
+        ISDCollateral(sdCollateral).hasEnoughXSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_pubkey[i], _preDepositSignature[i], _depositSignature[i], operatorId);
@@ -234,7 +231,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
      * @param _operatorID ID of the operator to deactivate
      */
-    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(OPERATOR_STATUS_ROLE) {
+    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = false;
     }
 
@@ -243,7 +240,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
      * @param _operatorID ID of the operator to activate
      */
-    function activateNodeOperator(uint256 _operatorID) external override onlyRole(OPERATOR_STATUS_ROLE) {
+    function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = true;
     }
 
@@ -269,7 +266,6 @@ contract PermissionedNodeRegistry is
      * @param _status updated status of validator
      */
 
-    //TODO decide on role as oracle might also call it along with permissioned pool
     function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status)
         external
         override
@@ -452,7 +448,7 @@ contract PermissionedNodeRegistry is
     /**
      * @notice get the total non withdrawn keys for an operator
      * @dev loop over all keys of an operator from start index till
-     *  end index to get the count excluding the withdrawn keys
+     *  end index (exclusive) to get the count excluding the withdrawn keys
      * @param _nodeOperator address of node operator
      */
     function getOperatorTotalNonWithdrawnKeys(
@@ -465,9 +461,9 @@ contract PermissionedNodeRegistry is
         }
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = this.getOperatorTotalKeys(operatorId);
-        endIndex = endIndex > validatorCount - 1 ? validatorCount - 1 : endIndex;
+        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
         uint256 totalNonWithdrawnKeyCount;
-        for (uint256 i = startIndex; i <= endIndex; i++) {
+        for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (_isWithdrawnValidator(validatorId)) continue;
             totalNonWithdrawnKeyCount++;

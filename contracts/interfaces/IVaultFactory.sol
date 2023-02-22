@@ -11,8 +11,6 @@ interface IVaultFactory {
 
     function STADER_NETWORK_CONTRACT() external view returns (bytes32);
 
-    function PERMISSION_LESS_POOL() external view returns (bytes32);
-
     function deployWithdrawVault(
         uint8 poolType,
         uint256 operatorId,

@@ -65,8 +65,6 @@ interface IPermissionedNodeRegistry {
 
     function STADER_ORACLE() external view returns (bytes32);
 
-    function OPERATOR_STATUS_ROLE() external view returns (bytes32);
-
     function PERMISSIONED_POOL() external view returns (bytes32);
 
     function validatorRegistry(uint256)
