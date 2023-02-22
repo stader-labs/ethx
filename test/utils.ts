@@ -84,6 +84,7 @@ const setupEnvironment = async (staderOwner: any) => {
   const PermissionedNodeRegistryFactory = await ethers.getContractFactory('PermissionedNodeRegistry')
   const permissionedNodeRegistry = await upgrades.deployProxy(PermissionedNodeRegistryFactory, [
     staderOwner.address,
+    staderOwner.address,
     vaultFactoryInstance.address,
     socializingPoolContract.address,
   ])
@@ -92,6 +93,8 @@ const setupEnvironment = async (staderOwner: any) => {
 
   const PermissionlessNodeRegistryFactory = await ethers.getContractFactory('PermissionlessNodeRegistry')
   const permissionlessNodeRegistry = await upgrades.deployProxy(PermissionlessNodeRegistryFactory, [
+    staderOwner.address,
+    staderOwner.address,
     staderOwner.address,
     vaultFactoryInstance.address,
     socializingPoolContract.address,

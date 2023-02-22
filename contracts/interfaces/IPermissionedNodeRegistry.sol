@@ -14,6 +14,7 @@ interface IPermissionedNodeRegistry {
     error pubkeyAlreadyExist();
     error OperatorIsDeactivate();
     error InvalidLengthOfpubkey();
+    error InvalidStartAndEndIndex();
     error InvalidLengthOfSignature();
     error InvalidSizeOfInputKeys();
     error OperatorAlreadyOnBoarded();

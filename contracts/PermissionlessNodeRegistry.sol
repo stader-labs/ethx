@@ -371,7 +371,7 @@ contract PermissionlessNodeRegistry is
 
     /**
      * @notice get the total non withdrawn keys for an operator
-     * @dev loop over all keys of an operator from start index and less than
+     * @dev loop over all keys of an operator from start index till
      *  end index to get the count excluding the withdrawn keys
      * @param _nodeOperator address of node operator
      */
@@ -381,13 +381,13 @@ contract PermissionlessNodeRegistry is
         uint256 endIndex
     ) external view override returns (uint256) {
         if (startIndex > endIndex) {
-            return 0; //TODO should it revert?
+            revert InvalidStartAndEndIndex();
         }
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = this.getOperatorTotalKeys(operatorId);
-        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
+        endIndex = endIndex > validatorCount - 1 ? validatorCount - 1 : endIndex;
         uint256 totalNonWithdrawnKeyCount;
-        for (uint256 i = startIndex; i < endIndex; i++) {
+        for (uint256 i = startIndex; i <= endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (_isWithdrawnValidator(validatorId)) continue;
             totalNonWithdrawnKeyCount++;

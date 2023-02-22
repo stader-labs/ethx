@@ -15,6 +15,7 @@ interface IPermissionlessNodeRegistry {
     error OperatorAlreadyOnBoarded();
     error NoKeysProvided();
     error pubkeyAlreadyExist();
+    error InvalidStartAndEndIndex();
     error OperatorIsDeactivate();
     error InvalidLengthOfpubkey();
     error InvalidLengthOfSignature();
