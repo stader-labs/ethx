@@ -60,6 +60,7 @@ contract PermissionlessNodeRegistry is
     mapping(address => uint256) public override operatorIDByAddress;
     //mapping of operator wise validator IDs arrays
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
+    mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -185,6 +186,38 @@ contract PermissionlessNodeRegistry is
         nextQueuedValidatorIndex = _nextQueuedValidatorIndex;
         emit UpdatedNextQueuedValidatorIndex(nextQueuedValidatorIndex);
     }
+
+    function changeSocializingPoolState(bool _optedForSocializingPool) external {
+        _onlyActiveOperator(msg.sender);
+        uint256 operatorId = operatorIDByAddress[msg.sender];
+        require(
+            operatorStructById[operatorId].optedForSocializingPool != _optedForSocializingPool,
+            'No change in state'
+        );
+
+        operatorStructById[operatorId].optedForSocializingPool = _optedForSocializingPool;
+        socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
+        emit UpdatedSocializingPoolState(operatorId, _optedForSocializingPool, block.timestamp);
+    }
+
+    /// @inheritdoc INodeRegistry
+    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256) {
+        return socializingPoolStateChangeTimestamp[_operatorId];
+    }
+
+    /// @inheritdoc INodeRegistry
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
+        uint256 validatorId = validatorIdByPubkey[_pubkey];
+        if (validatorId == 0) {
+            Operator memory emptyOperator;
+
+            return emptyOperator;
+        }
+
+        uint256 operatorId = validatorRegistry[validatorId].operatorId;
+        return operatorStructById[operatorId];
+    }
+
 
     /**
      * @notice update the status of a validator
@@ -420,7 +453,7 @@ contract PermissionlessNodeRegistry is
         return validators;
     }
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
         return validatorRegistry[validatorIdByPubkey[_pubkey]];
     }
 
@@ -441,7 +474,9 @@ contract PermissionlessNodeRegistry is
             msg.sender
         );
         operatorIDByAddress[msg.sender] = nextOperatorId;
+        socializingPoolStateChangeTimestamp[nextOperatorId] = block.timestamp;
         nextOperatorId++;
+
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
     }
 

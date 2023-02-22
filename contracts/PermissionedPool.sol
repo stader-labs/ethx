@@ -37,6 +37,12 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
 
+    /// @inheritdoc IStaderPoolBase
+    uint256 public override protocolFeePercent;
+
+    /// @inheritdoc IStaderPoolBase
+    uint256 public override operatorFeePercent;
+
     mapping(uint256 => bytes) public readyToDepositValidator;
 
     function initialize(
@@ -82,6 +88,26 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             readyToDepositValidator[readyToDepositValidatorSize] = _readyToDepositPubkey[i];
             readyToDepositValidatorSize++;
         }
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+        require(_protocolFeePercent <= 100, 'Protocol fee percent should be less than 100');
+        require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
+
+        protocolFeePercent = _protocolFeePercent;
+
+        emit ProtocolFeePercentUpdated(_protocolFeePercent);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+        require(_operatorFeePercent <= 100, 'Operator fee percent should be less than 100');
+        require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
+
+        operatorFeePercent = _operatorFeePercent;
+
+        emit OperatorFeePercentUpdated(_operatorFeePercent);
     }
 
     /**
@@ -212,14 +238,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
-    function getAllActiveValidators() public view override returns (Validator[] memory) {
-        return INodeRegistry(nodeRegistryAddress).getAllActiveValidators();
-    }
-
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
-        return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
-    }
-
     /**
      * @notice update the stader stake pool manager address
      * @dev only admin can call
@@ -233,6 +251,24 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         Address.checkNonZeroAddress(_staderStakePoolManager);
         staderStakePoolManager = _staderStakePoolManager;
         emit UpdatedStaderStakePoolManager(staderStakePoolManager);
+    }
+
+    function getAllActiveValidators() public view override returns (Validator[] memory) {
+        return INodeRegistry(nodeRegistryAddress).getAllActiveValidators();
+    }
+
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
+        return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
+        return INodeRegistry(nodeRegistryAddress).getOperator(_pubkey);
+    }
+
+    /// @inheritdoc IStaderPoolBase
+    function getSocializingPoolAddress() external view returns (address) {
+        return IPermissionedNodeRegistry(nodeRegistryAddress).elRewardSocializePool();
     }
 
     /**

@@ -23,12 +23,28 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
+    // Returns the timestamp of the last time the operator changed the opt-in status for socializing pool
+    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256);
+
     function getAllActiveValidators() external view returns (Validator[] memory);
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory);
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
 
     function getValidator(uint256 _validatorId) external view returns (Validator memory);
 
+    /**
+    @notice Returns the details of a specific operator.
+    @param _pubkey The public key of the validator whose operator details are to be retrieved.
+    @return An Operator struct containing the details of the specified operator.
+    */
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
+
+/**
+ * 
+ * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
+ * @param startIndex start index in validator queue to start with 
+ * @param endIndex  up to end index of validator queue to to count
+ */
     function getOperatorTotalNonWithdrawnKeys(
         address _nodeOperator,
         uint256 startIndex,

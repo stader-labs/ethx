@@ -57,6 +57,7 @@ contract PermissionedNodeRegistry is
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     //mapping of operator ID and nextQueuedValidatorIndex
     mapping(uint256 => uint256) public override nextQueuedValidatorIndexByOperatorId;
+    mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
 
     function initialize(
         address _adminOwner,
@@ -368,6 +369,24 @@ contract PermissionedNodeRegistry is
         emit UpdatedBatchKeyDepositLimit(BATCH_KEY_DEPOSIT_LIMIT);
     }
 
+    /// @inheritdoc INodeRegistry
+    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256) {
+        return socializingPoolStateChangeTimestamp[_operatorId];
+    }
+
+    /// @inheritdoc INodeRegistry
+    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
+        uint256 validatorId = validatorIdByPubkey[_pubkey];
+        if (validatorId == 0) {
+            Operator memory emptyOperator;
+
+            return emptyOperator;
+        }
+
+        uint256 operatorId = validatorRegistry[validatorId].operatorId;
+        return operatorStructById[operatorId];
+    }
+
     /**
      * @notice increase the total active validator count
      * @dev only permissioned pool calls it when it does the deposit of 1 ETH for validator
@@ -488,7 +507,7 @@ contract PermissionedNodeRegistry is
         return validators;
     }
 
-    function getValidator(bytes memory _pubkey) external view returns (Validator memory) {
+    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
         return validatorRegistry[validatorIdByPubkey[_pubkey]];
     }
 
@@ -499,6 +518,7 @@ contract PermissionedNodeRegistry is
     function _onboardOperator(string calldata _operatorName, address payable _operatorRewardAddress) internal {
         operatorStructById[nextOperatorId] = Operator(true, true, _operatorName, _operatorRewardAddress, msg.sender);
         operatorIDByAddress[msg.sender] = nextOperatorId;
+        socializingPoolStateChangeTimestamp[nextOperatorId] = block.timestamp;
         nextOperatorId++;
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
     }
