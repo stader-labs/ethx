@@ -7,7 +7,9 @@ import './interfaces/IStaderOracle.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
-    uint256 public override lastBlockNumber;
+    uint256 public override lastBlockNumberBalancesUpdated;
+    /// @inheritdoc IStaderOracle
+    uint256 public override lastBlockNumberStatusUpdated;
     /// @inheritdoc IStaderOracle
     uint256 public override totalETHBalance;
     /// @inheritdoc IStaderOracle
@@ -28,20 +30,20 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         balanceUpdateFrequency = 7200; // 24 hours
         isTrustedNode[msg.sender] = true;
         trustedNodesCount = 1;
+
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    // Submit network balances for a block
-    // Only accepts calls from trusted (oracle) nodes
+    /// @inheritdoc IStaderOracle
     function submitBalances(
         uint256 _block,
         uint256 _totalEth,
         uint256 _stakingEth,
         uint256 _ethxSupply
-    ) external override {
-        require(isTrustedNode[msg.sender], 'Not a trusted node');
+    ) external override trustedNodeOnly {
         // Check block
         require(_block < block.number, 'Balances can not be submitted for a future block');
-        require(_block > lastBlockNumber, 'Network balances for an equal or higher block are set');
+        require(_block > lastBlockNumberBalancesUpdated, 'Network balances for an equal or higher block are set');
         // Check balances
         require(_stakingEth <= _totalEth, 'Invalid network balances');
         // Get submission keys
@@ -58,7 +60,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
         if (submissionCount >= trustedNodesCount / 2 + 1) {
             // Update balances
-            lastBlockNumber = _block;
+            lastBlockNumberBalancesUpdated = _block;
             totalETHBalance = _totalEth;
             totalStakingETHBalance = _stakingEth;
             totalETHXSupply = _ethxSupply;
@@ -73,6 +75,54 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
 
-    // TODO: Beacon chain status of validators
-    function submitStatus(uint256 _block) external {}
+    /// @inheritdoc IStaderOracle
+    function submitStatus(
+        uint256 _block,
+        bytes[] calldata pubkeys,
+        ValidatorStatus[] calldata statuses
+    ) external override trustedNodeOnly {
+        // TODO: complete implementation
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(msg.sender, _block, pubkeys, statuses)
+        );
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_block, pubkeys, statuses));
+        // Check & update node submission status
+        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[nodeSubmissionKey] = true;
+        submissionCountKeys[submissionCountKey]++;
+        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
+            // Update statuses
+            lastBlockNumberStatusUpdated = _block;
+        }
+    }
+
+    /// @inheritdoc IStaderOracle
+    function submitValidatorWithdrawalValidity(
+        bytes calldata _pubkey,
+        bool _isBadWithdrawal
+    ) external override trustedNodeOnly {
+        // TODO: complete implementation
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(msg.sender, pubkey, _isBadWithdrawal)
+        );
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(pubkey, _isBadWithdrawal));
+        // Check & update node submission status
+        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[nodeSubmissionKey] = true;
+        submissionCountKeys[submissionCountKey]++;
+        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
+            // Update bad validator
+        }
+    }
+
+    modifier trustedNodeOnly() {
+        require(isTrustedNode[msg.sender], 'Not a trusted node');
+        _;
+    }
+
+    function _checkCon
 }
