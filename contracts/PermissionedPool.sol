@@ -21,7 +21,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     uint8 public constant poolId = 2;
     address public nodeRegistryAddress;
-    address public ethValidatorDeposit;
+    address public ethDepositContract;
     address public vaultFactoryAddress;
     address public staderStakePoolManager;
 
@@ -49,13 +49,13 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     function initialize(
         address _adminOwner,
         address _nodeRegistryAddress,
-        address _ethValidatorDeposit,
+        address _ethDepositContract,
         address _vaultFactoryAddress,
         address _staderStakePoolManager
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_nodeRegistryAddress);
-        Address.checkNonZeroAddress(_ethValidatorDeposit);
+        Address.checkNonZeroAddress(_ethDepositContract);
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_staderStakePoolManager);
         __Pausable_init();
@@ -63,7 +63,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
         MAX_DEPOSIT_BATCH_SIZE = 100;
         nodeRegistryAddress = _nodeRegistryAddress;
-        ethValidatorDeposit = _ethValidatorDeposit;
+        ethDepositContract = _ethDepositContract;
         vaultFactoryAddress = _vaultFactoryAddress;
         staderStakePoolManager = _staderStakePoolManager;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
@@ -155,7 +155,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 );
 
                 //slither-disable-next-line arbitrary-send-eth
-                IDepositContract(ethValidatorDeposit).deposit{value: PRE_DEPOSIT_SIZE}(
+                IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
                     pubkey,
                     withdrawCredential,
                     preDepositSignature,
@@ -199,7 +199,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
 
             //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
+            IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
                 pubkey,
                 withdrawCredential,
                 depositSignature,
