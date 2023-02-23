@@ -7,7 +7,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
-import '../contracts/interfaces/IPoolFactory.sol';
 
 contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     struct PoolThresholdInfo {
