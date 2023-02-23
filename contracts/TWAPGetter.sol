@@ -28,7 +28,7 @@ contract TWAPGetter {
         uint32 _twapInterval
     ) public view returns (uint256 quoteAmount) {
         uint32 baseDecimals = IERC20Extended(_baseToken).decimals();
-        uint256 baseAmount = 10 ** baseDecimals;
+        uint256 baseAmount = 10**baseDecimals;
 
         uint160 sqrtPriceX96 = _getSqrtTwapX96(_uniswapV3Pool, _twapInterval);
         uint256 priceX192 = uint256(sqrtPriceX96) * uint256(sqrtPriceX96);
@@ -42,10 +42,11 @@ contract TWAPGetter {
         }
     }
 
-    function _getSqrtTwapX96(
-        address _uniswapV3Pool,
-        uint32 _twapInterval
-    ) internal view returns (uint160 sqrtPriceX96) {
+    function _getSqrtTwapX96(address _uniswapV3Pool, uint32 _twapInterval)
+        internal
+        view
+        returns (uint160 sqrtPriceX96)
+    {
         if (_twapInterval == 0) {
             // return the current price if twapInterval == 0
             (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(_uniswapV3Pool).slot0();

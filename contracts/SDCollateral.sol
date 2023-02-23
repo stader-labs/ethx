@@ -83,7 +83,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     }
 
     function withdraw(uint256 _requestedSD) external {
-        revert("phase 2");
+        revert('phase 2');
     }
 
     // SETTERS
