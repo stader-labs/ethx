@@ -19,7 +19,6 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     IERC20 public sdERC20;
     IPriceFetcher public priceFetcher;
-    IPoolFactory public poolFactory;
 
     uint256 public totalShares;
     uint256 public totalSDCollateral;
@@ -46,16 +45,8 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function initialize(
         address _admin,
         address _sdERC20Addr,
-        address _priceFetcherAddr,
-        address _poolFactory
-    )
-        external
-        initializer
-        checkZeroAddress(_admin)
-        checkZeroAddress(_sdERC20Addr)
-        checkZeroAddress(_priceFetcherAddr)
-        checkZeroAddress(_poolFactory)
-    {
+        address _priceFetcherAddr
+    ) external initializer checkZeroAddress(_admin) checkZeroAddress(_sdERC20Addr) checkZeroAddress(_priceFetcherAddr) {
         __AccessControl_init();
         __Pausable_init();
 
@@ -63,7 +54,6 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
         sdERC20 = IERC20(_sdERC20Addr);
         priceFetcher = IPriceFetcher(_priceFetcherAddr);
-        poolFactory = IPoolFactory(_poolFactory);
     }
 
     /**
@@ -83,7 +73,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     }
 
     function withdraw(uint256 _requestedSD) external {
-        revert("phase 2");
+        revert('phase 2');
     }
 
     // SETTERS
