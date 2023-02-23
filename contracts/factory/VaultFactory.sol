@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import '../library/Address.sol';
+
 import '../StaderWithdrawVault.sol';
 import '../NodeELRewardVault.sol';
 import '../interfaces/IVaultFactory.sol';
@@ -14,23 +16,14 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
 
     bytes32 public constant override STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
 
-    /// @notice zero address check modifier
-    modifier checkNonZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
-
     function initialize(
         address _factoryAdmin,
         address _vaultOwner,
         address payable _staderTreasury
-    )
-        external
-        initializer
-        checkNonZeroAddress(_factoryAdmin)
-        checkNonZeroAddress(_vaultOwner)
-        checkNonZeroAddress(_staderTreasury)
-    {
+    ) external initializer {
+        Address.checkNonZeroAddress(_factoryAdmin);
+        Address.checkNonZeroAddress(_vaultOwner);
+        Address.checkNonZeroAddress(_staderTreasury);
         __AccessControl_init_unchained();
         vaultOwner = _vaultOwner;
         staderTreasury = _staderTreasury;
