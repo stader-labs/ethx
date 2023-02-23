@@ -27,7 +27,8 @@ interface IStaderStakePoolManager {
     event UpdatedMinWithdrawAmount(uint256 amount);
     event UpdatedStaderOracle(address oracle);
     event UpdatedUserWithdrawalManager(address withdrawalManager);
-    event UpdatedPoolSelector(address poolSelector);
+    event UpdatedPoolFactoryAddress(address _poolFactoryAddress);
+    event UpdatedPoolSelectorAddress(address poolSelector);
 
     event WithdrawRequested(address indexed user, address recipient, uint256 ethAmount, uint256 sharesAmount);
 
@@ -75,7 +76,9 @@ interface IStaderStakePoolManager {
 
     function updateUserWithdrawalManager(address _userWithdrawalManager) external;
 
-    function updatePoolSelector(address _poolSelector) external;
+    function updatePoolFactoryAddress(address _poolFactoryAddress) external;
+
+    function updatePoolSelectorAddress(address _poolSelector) external;
 
     function userWithdraw(uint256 _ethXAmount, address receiver) external;
 

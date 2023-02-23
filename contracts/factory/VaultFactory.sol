@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 import '../StaderWithdrawVault.sol';
 import '../NodeELRewardVault.sol';
 import '../interfaces/IVaultFactory.sol';
-import '@openzeppelin/contracts/utils/Create2.sol';
+import '@openzeppelin/contracts-upgradeable/utils/Create2Upgradeable.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
@@ -44,7 +44,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
-        withdrawVaultAddress = Create2.deploy(0, salt, type(StaderWithdrawVault).creationCode);
+        withdrawVaultAddress = Create2Upgradeable.deploy(0, salt, type(StaderWithdrawVault).creationCode);
         StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(vaultOwner);
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
@@ -58,7 +58,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
-        nodeELRewardVaultAddress = Create2.deploy(0, salt, type(NodeELRewardVault).creationCode);
+        nodeELRewardVaultAddress = Create2Upgradeable.deploy(0, salt, type(NodeELRewardVault).creationCode);
         NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(vaultOwner, nodeRecipient, staderTreasury);
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
@@ -71,7 +71,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 validatorCount
     ) public view override returns (address) {
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
-        return Create2.computeAddress(salt, keccak256(type(StaderWithdrawVault).creationCode));
+        return Create2Upgradeable.computeAddress(salt, keccak256(type(StaderWithdrawVault).creationCode));
     }
 
     function computeNodeELRewardVaultAddress(uint8 poolType, uint256 operatorId)
@@ -81,7 +81,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         returns (address)
     {
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
-        return Create2.computeAddress(salt, keccak256(type(NodeELRewardVault).creationCode));
+        return Create2Upgradeable.computeAddress(salt, keccak256(type(NodeELRewardVault).creationCode));
     }
 
     function getValidatorWithdrawCredential(address _withdrawVault) public pure override returns (bytes memory) {

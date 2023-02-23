@@ -35,6 +35,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     uint256 public readyToDepositValidatorSize;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant DEPOSIT_SIZE = 31 ether;
+    uint256 public constant FULL_DEPOSIT_SIZE = 32 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
 
     /// @inheritdoc IStaderPoolBase
@@ -115,7 +116,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      * @dev pre deposit validator taking care of pool capacity
      */
     function registerOnBeaconChain() external payable override onlyRole(POOL_MANAGER) {
-        uint256 requiredValidators = msg.value / DEPOSIT_SIZE;
+        uint256 requiredValidators = msg.value / FULL_DEPOSIT_SIZE;
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
 
@@ -171,7 +172,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 nextQueuedValidatorIndex + validatorToDeposit
             );
         }
-        balanceForDeposit += requiredValidators * DEPOSIT_SIZE; //TODO do we need any sort of checking where we might not requiredValidators capacity
+        balanceForDeposit += requiredValidators * DEPOSIT_SIZE;
         IPermissionedNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
     }
 
@@ -181,7 +182,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      */
     function depositOnBeaconChain() external {
         uint256 count;
-        while (nextIndexToDeposit < readyToDepositValidatorSize || count < MAX_DEPOSIT_BATCH_SIZE) {
+        while (nextIndexToDeposit < readyToDepositValidatorSize && count < MAX_DEPOSIT_BATCH_SIZE) {
             bytes memory pubkey = readyToDepositValidator[nextIndexToDeposit];
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(pubkey);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , ) = IPermissionedNodeRegistry(

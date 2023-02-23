@@ -223,7 +223,7 @@ contract PermissionedNodeRegistry is
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             _handleFrontRun(validatorId);
         }
-        this.decreaseTotalActiveValidatorCount(pubkeyLength);
+        _decreaseTotalActiveValidatorCount(pubkeyLength);
     }
 
     /**
@@ -398,7 +398,7 @@ contract PermissionedNodeRegistry is
      * @param _count count to decrease total active validator value
      */
     function decreaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(STADER_ORACLE) {
-        totalActiveValidatorCount -= _count;
+        _decreaseTotalActiveValidatorCount(_count);
     }
 
     /**
@@ -592,5 +592,9 @@ contract PermissionedNodeRegistry is
     function _onlyValidName(string calldata _name) internal pure {
         if (bytes(_name).length == 0) revert EmptyNameString();
         if (bytes(_name).length > OPERATOR_MAX_NAME_LENGTH) revert NameCrossedMaxLength();
+    }
+
+    function _decreaseTotalActiveValidatorCount(uint256 _count) internal {
+        totalActiveValidatorCount -= _count;
     }
 }
