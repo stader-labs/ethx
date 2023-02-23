@@ -24,12 +24,29 @@ const config: HardhatUserConfig = {
           },
         },
       },
+      {
+        version: '0.7.6',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
     ],
   },
   defaultNetwork: 'goerli',
   networks: {
     hardhat: {},
     goerli: {
+      url: process.env.PROVIDER_URL ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+    },
+    zang: {
+      url: process.env.PROVIDER_URL ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+    },
+    ethereum: {
       url: process.env.PROVIDER_URL ?? '',
       accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
     },
