@@ -24,8 +24,9 @@ interface IPermissionlessNodeRegistry {
     //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
-    event ValidatorMarkedReadyToDeposit(bytes _pubkey, uint256 _validatorId);
-    event ValidatorMarkedAsFrontRunned(bytes _frontRunnedPubkey, uint256 _validatorId);
+    event ValidatorMarkedReadyToDeposit(bytes indexed _pubkey, uint256 _validatorId);
+    event ValidatorMarkedAsFrontRunned(bytes indexed _frontRunnedPubkey, uint256 _validatorId);
+    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed invalidSignaturePubkey, uint256 _validatorId);
 
     event UpdatedPoolFactoryAddress(address _poolFactoryAddress);
     event UpdatedSDCollateralAddress(address _sdCollateral);
@@ -127,8 +128,11 @@ interface IPermissionlessNodeRegistry {
         bytes[] calldata _depositSignature
     ) external payable;
 
-    function markValidatorReadyToDeposit(bytes[] calldata _readyToDepositPubkey, bytes[] calldata _frontRunnedPubkey)
-        external;
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkey,
+        bytes[] calldata _frontRunnedPubkey,
+        bytes[] calldata _invalidSignaturePubkey
+    ) external;
 
     function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external;
 

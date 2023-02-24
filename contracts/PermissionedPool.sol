@@ -71,12 +71,14 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     receive() external payable {}
 
-    function markValidatorReadyToDeposit(bytes[] calldata _readyToDepositPubkey, bytes[] calldata _frontRunPubkey)
-        external
-        onlyRole(STADER_DAO)
-    {
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkey,
+        bytes[] calldata _frontRunPubkey,
+        bytes[] calldata _invalidSignaturePubkey
+    ) external onlyRole(STADER_DAO) {
         uint256 frontRunValidatorLength = _frontRunPubkey.length;
         uint256 verifiedValidatorLength = _readyToDepositPubkey.length;
+        uint256 invalidSignatureValidatorLength = _invalidSignaturePubkey.length;
         if (frontRunValidatorLength > 0) {
             uint256 amountToSendToPoolManager = frontRunValidatorLength * DEPOSIT_SIZE;
             balanceForDeposit -= amountToSendToPoolManager;
@@ -85,6 +87,11 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
             IPermissionedNodeRegistry(nodeRegistryAddress).reportFrontRunValidator(_frontRunPubkey);
         }
+
+        if (invalidSignatureValidatorLength > 0) {
+            IPermissionedNodeRegistry(nodeRegistryAddress).reportInvalidSignatureValidator(_invalidSignaturePubkey);
+        }
+
         for (uint256 i = 0; i < verifiedValidatorLength; i++) {
             readyToDepositValidator[readyToDepositValidatorSize] = _readyToDepositPubkey[i];
             readyToDepositValidatorSize++;
