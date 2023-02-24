@@ -10,9 +10,8 @@ import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
 
 contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     struct PoolThresholdInfo {
-        uint256 lower;
+        uint256 minThreshold;
         uint256 withdrawThreshold;
-        uint256 upper;
         string units;
     }
 
@@ -79,17 +78,15 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     function updatePoolThreshold(
         uint8 _poolId,
-        uint256 _lower,
+        uint256 _minThreshold,
         uint256 _withdrawThreshold,
-        uint256 _upper,
         string memory _units
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_lower <= _withdrawThreshold && _withdrawThreshold <= _upper, 'invalid limits');
+        require(_minThreshold <= _withdrawThreshold, 'invalid limits');
 
         poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({
-            lower: _lower,
+            minThreshold: _minThreshold,
             withdrawThreshold: _withdrawThreshold,
-            upper: _upper,
             units: _units
         });
     }
@@ -122,8 +119,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
         PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
-        return (eqEthBalance >= (poolThresholdInfo.lower * _numValidators) &&
-            eqEthBalance <= (poolThresholdInfo.upper * _numValidators));
+        return (eqEthBalance >= (poolThresholdInfo.minThreshold * _numValidators));
     }
 
     function convertSDToETH(uint256 _sdAmount) public view returns (uint256) {
