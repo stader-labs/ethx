@@ -7,19 +7,16 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
-import '../contracts/interfaces/IPoolFactory.sol';
 
 contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     struct PoolThresholdInfo {
-        uint256 lower;
+        uint256 minThreshold;
         uint256 withdrawThreshold;
-        uint256 upper;
         string units;
     }
 
     IERC20 public sdERC20;
     IPriceFetcher public priceFetcher;
-    IPoolFactory public poolFactory;
 
     uint256 public totalShares;
     uint256 public totalSDCollateral;
@@ -46,16 +43,8 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function initialize(
         address _admin,
         address _sdERC20Addr,
-        address _priceFetcherAddr,
-        address _poolFactory
-    )
-        external
-        initializer
-        checkZeroAddress(_admin)
-        checkZeroAddress(_sdERC20Addr)
-        checkZeroAddress(_priceFetcherAddr)
-        checkZeroAddress(_poolFactory)
-    {
+        address _priceFetcherAddr
+    ) external initializer checkZeroAddress(_admin) checkZeroAddress(_sdERC20Addr) checkZeroAddress(_priceFetcherAddr) {
         __AccessControl_init();
         __Pausable_init();
 
@@ -63,7 +52,6 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
         sdERC20 = IERC20(_sdERC20Addr);
         priceFetcher = IPriceFetcher(_priceFetcherAddr);
-        poolFactory = IPoolFactory(_poolFactory);
     }
 
     /**
@@ -90,17 +78,15 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
     function updatePoolThreshold(
         uint8 _poolId,
-        uint256 _lower,
+        uint256 _minThreshold,
         uint256 _withdrawThreshold,
-        uint256 _upper,
         string memory _units
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_lower <= _withdrawThreshold && _withdrawThreshold <= _upper, 'invalid limits');
+        require(_minThreshold <= _withdrawThreshold, 'invalid limits');
 
         poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({
-            lower: _lower,
+            minThreshold: _minThreshold,
             withdrawThreshold: _withdrawThreshold,
-            upper: _upper,
             units: _units
         });
     }
@@ -133,8 +119,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
 
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
         PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
-        return (eqEthBalance >= (poolThresholdInfo.lower * _numValidators) &&
-            eqEthBalance <= (poolThresholdInfo.upper * _numValidators));
+        return (eqEthBalance >= (poolThresholdInfo.minThreshold * _numValidators));
     }
 
     function convertSDToETH(uint256 _sdAmount) public view returns (uint256) {

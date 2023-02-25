@@ -23,6 +23,7 @@ contract PermissionedNodeRegistry is
 
     uint8 public constant override poolId = 2;
     uint64 private constant PUBKEY_LENGTH = 48;
+    uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
 
     address public override vaultFactoryAddress;
@@ -578,6 +579,7 @@ contract PermissionedNodeRegistry is
         bytes calldata depositSignature
     ) private view {
         if (pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
+        if (pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
         if (preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (validatorIdByPubkey[pubkey] != 0) revert pubkeyAlreadyExist();
@@ -595,6 +597,7 @@ contract PermissionedNodeRegistry is
         Validator memory validator = validatorRegistry[_validatorId];
         if (
             validator.status == ValidatorStatus.INITIALIZED ||
+            validator.status == ValidatorStatus.INVALID_SIGNATURE ||
             validator.status == ValidatorStatus.INVALID_SIGNATURE ||
             validator.status == ValidatorStatus.FRONT_RUN ||
             validator.status == ValidatorStatus.WITHDRAWN

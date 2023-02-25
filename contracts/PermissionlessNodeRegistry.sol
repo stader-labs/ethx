@@ -22,6 +22,7 @@ contract PermissionlessNodeRegistry is
 {
     uint8 public constant override poolId = 1;
     uint64 private constant PUBKEY_LENGTH = 48;
+    uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
 
     address public override poolFactoryAddress;
@@ -539,6 +540,7 @@ contract PermissionlessNodeRegistry is
         bytes calldata preDepositSignature,
         bytes calldata depositSignature
     ) private view {
+        if (pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
         if (pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
         if (preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
