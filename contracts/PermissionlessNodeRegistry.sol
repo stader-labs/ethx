@@ -21,7 +21,7 @@ contract PermissionlessNodeRegistry is
     PausableUpgradeable
 {
     uint8 public constant override poolId = 1;
-    uint64 private constant pubkey_LENGTH = 48;
+    uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
 
     address public override poolFactoryAddress;
@@ -146,11 +146,7 @@ contract PermissionlessNodeRegistry is
         uint256 operatorTotalKeys = this.getOperatorTotalKeys(operatorId);
         uint256 operatorTotalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(
-            msg.sender,
-            poolId,
-            operatorTotalNonWithdrawnKeys + keyCount
-        );
+        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, operatorTotalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_pubkey[i], _preDepositSignature[i], _depositSignature[i], operatorId);
@@ -163,13 +159,13 @@ contract PermissionlessNodeRegistry is
      * @dev only oracle can call
      * @param _readyToDepositPubkey array of pubkeys ready to be moved to PRE_DEPOSIT state
      * @param _frontRunnedPubkey array for pubkeys which got front deposit
+     * @param _invalidSignaturePubkey array of pubkey which has invalid signature for deposit
      */
-    function markValidatorReadyToDeposit(bytes[] calldata _readyToDepositPubkey, bytes[] calldata _frontRunnedPubkey)
-        external
-        override
-        whenNotPaused
-        onlyRole(STADER_ORACLE)
-    {
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkey,
+        bytes[] calldata _frontRunnedPubkey,
+        bytes[] calldata _invalidSignaturePubkey
+    ) external override whenNotPaused onlyRole(STADER_ORACLE) {
         for (uint256 i = 0; i < _readyToDepositPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             _markKeyReadyToDeposit(validatorId);
@@ -180,6 +176,12 @@ contract PermissionlessNodeRegistry is
             uint256 validatorId = validatorIdByPubkey[_frontRunnedPubkey[i]];
             _handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_frontRunnedPubkey[i], validatorId);
+        }
+
+        for (uint256 i = 0; i < _invalidSignaturePubkey.length; i++) {
+            uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkey[i]];
+            validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
+            emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
         }
     }
 
@@ -516,12 +518,14 @@ contract PermissionlessNodeRegistry is
         emit AddedKeys(msg.sender, _pubkey, nextValidatorId - 1);
     }
 
+    // mark validator ready to deposit after successful key verification and front run check
     function _markKeyReadyToDeposit(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
         queuedValidators[validatorQueueSize] = _validatorId;
         validatorQueueSize++;
     }
 
+    // handle front run validator by changing their status, deactivating operator and imposing penalty
     function _handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
@@ -529,12 +533,13 @@ contract PermissionlessNodeRegistry is
         _sendValue(staderPenaltyFund, FRONT_RUN_PENALTY);
     }
 
+    // checks for keys lengths, and if pubkey is already there
     function _validateKeys(
         bytes calldata pubkey,
         bytes calldata preDepositSignature,
         bytes calldata depositSignature
     ) private view {
-        if (pubkey.length != pubkey_LENGTH) revert InvalidLengthOfpubkey();
+        if (pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
         if (preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (validatorIdByPubkey[pubkey] != 0) revert pubkeyAlreadyExist();
@@ -548,27 +553,32 @@ contract PermissionlessNodeRegistry is
         if (!success) revert TransferFailed();
     }
 
+    // operator in active state
     function _onlyActiveOperator(address operAddr) internal view returns (uint256 _operatorId) {
         _operatorId = operatorIDByAddress[operAddr];
         if (_operatorId == 0) revert OperatorNotOnBoarded();
         if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();
     }
 
+    // only valid name with string length limit
     function _onlyValidName(string calldata _name) internal pure {
         if (bytes(_name).length == 0) revert EmptyNameString();
         if (bytes(_name).length > OPERATOR_MAX_NAME_LENGTH) revert NameCrossedMaxLength();
     }
 
+    // checks if validator is withdrawn
     function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (validator.status == ValidatorStatus.WITHDRAWN) return true;
         return false;
     }
 
+    // checks if validator is active, active validator are those having user share on beacon chain
     function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (
             validator.status == ValidatorStatus.INITIALIZED ||
+            validator.status == ValidatorStatus.INVALID_SIGNATURE ||
             validator.status == ValidatorStatus.FRONT_RUN ||
             validator.status == ValidatorStatus.PRE_DEPOSIT ||
             validator.status == ValidatorStatus.WITHDRAWN

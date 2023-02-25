@@ -3,8 +3,9 @@ pragma solidity ^0.8.16;
 
 enum ValidatorStatus {
     INITIALIZED,
-    PRE_DEPOSIT,
+    INVALID_SIGNATURE,
     FRONT_RUN,
+    PRE_DEPOSIT,
     DEPOSITED,
     IN_ACTIVATION_QUEUE,
     ACTIVE,

@@ -22,7 +22,7 @@ contract PermissionedNodeRegistry is
     using Math for uint256;
 
     uint8 public constant override poolId = 2;
-    uint64 private constant pubkey_LENGTH = 48;
+    uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
 
     address public override vaultFactoryAddress;
@@ -222,8 +222,21 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < pubkeyLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             _handleFrontRun(validatorId);
+            emit ValidatorMarkedAsFrontRunned(_pubkeys[i], validatorId);
         }
-        this.decreaseTotalActiveValidatorCount(pubkeyLength);
+        _decreaseTotalActiveValidatorCount(pubkeyLength);
+    }
+
+    /**
+     * @notice handle the invalid signature validators
+     * @dev only permissioned pool can call, mark validator status as `INVALID_SIGNATURE`
+     */
+    function reportInvalidSignatureValidator(bytes[] calldata _pubkeys) external override onlyRole(PERMISSIONED_POOL) {
+        for (uint256 i = 0; i < _pubkeys.length; i++) {
+            uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
+            emit ValidatorStatusMarkedAsInvalidSignature(_pubkeys[i], validatorId);
+        }
     }
 
     /**
@@ -398,7 +411,7 @@ contract PermissionedNodeRegistry is
      * @param _count count to decrease total active validator value
      */
     function decreaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(STADER_ORACLE) {
-        totalActiveValidatorCount -= _count;
+        _decreaseTotalActiveValidatorCount(_count);
     }
 
     /**
@@ -544,53 +557,66 @@ contract PermissionedNodeRegistry is
         emit AddedKeys(msg.sender, _pubkey, nextValidatorId - 1);
     }
 
+    // handle front run validator by changing their status and deactivating operator
     function _handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
     }
 
+    // returns operator total queued validator count, internal use
     function _getOperatorQueuedValidatorCount(uint256 _operatorId) internal view returns (uint256 _validatorCount) {
         _validatorCount =
             validatorIdsByOperatorId[_operatorId].length -
             nextQueuedValidatorIndexByOperatorId[_operatorId];
     }
 
+    // checks for keys lengths, and if pubkey is already there
     function _validateKeys(
         bytes calldata pubkey,
         bytes calldata preDepositSignature,
         bytes calldata depositSignature
     ) private view {
-        if (pubkey.length != pubkey_LENGTH) revert InvalidLengthOfpubkey();
+        if (pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
         if (preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (validatorIdByPubkey[pubkey] != 0) revert pubkeyAlreadyExist();
     }
 
+    // operator in active state
     function _onlyActiveOperator(address _operAddr) internal view returns (uint256 _operatorId) {
         _operatorId = operatorIDByAddress[_operAddr];
         if (_operatorId == 0) revert OperatorNotOnBoarded();
         if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();
     }
 
+    // checks if validator is active, active validator are those having user share on beacon chain
     function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (
             validator.status == ValidatorStatus.INITIALIZED ||
+            validator.status == ValidatorStatus.INVALID_SIGNATURE ||
             validator.status == ValidatorStatus.FRONT_RUN ||
             validator.status == ValidatorStatus.WITHDRAWN
         ) return false;
         return true;
     }
 
+    // checks if validator is withdrawn
     function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (validator.status == ValidatorStatus.WITHDRAWN) return true;
         return false;
     }
 
+    // only valid name with string length limit
     function _onlyValidName(string calldata _name) internal pure {
         if (bytes(_name).length == 0) revert EmptyNameString();
         if (bytes(_name).length > OPERATOR_MAX_NAME_LENGTH) revert NameCrossedMaxLength();
+    }
+
+    // decreases the pool total active validator count
+    function _decreaseTotalActiveValidatorCount(uint256 _count) internal {
+        totalActiveValidatorCount -= _count;
     }
 }

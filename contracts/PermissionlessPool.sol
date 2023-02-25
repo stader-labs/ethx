@@ -22,7 +22,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint8 public constant poolId = 1;
 
     address public nodeRegistryAddress;
-    address public ethValidatorDeposit;
+    address public ethDepositContract;
     address public vaultFactoryAddress;
     address public staderStakePoolManager;
 
@@ -44,19 +44,19 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     function initialize(
         address _adminOwner,
         address _nodeRegistryAddress,
-        address _ethValidatorDeposit,
+        address _ethDepositContract,
         address _vaultFactoryAddress,
         address _staderStakePoolManager
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_nodeRegistryAddress);
-        Address.checkNonZeroAddress(_ethValidatorDeposit);
+        Address.checkNonZeroAddress(_ethDepositContract);
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_staderStakePoolManager);
         __Pausable_init();
         __AccessControl_init_unchained();
         nodeRegistryAddress = _nodeRegistryAddress;
-        ethValidatorDeposit = _ethValidatorDeposit;
+        ethDepositContract = _ethDepositContract;
         vaultFactoryAddress = _vaultFactoryAddress;
         staderStakePoolManager = _staderStakePoolManager;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
@@ -102,7 +102,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         );
 
         bytes32 depositDataRoot = _computeDepositDataRoot(_pubkey, _signature, withdrawCredential, PRE_DEPOSIT_SIZE);
-        IDepositContract(ethValidatorDeposit).deposit{value: PRE_DEPOSIT_SIZE}(
+        IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
             _pubkey,
             withdrawCredential,
             _signature,
@@ -145,7 +145,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 withdrawCredential,
                 DEPOSIT_SIZE
             );
-            IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
+            IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
                 pubkey,
                 withdrawCredential,
                 depositSignature,

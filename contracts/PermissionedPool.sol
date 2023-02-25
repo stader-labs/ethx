@@ -21,7 +21,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     uint8 public constant poolId = 2;
     address public nodeRegistryAddress;
-    address public ethValidatorDeposit;
+    address public ethDepositContract;
     address public vaultFactoryAddress;
     address public staderStakePoolManager;
 
@@ -35,6 +35,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     uint256 public readyToDepositValidatorSize;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant DEPOSIT_SIZE = 31 ether;
+    uint256 public constant FULL_DEPOSIT_SIZE = 32 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
 
     /// @inheritdoc IStaderPoolBase
@@ -48,13 +49,13 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     function initialize(
         address _adminOwner,
         address _nodeRegistryAddress,
-        address _ethValidatorDeposit,
+        address _ethDepositContract,
         address _vaultFactoryAddress,
         address _staderStakePoolManager
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_nodeRegistryAddress);
-        Address.checkNonZeroAddress(_ethValidatorDeposit);
+        Address.checkNonZeroAddress(_ethDepositContract);
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_staderStakePoolManager);
         __Pausable_init();
@@ -62,7 +63,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
         MAX_DEPOSIT_BATCH_SIZE = 100;
         nodeRegistryAddress = _nodeRegistryAddress;
-        ethValidatorDeposit = _ethValidatorDeposit;
+        ethDepositContract = _ethDepositContract;
         vaultFactoryAddress = _vaultFactoryAddress;
         staderStakePoolManager = _staderStakePoolManager;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
@@ -70,12 +71,14 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     receive() external payable {}
 
-    function markValidatorReadyToDeposit(bytes[] calldata _readyToDepositPubkey, bytes[] calldata _frontRunPubkey)
-        external
-        onlyRole(STADER_DAO)
-    {
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkey,
+        bytes[] calldata _frontRunPubkey,
+        bytes[] calldata _invalidSignaturePubkey
+    ) external onlyRole(STADER_DAO) {
         uint256 frontRunValidatorLength = _frontRunPubkey.length;
         uint256 verifiedValidatorLength = _readyToDepositPubkey.length;
+        uint256 invalidSignatureValidatorLength = _invalidSignaturePubkey.length;
         if (frontRunValidatorLength > 0) {
             uint256 amountToSendToPoolManager = frontRunValidatorLength * DEPOSIT_SIZE;
             balanceForDeposit -= amountToSendToPoolManager;
@@ -84,6 +87,11 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
             IPermissionedNodeRegistry(nodeRegistryAddress).reportFrontRunValidator(_frontRunPubkey);
         }
+
+        if (invalidSignatureValidatorLength > 0) {
+            IPermissionedNodeRegistry(nodeRegistryAddress).reportInvalidSignatureValidator(_invalidSignaturePubkey);
+        }
+
         for (uint256 i = 0; i < verifiedValidatorLength; i++) {
             readyToDepositValidator[readyToDepositValidatorSize] = _readyToDepositPubkey[i];
             readyToDepositValidatorSize++;
@@ -115,7 +123,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      * @dev pre deposit validator taking care of pool capacity
      */
     function registerOnBeaconChain() external payable override onlyRole(POOL_MANAGER) {
-        uint256 requiredValidators = msg.value / DEPOSIT_SIZE;
+        uint256 requiredValidators = msg.value / FULL_DEPOSIT_SIZE;
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
 
@@ -154,7 +162,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 );
 
                 //slither-disable-next-line arbitrary-send-eth
-                IDepositContract(ethValidatorDeposit).deposit{value: PRE_DEPOSIT_SIZE}(
+                IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
                     pubkey,
                     withdrawCredential,
                     preDepositSignature,
@@ -171,7 +179,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 nextQueuedValidatorIndex + validatorToDeposit
             );
         }
-        balanceForDeposit += requiredValidators * DEPOSIT_SIZE; //TODO do we need any sort of checking where we might not requiredValidators capacity
+        balanceForDeposit += requiredValidators * DEPOSIT_SIZE;
         IPermissionedNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
     }
 
@@ -181,7 +189,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      */
     function depositOnBeaconChain() external {
         uint256 count;
-        while (nextIndexToDeposit < readyToDepositValidatorSize || count < MAX_DEPOSIT_BATCH_SIZE) {
+        while (nextIndexToDeposit < readyToDepositValidatorSize && count < MAX_DEPOSIT_BATCH_SIZE) {
             bytes memory pubkey = readyToDepositValidator[nextIndexToDeposit];
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(pubkey);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , ) = IPermissionedNodeRegistry(
@@ -198,7 +206,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
 
             //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(ethValidatorDeposit).deposit{value: DEPOSIT_SIZE}(
+            IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
                 pubkey,
                 withdrawCredential,
                 depositSignature,

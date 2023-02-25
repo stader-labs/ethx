@@ -23,6 +23,8 @@ interface IPermissionedNodeRegistry {
     //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
+    event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
+    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
     event UpdatedPoolHelper(address _poolSelector);
     event UpdatedSDCollateralAddress(address _sdCollateral);
     event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
@@ -120,6 +122,8 @@ interface IPermissionedNodeRegistry {
     ) external;
 
     function reportFrontRunValidator(bytes[] calldata _pubkeys) external;
+
+    function reportInvalidSignatureValidator(bytes[] calldata _pubkeys) external;
 
     function computeOperatorAllocationForDeposit(uint256 numValidators)
         external

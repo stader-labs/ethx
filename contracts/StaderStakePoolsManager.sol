@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.16;
 
+import './library/Address.sol';
+
 import './ETHX.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
@@ -38,15 +40,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     uint256 public depositedPooledETH;
     uint256 public paginationLimit;
     uint256 public PERMISSIONLESS_DEPOSIT_SIZE;
-    /**
-     * @notice Check for zero address
-     * @dev Modifier
-     * @param _address the address to check
-     */
-    modifier checkNonZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
 
     /**
      * @dev Stader initialized with following variables
@@ -61,26 +54,30 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function initialize(
         address _ethX,
+        address _poolFactory,
+        address _poolSelector,
         address _staderOracle,
         address _userWithdrawManager,
         address[] memory _proposers,
         address[] memory _executors,
         address _timeLockOwner,
         uint256 _minDelay
-    )
-        external
-        initializer
-        checkNonZeroAddress(_ethX)
-        checkNonZeroAddress(_staderOracle)
-        checkNonZeroAddress(_userWithdrawManager)
-    {
+    ) external initializer {
+        Address.checkNonZeroAddress(_ethX);
+        Address.checkNonZeroAddress(_poolFactory);
+        Address.checkNonZeroAddress(_poolSelector);
+        Address.checkNonZeroAddress(_staderOracle);
+        Address.checkNonZeroAddress(_userWithdrawManager);
+
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         __Pausable_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         ethX = _ethX;
+        poolFactory = _poolFactory;
+        poolSelector = _poolSelector;
         staderOracle = _staderOracle;
         userWithdrawalManager = _userWithdrawManager;
         _initialSetup();
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -158,12 +155,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update ethX address
      * @param _ethX ethX contract
      */
-    function updateEthXAddress(address _ethX)
-        external
-        override
-        checkNonZeroAddress(_ethX)
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
+    function updateEthXAddress(address _ethX) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_ethX);
         ethX = _ethX;
         emit UpdatedEthXAddress(ethX);
     }
@@ -172,12 +165,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev update stader oracle address
      * @param _staderOracle stader oracle contract
      */
-    function updateStaderOracle(address _staderOracle)
-        external
-        override
-        checkNonZeroAddress(_staderOracle)
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
+    function updateStaderOracle(address _staderOracle) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderOracle);
         staderOracle = _staderOracle;
         emit UpdatedStaderOracle(staderOracle);
     }
@@ -189,25 +178,31 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function updateUserWithdrawalManager(address _userWithdrawalManager)
         external
         override
-        checkNonZeroAddress(_userWithdrawalManager)
         onlyRole(TIMELOCK_ADMIN_ROLE)
     {
+        Address.checkNonZeroAddress(_userWithdrawalManager);
         userWithdrawalManager = _userWithdrawalManager;
         emit UpdatedUserWithdrawalManager(userWithdrawalManager);
+    }
+
+    /**
+     * @dev update pool factory address
+     * @param _poolFactoryAddress pool factory address
+     */
+    function updatePoolFactoryAddress(address _poolFactoryAddress) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_poolFactoryAddress);
+        poolFactory = _poolFactoryAddress;
+        emit UpdatedPoolFactoryAddress(_poolFactoryAddress);
     }
 
     /**
      * @dev update stader pool selector contract address
      * @param _poolSelector stader pool selector contract
      */
-    function updatePoolSelector(address _poolSelector)
-        external
-        override
-        checkNonZeroAddress(_poolSelector)
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
+    function updatePoolSelectorAddress(address _poolSelector) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_poolSelector);
         poolSelector = _poolSelector;
-        emit UpdatedPoolSelector(_poolSelector);
+        emit UpdatedPoolSelectorAddress(_poolSelector);
     }
 
     /**
