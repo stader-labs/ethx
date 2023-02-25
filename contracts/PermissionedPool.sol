@@ -127,7 +127,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
 
-        // i is the operator ID
+        /// i is the operator ID
         for (uint256 i = 1; i < selectedOperatorCapacity.length; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) continue;
@@ -314,12 +314,13 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     /// @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
+    /// formula based on ethereum deposit contract
     function _computeDepositDataRoot(
         bytes memory _pubkey,
         bytes memory _signature,
         bytes memory _withdrawCredential,
         uint256 _depositAmount
-    ) private pure returns (bytes32) {
+    ) internal pure returns (bytes32) {
         bytes memory amount = to_little_endian_64(_depositAmount);
         bytes32 publicKeyRoot = sha256(_pad64(_pubkey));
         bytes32 signatureRoot = sha256(
@@ -339,7 +340,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     /// @dev Padding memory array with zeroes up to 64 bytes on the right
-    /// @param _b Memory array of size 32 .. 64
+    // copied from https://github.com/lidofinance/lido-dao/blob/df95e563445821988baf9869fde64d86c36be55f/contracts/0.4.24/Lido.sol#L944
     function _pad64(bytes memory _b) internal pure returns (bytes memory) {
         assert(_b.length >= 32 && _b.length <= 64);
         if (64 == _b.length) return _b;
@@ -353,6 +354,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
     }
 
+    ///ethereum deposit contract function to get amount into little_endian_64
     function to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
         uint64 value = uint64(_depositAmount / 1 gwei);
 

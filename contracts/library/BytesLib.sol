@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Unlicense
+
+// copied from https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol
+// with removing unused functions
 /*
  * @title Solidity Bytes Arrays Utils
  * @author Gonçalo Sá <goncalo.sa@consensys.net>

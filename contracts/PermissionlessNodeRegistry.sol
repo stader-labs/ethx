@@ -48,17 +48,17 @@ contract PermissionlessNodeRegistry is
     bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY_OWNER =
         keccak256('PERMISSIONLESS_NODE_REGISTRY_OWNER');
 
-    // mapping of validator Id and Validator struct
+    /// mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
-    // mapping of validator public key and validator Id
+    /// mapping of validator public key and validator Id
     mapping(bytes => uint256) public override validatorIdByPubkey;
-    // Queued Validator queue
+    /// Queued Validator queue
     mapping(uint256 => uint256) public override queuedValidators;
-    // mapping of operator Id and Operator struct
+    /// mapping of operator Id and Operator struct
     mapping(uint256 => Operator) public override operatorStructById;
-    // mapping of operator address and operator Id
+    /// mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
-    //mapping of operator wise validator IDs arrays
+    ///mapping of operator wise validator IDs arrays
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
 
@@ -145,7 +145,7 @@ contract PermissionlessNodeRegistry is
 
         uint256 operatorTotalKeys = this.getOperatorTotalKeys(operatorId);
         uint256 operatorTotalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
-        //check if operator has enough SD collateral for adding `keyCount` keys
+        ///check if operator has enough SD collateral for adding `keyCount` keys
         ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, operatorTotalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
@@ -518,14 +518,14 @@ contract PermissionlessNodeRegistry is
         emit AddedKeys(msg.sender, _pubkey, nextValidatorId - 1);
     }
 
-    // mark validator ready to deposit after successful key verification and front run check
+    /// mark validator ready to deposit after successful key verification and front run check
     function _markKeyReadyToDeposit(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
         queuedValidators[validatorQueueSize] = _validatorId;
         validatorQueueSize++;
     }
 
-    // handle front run validator by changing their status, deactivating operator and imposing penalty
+    /// handle front run validator by changing their status, deactivating operator and imposing penalty
     function _handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
@@ -533,7 +533,7 @@ contract PermissionlessNodeRegistry is
         _sendValue(staderPenaltyFund, FRONT_RUN_PENALTY);
     }
 
-    // checks for keys lengths, and if pubkey is already there
+    /// checks for keys lengths, and if pubkey is already there
     function _validateKeys(
         bytes calldata pubkey,
         bytes calldata preDepositSignature,
@@ -553,27 +553,27 @@ contract PermissionlessNodeRegistry is
         if (!success) revert TransferFailed();
     }
 
-    // operator in active state
+    /// operator in active state
     function _onlyActiveOperator(address operAddr) internal view returns (uint256 _operatorId) {
         _operatorId = operatorIDByAddress[operAddr];
         if (_operatorId == 0) revert OperatorNotOnBoarded();
         if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();
     }
 
-    // only valid name with string length limit
+    /// only valid name with string length limit
     function _onlyValidName(string calldata _name) internal pure {
         if (bytes(_name).length == 0) revert EmptyNameString();
         if (bytes(_name).length > OPERATOR_MAX_NAME_LENGTH) revert NameCrossedMaxLength();
     }
 
-    // checks if validator is withdrawn
+    /// checks if validator is withdrawn
     function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (validator.status == ValidatorStatus.WITHDRAWN) return true;
         return false;
     }
 
-    // checks if validator is active, active validator are those having user share on beacon chain
+    /// checks if validator is active, active validator are those having user share on beacon chain
     function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (

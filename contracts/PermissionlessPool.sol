@@ -260,7 +260,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
-    /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
+    /// @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
+    /// formula based on ethereum deposit contract
     function _computeDepositDataRoot(
         bytes memory _pubkey,
         bytes memory _signature,
@@ -286,7 +287,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     /// @dev Padding memory array with zeroes up to 64 bytes on the right
-    /// @param _b Memory array of size 32 .. 64
+    // copied from https://github.com/lidofinance/lido-dao/blob/df95e563445821988baf9869fde64d86c36be55f/contracts/0.4.24/Lido.sol#L944
     function _pad64(bytes memory _b) internal pure returns (bytes memory) {
         assert(_b.length >= 32 && _b.length <= 64);
         if (64 == _b.length) return _b;
@@ -300,6 +301,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
     }
 
+    ///ethereum deposit contract function to get amount into little_endian_64
     function to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
         uint64 value = uint64(_depositAmount / 1 gwei);
 

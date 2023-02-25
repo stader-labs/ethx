@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
 interface IPoolSelector {
@@ -11,8 +11,6 @@ interface IPoolSelector {
 
     // Getters
     function poolIdForExcessDeposit() external view returns (uint8); // returns the ID of the pool with excess supply
-
-    function TOTAL_TARGET() external pure returns (uint8); // returns the total target for pools
 
     function POOL_SELECTOR_ADMIN() external view returns (bytes32);
 
