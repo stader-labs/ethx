@@ -75,7 +75,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         for (uint8 i = 1; i <= IPoolFactory(poolFactoryAddress).poolCount(); i++) {
             depositedETh += (IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i)) * DEPOSIT_SIZE;
         }
-        uint256 totalEth = SafeMath.add(depositedETh, _pooledEth);
+        uint256 totalEth = depositedETh + _pooledEth;
         uint256 totalValidatorsRequired = totalEth / DEPOSIT_SIZE;
         // new validators to register on beacon chain with `_pooledEth` taking `BATCH_LIMIT` into consideration
         uint256 newValidatorsToDeposit = Math.min(BATCH_LIMIT, _pooledEth / DEPOSIT_SIZE);

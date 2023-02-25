@@ -320,7 +320,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         bytes memory _signature,
         bytes memory _withdrawCredential,
         uint256 _depositAmount
-    ) internal pure returns (bytes32) {
+    ) private pure returns (bytes32) {
         bytes memory amount = to_little_endian_64(_depositAmount);
         bytes32 publicKeyRoot = sha256(_pad64(_pubkey));
         bytes32 signatureRoot = sha256(
