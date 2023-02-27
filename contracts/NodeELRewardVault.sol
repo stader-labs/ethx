@@ -10,8 +10,11 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+    // Pool information
     uint8 public poolId;
     address public poolFactory;
+
+    // Recipients
     address payable public nodeRecipient;
     address payable public staderTreasury;
     address payable public staderStakePoolsManager;
@@ -56,11 +59,13 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         uint256 userShare = calculateUserShare();
 
         bool success;
+
+        // Distribute rewards
         IStaderStakePoolManager(staderStakePoolsManager).receiveExecutionLayerRewards{value: userShare}();
         (success, ) = payable(staderTreasury).call{value: protocolShare}('');
-        require(success, '');
+        require(success, 'Protocol share transfer failed');
         (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
-        require(success, '');
+        require(success, 'Operator share transfer failed');
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
