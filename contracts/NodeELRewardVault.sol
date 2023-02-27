@@ -62,8 +62,10 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
         // Distribute rewards
         IStaderStakePoolManager(staderStakePoolsManager).receiveExecutionLayerRewards{value: userShare}();
+        // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(staderTreasury).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
+        // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
         require(success, 'Operator share transfer failed');
 
