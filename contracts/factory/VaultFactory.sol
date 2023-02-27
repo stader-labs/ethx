@@ -12,21 +12,30 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
     address public override vaultOwner;
+    address public override poolFactory;
     address payable public override staderTreasury;
+    address payable public override staderStakePoolsManager;
 
     bytes32 public constant override STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
 
     function initialize(
         address _factoryAdmin,
         address _vaultOwner,
-        address payable _staderTreasury
+        address payable _staderTreasury,
+        address payable _staderStakePoolsManager,
+        address _poolFactory
     ) external initializer {
         Address.checkNonZeroAddress(_factoryAdmin);
         Address.checkNonZeroAddress(_vaultOwner);
         Address.checkNonZeroAddress(_staderTreasury);
-        __AccessControl_init_unchained();
+
         vaultOwner = _vaultOwner;
         staderTreasury = _staderTreasury;
+        staderStakePoolsManager = _staderStakePoolsManager;
+        poolFactory = _poolFactory;
+
+        __AccessControl_init_unchained();
+
         _grantRole(DEFAULT_ADMIN_ROLE, _factoryAdmin);
     }
 
@@ -52,7 +61,14 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
         nodeELRewardVaultAddress = Create2Upgradeable.deploy(0, salt, type(NodeELRewardVault).creationCode);
-        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(vaultOwner, nodeRecipient, staderTreasury);
+        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(
+            vaultOwner,
+            nodeRecipient,
+            staderTreasury,
+            staderStakePoolsManager,
+            poolFactory,
+            poolType
+        );
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
         return nodeELRewardVaultAddress;

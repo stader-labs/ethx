@@ -9,6 +9,10 @@ interface IVaultFactory {
 
     function staderTreasury() external view returns (address payable);
 
+    function staderStakePoolsManager() external view returns (address payable);
+
+    function poolFactory() external view returns (address);
+
     function STADER_NETWORK_CONTRACT() external view returns (bytes32);
 
     function deployWithdrawVault(
