@@ -60,9 +60,9 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
      */
     function depositSDAsCollateral(uint256 _sdAmount) external {
         address operator = msg.sender;
-        totalSDCollateral += _sdAmount;
-
         uint256 numShares = convertSDToShares(_sdAmount);
+
+        totalSDCollateral += _sdAmount;
         totalShares += numShares;
         operatorShares[operator] += numShares;
 
@@ -106,6 +106,22 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function getOperatorSDBalance(address _operator) public view returns (uint256) {
         uint256 numShares = operatorShares[_operator];
         return convertSharesToSD(numShares);
+    }
+
+    function getMinimumAmountToDeposit(
+        address _operator,
+        uint8 _poolId,
+        uint32 _numValidators
+    ) public view returns (uint256) {
+        uint256 sdBalance = getOperatorSDBalance(_operator);
+
+        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
+
+        uint256 minThresholdInSD = convertETHToSD(poolThresholdInfo.minThreshold);
+        minThresholdInSD *= _numValidators;
+
+        return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD);
     }
 
     // HELPER FUNCTIONS
