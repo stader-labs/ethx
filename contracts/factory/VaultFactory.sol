@@ -6,8 +6,7 @@ import '../library/Address.sol';
 import '../StaderWithdrawVault.sol';
 import '../NodeELRewardVault.sol';
 import '../interfaces/IVaultFactory.sol';
-import '@openzeppelin/contracts-upgradeable/utils/Create2Upgradeable.sol';
-
+import '@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
@@ -15,6 +14,8 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     address public override poolFactory;
     address payable public override staderTreasury;
     address payable public override staderStakePoolsManager;
+    address public nodeELRewardVaultImplementation;
+    address public nodeWithdrawVaultImplementation;
 
     bytes32 public constant override STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
 
@@ -36,6 +37,9 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
 
         __AccessControl_init_unchained();
 
+        nodeELRewardVaultImplementation = address(new NodeELRewardVault());
+        nodeWithdrawVaultImplementation = address(new StaderWithdrawVault());
+
         _grantRole(DEFAULT_ADMIN_ROLE, _factoryAdmin);
     }
 
@@ -46,7 +50,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
-        withdrawVaultAddress = Create2Upgradeable.deploy(0, salt, type(StaderWithdrawVault).creationCode);
+        withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeWithdrawVaultImplementation, salt);
         StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(vaultOwner);
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
@@ -60,7 +64,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
-        nodeELRewardVaultAddress = Create2Upgradeable.deploy(0, salt, type(NodeELRewardVault).creationCode);
+        nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
         NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(
             vaultOwner,
             nodeRecipient,
@@ -80,7 +84,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 validatorCount
     ) public view override returns (address) {
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
-        return Create2Upgradeable.computeAddress(salt, keccak256(type(StaderWithdrawVault).creationCode));
+        return ClonesUpgradeable.predictDeterministicAddress(nodeWithdrawVaultImplementation, salt);
     }
 
     function computeNodeELRewardVaultAddress(uint8 poolType, uint256 operatorId)
@@ -90,7 +94,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         returns (address)
     {
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
-        return Create2Upgradeable.computeAddress(salt, keccak256(type(NodeELRewardVault).creationCode));
+        return ClonesUpgradeable.predictDeterministicAddress(nodeELRewardVaultImplementation, salt);
     }
 
     function getValidatorWithdrawCredential(address _withdrawVault) public pure override returns (bytes memory) {
