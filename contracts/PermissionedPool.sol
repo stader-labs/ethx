@@ -313,6 +313,10 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         MAX_DEPOSIT_BATCH_SIZE = _batchDepositSize;
     }
 
+    function getCollateralETH() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getCollateralETH();
+    }
+
     /// @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
     function _computeDepositDataRoot(
         bytes memory _pubkey,

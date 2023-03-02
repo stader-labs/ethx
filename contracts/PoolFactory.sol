@@ -205,6 +205,10 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
             );
     }
 
+    function getCollateralETH(uint8 _poolId) external view override returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
+    }
+
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
         require(_poolId > 0 && _poolId <= this.poolCount(), 'Invalid pool ID');

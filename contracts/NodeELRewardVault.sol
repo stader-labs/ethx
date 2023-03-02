@@ -77,11 +77,12 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function calculateOperatorShare() public view override returns (uint256) {
+        uint256 collateralETH = getCollateralETH();
         uint256 fullBalance = address(this).balance;
         uint256 remainingBalance = fullBalance - calculateProtocolShare();
-        uint256 halfBalance = remainingBalance / 2;
-        uint256 operatorFee = halfBalance * (getOperatorFeePercent() / 100);
-        return halfBalance + operatorFee;
+        uint256 userBalance = (remainingBalance * 32 ether) / (32 ether - collateralETH);
+        uint256 operatorFee = userBalance * (getOperatorFeePercent() / 100);
+        return userBalance + operatorFee;
     }
 
     function calculateUserShare() public view override returns (uint256) {
@@ -96,5 +97,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
     function getOperatorFeePercent() internal view returns (uint256) {
         return IPoolFactory(poolFactory).getOperatorFeePercent(poolId);
+    }
+
+    function getCollateralETH() private view returns (uint256) {
+        return IPoolFactory(poolFactory).getCollateralETH(poolId);
     }
 }
