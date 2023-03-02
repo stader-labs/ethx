@@ -82,7 +82,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         uint256 remainingBalance = fullBalance - calculateProtocolShare();
         uint256 userBalance = (remainingBalance * 32 ether) / (32 ether - collateralETH);
         uint256 operatorFee = userBalance * (getOperatorFeePercent() / 100);
-        return userBalance + operatorFee;
+        return remainingBalance - userBalance + operatorFee;
     }
 
     function calculateUserShare() public view override returns (uint256) {
