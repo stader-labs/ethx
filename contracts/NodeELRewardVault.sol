@@ -80,7 +80,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         uint256 collateralETH = getCollateralETH();
         uint256 fullBalance = address(this).balance;
         uint256 remainingBalance = fullBalance - calculateProtocolShare();
-        uint256 userBalance = (remainingBalance * 32 ether) / (32 ether - collateralETH);
+        uint256 userBalance = (remainingBalance * (32 ether - collateralETH)) / 32 ether;
         uint256 operatorFee = userBalance * (getOperatorFeePercent() / 100);
         return remainingBalance - userBalance + operatorFee;
     }
