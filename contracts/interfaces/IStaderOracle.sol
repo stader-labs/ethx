@@ -17,6 +17,8 @@ interface IStaderOracle {
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
     event BalanceUpdateFrequencyUpdated(uint256 balanceUpdateFrequency);
+    event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 time);
+    event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 time);
 
     // The block number which balances are current for
     function lastBlockNumberBalancesUpdated() external view returns (uint256);
@@ -29,6 +31,11 @@ interface IStaderOracle {
 
     // The current network total ETHX supply
     function totalETHXSupply() external view returns (uint256);
+
+    // The root of the merkle tree containing the socializing rewards
+    function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
+
+    function socializingRewardsIndex() external view returns (uint256);
 
     // The frequency in blocks at which network balances should be submitted by trusted nodes
     function balanceUpdateFrequency() external view returns (uint256);
@@ -70,6 +77,12 @@ interface IStaderOracle {
     @param _isBadWithdrawal Whether the validator has a bad withdrawal
     */
     function submitValidatorWithdrawalValidity(bytes calldata _pubkey, bool _isBadWithdrawal) external;
+
+    /**
+    @notice Submits the root of the merkle tree containing the socializing rewards.
+    @param _merkleRoot The new root of the merkle tree.
+    */
+    function submitSocializingRewardsMerkleRoot(uint256 _index, bytes32 _merkleRoot) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }

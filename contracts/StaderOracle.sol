@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 import './interfaces/IStaderOracle.sol';
+import './interfaces/ISocializingPool.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
@@ -18,6 +19,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override balanceUpdateFrequency;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
+    /// @inheritdoc IStaderOracle
+    uint256 public override socializingRewardsIndex;
+    /// @inheritdoc IStaderOracle
+    mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
@@ -136,6 +141,27 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
         if (submissionCount >= trustedNodesCount / 2 + 1) {
             // Update bad validator
+        }
+    }
+
+    function submitSocializingRewardsMerkleRoot(uint256 _index, bytes32 _merkleRoot) external override trustedNodeOnly {
+        require(_index > socializingRewardsIndex, 'Merkle root index is not higher than the current one');
+
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _merkleRoot));
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_merkleRoot));
+        // Check & update node submission status
+        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[nodeSubmissionKey] = true;
+        submissionCountKeys[submissionCountKey]++;
+        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        // Emit merkle root submitted event
+        emit SocializingRewardsMerkleRootSubmitted(msg.sender, _index, _merkleRoot, block.timestamp);
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
+            // Update merkle root
+            socializingRewardsMerkleRoot[_index] = _merkleRoot;
+            socializingRewardsIndex = _index;
+            emit SocializingRewardsMerkleRootUpdated(_index, _merkleRoot, block.timestamp);
         }
     }
 
