@@ -7,8 +7,15 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
+import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 
-contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+contract SDCollateral is
+    ISDCollateral,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     struct PoolThresholdInfo {
         uint256 minThreshold;
         uint256 withdrawThreshold;
@@ -96,7 +103,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function hasEnoughSDCollateral(
         address _operator,
         uint8 _poolId,
-        uint32 _numValidators
+        uint256 _numValidators
     ) external view returns (bool) {
         uint256 numShares = operatorShares[_operator];
         uint256 sdBalance = convertSharesToSD(numShares);

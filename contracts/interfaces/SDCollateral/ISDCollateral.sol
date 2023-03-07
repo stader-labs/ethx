@@ -8,13 +8,10 @@ interface ISDCollateral {
 
     function updatePoolThreshold(
         uint8 _poolId,
-        uint256 _lower,
+        uint256 _minThreshold,
         uint256 _withdrawThreshold,
-        uint256 _upper,
         string memory _units
     ) external;
-
-    function updatePoolIdForOperator(uint8 _poolId, address _operator) external;
 
     function hasEnoughSDCollateral(
         address _operator,
