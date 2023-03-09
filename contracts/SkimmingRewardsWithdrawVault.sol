@@ -45,7 +45,11 @@ contract StaderWithdrawVault is Initializable {
 
         IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userRewards}();
         _sendValue(staderTreasury, daoRewards);
-        _sendValue(operator.operatorRewardAddress, operatorRewards);
+
+        // operatorRewards will be zero in case of permissioned pool NOs
+        if (operatorRewards > 0) {
+            _sendValue(operator.operatorRewardAddress, operatorRewards);
+        }
     }
 
     function _calculateRewards(
