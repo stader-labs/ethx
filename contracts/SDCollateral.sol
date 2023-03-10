@@ -131,6 +131,13 @@ contract SDCollateral is
         return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD);
     }
 
+    function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) public view returns (uint256) {
+        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+
+        uint256 ethAmount = convertSDToETH(_sdAmount);
+        return ethAmount / poolThresholdbyPoolId[_poolId].minThreshold;
+    }
+
     // HELPER FUNCTIONS
 
     function _checkPoolThreshold(
