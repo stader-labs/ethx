@@ -86,7 +86,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         _userShare = ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
 
         _operatorShare = (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
-        _operatorShare += (100 + operatorFeePercent) * _userShareBeforeCommision;
+        _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
 
         _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards - _userShare - _operatorShare
     }
