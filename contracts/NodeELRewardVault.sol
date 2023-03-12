@@ -100,10 +100,4 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     function getCollateralETH() private view returns (uint256) {
         return IPoolFactory(poolFactory).getCollateralETH(poolId);
     }
-
-    function calculateProtocolShare() external view override returns (uint256) {}
-
-    function calculateOperatorShare() external view override returns (uint256) {}
-
-    function calculateUserShare() external view override returns (uint256) {}
 }
