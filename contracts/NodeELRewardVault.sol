@@ -19,6 +19,8 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     address payable public staderTreasury;
     address payable public staderStakePoolsManager;
 
+    uint256 public constant TOTAL_STAKED_ETH = 32 ether;
+
     function initialize(
         address _owner,
         address payable _nodeRecipient,
@@ -54,9 +56,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        uint256 protocolShare = calculateProtocolShare();
-        uint256 operatorShare = calculateOperatorShare();
-        uint256 userShare = calculateUserShare();
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewards(address(this).balance);
 
         bool success;
 
@@ -72,23 +72,21 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    function calculateProtocolShare() public view override returns (uint256) {
-        return address(this).balance * (getProtocolFeePercent() / 100);
-    }
-
-    function calculateOperatorShare() public view override returns (uint256) {
+    function _calculateRewards(
+        uint256 _totalRewards
+    ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
         uint256 collateralETH = getCollateralETH();
-        uint256 fullBalance = address(this).balance;
-        uint256 remainingBalance = fullBalance - calculateProtocolShare();
-        uint256 userBalance = (remainingBalance * (32 ether - collateralETH)) / 32 ether;
-        uint256 operatorFee = userBalance * (getOperatorFeePercent() / 100);
-        return remainingBalance - userBalance + operatorFee;
-    }
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 protocolFeePercent = getProtocolFeePercent();
+        uint256 operatorFeePercent = getOperatorFeePercent();
 
-    function calculateUserShare() public view override returns (uint256) {
-        uint256 fullBalance = address(this).balance;
-        uint256 remainingBalance = fullBalance - calculateProtocolShare();
-        return remainingBalance - calculateOperatorShare();
+        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _userShare = ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+
+        _operatorShare = (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _operatorShare += (100 + operatorFeePercent) * _userShareBeforeCommision;
+
+        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards
     }
 
     function getProtocolFeePercent() internal view returns (uint256) {
@@ -102,4 +100,10 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     function getCollateralETH() private view returns (uint256) {
         return IPoolFactory(poolFactory).getCollateralETH(poolId);
     }
+
+    function calculateProtocolShare() external view override returns (uint256) {}
+
+    function calculateOperatorShare() external view override returns (uint256) {}
+
+    function calculateUserShare() external view override returns (uint256) {}
 }
