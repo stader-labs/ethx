@@ -56,7 +56,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewards(address(this).balance);
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(
+            address(this).balance
+        );
 
         bool success;
 
@@ -72,7 +74,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    function _calculateRewards(
+    function _calculateRewardShare(
         uint256 _totalRewards
     ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
         uint256 collateralETH = getCollateralETH();
