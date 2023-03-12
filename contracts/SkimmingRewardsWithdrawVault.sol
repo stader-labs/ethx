@@ -4,31 +4,42 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 
 import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-import {Operator} from './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IStaderNodeWithdrawManager.sol';
+import './interfaces/IPoolFactory.sol';
 
-contract StaderWithdrawVault is Initializable {
-    address payable public staderPoolManager;
+contract StaderWithdrawVault is Initializable, ReentrancyGuardUpgradeable {
+    // Pool information
+    uint8 public poolId;
+    address public poolFactory;
+
+    // Recipients
+    address payable public nodeRecipient;
     address payable public staderTreasury;
+    address payable public staderStakePoolsManager;
 
-    Operator public operator;
-    uint256 public stakedEthSize;
-    uint256 public userStakeSize;
-    uint256 public validatorStakeSize;
+    uint256 public constant TOTAL_STAKED_ETH = 32 ether;
 
-    uint256 public staderCommision;
-    uint256 public validatorCommision;
+    function initialize(
+        address payable _nodeRecipient,
+        address payable _staderTreasury,
+        address payable _staderStakePoolsManager,
+        address _poolFactory,
+        uint8 _poolId
+    ) external initializer {
+        __ReentrancyGuard_init();
 
-    function initialize(address _operator) external initializer {
-        Address.checkNonZeroAddress(_operator);
+        Address.checkNonZeroAddress(_nodeRecipient);
+        Address.checkNonZeroAddress(_staderTreasury);
+        Address.checkNonZeroAddress(_staderStakePoolsManager);
+        Address.checkNonZeroAddress(_poolFactory);
 
-        stakedEthSize = 32;
-        validatorStakeSize = 4;
-        userStakeSize = 28;
-        // operator = _operator; // TODO: check with sanjay, in which contract the operator is stored.
+        staderTreasury = _staderTreasury;
+        nodeRecipient = _nodeRecipient;
+        staderStakePoolsManager = _staderStakePoolsManager;
+        poolFactory = _poolFactory;
+        poolId = _poolId;
     }
 
     /**
@@ -39,36 +50,63 @@ contract StaderWithdrawVault is Initializable {
         // emit ETHReceived(msg.value);
     }
 
-    function distributeRewards() public {
-        uint256 rewards = address(this).balance - stakedEthSize;
-        (uint256 userRewards, uint256 operatorRewards, uint256 daoRewards) = _calculateRewards(rewards);
+    function distributeRewards(bool _withdrawStatus) external nonReentrant {
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(_withdrawStatus);
 
-        IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userRewards}();
-        _sendValue(staderTreasury, daoRewards);
+        bool success;
 
-        // operatorRewards will be zero in case of permissioned pool NOs
-        if (operatorRewards > 0) {
-            _sendValue(operator.operatorRewardAddress, operatorRewards);
+        // Distribute rewards
+        IStaderStakePoolManager(staderStakePoolsManager).receiveWithdrawVaultUserShare{value: userShare}();
+        // slither-disable-next-line arbitrary-send-eth
+        (success, ) = payable(staderTreasury).call{value: protocolShare}('');
+        require(success, 'Protocol share transfer failed');
+        // slither-disable-next-line arbitrary-send-eth
+
+        if (operatorShare > 0) {
+            (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
+            require(success, 'Operator share transfer failed');
         }
     }
 
-    function _calculateRewards(
-        uint256 _totalRewards
-    ) internal view returns (uint256 _userRewards, uint256 _operatorRewards, uint256 _daoRewards) {
-        uint256 _userRewardsBeforeCommision = (userStakeSize * _totalRewards) / stakedEthSize;
-        _userRewards = ((100 - staderCommision - validatorCommision) * _userRewardsBeforeCommision) / 100;
+    function _calculateRewardShare(
+        bool _withdrawStatus
+    ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
+        uint256 _totalRewards = address(this).balance;
+        if (_withdrawStatus) {
+            _totalRewards -= TOTAL_STAKED_ETH;
+        }
 
-        _operatorRewards = (validatorStakeSize * _totalRewards) / stakedEthSize;
-        _operatorRewards += (100 + validatorCommision) * _userRewardsBeforeCommision;
+        uint256 collateralETH = getCollateralETH();
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 protocolFeePercent = getProtocolFeePercent();
+        uint256 operatorFeePercent = getOperatorFeePercent();
 
-        _daoRewards = (staderCommision * _userRewardsBeforeCommision) / 100;
+        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _userShare = ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+
+        _operatorShare = (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
+
+        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards - _userShare - _operatorShare
+
+        if (_withdrawStatus) {
+            _operatorShare += collateralETH;
+            _userShare += (TOTAL_STAKED_ETH - collateralETH);
+        }
     }
 
-    function _sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, 'Address: insufficient balance');
+    // getters
 
-        //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = recipient.call{value: amount}('');
-        require(success, 'Address: unable to send value, recipient may have reverted');
+    function getProtocolFeePercent() internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getProtocolFeePercent(poolId);
+    }
+
+    // should return 0, for permissioned NOs
+    function getOperatorFeePercent() internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getOperatorFeePercent(poolId);
+    }
+
+    function getCollateralETH() private view returns (uint256) {
+        return IPoolFactory(poolFactory).getCollateralETH(poolId);
     }
 }
