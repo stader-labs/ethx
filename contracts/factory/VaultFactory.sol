@@ -46,12 +46,19 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     function deployWithdrawVault(
         uint8 poolType,
         uint256 operatorId,
-        uint256 validatorCount
+        uint256 validatorCount,
+        address payable nodeRecipient
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
         withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeWithdrawVaultImplementation, salt);
-        StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(vaultOwner);
+        StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(
+            nodeRecipient,
+            staderTreasury,
+            staderStakePoolsManager,
+            poolFactory,
+            poolType
+        );
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
         return withdrawVaultAddress;
@@ -87,12 +94,10 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         return ClonesUpgradeable.predictDeterministicAddress(nodeWithdrawVaultImplementation, salt);
     }
 
-    function computeNodeELRewardVaultAddress(uint8 poolType, uint256 operatorId)
-        public
-        view
-        override
-        returns (address)
-    {
+    function computeNodeELRewardVaultAddress(
+        uint8 poolType,
+        uint256 operatorId
+    ) public view override returns (address) {
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
         return ClonesUpgradeable.predictDeterministicAddress(nodeELRewardVaultImplementation, salt);
     }

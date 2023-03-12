@@ -1,23 +1,45 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import './library/Address.sol';
+
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IStaderNodeWithdrawManager.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import './interfaces/IPoolFactory.sol';
 
-contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
-    bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
-    address payable public staderPoolManager;
-    address payable public nodeWithdrawManager;
+contract StaderWithdrawVault is Initializable, ReentrancyGuardUpgradeable {
+    // Pool information
+    uint8 public poolId;
+    address public poolFactory;
+
+    // Recipients
+    address payable public nodeRecipient;
     address payable public staderTreasury;
-    uint256 public validatorDeposit;
-    uint256 public protocolCommission;
+    address payable public staderStakePoolsManager;
 
-    function initialize(address _owner) external initializer {
-        __AccessControl_init_unchained();
-        protocolCommission = 10;
-        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+    uint256 public constant TOTAL_STAKED_ETH = 32 ether;
+
+    function initialize(
+        address payable _nodeRecipient,
+        address payable _staderTreasury,
+        address payable _staderStakePoolsManager,
+        address _poolFactory,
+        uint8 _poolId
+    ) external initializer {
+        __ReentrancyGuard_init();
+
+        Address.checkNonZeroAddress(_nodeRecipient);
+        Address.checkNonZeroAddress(_staderTreasury);
+        Address.checkNonZeroAddress(_staderStakePoolsManager);
+        Address.checkNonZeroAddress(_poolFactory);
+
+        staderTreasury = _staderTreasury;
+        nodeRecipient = _nodeRecipient;
+        staderStakePoolsManager = _staderStakePoolsManager;
+        poolFactory = _poolFactory;
+        poolId = _poolId;
     }
 
     /**
@@ -28,79 +50,63 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable {
         // emit ETHReceived(msg.value);
     }
 
-    function transferUserShareToPoolManager(
-        uint256 _userDeposit,
-        bool _withdrawStatus,
-        address payable _operatorRewardAddress
-    ) external onlyRole(POOL_MANAGER) {
-        uint256 userShare = calculateUserShare(_userDeposit, _withdrawStatus);
-        uint256 staderFeeShare = calculateStaderFee(_userDeposit, _withdrawStatus);
-        uint256 nodeShare = calculateNodeShare(validatorDeposit - _userDeposit, _userDeposit, _withdrawStatus);
-        //slither-disable-next-line arbitrary-send-eth
-        IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userShare}();
-        _sendValue(staderTreasury, staderFeeShare);
-        _sendValue(_operatorRewardAddress, nodeShare);
-        //TODO transfer node commission
-    }
+    function distributeRewards(bool _withdrawStatus) external nonReentrant {
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(_withdrawStatus);
 
-    function calculateUserShare(uint256 _userDeposit, bool _withdrawStatus) public view returns (uint256) {
-        if (_withdrawStatus) {
-            if (address(this).balance > validatorDeposit) {
-                return
-                    _userDeposit +
-                    ((address(this).balance - validatorDeposit) * _userDeposit * (100 - protocolCommission)) /
-                    (validatorDeposit * 100);
-            } else if (address(this).balance < _userDeposit) {
-                return address(this).balance;
-            } else {
-                return _userDeposit;
-            }
+        bool success;
+
+        // Distribute rewards
+        IStaderStakePoolManager(staderStakePoolsManager).receiveWithdrawVaultUserShare{value: userShare}();
+        // slither-disable-next-line arbitrary-send-eth
+        (success, ) = payable(staderTreasury).call{value: protocolShare}('');
+        require(success, 'Protocol share transfer failed');
+        // slither-disable-next-line arbitrary-send-eth
+
+        if (operatorShare > 0) {
+            (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
+            require(success, 'Operator share transfer failed');
         }
-        return (address(this).balance * _userDeposit * (100 - protocolCommission)) / (validatorDeposit * 100);
     }
 
-    function calculateNodeShare(
-        uint256 _nodeDeposit,
-        uint256 _userDeposit,
+    function _calculateRewardShare(
         bool _withdrawStatus
-    ) public view returns (uint256) {
-        require(_nodeDeposit + _userDeposit == validatorDeposit, 'invalid input');
+    ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
+        uint256 _totalRewards = address(this).balance;
         if (_withdrawStatus) {
-            if (address(this).balance > validatorDeposit) {
-                return
-                    address(this).balance -
-                    calculateUserShare(_userDeposit, _withdrawStatus) -
-                    calculateStaderFee(_userDeposit, _withdrawStatus);
-            } else if (address(this).balance <= _userDeposit) {
-                return 0;
-            } else {
-                return address(this).balance - _userDeposit;
-            }
+            _totalRewards -= TOTAL_STAKED_ETH;
         }
-        return
-            (address(this).balance * _nodeDeposit) /
-            validatorDeposit +
-            ((address(this).balance * _userDeposit * protocolCommission) / (validatorDeposit * 100 * 2));
+
+        uint256 collateralETH = getCollateralETH();
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 protocolFeePercent = getProtocolFeePercent();
+        uint256 operatorFeePercent = getOperatorFeePercent();
+
+        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _userShare = ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+
+        _operatorShare = (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
+
+        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards - _userShare - _operatorShare
+
+        if (_withdrawStatus) {
+            _operatorShare += collateralETH;
+            _userShare += (TOTAL_STAKED_ETH - collateralETH);
+        }
     }
 
-    function calculateStaderFee(uint256 _userDeposit, bool _withdrawStatus) public view returns (uint256) {
-        if (_withdrawStatus) {
-            if (address(this).balance > validatorDeposit) {
-                return
-                    ((address(this).balance - validatorDeposit) * _userDeposit * protocolCommission) /
-                    (validatorDeposit * 100 * 2);
-            } else {
-                return 0;
-            }
-        }
-        return (address(this).balance * _userDeposit * protocolCommission) / (validatorDeposit * 100 * 2);
+    // getters
+
+    function getProtocolFeePercent() internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getProtocolFeePercent(poolId);
     }
 
-    function _sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, 'Address: insufficient balance');
+    // should return 0, for permissioned NOs
+    function getOperatorFeePercent() internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getOperatorFeePercent(poolId);
+    }
 
-        //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = recipient.call{value: amount}('');
-        require(success, 'Address: unable to send value, recipient may have reverted');
+    function getCollateralETH() private view returns (uint256) {
+        return IPoolFactory(poolFactory).getCollateralETH(poolId);
     }
 }

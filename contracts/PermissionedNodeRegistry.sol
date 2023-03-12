@@ -86,11 +86,9 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call, whitelisting a one way change there is no blacklisting
      * @param _permissionedNOs array of permissioned NOs address
      */
-    function whitelistPermissionedNOs(address[] calldata _permissionedNOs)
-        external
-        override
-        onlyRole(STADER_MANAGER_BOT)
-    {
+    function whitelistPermissionedNOs(
+        address[] calldata _permissionedNOs
+    ) external override onlyRole(STADER_MANAGER_BOT) {
         for (uint256 i = 0; i < _permissionedNOs.length; i++) {
             permissionList[_permissionedNOs[i]] = true;
         }
@@ -103,12 +101,10 @@ contract PermissionedNodeRegistry is
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
      * @return mevFeeRecipientAddress fee recipient address for all validator clients
      */
-    function onboardNodeOperator(string calldata _operatorName, address payable _operatorRewardAddress)
-        external
-        override
-        whenNotPaused
-        returns (address mevFeeRecipientAddress)
-    {
+    function onboardNodeOperator(
+        string calldata _operatorName,
+        address payable _operatorRewardAddress
+    ) external override whenNotPaused returns (address mevFeeRecipientAddress) {
         _onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_operatorRewardAddress);
         if (!permissionList[msg.sender]) revert NotAPermissionedNodeOperator();
@@ -160,12 +156,9 @@ contract PermissionedNodeRegistry is
      * @param numValidators validator to deposit with permissioned pool
      * @return selectedOperatorCapacity operator wise count of validator to deposit
      */
-    function computeOperatorAllocationForDeposit(uint256 numValidators)
-        external
-        override
-        onlyRole(PERMISSIONED_POOL)
-        returns (uint256[] memory selectedOperatorCapacity)
-    {
+    function computeOperatorAllocationForDeposit(
+        uint256 numValidators
+    ) external override onlyRole(PERMISSIONED_POOL) returns (uint256[] memory selectedOperatorCapacity) {
         // nextOperatorId is total operator count plus 1
         selectedOperatorCapacity = new uint256[](nextOperatorId);
         uint256 activeOperatorCount = this.getTotalActiveOperatorCount();
@@ -263,11 +256,10 @@ contract PermissionedNodeRegistry is
      * @param _operatorID ID of the node operator
      * @param _nextQueuedValidatorIndex updated next index of queued validator per operator
      */
-    function updateQueuedValidatorIndex(uint256 _operatorID, uint256 _nextQueuedValidatorIndex)
-        external
-        override
-        onlyRole(PERMISSIONED_POOL)
-    {
+    function updateQueuedValidatorIndex(
+        uint256 _operatorID,
+        uint256 _nextQueuedValidatorIndex
+    ) external override onlyRole(PERMISSIONED_POOL) {
         nextQueuedValidatorIndexByOperatorId[_operatorID] = _nextQueuedValidatorIndex;
         emit UpdatedQueuedValidatorIndex(_operatorID, _nextQueuedValidatorIndex);
     }
@@ -279,11 +271,10 @@ contract PermissionedNodeRegistry is
      * @param _status updated status of validator
      */
 
-    function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status)
-        external
-        override
-        onlyRole(VALIDATOR_STATUS_ROLE)
-    {
+    function updateValidatorStatus(
+        bytes calldata _pubkey,
+        ValidatorStatus _status
+    ) external override onlyRole(VALIDATOR_STATUS_ROLE) {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         validatorRegistry[validatorId].status = _status;
         emit UpdatedValidatorStatus(_pubkey, _status);
@@ -294,11 +285,9 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call
      * @param _sdCollateral address of SD collateral contract
      */
-    function updateSDCollateralAddress(address _sdCollateral)
-        external
-        override
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
-    {
+    function updateSDCollateralAddress(
+        address _sdCollateral
+    ) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_sdCollateral);
         sdCollateral = _sdCollateral;
         emit UpdatedSDCollateralAddress(_sdCollateral);
@@ -309,11 +298,9 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call
      * @param _vaultFactoryAddress address of vault factory
      */
-    function updateVaultFactoryAddress(address _vaultFactoryAddress)
-        external
-        override
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
-    {
+    function updateVaultFactoryAddress(
+        address _vaultFactoryAddress
+    ) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         vaultFactoryAddress = _vaultFactoryAddress;
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
@@ -324,11 +311,9 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call
      * @param _elRewardSocializePool address of permissioned EL reward socialize pool
      */
-    function updateELRewardSocializePool(address _elRewardSocializePool)
-        external
-        override
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
-    {
+    function updateELRewardSocializePool(
+        address _elRewardSocializePool
+    ) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         Address.checkNonZeroAddress(_elRewardSocializePool);
         elRewardSocializePool = _elRewardSocializePool;
         emit UpdatedELRewardSocializePool(_elRewardSocializePool);
@@ -355,11 +340,9 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call
      * @param _maxKeyPerOperator updated maximum non withdrawn key per operator limit
      */
-    function updateMaxKeyPerOperator(uint256 _maxKeyPerOperator)
-        external
-        override
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
-    {
+    function updateMaxKeyPerOperator(
+        uint256 _maxKeyPerOperator
+    ) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         maxKeyPerOperator = _maxKeyPerOperator;
         emit UpdatedMaxKeyPerOperator(maxKeyPerOperator);
     }
@@ -369,11 +352,9 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call
      * @param _batchKeyDepositLimit updated maximum key limit in a batch
      */
-    function updateBatchKeyDepositLimit(uint256 _batchKeyDepositLimit)
-        external
-        override
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
-    {
+    function updateBatchKeyDepositLimit(
+        uint256 _batchKeyDepositLimit
+    ) external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
         BATCH_KEY_DEPOSIT_LIMIT = _batchKeyDepositLimit;
         emit UpdatedBatchKeyDepositLimit(BATCH_KEY_DEPOSIT_LIMIT);
     }
@@ -545,7 +526,13 @@ contract PermissionedNodeRegistry is
         _validateKeys(_pubkey, _preDepositSignature, _depositSignature);
         uint256 totalKeys = this.getOperatorTotalKeys(_operatorId);
 
-        address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(poolId, _operatorId, totalKeys);
+        address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
+            poolId,
+            _operatorId,
+            totalKeys,
+            payable(address(this)) // TODO: Manoj replace it with nodeRecipient addr
+        );
+
         validatorRegistry[nextValidatorId] = Validator(
             ValidatorStatus.INITIALIZED,
             _pubkey,

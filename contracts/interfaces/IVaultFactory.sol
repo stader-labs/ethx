@@ -18,7 +18,8 @@ interface IVaultFactory {
     function deployWithdrawVault(
         uint8 poolType,
         uint256 operatorId,
-        uint256 validatorCount
+        uint256 validatorCount,
+        address payable nodeRecipient
     ) external returns (address);
 
     function deployNodeELRewardVault(
