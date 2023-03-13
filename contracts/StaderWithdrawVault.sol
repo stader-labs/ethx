@@ -75,28 +75,42 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, Reentra
     function _calculateRewardShare(
         bool _withdrawStatus
     ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
-        uint256 _totalRewards = address(this).balance;
-        if (_withdrawStatus) {
-            _totalRewards -= TOTAL_STAKED_ETH;
-        }
-
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeePercent = getProtocolFeePercent();
         uint256 operatorFeePercent = getOperatorFeePercent();
 
-        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
-        _userShare = ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+        uint256 _totalRewards = address(this).balance;
+        if (_withdrawStatus) {
+            if (address(this).balance < usersETH) {
+                // if less than 28 eth, send all to users
+                _userShare = address(this).balance;
+                _operatorShare = 0;
+                _protocolShare = 0;
+                return (_userShare, _operatorShare, _protocolShare);
+            } else if (address(this).balance >= usersETH && address(this).balance < collateralETH) {
+                // between 28 to 32, send 28 to user, rest to operator
+                _userShare = usersETH;
+                _operatorShare = address(this).balance - _userShare;
+                _protocolShare = 0;
+                return (_userShare, _operatorShare, _protocolShare);
+            } else {
+                // more than 32, 28 to user, 4 to operator, and split rewards as usual
+                _totalRewards = address(this).balance - TOTAL_STAKED_ETH;
+                _operatorShare = collateralETH;
+                _userShare = usersETH;
+            }
+        } else {
+            _totalRewards = address(this).balance;
+        }
 
-        _operatorShare = (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
+        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _userShare += ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+
+        _operatorShare += (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
         _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
 
         _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards - _userShare - _operatorShare
-
-        if (_withdrawStatus) {
-            _operatorShare += collateralETH;
-            _userShare += (TOTAL_STAKED_ETH - collateralETH);
-        }
     }
 
     // getters
