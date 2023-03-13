@@ -3,13 +3,13 @@ pragma solidity ^0.8.16;
 
 import './library/Address.sol';
 
-import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
 
-contract StaderWithdrawVault is Initializable, ReentrancyGuardUpgradeable {
+contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     // Pool information
     uint8 public poolId;
     address public poolFactory;
@@ -22,19 +22,23 @@ contract StaderWithdrawVault is Initializable, ReentrancyGuardUpgradeable {
     uint256 public constant TOTAL_STAKED_ETH = 32 ether;
 
     function initialize(
+        address _admin,
         address payable _nodeRecipient,
         address payable _staderTreasury,
         address payable _staderStakePoolsManager,
         address _poolFactory,
         uint8 _poolId
     ) external initializer {
-        __ReentrancyGuard_init();
-
+        Address.checkNonZeroAddress(_admin);
         Address.checkNonZeroAddress(_nodeRecipient);
         Address.checkNonZeroAddress(_staderTreasury);
         Address.checkNonZeroAddress(_staderStakePoolsManager);
         Address.checkNonZeroAddress(_poolFactory);
 
+        __AccessControl_init_unchained();
+        __ReentrancyGuard_init();
+
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         staderTreasury = _staderTreasury;
         nodeRecipient = _nodeRecipient;
         staderStakePoolsManager = _staderStakePoolsManager;
@@ -50,7 +54,7 @@ contract StaderWithdrawVault is Initializable, ReentrancyGuardUpgradeable {
         // emit ETHReceived(msg.value);
     }
 
-    function distributeRewards(bool _withdrawStatus) external nonReentrant {
+    function distributeRewards(bool _withdrawStatus) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(_withdrawStatus);
 
         bool success;

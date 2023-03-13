@@ -53,6 +53,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
         withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeWithdrawVaultImplementation, salt);
         StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(
+            vaultOwner,
             nodeRecipient,
             staderTreasury,
             staderStakePoolsManager,
