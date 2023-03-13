@@ -21,9 +21,12 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
     /// @notice user withdrawal requests
     mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
 
+    mapping(address => uint256[]) public override requestIdsByUserAddress;
+
     /// @notice structure representing a user request for withdrawal.
     struct UserWithdrawInfo {
         bool redeemStatus; //withdraw request redeemed if variable is true
+        address owner; // ethX owner
         address payable recipient; //payable address of the recipient to transfer withdrawal
         uint256 ethAmount; //eth requested according to given share and exchangeRate
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
@@ -46,19 +49,22 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
      * @param _ethXAmount amount of ethX shares that will be burned upon withdrawal
      */
     function withdraw(
+        address _msgSender,
         address payable _recipient,
         uint256 _ethAmount,
         uint256 _ethXAmount
     ) external override onlyRole(POOL_MANAGER) returns (uint256) {
         userWithdrawRequests[latestRequestId] = UserWithdrawInfo(
             false,
+            _msgSender,
             payable(_recipient),
             _ethAmount,
             _ethXAmount,
             0
         );
+        requestIdsByUserAddress[_msgSender].push(latestRequestId);
         latestRequestId++;
-        emit WithdrawRequestReceived(_recipient, latestRequestId - 1, _ethXAmount, _ethAmount);
+        emit WithdrawRequestReceived(_msgSender, _recipient, latestRequestId - 1, _ethXAmount, _ethAmount);
         return latestRequestId - 1;
     }
 
@@ -93,7 +99,6 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
         if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
         UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
         if (userRequest.redeemStatus) revert RequestAlreadyRedeemed(_requestId);
-
         uint256 ethXAmount = userRequest.ethXAmount;
         uint256 ethAmount = userRequest.ethAmount;
 

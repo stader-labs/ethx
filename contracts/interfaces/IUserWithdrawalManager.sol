@@ -4,8 +4,9 @@ pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
     event WithdrawRequestReceived(
+        address indexed _msgSender,
         address _recipient,
-        uint256 indexed requestId,
+        uint256 _requestId,
         uint256 _sharesAmount,
         uint256 _etherAmount
     );
@@ -42,13 +43,17 @@ interface IUserWithdrawalManager {
         view
         returns (
             bool redeemStatus,
+            address owner,
             address payable recipient,
             uint256 ethAmount,
             uint256 ethXAmount,
             uint256 finalizedExchangeRate
         );
 
+    function requestIdsByUserAddress(address, uint256) external view returns (uint256);
+
     function withdraw(
+        address _msgSender,
         address payable _recipient,
         uint256 _ethAmount,
         uint256 _ethXAmount

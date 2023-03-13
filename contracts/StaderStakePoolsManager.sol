@@ -273,7 +273,12 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 assets = previewWithdraw(_ethXAmount);
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
         ETHX(ethX).transferFrom(msg.sender, (address(userWithdrawalManager)), _ethXAmount);
-        requestID = IUserWithdrawalManager(userWithdrawalManager).withdraw(payable(receiver), assets, _ethXAmount);
+        requestID = IUserWithdrawalManager(userWithdrawalManager).withdraw(
+            msg.sender,
+            payable(receiver),
+            assets,
+            _ethXAmount
+        );
         emit WithdrawRequested(msg.sender, receiver, assets, _ethXAmount);
     }
 
