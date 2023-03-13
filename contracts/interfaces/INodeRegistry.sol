@@ -6,8 +6,7 @@ import '../library/ValidatorStatus.sol';
 struct Validator {
     ValidatorStatus status; // state of validator
     bytes pubkey; //public Key of the validator
-    bytes preDepositSignature; //signature for 1 ETH deposit to Ethereum Deposit contract
-    bytes depositSignature; //signature for 31 ETH deposit on Ethereum Deposit contract
+    bytes _signature; //signature for deposit to Ethereum Deposit contract
     address withdrawVaultAddress; //eth1 withdrawal address for validator
     uint256 operatorId; // stader network assigned Id
     uint256 initialBondEth; // amount of bond eth in gwei
@@ -54,4 +53,8 @@ interface INodeRegistry {
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
+
+    function getCollateralETH() external view returns (uint256);
+
+    function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

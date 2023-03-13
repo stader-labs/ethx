@@ -39,6 +39,8 @@ interface IPermissionedNodeRegistry {
 
     function poolId() external view returns (uint8);
 
+    function poolFactoryAddress() external view returns (address);
+
     function vaultFactoryAddress() external view returns (address);
 
     function sdCollateral() external view returns (address);
@@ -75,8 +77,7 @@ interface IPermissionedNodeRegistry {
         returns (
             ValidatorStatus status,
             bytes calldata pubkey,
-            bytes calldata preDepositSignature,
-            bytes calldata depositSignature,
+            bytes calldata signature,
             address withdrawVaultAddress,
             uint256 operatorId,
             uint256 initialBondEth
@@ -107,6 +108,8 @@ interface IPermissionedNodeRegistry {
 
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
+    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+
     // Setters
 
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external;
@@ -115,11 +118,7 @@ interface IPermissionedNodeRegistry {
         external
         returns (address mevFeeRecipientAddress);
 
-    function addValidatorKeys(
-        bytes[] calldata _pubkey,
-        bytes[] calldata _preDepositSignature,
-        bytes[] calldata _depositSignature
-    ) external;
+    function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature) external;
 
     function reportFrontRunValidator(bytes[] calldata _pubkeys) external;
 

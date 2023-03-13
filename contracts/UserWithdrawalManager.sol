@@ -14,41 +14,28 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
 
     uint256 public override lockedEtherAmount;
 
-    uint256 public override nextBatchIdToFinalize;
+    uint256 public override nextRequestIdToFinalize;
 
-    uint256 public override latestBatchId;
-
-    uint256 public override lastIncrementBatchTime;
+    uint256 public override latestRequestId;
 
     /// @notice user withdrawal requests
-    mapping(address => UserWithdrawInfo[]) public userWithdrawRequests;
-
-    mapping(uint256 => BatchInfo) public override batchRequest;
+    mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
 
     /// @notice structure representing a user request for withdrawal.
     struct UserWithdrawInfo {
+        bool redeemStatus; //withdraw request redeemed if variable is true
         address payable recipient; //payable address of the recipient to transfer withdrawal
-        uint256 batchNumber; // batch to which user request belong
         uint256 ethAmount; //eth requested according to given share and exchangeRate
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
-    }
-
-    struct BatchInfo {
-        bool finalized;
-        uint256 startTime;
-        uint256 finalizedExchangeRate;
-        uint256 requiredEth;
-        uint256 lockedEthX;
+        uint256 finalizedExchangeRate; // exchange rate at which withdraw request is finalized
     }
 
     function initialize(address _staderOwner) external initializer {
         if (_staderOwner == address(0)) revert ZeroAddress();
         __AccessControl_init_unchained();
         staderOwner = _staderOwner;
-        batchRequest[0] = BatchInfo(true, block.timestamp, 0, 0, 0);
-        batchRequest[1] = BatchInfo(false, block.timestamp, 0, 0, 0);
-        nextBatchIdToFinalize = 1;
-        latestBatchId = 1;
+        nextRequestIdToFinalize = 1;
+        latestRequestId = 1;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -59,43 +46,42 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
      * @param _ethXAmount amount of ethX shares that will be burned upon withdrawal
      */
     function withdraw(
-        address msgSender,
         address payable _recipient,
         uint256 _ethAmount,
         uint256 _ethXAmount
-    ) external override onlyRole(POOL_MANAGER) {
-        BatchInfo memory latestBatch = batchRequest[latestBatchId];
-        latestBatch.requiredEth += _ethAmount;
-        latestBatch.lockedEthX += _ethXAmount;
-        userWithdrawRequests[msgSender].push(
-            UserWithdrawInfo(payable(_recipient), latestBatchId, _ethAmount, _ethXAmount)
+    ) external override onlyRole(POOL_MANAGER) returns (uint256) {
+        userWithdrawRequests[latestRequestId] = UserWithdrawInfo(
+            false,
+            payable(_recipient),
+            _ethAmount,
+            _ethXAmount,
+            0
         );
-
-        emit WithdrawRequestReceived(msgSender, _recipient, _ethXAmount, _ethAmount);
+        latestRequestId++;
+        emit WithdrawRequestReceived(_recipient, latestRequestId - 1, _ethXAmount, _ethAmount);
+        return latestRequestId - 1;
     }
 
     /**
      * @notice Finalize the batch from `lastFinalizedBatch` to _finalizedBatchNumber at `_finalizedExchangeRate`
-     * @param _finalizeBatchId batch ID to finalize up to from latestFinalizedBatchId
+     * @param _finalizeRequestId request ID to finalize up to from nextRequestIdToFinalize
      * @param _ethToLock ether that should be locked for these requests
      * @param _finalizedExchangeRate finalized exchangeRate
      */
     function finalize(
-        uint256 _finalizeBatchId,
+        uint256 _finalizeRequestId,
         uint256 _ethToLock,
         uint256 _finalizedExchangeRate
     ) external payable override onlyRole(POOL_MANAGER) {
-        if (_finalizeBatchId < nextBatchIdToFinalize || _finalizeBatchId >= latestBatchId)
-            revert InvalidLastFinalizationBatch(_finalizeBatchId);
+        if (_finalizeRequestId < nextRequestIdToFinalize || _finalizeRequestId >= latestRequestId)
+            revert InvalidFinalizationRequestId(_finalizeRequestId);
         if (lockedEtherAmount + _ethToLock > address(this).balance) revert InSufficientBalance();
 
-        for (uint256 i = nextBatchIdToFinalize; i <= _finalizeBatchId; i++) {
-            BatchInfo memory batchAtIndexI = batchRequest[i];
-            batchAtIndexI.finalizedExchangeRate = _finalizedExchangeRate;
-            batchAtIndexI.finalized = true;
+        for (uint256 i = nextRequestIdToFinalize; i <= _finalizeRequestId; i++) {
+            userWithdrawRequests[i].finalizedExchangeRate = _finalizedExchangeRate;
         }
         lockedEtherAmount += _ethToLock;
-        nextBatchIdToFinalize = _finalizeBatchId + 1;
+        nextRequestIdToFinalize = _finalizeRequestId + 1;
     }
 
     /**
@@ -103,43 +89,19 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
      * @param _requestId request id to redeem
      */
     function redeem(uint256 _requestId) external override {
-        UserWithdrawInfo[] storage userRequests = userWithdrawRequests[msg.sender];
+        if (_requestId >= latestRequestId) revert InvalidRequestId(_requestId);
+        if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
+        UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
+        if (userRequest.redeemStatus) revert RequestAlreadyRedeemed(_requestId);
 
-        if (_requestId >= userRequests.length) revert InvalidRequestId(_requestId);
+        uint256 ethXAmount = userRequest.ethXAmount;
+        uint256 ethAmount = userRequest.ethAmount;
 
-        UserWithdrawInfo storage userWithdrawRequest = userRequests[_requestId];
-        uint256 batchNumber = userWithdrawRequest.batchNumber;
-        uint256 ethXAmount = userWithdrawRequest.ethXAmount;
-        uint256 ethAmount = userWithdrawRequest.ethAmount;
-
-        BatchInfo storage userBatchRequest = batchRequest[batchNumber];
-        if (!userBatchRequest.finalized) revert BatchNotFinalized(batchNumber, _requestId);
-        uint256 etherToTransfer = _min((ethXAmount * userBatchRequest.finalizedExchangeRate) / DECIMAL, ethAmount);
+        uint256 etherToTransfer = _min((ethXAmount * userRequest.finalizedExchangeRate) / DECIMAL, ethAmount);
         lockedEtherAmount -= etherToTransfer;
-        _sendValue(userWithdrawRequest.recipient, etherToTransfer);
+        _sendValue(userRequest.recipient, etherToTransfer);
 
-        userRequests[_requestId] = userRequests[userRequests.length - 1];
-        userRequests.pop();
-
-        emit RequestRedeemed(msg.sender, userWithdrawRequest.recipient, etherToTransfer);
-    }
-
-    /**
-     * @notice creates a new batch
-     * @dev anyone can call after 24 hours from last incrementBatch,
-     *  staderOwner can bypass the time check
-     */
-    function incrementBatch() external {
-        address sender = msg.sender;
-        if (batchRequest[latestBatchId].requiredEth == 0) {
-            return;
-        }
-        if (sender != staderOwner && lastIncrementBatchTime + 24 hours > block.timestamp) {
-            return;
-        }
-        latestBatchId = latestBatchId + 1;
-        lastIncrementBatchTime = block.timestamp;
-        batchRequest[latestBatchId] = BatchInfo(false, block.timestamp, 0, 0, 0);
+        emit RequestRedeemed(msg.sender, userRequest.recipient, etherToTransfer);
     }
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {

@@ -80,9 +80,9 @@ interface IStaderStakePoolManager {
 
     function updatePoolSelectorAddress(address _poolSelector) external;
 
-    function userWithdraw(uint256 _ethXAmount, address receiver) external;
+    function userWithdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
 
-    function finalizeUserWithdrawalRequest(bool _slashingMode) external;
+    function finalizeUserWithdrawalRequest() external;
 
     function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey) external returns (uint256 requestId);
 

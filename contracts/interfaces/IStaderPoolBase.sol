@@ -59,4 +59,8 @@ interface IStaderPoolBase {
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
 
     function getSocializingPoolAddress() external view returns (address);
+
+    function getCollateralETH() external view returns (uint256);
+
+    function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

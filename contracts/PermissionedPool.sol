@@ -2,7 +2,6 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './library/BytesLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IVaultFactory.sol';
@@ -38,10 +37,10 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     uint256 public constant FULL_DEPOSIT_SIZE = 32 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     uint256 public override protocolFeePercent;
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     uint256 public override operatorFeePercent;
 
     mapping(uint256 => bytes) public readyToDepositValidator;
@@ -79,6 +78,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         uint256 frontRunValidatorLength = _frontRunPubkey.length;
         uint256 verifiedValidatorLength = _readyToDepositPubkey.length;
         uint256 invalidSignatureValidatorLength = _invalidSignaturePubkey.length;
+        // TODO put a check that pubkey is in PRE_DEPOSIT
         if (frontRunValidatorLength > 0) {
             uint256 amountToSendToPoolManager = frontRunValidatorLength * DEPOSIT_SIZE;
             balanceForDeposit -= amountToSendToPoolManager;
@@ -88,6 +88,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             IPermissionedNodeRegistry(nodeRegistryAddress).reportFrontRunValidator(_frontRunPubkey);
         }
 
+        //TODO transfer back 31 ETH to pool manager
         if (invalidSignatureValidatorLength > 0) {
             IPermissionedNodeRegistry(nodeRegistryAddress).reportInvalidSignatureValidator(_invalidSignaturePubkey);
         }
@@ -98,7 +99,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         }
     }
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
         require(_protocolFeePercent <= 100, 'Protocol fee percent should be less than 100');
         require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
@@ -108,7 +109,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         emit ProtocolFeePercentUpdated(_protocolFeePercent);
     }
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
         require(_operatorFeePercent <= 100, 'Operator fee percent should be less than 100');
         require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
@@ -127,7 +128,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
 
-        /// i is the operator ID
+        // i is the operator ID
         for (uint256 i = 1; i < selectedOperatorCapacity.length; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) continue;
@@ -144,8 +145,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 (
                     ,
                     bytes memory pubkey,
-                    bytes memory preDepositSignature,
-                    ,
+                    bytes memory signature,
                     address withdrawVaultAddress,
                     ,
 
@@ -154,9 +154,9 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
                     withdrawVaultAddress
                 );
-                bytes32 depositDataRoot = _computeDepositDataRoot(
+                bytes32 depositDataRoot = this.computeDepositDataRoot(
                     pubkey,
-                    preDepositSignature,
+                    signature,
                     withdrawCredential,
                     PRE_DEPOSIT_SIZE
                 );
@@ -165,7 +165,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
                     pubkey,
                     withdrawCredential,
-                    preDepositSignature,
+                    signature,
                     depositDataRoot
                 );
                 IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(
@@ -192,24 +192,19 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         while (nextIndexToDeposit < readyToDepositValidatorSize && count < MAX_DEPOSIT_BATCH_SIZE) {
             bytes memory pubkey = readyToDepositValidator[nextIndexToDeposit];
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(pubkey);
-            (, , , bytes memory depositSignature, address withdrawVaultAddress, , ) = IPermissionedNodeRegistry(
+            (, , bytes memory signature, address withdrawVaultAddress, , ) = IPermissionedNodeRegistry(
                 nodeRegistryAddress
             ).validatorRegistry(validatorId);
             bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
                 withdrawVaultAddress
             );
-            bytes32 depositDataRoot = _computeDepositDataRoot(
-                pubkey,
-                depositSignature,
-                withdrawCredential,
-                DEPOSIT_SIZE
-            );
+            bytes32 depositDataRoot = this.computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
 
             //slither-disable-next-line arbitrary-send-eth
             IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
                 pubkey,
                 withdrawCredential,
-                depositSignature,
+                signature,
                 depositDataRoot
             );
             IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
@@ -269,14 +264,18 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         return INodeRegistry(nodeRegistryAddress).getValidator(_pubkey);
     }
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
         return INodeRegistry(nodeRegistryAddress).getOperator(_pubkey);
     }
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     function getSocializingPoolAddress() external view returns (address) {
         return IPermissionedNodeRegistry(nodeRegistryAddress).elRewardSocializePool();
+    }
+
+    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
+        return INodeRegistry(nodeRegistryAddress).isExistingPubkey(_pubkey);
     }
 
     /**
@@ -313,48 +312,36 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         MAX_DEPOSIT_BATCH_SIZE = _batchDepositSize;
     }
 
-    /// @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
-    /// formula based on ethereum deposit contract
-    function _computeDepositDataRoot(
-        bytes memory _pubkey,
-        bytes memory _signature,
-        bytes memory _withdrawCredential,
+    function getCollateralETH() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getCollateralETH();
+    }
+
+    // @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
+    // formula based on ethereum deposit contract
+    function computeDepositDataRoot(
+        bytes calldata _pubkey,
+        bytes calldata _signature,
+        bytes calldata _withdrawCredential,
         uint256 _depositAmount
-    ) private pure returns (bytes32) {
+    ) external pure returns (bytes32) {
         bytes memory amount = to_little_endian_64(_depositAmount);
-        bytes32 publicKeyRoot = sha256(_pad64(_pubkey));
-        bytes32 signatureRoot = sha256(
+        bytes32 pubkey_root = sha256(abi.encodePacked(_pubkey, bytes16(0)));
+        bytes32 signature_root = sha256(
             abi.encodePacked(
-                sha256(BytesLib.slice(_signature, 0, 64)),
-                sha256(_pad64(BytesLib.slice(_signature, 64, SIGNATURE_LENGTH - 64)))
+                sha256(abi.encodePacked(_signature[:64])),
+                sha256(abi.encodePacked(_signature[64:], bytes32(0)))
             )
         );
-
         return
             sha256(
                 abi.encodePacked(
-                    sha256(abi.encodePacked(publicKeyRoot, _withdrawCredential)),
-                    sha256(abi.encodePacked(amount, bytes24(0), signatureRoot))
+                    sha256(abi.encodePacked(pubkey_root, _withdrawCredential)),
+                    sha256(abi.encodePacked(amount, bytes24(0), signature_root))
                 )
             );
     }
 
-    /// @dev Padding memory array with zeroes up to 64 bytes on the right
-    // copied from https://github.com/lidofinance/lido-dao/blob/df95e563445821988baf9869fde64d86c36be55f/contracts/0.4.24/Lido.sol#L944
-    function _pad64(bytes memory _b) internal pure returns (bytes memory) {
-        assert(_b.length >= 32 && _b.length <= 64);
-        if (64 == _b.length) return _b;
-
-        bytes memory zero32 = new bytes(32);
-        assembly {
-            mstore(add(zero32, 0x20), 0)
-        }
-
-        if (32 == _b.length) return BytesLib.concat(_b, zero32);
-        else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
-    }
-
-    ///ethereum deposit contract function to get amount into little_endian_64
+    //ethereum deposit contract function to get amount into little_endian_64
     function to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
         uint64 value = uint64(_depositAmount / 1 gwei);
 

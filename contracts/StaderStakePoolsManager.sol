@@ -26,6 +26,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
     using Math for uint256;
 
+    bool public slashingMode;
     address public ethX;
     address public staderOracle;
     address public userWithdrawalManager;
@@ -263,54 +264,57 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /** @dev See {IERC4626-withdraw}. */
-    function userWithdraw(uint256 _ethXAmount, address receiver) public override whenNotPaused {
+    function userWithdraw(uint256 _ethXAmount, address receiver)
+        public
+        override
+        whenNotPaused
+        returns (uint256 requestID)
+    {
         uint256 assets = previewWithdraw(_ethXAmount);
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
         ETHX(ethX).transferFrom(msg.sender, (address(userWithdrawalManager)), _ethXAmount);
-        IUserWithdrawalManager(userWithdrawalManager).withdraw(msg.sender, payable(receiver), assets, _ethXAmount);
+        requestID = IUserWithdrawalManager(userWithdrawalManager).withdraw(payable(receiver), assets, _ethXAmount);
         emit WithdrawRequested(msg.sender, receiver, assets, _ethXAmount);
     }
 
     /**
      * @notice finalize user request in a batch
      * @dev when slashing mode, only process and don't finalize
-     * @param _slashingMode mode stating that protocol is getting slashed
      */
-    function finalizeUserWithdrawalRequest(bool _slashingMode) external override whenNotPaused onlyRole(EXECUTOR_ROLE) {
+    function finalizeUserWithdrawalRequest() external override whenNotPaused onlyRole(EXECUTOR_ROLE) {
         //TODO change input name
-        if (!_slashingMode) {
+        if (!slashingMode) {
             if (getExchangeRate() == 0) revert ProtocolNotHealthy();
             //batch ID to be finalized next
-            uint256 nextBatchIdToFinalize = IUserWithdrawalManager(userWithdrawalManager).nextBatchIdToFinalize();
+            uint256 nextRequestIdToFinalize = IUserWithdrawalManager(userWithdrawalManager).nextRequestIdToFinalize();
             //ongoing batch Id
-            uint256 latestBatchId = IUserWithdrawalManager(userWithdrawalManager).latestBatchId();
-            uint256 maxBatchIdToFinalize = Math.min(latestBatchId, nextBatchIdToFinalize + paginationLimit);
+            uint256 latestRequestId = IUserWithdrawalManager(userWithdrawalManager).latestRequestId();
+            uint256 maxRequestIdToFinalize = Math.min(latestRequestId, nextRequestIdToFinalize + paginationLimit);
             uint256 lockedEthXToBurn;
-            uint256 ethToSendToFinalizeBatch;
-            uint256 batchId = 0;
-            for (uint256 i = nextBatchIdToFinalize; i < maxBatchIdToFinalize; i++) {
-                (, , , uint256 requiredEth, uint256 lockedEthX) = IUserWithdrawalManager(userWithdrawalManager)
-                    .batchRequest(batchId);
-                uint256 minEThRequiredToFinalizeBatch = Math.min(
+            uint256 ethToSendToFinalizeRequest;
+            uint256 requestId;
+            for (requestId = nextRequestIdToFinalize; requestId < maxRequestIdToFinalize; requestId++) {
+                (, , uint256 requiredEth, uint256 lockedEthX, ) = IUserWithdrawalManager(userWithdrawalManager)
+                    .userWithdrawRequests(requestId);
+                uint256 minEThRequiredToFinalizeRequest = Math.min(
                     requiredEth,
                     (lockedEthX * getExchangeRate()) / DECIMALS
                 );
-                if (minEThRequiredToFinalizeBatch > depositedPooledETH) {
+                if (minEThRequiredToFinalizeRequest > depositedPooledETH) {
                     break;
                 } else {
                     lockedEthXToBurn += lockedEthX;
-                    ethToSendToFinalizeBatch += minEThRequiredToFinalizeBatch;
-                    depositedPooledETH -= minEThRequiredToFinalizeBatch;
-                    batchId = i;
+                    ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
+                    depositedPooledETH -= minEThRequiredToFinalizeRequest;
                 }
             }
-            if (batchId >= nextBatchIdToFinalize) {
+            if (requestId >= nextRequestIdToFinalize) {
                 ETHX(ethX).burnFrom(address(userWithdrawalManager), lockedEthXToBurn);
 
                 //slither-disable-next-line arbitrary-send-eth
-                IUserWithdrawalManager(userWithdrawalManager).finalize{value: ethToSendToFinalizeBatch}(
-                    batchId,
-                    ethToSendToFinalizeBatch,
+                IUserWithdrawalManager(userWithdrawalManager).finalize{value: ethToSendToFinalizeRequest}(
+                    requestId,
+                    ethToSendToFinalizeRequest,
                     getExchangeRate()
                 );
             }

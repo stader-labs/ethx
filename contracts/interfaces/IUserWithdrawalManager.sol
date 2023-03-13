@@ -4,8 +4,8 @@ pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
     event WithdrawRequestReceived(
-        address indexed _sender,
         address _recipient,
+        uint256 indexed requestId,
         uint256 _sharesAmount,
         uint256 _etherAmount
     );
@@ -21,10 +21,9 @@ interface IUserWithdrawalManager {
     error TransferFailed();
     error InSufficientBalance();
     error InvalidRequestId(uint256 _requestId);
-    error RequestNotFinalized(uint256 _requestId);
-    error InvalidLastFinalizationBatch(uint256 _requestId);
-    error BatchNotFinalized(uint256 _batchNumber, uint256 _requestId);
-    error IdenticalRecipientAddressProvided(address _sender, address _recipient, uint256 _requestId);
+    error requestIdNotFinalized(uint256 _requestId);
+    error RequestAlreadyRedeemed(uint256 _requestId);
+    error InvalidFinalizationRequestId(uint256 _requestId);
 
     function POOL_MANAGER() external view returns (bytes32);
 
@@ -32,31 +31,28 @@ interface IUserWithdrawalManager {
 
     function lockedEtherAmount() external view returns (uint256);
 
-    function nextBatchIdToFinalize() external view returns (uint256);
+    function nextRequestIdToFinalize() external view returns (uint256);
 
-    function latestBatchId() external view returns (uint256);
+    function latestRequestId() external view returns (uint256);
 
     function DECIMAL() external view returns (uint256);
 
-    function lastIncrementBatchTime() external view returns (uint256);
-
-    function batchRequest(uint256)
+    function userWithdrawRequests(uint256)
         external
         view
         returns (
-            bool finalized,
-            uint256 startTime,
-            uint256 finalizedExchangeRate,
-            uint256 requiredEth,
-            uint256 lockedEthX
+            bool redeemStatus,
+            address payable recipient,
+            uint256 ethAmount,
+            uint256 ethXAmount,
+            uint256 finalizedExchangeRate
         );
 
     function withdraw(
-        address msgSender,
         address payable _recipient,
         uint256 _ethAmount,
         uint256 _ethXAmount
-    ) external;
+    ) external returns (uint256);
 
     function finalize(
         uint256 _finalizeBatchId,

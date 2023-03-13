@@ -86,8 +86,7 @@ interface IPermissionlessNodeRegistry {
         returns (
             ValidatorStatus status,
             bytes calldata pubkey,
-            bytes calldata preDepositSignature,
-            bytes calldata depositSignature,
+            bytes calldata signature,
             address withdrawVaultAddress,
             uint256 operatorId,
             uint256 initialBondEth
@@ -114,6 +113,8 @@ interface IPermissionlessNodeRegistry {
 
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
+    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+
     //Setters
 
     function onboardNodeOperator(
@@ -122,11 +123,7 @@ interface IPermissionlessNodeRegistry {
         address payable _operatorRewardAddress
     ) external returns (address mevFeeRecipientAddress);
 
-    function addValidatorKeys(
-        bytes[] calldata _pubkey,
-        bytes[] calldata _preDepositSignature,
-        bytes[] calldata _depositSignature
-    ) external payable;
+    function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature) external payable;
 
     function markValidatorReadyToDeposit(
         bytes[] calldata _readyToDepositPubkey,

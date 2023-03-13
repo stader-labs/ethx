@@ -2,7 +2,6 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './library/BytesLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IVaultFactory.sol';
@@ -101,7 +100,12 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             withdrawVault
         );
 
-        bytes32 depositDataRoot = _computeDepositDataRoot(_pubkey, _signature, withdrawCredential, PRE_DEPOSIT_SIZE);
+        bytes32 depositDataRoot = this.computeDepositDataRoot(
+            _pubkey,
+            _signature,
+            withdrawCredential,
+            PRE_DEPOSIT_SIZE
+        );
         IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
             _pubkey,
             withdrawCredential,
@@ -117,7 +121,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * send back the excess amount of ETH back to poolManager
      */
     function registerOnBeaconChain() external payable onlyRole(POOL_MANAGER) {
-        uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
+        uint256 requiredValidators = msg.value / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
             requiredValidators * DEPOSIT_NODE_BOND
         );
@@ -128,8 +132,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             (
                 ,
                 bytes memory pubkey,
-                ,
-                bytes memory depositSignature,
+                bytes memory signature,
                 address withdrawVaultAddress,
                 ,
 
@@ -139,16 +142,11 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 withdrawVaultAddress
             );
 
-            bytes32 depositDataRoot = _computeDepositDataRoot(
-                pubkey,
-                depositSignature,
-                withdrawCredential,
-                DEPOSIT_SIZE
-            );
+            bytes32 depositDataRoot = this.computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
             IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
                 pubkey,
                 withdrawCredential,
-                depositSignature,
+                signature,
                 depositDataRoot
             );
 
@@ -159,7 +157,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             depositQueueStartIndex + requiredValidators
         );
         IPermissionlessNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
-        // TODO only use case i see for this is if some external account directly send to this contract
+        // if EOA send any ETH to this contract transfer it to stader stake pool manager
         if (address(this).balance > 0) {
             //slither-disable-next-line arbitrary-send-eth
             IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
@@ -213,7 +211,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
         return INodeRegistry(nodeRegistryAddress).getOperator(_pubkey);
     }
@@ -260,48 +258,40 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
-    /// @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
-    /// formula based on ethereum deposit contract
-    function _computeDepositDataRoot(
-        bytes memory _pubkey,
-        bytes memory _signature,
-        bytes memory _withdrawCredential,
+    function getCollateralETH() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getCollateralETH();
+    }
+
+    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
+        return INodeRegistry(nodeRegistryAddress).isExistingPubkey(_pubkey);
+    }
+
+    // @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
+    // formula based on ethereum deposit contract
+    function computeDepositDataRoot(
+        bytes calldata _pubkey,
+        bytes calldata _signature,
+        bytes calldata _withdrawCredential,
         uint256 _depositAmount
-    ) private pure returns (bytes32) {
+    ) external pure returns (bytes32) {
         bytes memory amount = to_little_endian_64(_depositAmount);
-        bytes32 publicKeyRoot = sha256(_pad64(_pubkey));
-        bytes32 signatureRoot = sha256(
+        bytes32 pubkey_root = sha256(abi.encodePacked(_pubkey, bytes16(0)));
+        bytes32 signature_root = sha256(
             abi.encodePacked(
-                sha256(BytesLib.slice(_signature, 0, 64)),
-                sha256(_pad64(BytesLib.slice(_signature, 64, SIGNATURE_LENGTH - 64)))
+                sha256(abi.encodePacked(_signature[:64])),
+                sha256(abi.encodePacked(_signature[64:], bytes32(0)))
             )
         );
-
         return
             sha256(
                 abi.encodePacked(
-                    sha256(abi.encodePacked(publicKeyRoot, _withdrawCredential)),
-                    sha256(abi.encodePacked(amount, bytes24(0), signatureRoot))
+                    sha256(abi.encodePacked(pubkey_root, _withdrawCredential)),
+                    sha256(abi.encodePacked(amount, bytes24(0), signature_root))
                 )
             );
     }
 
-    /// @dev Padding memory array with zeroes up to 64 bytes on the right
-    // copied from https://github.com/lidofinance/lido-dao/blob/df95e563445821988baf9869fde64d86c36be55f/contracts/0.4.24/Lido.sol#L944
-    function _pad64(bytes memory _b) internal pure returns (bytes memory) {
-        assert(_b.length >= 32 && _b.length <= 64);
-        if (64 == _b.length) return _b;
-
-        bytes memory zero32 = new bytes(32);
-        assembly {
-            mstore(add(zero32, 0x20), 0)
-        }
-
-        if (32 == _b.length) return BytesLib.concat(_b, zero32);
-        else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
-    }
-
-    ///ethereum deposit contract function to get amount into little_endian_64
+    //ethereum deposit contract function to get amount into little_endian_64
     function to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
         uint64 value = uint64(_depositAmount / 1 gwei);
 
