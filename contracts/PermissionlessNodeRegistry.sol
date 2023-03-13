@@ -169,21 +169,42 @@ contract PermissionlessNodeRegistry is
         //TODO put a check that pubkey is in PRE_DEPOSIT
         for (uint256 i = 0; i < _readyToDepositPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
+            _onlyInitializedValidator(validatorId);
             _markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_readyToDepositPubkey[i], validatorId);
         }
 
         for (uint256 i = 0; i < _frontRunnedPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_frontRunnedPubkey[i]];
+            _onlyInitializedValidator(validatorId);
             _handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_frontRunnedPubkey[i], validatorId);
         }
 
         for (uint256 i = 0; i < _invalidSignaturePubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkey[i]];
+            _onlyInitializedValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
         }
+    }
+
+    /**
+     * @notice handling of fully withdrawn validators
+     * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances
+     * @param  _pubkeys array of withdrawn validator's pubkey
+     */
+    function withdrawnValidators(bytes[] calldata _pubkeys) external onlyRole(STADER_ORACLE) {
+        uint256 withdrawnValidatorCount = _pubkeys.length;
+        for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
+            uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            if (validatorId == 0) revert PubkeyDoesNotExist();
+            validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
+            //take out money from withdraw vault --need interface of withdrawVault
+            //if optout, clear nodeELVault --need interfaces of NodeELVault
+            emit ValidatorWithdrawn(_pubkeys[i], validatorId);
+        }
+        totalActiveValidatorCount -= withdrawnValidatorCount;
     }
 
     /**
@@ -357,15 +378,6 @@ contract PermissionlessNodeRegistry is
      */
     function increaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(PERMISSIONLESS_POOL) {
         totalActiveValidatorCount += _count;
-    }
-
-    /**
-     * @notice decrease the total active validator count
-     * @dev only stader oracle calls it when it report withdrawn validators
-     * @param _count count to decrease total active validator value
-     */
-    function decreaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(STADER_ORACLE) {
-        totalActiveValidatorCount -= _count;
     }
 
     /**
@@ -560,7 +572,7 @@ contract PermissionlessNodeRegistry is
     function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
         if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
         if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
-        if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert pubkeyAlreadyExist();
+        if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
     }
 
     function _sendValue(address receiver, uint256 _amount) internal {
@@ -602,5 +614,10 @@ contract PermissionlessNodeRegistry is
             validator.status == ValidatorStatus.WITHDRAWN
         ) return false;
         return true;
+    }
+
+    function _onlyInitializedValidator(uint256 _validatorId) internal view {
+        if (_validatorId == 0 || validatorRegistry[_validatorId].status != ValidatorStatus.INITIALIZED)
+            revert PubkeyNotFoundOrDuplicateInput();
     }
 }

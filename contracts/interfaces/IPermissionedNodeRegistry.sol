@@ -11,7 +11,8 @@ interface IPermissionedNodeRegistry {
     error maxKeyLimitReached();
     error OperatorNotOnBoarded();
     error NameCrossedMaxLength();
-    error pubkeyAlreadyExist();
+    error PubkeyAlreadyExist();
+    error PubkeyDoesNotExist();
     error OperatorIsDeactivate();
     error InvalidLengthOfpubkey();
     error InvalidStartAndEndIndex();
@@ -24,6 +25,7 @@ interface IPermissionedNodeRegistry {
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
     event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
+    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
     event UpdatedPoolHelper(address _poolSelector);
     event UpdatedSDCollateralAddress(address _sdCollateral);
@@ -60,6 +62,8 @@ interface IPermissionedNodeRegistry {
     function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
 
     function totalActiveValidatorCount() external view returns (uint256);
+
+    function totalActiveOperatorCount() external view returns (uint256);
 
     function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
 
@@ -104,8 +108,6 @@ interface IPermissionedNodeRegistry {
 
     function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
-    function getTotalActiveOperatorCount() external view returns (uint256 _activeOperatorCount);
-
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
@@ -133,8 +135,6 @@ interface IPermissionedNodeRegistry {
     function deactivateNodeOperator(uint256 _operatorId) external;
 
     function increaseTotalActiveValidatorCount(uint256 _count) external;
-
-    function decreaseTotalActiveValidatorCount(uint256 _count) external;
 
     function updateQueuedValidatorIndex(uint256 _operatorId, uint256 _nextQueuedValidatorIndex) external;
 

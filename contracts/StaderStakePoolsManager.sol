@@ -299,7 +299,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             uint256 ethToSendToFinalizeRequest;
             uint256 requestId;
             for (requestId = nextRequestIdToFinalize; requestId < maxRequestIdToFinalize; requestId++) {
-                (, , uint256 requiredEth, uint256 lockedEthX, ) = IUserWithdrawalManager(userWithdrawalManager)
+                (, , , uint256 requiredEth, uint256 lockedEthX, ) = IUserWithdrawalManager(userWithdrawalManager)
                     .userWithdrawRequests(requestId);
                 uint256 minEThRequiredToFinalizeRequest = Math.min(
                     requiredEth,

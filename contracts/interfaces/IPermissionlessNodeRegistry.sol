@@ -14,16 +14,19 @@ interface IPermissionlessNodeRegistry {
     error InSufficientBalance();
     error OperatorAlreadyOnBoarded();
     error NoKeysProvided();
-    error pubkeyAlreadyExist();
+    error PubkeyAlreadyExist();
+    error PubkeyDoesNotExist();
     error InvalidStartAndEndIndex();
     error OperatorIsDeactivate();
     error InvalidLengthOfpubkey();
     error InvalidLengthOfSignature();
     error InvalidSizeOfInputKeys();
+    error PubkeyNotFoundOrDuplicateInput();
 
     //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
     event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
+    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorMarkedReadyToDeposit(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorMarkedAsFrontRunned(bytes indexed _frontRunnedPubkey, uint256 _validatorId);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed invalidSignaturePubkey, uint256 _validatorId);
@@ -134,8 +137,6 @@ interface IPermissionlessNodeRegistry {
     function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external;
 
     function increaseTotalActiveValidatorCount(uint256 _count) external;
-
-    function decreaseTotalActiveValidatorCount(uint256 _count) external;
 
     function transferCollateralToPool(uint256 _amount) external;
 

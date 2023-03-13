@@ -36,6 +36,7 @@ contract PermissionedNodeRegistry is
     uint256 public override BATCH_KEY_DEPOSIT_LIMIT;
     uint256 public override operatorIdForExcessDeposit;
     uint256 public override totalActiveValidatorCount;
+    uint256 public override totalActiveOperatorCount;
 
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
     bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
@@ -168,19 +169,19 @@ contract PermissionedNodeRegistry is
     {
         // nextOperatorId is total operator count plus 1
         selectedOperatorCapacity = new uint256[](nextOperatorId);
-        uint256 activeOperatorCount = this.getTotalActiveOperatorCount();
 
-        uint256 validatorPerOperator = numValidators / activeOperatorCount;
+        uint256 validatorPerOperator = numValidators / totalActiveOperatorCount;
         uint256[] memory remainingOperatorCapacity = new uint256[](nextOperatorId);
         uint256 totalValidatorToDeposit;
 
-        //skip if validatorPerOperator =0
-        for (uint256 i = 1; i < nextOperatorId; i++) {
-            if (!operatorStructById[i].active) continue;
-            remainingOperatorCapacity[i] = _getOperatorQueuedValidatorCount(i);
-            selectedOperatorCapacity[i] = Math.min(remainingOperatorCapacity[i], validatorPerOperator);
-            totalValidatorToDeposit += selectedOperatorCapacity[i];
-            remainingOperatorCapacity[i] -= selectedOperatorCapacity[i];
+        if (validatorPerOperator != 0) {
+            for (uint256 i = 1; i < nextOperatorId; i++) {
+                if (!operatorStructById[i].active) continue;
+                remainingOperatorCapacity[i] = _getOperatorQueuedValidatorCount(i);
+                selectedOperatorCapacity[i] = Math.min(remainingOperatorCapacity[i], validatorPerOperator);
+                totalValidatorToDeposit += selectedOperatorCapacity[i];
+                remainingOperatorCapacity[i] -= selectedOperatorCapacity[i];
+            }
         }
 
         // check for more validators to deposit and select operators with excess supply in a sequential order
@@ -240,12 +241,31 @@ contract PermissionedNodeRegistry is
     }
 
     /**
+     * @notice handling of fully withdrawn validators
+     * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances
+     * @param  _pubkeys array of withdrawn validator's pubkey
+     */
+    function withdrawnValidators(bytes[] calldata _pubkeys) external onlyRole(STADER_ORACLE) {
+        uint256 withdrawnValidatorCount = _pubkeys.length;
+        for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
+            uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            if (validatorId == 0) revert PubkeyDoesNotExist();
+            validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
+            //take out money from withdraw vault --need interface of withdrawVault
+            //if optout, clear nodeELVault --need interfaces of NodeELVault
+            emit ValidatorWithdrawn(_pubkeys[i], validatorId);
+        }
+        _decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
+    }
+
+    /**
      * @notice deactivate a node operator from running new validator clients
      * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
      * @param _operatorID ID of the operator to deactivate
      */
     function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = false;
+        totalActiveOperatorCount--;
     }
 
     /**
@@ -255,6 +275,7 @@ contract PermissionedNodeRegistry is
      */
     function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = true;
+        totalActiveOperatorCount++;
     }
 
     /**
@@ -405,25 +426,16 @@ contract PermissionedNodeRegistry is
         totalActiveValidatorCount += _count;
     }
 
-    /**
-     * @notice decrease the total active validator count
-     * @dev only stader dao or permissioned pool calls it when it report withdrawn validators
-     * @param _count count to decrease total active validator value
-     */
-    function decreaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(STADER_ORACLE) {
-        _decreaseTotalActiveValidatorCount(_count);
-    }
-
-    /**
-     * @notice returns the total active operator count
-     */
-    function getTotalActiveOperatorCount() external view override returns (uint256 _activeOperatorCount) {
-        for (uint256 i = 1; i < nextOperatorId; i++) {
-            if (operatorStructById[i].active) {
-                _activeOperatorCount++;
-            }
-        }
-    }
+    // /**
+    //  * @notice returns the total active operator count
+    //  */
+    // function getTotalActiveOperatorCount() external view override returns (uint256 _activeOperatorCount) {
+    //     for (uint256 i = 1; i < nextOperatorId; i++) {
+    //         if (operatorStructById[i].active) {
+    //             _activeOperatorCount++;
+    //         }
+    //     }
+    // }
 
     /**
      * @notice computes total queued keys for permissioned pool
@@ -547,6 +559,7 @@ contract PermissionedNodeRegistry is
         operatorIDByAddress[msg.sender] = nextOperatorId;
         socializingPoolStateChangeTimestamp[nextOperatorId] = block.timestamp;
         nextOperatorId++;
+        totalActiveOperatorCount++;
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
     }
 
@@ -597,7 +610,7 @@ contract PermissionedNodeRegistry is
     function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
         if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
         if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
-        if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert pubkeyAlreadyExist();
+        if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
     }
 
     // operator in active state
