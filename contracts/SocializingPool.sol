@@ -11,10 +11,11 @@ import './interfaces/IStaderOracle.sol';
 import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 
-contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable {
+contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     address public override poolHelper;
     address public poolFactory;
     address public override staderStakePoolManager;
@@ -47,6 +48,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         Address.checkNonZeroAddress(_staderToken);
 
         __AccessControl_init_unchained();
+        __Pausable_init();
 
         staderStakePoolManager = _staderStakePoolManager;
         staderTreasury = _staderTreasury;
@@ -88,7 +90,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof,
         uint8 _poolId
-    ) external override {
+    ) external override whenNotPaused {
         _claim(_index, msg.sender, _amountSD, _amountETH, _merkleProof);
         // Calculate totals
         uint256 totalAmountSD;
