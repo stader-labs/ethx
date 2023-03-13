@@ -8,6 +8,7 @@ import './interfaces/IPoolSelector.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 import './interfaces/IStaderOracle.sol';
+import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol';
@@ -15,6 +16,7 @@ import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 
 contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable {
     address public override poolHelper;
+    address public poolFactory;
     address public override staderStakePoolManager;
     address public override staderTreasury;
     address public override oracle;
@@ -25,6 +27,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
 
     bytes32 public constant SOCIALIZE_POOL_OWNER = keccak256('SOCIALIZE_POOL_OWNER');
     bytes32 public constant REWARD_DISTRIBUTOR = keccak256('REWARD_DISTRIBUTOR');
+    uint256 public constant TOTAL_STAKED_ETH = 32 ether;
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
 
@@ -32,12 +35,14 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         address _adminOwner,
         address _staderStakePoolManager,
         address _staderTreasury,
+        address _poolFactory,
         address _oracle,
         address _staderToken
     ) external initializer {
         Address.checkNonZeroAddress(_adminOwner);
         Address.checkNonZeroAddress(_staderStakePoolManager);
         Address.checkNonZeroAddress(_staderTreasury);
+        Address.checkNonZeroAddress(_poolFactory);
         Address.checkNonZeroAddress(_oracle);
         Address.checkNonZeroAddress(_staderToken);
 
@@ -45,6 +50,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
 
         staderStakePoolManager = _staderStakePoolManager;
         staderTreasury = _staderTreasury;
+        poolFactory = _poolFactory;
         oracle = _oracle;
         staderToken = _staderToken;
         initialTimestamp = block.timestamp;
@@ -65,18 +71,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         emit ETHReceived(msg.value);
     }
 
-    function getRewardDetails()
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function getRewardDetails() external view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
         uint256 currentIndex = IStaderOracle(oracle).socializingRewardsIndex();
         uint256 currentStartTime = initialTimestamp + (currentIndex * CYCLE_DURATION);
         uint256 currentEndTime = currentStartTime + CYCLE_DURATION;
@@ -91,7 +86,8 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof
+        bytes32[][] calldata _merkleProof,
+        uint8 _poolId
     ) external override {
         _claim(_index, msg.sender, _amountSD, _amountETH, _merkleProof);
         // Calculate totals
@@ -101,10 +97,31 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
             totalAmountSD += _amountSD[i];
             totalAmountETH += _amountETH[i];
         }
-        IERC20Upgradeable(staderToken).transfer(msg.sender, totalAmountSD);
-        if (totalAmountETH > 0) {
-            (bool result, ) = payable(msg.sender).call{value: totalAmountETH}('');
-            require(result, 'Failed to claim ETH');
+
+        bool success;
+
+        // distribute ETH rewards
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(
+            totalAmountETH,
+            _poolId
+        );
+        IStaderStakePoolManager(staderStakePoolManager).receiveExecutionLayerRewards{value: userShare}();
+        // slither-disable-next-line arbitrary-send-eth
+        (success, ) = payable(staderTreasury).call{value: protocolShare}('');
+        require(success, 'Protocol share transfer failed');
+        // slither-disable-next-line arbitrary-send-eth
+        if (operatorShare > 0) {
+            (success, ) = payable(msg.sender).call{value: operatorShare}('');
+            require(success, 'Operator share transfer failed');
+        }
+
+        // distribute SD rewards
+        (userShare, operatorShare, protocolShare) = _calculateRewardShare(totalAmountSD, _poolId);
+
+        IERC20Upgradeable(staderToken).transfer(staderStakePoolManager, userShare); // TODO: discuss if this is okay ?
+        IERC20Upgradeable(staderToken).transfer(staderTreasury, protocolShare);
+        if (operatorShare > 0) {
+            IERC20Upgradeable(staderToken).transfer(msg.sender, operatorShare);
         }
     }
 
@@ -136,6 +153,24 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         bytes32 merkleRoot = IStaderOracle(oracle).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
+    }
+
+    function _calculateRewardShare(
+        uint256 _totalRewards,
+        uint8 _poolId
+    ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
+        uint256 collateralETH = getCollateralETH(_poolId);
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 protocolFeePercent = getProtocolFeePercent(_poolId);
+        uint256 operatorFeePercent = getOperatorFeePercent(_poolId);
+
+        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _userShare = ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+
+        _operatorShare = (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
+
+        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards - _userShare - _operatorShare
     }
 
     function updateOracle(address _oracle) external override onlyRole(SOCIALIZE_POOL_OWNER) {
@@ -174,5 +209,17 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         Address.checkNonZeroAddress(_staderTreasury);
         staderTreasury = _staderTreasury;
         emit UpdatedStaderTreasury(staderTreasury);
+    }
+
+    function getProtocolFeePercent(uint8 _poolId) internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getProtocolFeePercent(_poolId);
+    }
+
+    function getOperatorFeePercent(uint8 _poolId) internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getOperatorFeePercent(_poolId);
+    }
+
+    function getCollateralETH(uint8 _poolId) private view returns (uint256) {
+        return IPoolFactory(poolFactory).getCollateralETH(_poolId);
     }
 }
