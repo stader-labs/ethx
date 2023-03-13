@@ -54,4 +54,6 @@ interface INodeRegistry {
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
+
+    function getCollateralETH() external view returns (uint256);
 }

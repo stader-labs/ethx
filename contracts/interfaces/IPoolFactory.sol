@@ -68,4 +68,6 @@ interface IPoolFactory {
     function getActiveValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of active validators in a specific pool
 
     function getQueuedValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of queued validators in a specific pool
+
+    function getCollateralETH(uint8 _poolId) external view returns (uint256);
 }

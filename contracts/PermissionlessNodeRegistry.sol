@@ -428,6 +428,10 @@ contract PermissionlessNodeRegistry is
         return totalActiveValidatorCount;
     }
 
+    function getCollateralETH() external pure override returns (uint256) {
+        return collateralETH;
+    }
+
     /**
      * @dev Triggers stopped state.
      * should not be paused

@@ -260,6 +260,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
+    function getCollateralETH() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getCollateralETH();
+    }
+
     /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
     function _computeDepositDataRoot(
         bytes memory _pubkey,

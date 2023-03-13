@@ -484,6 +484,10 @@ contract PermissionedNodeRegistry is
         return totalNonWithdrawnKeyCount;
     }
 
+    function getCollateralETH() external pure override returns (uint256) {
+        return 0;
+    }
+
     /**
      * @dev Triggers stopped state.
      * should not be paused
