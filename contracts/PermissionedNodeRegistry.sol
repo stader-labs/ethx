@@ -530,7 +530,7 @@ contract PermissionedNodeRegistry is
             poolId,
             _operatorId,
             totalKeys,
-            payable(address(this)) // TODO: Manoj replace it with nodeRecipient addr
+            payable(address(0)) // TODO: Manoj replace it with nodeRecipient addr
         );
 
         validatorRegistry[nextValidatorId] = Validator(
