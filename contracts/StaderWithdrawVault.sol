@@ -80,7 +80,7 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, Reentra
         uint256 protocolFeePercent = getProtocolFeePercent();
         uint256 operatorFeePercent = getOperatorFeePercent();
 
-        uint256 _totalRewards = address(this).balance;
+        uint256 _totalRewards = address(this).balance; // assuming it is not full withdraw
         if (_withdrawStatus) {
             if (address(this).balance < usersETH) {
                 // if less than 28 eth, send all to users
@@ -100,8 +100,6 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, Reentra
                 _operatorShare = collateralETH;
                 _userShare = usersETH;
             }
-        } else {
-            _totalRewards = address(this).balance;
         }
 
         uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
