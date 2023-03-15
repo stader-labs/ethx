@@ -74,21 +74,28 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    function _calculateRewardShare(
-        uint256 _totalRewards
-    ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
+    function _calculateRewardShare(uint256 _totalRewards)
+        internal
+        view
+        returns (
+            uint256 _userShare,
+            uint256 _operatorShare,
+            uint256 _protocolShare
+        )
+    {
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeePercent = getProtocolFeePercent();
         uint256 operatorFeePercent = getOperatorFeePercent();
 
-        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
-        _userShare = ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        _operatorShare = (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100;
+
+        _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
         _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
 
-        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards - _userShare - _operatorShare
+        _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
     function getProtocolFeePercent() internal view returns (uint256) {
