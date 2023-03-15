@@ -26,7 +26,6 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
     using Math for uint256;
 
-    bool public slashingMode;
     address public ethX;
     address public staderOracle;
     address public userWithdrawalManager;
@@ -34,13 +33,9 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     address public poolFactory;
     uint256 public constant DECIMALS = 10**18;
     uint256 public constant DEPOSIT_SIZE = 32 ether;
-    uint256 public minWithdrawAmount;
-    uint256 public maxWithdrawAmount;
     uint256 public minDepositAmount;
     uint256 public maxDepositAmount;
-    uint256 public depositedPooledETH;
-    uint256 public paginationLimit;
-    uint256 public PERMISSIONLESS_DEPOSIT_SIZE;
+    uint256 public override depositedPooledETH;
 
     /**
      * @dev Stader initialized with following variables
@@ -113,6 +108,19 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     }
 
     /**
+     * @notice transfer the ETH to user withdraw manager to finalize requests
+     * @param _amount amount of ETH to transfer
+     */
+    function transferETHToUserWithdrawManager(uint256 _amount) external override {
+        if (msg.sender != userWithdrawalManager) revert CallerNotUserWithdrawManager();
+        depositedPooledETH -= _amount;
+        //slither-disable-next-line arbitrary-send-eth
+        (bool success, ) = payable(userWithdrawalManager).call{value: _amount}('');
+        if (!success) revert TransferFailed();
+        emit TransferredETHToUserWithdrawManager(_amount);
+    }
+
+    /**
      * @dev update the minimum stake amount
      * @param _minDepositAmount minimum deposit value
      */
@@ -130,26 +138,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         if (_maxDepositAmount <= minDepositAmount) revert InvalidMaxDepositValue();
         maxDepositAmount = _maxDepositAmount;
         emit UpdatedMaxDepositAmount(maxDepositAmount);
-    }
-
-    /**
-     * @dev update the minimum withdraw amount
-     * @param _minWithdrawAmount minimum withdraw value
-     */
-    function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external override onlyRole(EXECUTOR_ROLE) {
-        if (_minWithdrawAmount == 0) revert InvalidMinWithdrawValue();
-        minWithdrawAmount = _minWithdrawAmount;
-        emit UpdatedMinWithdrawAmount(minWithdrawAmount);
-    }
-
-    /**
-     * @dev update the maximum withdraw amount
-     * @param _maxWithdrawAmount maximum withdraw value
-     */
-    function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount) external override onlyRole(EXECUTOR_ROLE) {
-        if (_maxWithdrawAmount <= minWithdrawAmount) revert InvalidMaxWithdrawValue();
-        maxWithdrawAmount = _maxWithdrawAmount;
-        emit UpdatedMaxWithdrawAmount(maxWithdrawAmount);
     }
 
     /**
@@ -263,69 +251,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         return shares;
     }
 
-    /** @dev See {IERC4626-withdraw}. */
-    function userWithdraw(uint256 _ethXAmount, address receiver)
-        public
-        override
-        whenNotPaused
-        returns (uint256 requestID)
-    {
-        uint256 assets = previewWithdraw(_ethXAmount);
-        if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
-        ETHX(ethX).transferFrom(msg.sender, (address(userWithdrawalManager)), _ethXAmount);
-        requestID = IUserWithdrawalManager(userWithdrawalManager).withdraw(
-            msg.sender,
-            payable(receiver),
-            assets,
-            _ethXAmount
-        );
-        emit WithdrawRequested(msg.sender, receiver, assets, _ethXAmount);
-    }
-
-    /**
-     * @notice finalize user request in a batch
-     * @dev when slashing mode, only process and don't finalize
-     */
-    function finalizeUserWithdrawalRequest() external override whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        //TODO change input name
-        if (!slashingMode) {
-            if (getExchangeRate() == 0) revert ProtocolNotHealthy();
-            //batch ID to be finalized next
-            uint256 nextRequestIdToFinalize = IUserWithdrawalManager(userWithdrawalManager).nextRequestIdToFinalize();
-            //ongoing batch Id
-            uint256 latestRequestId = IUserWithdrawalManager(userWithdrawalManager).latestRequestId();
-            uint256 maxRequestIdToFinalize = Math.min(latestRequestId, nextRequestIdToFinalize + paginationLimit);
-            uint256 lockedEthXToBurn;
-            uint256 ethToSendToFinalizeRequest;
-            uint256 requestId;
-            for (requestId = nextRequestIdToFinalize; requestId < maxRequestIdToFinalize; requestId++) {
-                (, , , uint256 requiredEth, uint256 lockedEthX, ) = IUserWithdrawalManager(userWithdrawalManager)
-                    .userWithdrawRequests(requestId);
-                uint256 minEThRequiredToFinalizeRequest = Math.min(
-                    requiredEth,
-                    (lockedEthX * getExchangeRate()) / DECIMALS
-                );
-                if (minEThRequiredToFinalizeRequest > depositedPooledETH) {
-                    break;
-                } else {
-                    lockedEthXToBurn += lockedEthX;
-                    ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
-                    depositedPooledETH -= minEThRequiredToFinalizeRequest;
-                }
-            }
-            if (requestId >= nextRequestIdToFinalize) {
-                ETHX(ethX).burnFrom(address(userWithdrawalManager), lockedEthXToBurn);
-
-                //slither-disable-next-line arbitrary-send-eth
-                IUserWithdrawalManager(userWithdrawalManager).finalize{value: ethToSendToFinalizeRequest}(
-                    requestId,
-                    ethToSendToFinalizeRequest,
-                    getExchangeRate()
-                );
-            }
-        }
-    }
-
     function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey)
         public
         override
@@ -339,14 +264,15 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * transfer that much eth to individual pool to register on beacon chain
      */
     function validatorBatchDeposit() external override whenNotPaused {
-        uint256 pooledETH = depositedPooledETH;
+        uint256 pooledETH = depositedPooledETH -
+            IUserWithdrawalManager(userWithdrawalManager).ethRequestedForWithdraw();
         if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
         uint256[] memory selectedPoolCapacity = IPoolSelector(poolSelector).computePoolAllocationForDeposit(pooledETH);
         for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) continue;
             (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
-            uint256 poolDepositSize = (i == 1) ? PERMISSIONLESS_DEPOSIT_SIZE : DEPOSIT_SIZE;
+            uint256 poolDepositSize = DEPOSIT_SIZE - IPoolFactory(poolFactory).getCollateralETH(i);
 
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).registerOnBeaconChain{value: validatorToDeposit * poolDepositSize}();
@@ -377,10 +303,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function _initialSetup() internal {
         minDepositAmount = 100;
         maxDepositAmount = 32 ether;
-        minWithdrawAmount = 100;
-        maxWithdrawAmount = 10 ether;
-        paginationLimit = 50;
-        PERMISSIONLESS_DEPOSIT_SIZE = 28 ether;
     }
 
     /**

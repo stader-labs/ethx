@@ -28,6 +28,7 @@ interface IPermissionedNodeRegistry {
     event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
     event UpdatedPoolHelper(address _poolSelector);
+    event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
     event UpdatedSDCollateralAddress(address _sdCollateral);
     event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
     event UpdatedELRewardSocializePool(address _elRewardSocializePool);
@@ -84,7 +85,9 @@ interface IPermissionedNodeRegistry {
             bytes calldata signature,
             address withdrawVaultAddress,
             uint256 operatorId,
-            uint256 initialBondEth
+            uint256 initialBondEth,
+            uint256 depositTime,
+            uint256 withdrawnTime
         );
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
@@ -137,6 +140,8 @@ interface IPermissionedNodeRegistry {
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 
     function updateQueuedValidatorIndex(uint256 _operatorId, uint256 _nextQueuedValidatorIndex) external;
+
+    function setValidatorDepositTime(uint256 _validatorId) external;
 
     function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
 

@@ -148,6 +148,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                     bytes memory signature,
                     address withdrawVaultAddress,
                     ,
+                    ,
+                    ,
 
                 ) = IPermissionedNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
 
@@ -192,7 +194,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         while (nextIndexToDeposit < readyToDepositValidatorSize && count < MAX_DEPOSIT_BATCH_SIZE) {
             bytes memory pubkey = readyToDepositValidator[nextIndexToDeposit];
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(pubkey);
-            (, , bytes memory signature, address withdrawVaultAddress, , ) = IPermissionedNodeRegistry(
+            (, , bytes memory signature, address withdrawVaultAddress, , , , ) = IPermissionedNodeRegistry(
                 nodeRegistryAddress
             ).validatorRegistry(validatorId);
             bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
@@ -207,6 +209,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 signature,
                 depositDataRoot
             );
+            IPermissionedNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(validatorId);
             IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
             count++;
             nextIndexToDeposit++;

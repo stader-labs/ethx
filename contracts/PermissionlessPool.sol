@@ -135,6 +135,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 bytes memory signature,
                 address withdrawVaultAddress,
                 ,
+                ,
+                ,
 
             ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
 
@@ -149,7 +151,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 signature,
                 depositDataRoot
             );
-
+            IPermissionlessNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(validatorId);
             IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
             emit ValidatorDepositedOnBeaconChain(validatorId, pubkey);
         }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import './library/Address.sol';
+
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
@@ -15,10 +17,9 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
 
-    constructor() ERC20('ETHX', 'ETHX') {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, msg.sender);
-        _grantRole(PAUSER_ROLE, msg.sender);
+    constructor(address _admin) ERC20('ETHX', 'ETHX') {
+        Address.checkNonZeroAddress(_admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**

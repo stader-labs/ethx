@@ -251,6 +251,7 @@ contract PermissionedNodeRegistry is
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (validatorId == 0) revert PubkeyDoesNotExist();
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
+            validatorRegistry[validatorId].withdrawnTime = block.timestamp;
             //take out money from withdraw vault --need interface of withdrawVault
             //if optout, clear nodeELVault --need interfaces of NodeELVault
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
@@ -291,6 +292,16 @@ contract PermissionedNodeRegistry is
     {
         nextQueuedValidatorIndexByOperatorId[_operatorID] = _nextQueuedValidatorIndex;
         emit UpdatedQueuedValidatorIndex(_operatorID, _nextQueuedValidatorIndex);
+    }
+
+    /**
+     * @notice sets the depositTime for a validator
+     * @dev only permissioned pool can call
+     * @param _validatorId ID of the validator
+     */
+    function setValidatorDepositTime(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
+        validatorRegistry[_validatorId].depositTime = block.timestamp;
+        emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
     }
 
     /**
@@ -425,17 +436,6 @@ contract PermissionedNodeRegistry is
     function increaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(PERMISSIONED_POOL) {
         totalActiveValidatorCount += _count;
     }
-
-    // /**
-    //  * @notice returns the total active operator count
-    //  */
-    // function getTotalActiveOperatorCount() external view override returns (uint256 _activeOperatorCount) {
-    //     for (uint256 i = 1; i < nextOperatorId; i++) {
-    //         if (operatorStructById[i].active) {
-    //             _activeOperatorCount++;
-    //         }
-    //     }
-    // }
 
     /**
      * @notice computes total queued keys for permissioned pool
@@ -584,6 +584,8 @@ contract PermissionedNodeRegistry is
             _signature,
             withdrawVault,
             _operatorId,
+            0,
+            0,
             0
         );
         validatorIdByPubkey[_pubkey] = nextValidatorId;

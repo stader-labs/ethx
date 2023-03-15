@@ -200,6 +200,7 @@ contract PermissionlessNodeRegistry is
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (validatorId == 0) revert PubkeyDoesNotExist();
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
+            validatorRegistry[validatorId].withdrawnTime = block.timestamp;
             //take out money from withdraw vault --need interface of withdrawVault
             //if optout, clear nodeELVault --need interfaces of NodeELVault
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
@@ -217,6 +218,17 @@ contract PermissionlessNodeRegistry is
         emit UpdatedNextQueuedValidatorIndex(nextQueuedValidatorIndex);
     }
 
+    /**
+     * @notice sets the depositTime for a validator
+     * @dev only permissionless pool can call
+     * @param _validatorId ID of the validator
+     */
+    function setValidatorDepositTime(uint256 _validatorId) external override onlyRole(PERMISSIONLESS_POOL) {
+        validatorRegistry[_validatorId].depositTime = block.timestamp;
+        emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
+    }
+
+    //TODO empty the NodeELVault if it optin from optout
     function changeSocializingPoolState(bool _optedForSocializingPool) external {
         _onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
@@ -538,7 +550,9 @@ contract PermissionlessNodeRegistry is
             _signature,
             withdrawVault,
             _operatorId,
-            collateralETH
+            collateralETH,
+            0,
+            0
         );
 
         //slither-disable-next-line arbitrary-send-eth

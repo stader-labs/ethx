@@ -37,6 +37,7 @@ interface IPermissionlessNodeRegistry {
     event UpdatedELRewardSocializePool(address _elRewardSocializePool);
     event UpdatedStaderPenaltyFund(address _staderPenaltyFund);
     event UpdatedPermissionlessPoolAddress(address _permissionlessPool);
+    event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
     event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 timestamp);
@@ -92,7 +93,9 @@ interface IPermissionlessNodeRegistry {
             bytes calldata signature,
             address withdrawVaultAddress,
             uint256 operatorId,
-            uint256 initialBondEth
+            uint256 initialBondEth,
+            uint256 depositTime,
+            uint256 withdrawnTime
         );
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
@@ -135,6 +138,8 @@ interface IPermissionlessNodeRegistry {
     ) external;
 
     function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external;
+
+    function setValidatorDepositTime(uint256 _validatorId) external;
 
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 

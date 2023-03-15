@@ -3,6 +3,20 @@
 pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
+    error ZeroAddress();
+    error TransferFailed();
+    error InSufficientBalance();
+    error ProtocolNotHealthy();
+    error InvalidWithdrawAmount();
+    error InvalidMinWithdrawValue();
+    error InvalidMaxWithdrawValue();
+    error InvalidRequestId(uint256 _requestId);
+    error requestIdNotFinalized(uint256 _requestId);
+    error RequestAlreadyRedeemed(uint256 _requestId);
+    error InvalidFinalizationRequestId(uint256 _requestId);
+
+    event UpdatedMaxWithdrawAmount(uint256 amount);
+    event UpdatedMinWithdrawAmount(uint256 amount);
     event WithdrawRequestReceived(
         address indexed _msgSender,
         address _recipient,
@@ -18,25 +32,15 @@ interface IUserWithdrawalManager {
         address _newRecipient
     );
 
-    error ZeroAddress();
-    error TransferFailed();
-    error InSufficientBalance();
-    error InvalidRequestId(uint256 _requestId);
-    error requestIdNotFinalized(uint256 _requestId);
-    error RequestAlreadyRedeemed(uint256 _requestId);
-    error InvalidFinalizationRequestId(uint256 _requestId);
-
-    function POOL_MANAGER() external view returns (bytes32);
-
-    function staderOwner() external view returns (address);
-
     function lockedEtherAmount() external view returns (uint256);
 
     function nextRequestIdToFinalize() external view returns (uint256);
 
     function latestRequestId() external view returns (uint256);
 
-    function DECIMAL() external view returns (uint256);
+    function DECIMALS() external view returns (uint256);
+
+    function ethRequestedForWithdraw() external view returns (uint256);
 
     function userWithdrawRequests(uint256)
         external
@@ -52,18 +56,15 @@ interface IUserWithdrawalManager {
 
     function requestIdsByUserAddress(address, uint256) external view returns (uint256);
 
-    function withdraw(
-        address _msgSender,
-        address payable _recipient,
-        uint256 _ethAmount,
-        uint256 _ethXAmount
-    ) external returns (uint256);
+    function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external;
 
-    function finalize(
-        uint256 _finalizeBatchId,
-        uint256 _ethToLock,
-        uint256 _finalizedExchangeRate
-    ) external payable;
+    function updateMaxWithdrawAmount(uint256 _minWithdrawAmount) external;
+
+    function updatePaginationLimit(uint256 _paginationLimit) external;
+
+    function withdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
+
+    function finalizeUserWithdrawalRequest() external;
 
     function redeem(uint256 _requestId) external;
 }

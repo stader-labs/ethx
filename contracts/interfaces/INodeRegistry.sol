@@ -10,6 +10,8 @@ struct Validator {
     address withdrawVaultAddress; //eth1 withdrawal address for validator
     uint256 operatorId; // stader network assigned Id
     uint256 initialBondEth; // amount of bond eth in gwei
+    uint256 depositTime; // time of the 31ETH deposit
+    uint256 withdrawnTime; //time when oracle report validator as withdrawn
 }
 
 struct Operator {
