@@ -95,10 +95,12 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         return ClonesUpgradeable.predictDeterministicAddress(nodeWithdrawVaultImplementation, salt);
     }
 
-    function computeNodeELRewardVaultAddress(
-        uint8 poolType,
-        uint256 operatorId
-    ) public view override returns (address) {
+    function computeNodeELRewardVaultAddress(uint8 poolType, uint256 operatorId)
+        public
+        view
+        override
+        returns (address)
+    {
         bytes32 salt = sha256(abi.encode(poolType, operatorId));
         return ClonesUpgradeable.predictDeterministicAddress(nodeELRewardVaultImplementation, salt);
     }

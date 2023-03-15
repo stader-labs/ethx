@@ -72,9 +72,15 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, Reentra
         }
     }
 
-    function _calculateRewardShare(
-        bool _withdrawStatus
-    ) internal view returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare) {
+    function _calculateRewardShare(bool _withdrawStatus)
+        internal
+        view
+        returns (
+            uint256 _userShare,
+            uint256 _operatorShare,
+            uint256 _protocolShare
+        )
+    {
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeePercent = getProtocolFeePercent();
