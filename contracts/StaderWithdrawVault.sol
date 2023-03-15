@@ -19,6 +19,7 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, Reentra
     address payable public staderTreasury;
     address payable public staderStakePoolsManager;
 
+    uint256 public maxPossibleReward; // TODO: Manoj remove it later, when read from index contract.
     uint256 public constant TOTAL_STAKED_ETH = 32 ether;
 
     function initialize(
@@ -54,25 +55,19 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, Reentra
         // emit ETHReceived(msg.value);
     }
 
-    function distributeRewards(bool _withdrawStatus) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(_withdrawStatus);
+    function distributeRewards() external nonReentrant {
+        uint256 totalRewards = address(this).balance;
+        require(totalRewards <= maxPossibleReward, 'more fund in contract');
 
-        bool success;
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(totalRewards);
 
         // Distribute rewards
         IStaderStakePoolManager(staderStakePoolsManager).receiveWithdrawVaultUserShare{value: userShare}();
-        // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderTreasury).call{value: protocolShare}('');
-        require(success, 'Protocol share transfer failed');
-        // slither-disable-next-line arbitrary-send-eth
-
-        if (operatorShare > 0) {
-            (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
-            require(success, 'Operator share transfer failed');
-        }
+        _sendValue(nodeRecipient, operatorShare);
+        _sendValue(staderTreasury, protocolShare);
     }
 
-    function _calculateRewardShare(bool _withdrawStatus)
+    function _calculateRewardShare(uint256 _totalRewards)
         internal
         view
         returns (
@@ -86,35 +81,72 @@ contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, Reentra
         uint256 protocolFeePercent = getProtocolFeePercent();
         uint256 operatorFeePercent = getOperatorFeePercent();
 
-        uint256 _totalRewards = address(this).balance; // assuming it is not full withdraw
-        if (_withdrawStatus) {
-            if (address(this).balance < usersETH) {
-                // if less than 28 eth, send all to users
-                _userShare = address(this).balance;
-                _operatorShare = 0;
-                _protocolShare = 0;
-                return (_userShare, _operatorShare, _protocolShare);
-            } else if (address(this).balance >= usersETH && address(this).balance < collateralETH) {
-                // between 28 to 32, send 28 to user, rest to operator
-                _userShare = usersETH;
-                _operatorShare = address(this).balance - _userShare;
-                _protocolShare = 0;
-                return (_userShare, _operatorShare, _protocolShare);
-            } else {
-                // more than 32, 28 to user, 4 to operator, and split rewards as usual
-                _totalRewards = address(this).balance - TOTAL_STAKED_ETH;
-                _operatorShare = collateralETH;
-                _userShare = usersETH;
-            }
-        }
+        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        uint256 _userShareBeforeCommision = (usersETH * _totalRewards) / TOTAL_STAKED_ETH;
-        _userShare += ((100 - protocolFeePercent - operatorFeePercent) * _userShareBeforeCommision) / 100;
+        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100;
 
-        _operatorShare += (collateralETH * _totalRewards) / TOTAL_STAKED_ETH;
+        _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
         _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
 
-        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100; // or _totalRewards - _userShare - _operatorShare
+        _userShare = _totalRewards - _protocolShare - _operatorShare;
+    }
+
+    function settleFunds() external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateFinalShare();
+
+        // Final settlement
+        IStaderStakePoolManager(staderStakePoolsManager).receiveWithdrawVaultUserShare{value: userShare}();
+        _sendValue(nodeRecipient, operatorShare);
+        _sendValue(staderTreasury, protocolShare);
+    }
+
+    function _calculateFinalShare()
+        internal
+        view
+        returns (
+            uint256 _userShare,
+            uint256 _operatorShare,
+            uint256 _protocolShare
+        )
+    {
+        uint256 collateralETH = getCollateralETH(); // 0, incase of permissioned NOs
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 contractBalance = address(this).balance;
+
+        uint256 totalRewards;
+
+        if (contractBalance <= maxPossibleReward) {
+            totalRewards = contractBalance;
+        } else if (contractBalance < usersETH) {
+            _userShare = contractBalance;
+            _operatorShare = 0;
+            _protocolShare = 0;
+            return (_userShare, _operatorShare, _protocolShare);
+        } else if (contractBalance < TOTAL_STAKED_ETH) {
+            _userShare = usersETH;
+            _operatorShare = contractBalance - _userShare;
+            _protocolShare = 0;
+            return (_userShare, _operatorShare, _protocolShare);
+        } else {
+            totalRewards = contractBalance - TOTAL_STAKED_ETH;
+            _operatorShare = collateralETH;
+            _userShare = usersETH;
+        }
+
+        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = _calculateRewardShare(totalRewards);
+        _userShare += userReward;
+        _operatorShare += operatorReward;
+        _protocolShare += protocolReward;
+    }
+
+    function _sendValue(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, 'Address: insufficient balance');
+
+        //slither-disable-next-line arbitrary-send-eth
+        if (amount > 0) {
+            (bool success, ) = recipient.call{value: amount}('');
+            require(success, 'Address: unable to send value, recipient may have reverted');
+        }
     }
 
     // getters
