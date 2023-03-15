@@ -107,6 +107,8 @@ interface IPermissionedNodeRegistry {
 
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
+    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+
     // Setters
 
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external;

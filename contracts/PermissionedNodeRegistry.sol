@@ -142,12 +142,19 @@ contract PermissionedNodeRegistry is
         uint256 operatorTotalKeyCount = this.getOperatorTotalKeys(operatorId);
         uint256 totalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeyCount);
         if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+        address payable operatorRewardAddress = this.getOperatorRewardAddress(operatorId);
 
         //check if operator has enough SD collateral for adding `keyCount` keys
         ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
-            _addValidatorKey(_pubkey[i], _preDepositSignature[i], _depositSignature[i], operatorId);
+            _addValidatorKey(
+                _pubkey[i],
+                _preDepositSignature[i],
+                _depositSignature[i],
+                operatorId,
+                operatorRewardAddress
+            );
         }
     }
 
@@ -488,6 +495,10 @@ contract PermissionedNodeRegistry is
         return 0;
     }
 
+    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
+        return operatorStructById[_operatorId].operatorRewardAddress;
+    }
+
     /**
      * @dev Triggers stopped state.
      * should not be paused
@@ -540,7 +551,8 @@ contract PermissionedNodeRegistry is
         bytes calldata _pubkey,
         bytes calldata _preDepositSignature,
         bytes calldata _depositSignature,
-        uint256 _operatorId
+        uint256 _operatorId,
+        address payable operatorRewardAddress
     ) internal {
         _validateKeys(_pubkey, _preDepositSignature, _depositSignature);
         uint256 totalKeys = this.getOperatorTotalKeys(_operatorId);
@@ -549,7 +561,7 @@ contract PermissionedNodeRegistry is
             poolId,
             _operatorId,
             totalKeys,
-            payable(address(0)) // TODO: Manoj replace it with nodeRecipient addr
+            operatorRewardAddress
         );
 
         validatorRegistry[nextValidatorId] = Validator(
