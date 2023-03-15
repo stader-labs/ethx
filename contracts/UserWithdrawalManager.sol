@@ -11,19 +11,19 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessControlUpgradeable, PausableUpgradeable {
-    bytes32 public constant USER_WITHDRAW_MANAGER_ADMIN = keccak256('USER_WITHDRAW_MANAGER_ADMIN');
-
-    bool public slashingMode; //TODO read this from stader oracle contract
-    address public ethX; //not setting the value for now, will read from index contract
-    address public poolManager; //not setting the value for now, will read from index contract
+    bool public override slashingMode; //TODO read this from stader oracle contract
+    address public override ethX; //not setting the value for now, will read from index contract
+    address public override poolManager; //not setting the value for now, will read from index contract
     uint256 public constant override DECIMALS = 10**18;
     uint256 public override lockedEtherAmount;
     uint256 public override nextRequestIdToFinalize;
     uint256 public override latestRequestId;
-    uint256 public minWithdrawAmount;
-    uint256 public maxWithdrawAmount;
-    uint256 public paginationLimit;
+    uint256 public override minWithdrawAmount;
+    uint256 public override maxWithdrawAmount;
+    uint256 public override paginationLimit;
     uint256 public override ethRequestedForWithdraw;
+
+    bytes32 public constant override USER_WITHDRAWAL_MANAGER_ADMIN = keccak256('USER_WITHDRAWAL_MANAGER_ADMIN');
 
     /// @notice user withdrawal requests
     mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
@@ -59,7 +59,7 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
     function updateMinWithdrawAmount(uint256 _minWithdrawAmount)
         external
         override
-        onlyRole(USER_WITHDRAW_MANAGER_ADMIN)
+        onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
     {
         if (_minWithdrawAmount == 0) revert InvalidMinWithdrawValue();
         minWithdrawAmount = _minWithdrawAmount;
@@ -73,7 +73,7 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
     function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount)
         external
         override
-        onlyRole(USER_WITHDRAW_MANAGER_ADMIN)
+        onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
     {
         if (_maxWithdrawAmount <= minWithdrawAmount) revert InvalidMaxWithdrawValue();
         maxWithdrawAmount = _maxWithdrawAmount;
@@ -85,8 +85,9 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
      * @dev only admin of this contract can call
      * @param _paginationLimit value of paginationLimit
      */
-    function updatePaginationLimit(uint256 _paginationLimit) external override onlyRole(USER_WITHDRAW_MANAGER_ADMIN) {
+    function updatePaginationLimit(uint256 _paginationLimit) external override onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
         paginationLimit = _paginationLimit;
+        emit UpdatedPaginationLimit(_paginationLimit);
     }
 
     /**
@@ -171,7 +172,7 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(USER_WITHDRAW_MANAGER_ADMIN) {
+    function pause() external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
         _pause();
     }
 
@@ -179,7 +180,7 @@ contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessC
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external onlyRole(USER_WITHDRAW_MANAGER_ADMIN) {
+    function unpause() external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
         _unpause();
     }
 

@@ -68,10 +68,10 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getTotalActiveValidatorCount() external view override returns (uint256) {
+    function getTotalActiveValidatorCount() public view override returns (uint256) {
         uint256 totalActiveValidatorCount;
         for (uint8 i = 1; i <= poolCount; i++) {
-            totalActiveValidatorCount += this.getActiveValidatorCountByPool(i);
+            totalActiveValidatorCount += getActiveValidatorCountByPool(i);
         }
 
         return totalActiveValidatorCount;
@@ -89,19 +89,13 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getActiveValidatorCountByPool(uint8 _poolId)
-        external
-        view
-        override
-        validPoolId(_poolId)
-        returns (uint256)
-    {
+    function getActiveValidatorCountByPool(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getTotalActiveValidatorCount();
     }
 
     /// @inheritdoc IPoolFactory
     function getAllActiveValidators() public view override returns (Validator[] memory) {
-        Validator[] memory allValidators = new Validator[](this.getTotalActiveValidatorCount());
+        Validator[] memory allValidators = new Validator[](getTotalActiveValidatorCount());
         uint256 index;
         for (uint8 i = 1; i <= poolCount; i++) {
             Validator[] memory validators = IStaderPoolBase(pools[i].poolAddress).getAllActiveValidators();
@@ -218,7 +212,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
-        require(_poolId > 0 && _poolId <= this.poolCount(), 'Invalid pool ID');
+        require(_poolId > 0 && _poolId <= poolCount, 'Invalid pool ID');
         _;
     }
 }

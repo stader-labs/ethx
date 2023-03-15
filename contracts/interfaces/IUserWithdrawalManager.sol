@@ -17,6 +17,7 @@ interface IUserWithdrawalManager {
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
+    event UpdatedPaginationLimit(uint256 paginationLimit);
     event WithdrawRequestReceived(
         address indexed _msgSender,
         address _recipient,
@@ -31,6 +32,20 @@ interface IUserWithdrawalManager {
         address _oldRecipient,
         address _newRecipient
     );
+
+    function USER_WITHDRAWAL_MANAGER_ADMIN() external view returns (bytes32);
+
+    function slashingMode() external view returns (bool);
+
+    function ethX() external view returns (address);
+
+    function poolManager() external view returns (address);
+
+    function minWithdrawAmount() external view returns (uint256);
+
+    function maxWithdrawAmount() external view returns (uint256);
+
+    function paginationLimit() external view returns (uint256);
 
     function lockedEtherAmount() external view returns (uint256);
 

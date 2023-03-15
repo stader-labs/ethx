@@ -139,10 +139,10 @@ contract PermissionedNodeRegistry is
 
         uint256 operatorId = _onlyActiveOperator(msg.sender);
 
-        uint256 operatorTotalKeyCount = this.getOperatorTotalKeys(operatorId);
-        uint256 totalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeyCount);
+        uint256 operatorTotalKeyCount = getOperatorTotalKeys(operatorId);
+        uint256 totalNonWithdrawnKeys = getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeyCount);
         if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
-        address payable operatorRewardAddress = this.getOperatorRewardAddress(operatorId);
+        address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
         //check if operator has enough SD collateral for adding `keyCount` keys
         ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
@@ -457,7 +457,7 @@ contract PermissionedNodeRegistry is
      * @dev return the variable totalActiveValidatorCount
      * @return _validatorCount active validator count
      */
-    function getTotalActiveValidatorCount() external view override returns (uint256) {
+    function getTotalActiveValidatorCount() public view override returns (uint256) {
         return totalActiveValidatorCount;
     }
 
@@ -466,7 +466,7 @@ contract PermissionedNodeRegistry is
      * @dev length of the validatorIds array for an operator
      * @param _operatorId ID of node operator
      */
-    function getOperatorTotalKeys(uint256 _operatorId) external view override returns (uint256 _totalKeys) {
+    function getOperatorTotalKeys(uint256 _operatorId) public view override returns (uint256 _totalKeys) {
         _totalKeys = validatorIdsByOperatorId[_operatorId].length;
     }
 
@@ -480,12 +480,12 @@ contract PermissionedNodeRegistry is
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         if (startIndex > endIndex) {
             revert InvalidStartAndEndIndex();
         }
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
-        uint256 validatorCount = this.getOperatorTotalKeys(operatorId);
+        uint256 validatorCount = getOperatorTotalKeys(operatorId);
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
         uint256 totalNonWithdrawnKeyCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
@@ -504,7 +504,7 @@ contract PermissionedNodeRegistry is
      * @notice returns the operator reward address
      * @param _operatorId operator ID
      */
-    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
+    function getOperatorRewardAddress(uint256 _operatorId) public view override returns (address payable) {
         return operatorStructById[_operatorId].operatorRewardAddress;
     }
 
@@ -529,7 +529,7 @@ contract PermissionedNodeRegistry is
      * @dev loop over all validator to filter out the initialized, front run and withdrawn and return the rest
      */
     function getAllActiveValidators() public view override returns (Validator[] memory) {
-        Validator[] memory validators = new Validator[](this.getTotalActiveValidatorCount());
+        Validator[] memory validators = new Validator[](getTotalActiveValidatorCount());
         uint256 validatorCount = 0;
         for (uint256 i = 1; i < nextValidatorId; i++) {
             if (_isActiveValidator(i)) {
@@ -570,7 +570,7 @@ contract PermissionedNodeRegistry is
         address payable operatorRewardAddress
     ) internal {
         _validateKeys(_pubkey, _signature);
-        uint256 totalKeys = this.getOperatorTotalKeys(_operatorId);
+        uint256 totalKeys = getOperatorTotalKeys(_operatorId);
 
         address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
             poolId,

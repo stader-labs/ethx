@@ -35,10 +35,12 @@ contract PermissionlessNodeRegistry is
     uint256 public override validatorQueueSize;
     uint256 public override nextQueuedValidatorIndex;
     uint256 public override totalActiveValidatorCount;
+    uint256 public override BATCH_KEY_DEPOSIT_LIMIT;
     uint256 public constant override PRE_DEPOSIT = 1 ether;
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
+    uint256 public override socializePoolRewardDistributionCycle; //TODO move all DOA related values to a separate contract
 
     bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
@@ -93,13 +95,13 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice onboard a node operator
      * @dev any one call, permissionless
-     * @param _optInForMevSocialize opted in or not to socialize mev and priority fee
+     * @param _optInForSocializingPool opted in or not to socialize mev and priority fee
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
      * @return mevFeeRecipientAddress fee recipient address for all validator clients
      */
     function onboardNodeOperator(
-        bool _optInForMevSocialize,
+        bool _optInForSocializingPool,
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) external override whenNotPaused returns (address mevFeeRecipientAddress) {
@@ -109,15 +111,14 @@ contract PermissionlessNodeRegistry is
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
 
-        mevFeeRecipientAddress = elRewardSocializePool;
-        if (!_optInForMevSocialize) {
-            mevFeeRecipientAddress = IVaultFactory(vaultFactoryAddress).deployNodeELRewardVault(
-                poolId,
-                nextOperatorId,
-                payable(_operatorRewardAddress)
-            );
-        }
-        _onboardOperator(_optInForMevSocialize, _operatorName, _operatorRewardAddress);
+        //deploy NodeELRewardVault for NO
+        address nodeELRewardVault = IVaultFactory(vaultFactoryAddress).deployNodeELRewardVault(
+            poolId,
+            nextOperatorId,
+            payable(_operatorRewardAddress)
+        );
+        mevFeeRecipientAddress = _optInForSocializingPool ? elRewardSocializePool : nodeELRewardVault;
+        _onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
         return mevFeeRecipientAddress;
     }
 
@@ -137,13 +138,13 @@ contract PermissionlessNodeRegistry is
         if (_pubkey.length != _signature.length) revert InvalidSizeOfInputKeys();
 
         uint256 keyCount = _pubkey.length;
-        if (keyCount == 0) revert NoKeysProvided();
+        if (keyCount == 0 || keyCount > BATCH_KEY_DEPOSIT_LIMIT) revert InvalidCountOfKeys();
 
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
-        uint256 operatorTotalKeys = this.getOperatorTotalKeys(operatorId);
-        uint256 operatorTotalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
-        address payable operatorRewardAddress = this.getOperatorRewardAddress(operatorId);
+        uint256 operatorTotalKeys = getOperatorTotalKeys(operatorId);
+        uint256 operatorTotalNonWithdrawnKeys = getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
+        address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
         //check if operator has enough SD collateral for adding `keyCount` keys
         ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, operatorTotalNonWithdrawnKeys + keyCount);
@@ -228,18 +229,24 @@ contract PermissionlessNodeRegistry is
         emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
     }
 
-    //TODO empty the NodeELVault if it optin from optout
-    function changeSocializingPoolState(bool _optedForSocializingPool) external {
-        _onlyActiveOperator(msg.sender);
-        uint256 operatorId = operatorIDByAddress[msg.sender];
-        require(
-            operatorStructById[operatorId].optedForSocializingPool != _optedForSocializingPool,
-            'No change in state'
-        );
-
-        operatorStructById[operatorId].optedForSocializingPool = _optedForSocializingPool;
+    function changeSocializingPoolState(bool _optInForSocializingPool)
+        external
+        override
+        returns (address mevFeeRecipientAddress)
+    {
+        uint256 operatorId = _onlyActiveOperator(msg.sender);
+        if (block.timestamp < socializingPoolStateChangeTimestamp[operatorId] + socializePoolRewardDistributionCycle)
+            revert RewardIntervalNotPasses();
+        if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool)
+            revert NoChangeInState();
+        mevFeeRecipientAddress = IVaultFactory(vaultFactoryAddress).computeNodeELRewardVaultAddress(poolId, operatorId);
+        if (_optInForSocializingPool) {
+            //TODO empty NodeELRewardVault --need to integrate function signature
+            mevFeeRecipientAddress = elRewardSocializePool;
+        }
+        operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
         socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
-        emit UpdatedSocializingPoolState(operatorId, _optedForSocializingPool, block.timestamp);
+        emit UpdatedSocializingPoolState(operatorId, _optInForSocializingPool, block.timestamp);
     }
 
     // @inheritdoc INodeRegistry
@@ -367,6 +374,20 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
+     * @notice update maximum key to be deposited in a batch
+     * @dev only admin can call
+     * @param _batchKeyDepositLimit updated maximum key limit in a batch
+     */
+    function updateBatchKeyDepositLimit(uint256 _batchKeyDepositLimit)
+        external
+        override
+        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
+    {
+        BATCH_KEY_DEPOSIT_LIMIT = _batchKeyDepositLimit;
+        emit UpdatedBatchKeyDepositLimit(BATCH_KEY_DEPOSIT_LIMIT);
+    }
+
+    /**
      * @notice update the name and reward address of an operator
      * @dev only operator msg.sender can update
      * @param _operatorName new Name of the operator
@@ -412,12 +433,12 @@ contract PermissionlessNodeRegistry is
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         if (startIndex > endIndex) {
             revert InvalidStartAndEndIndex();
         }
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
-        uint256 validatorCount = this.getOperatorTotalKeys(operatorId);
+        uint256 validatorCount = getOperatorTotalKeys(operatorId);
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
         uint256 totalNonWithdrawnKeyCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
@@ -433,7 +454,7 @@ contract PermissionlessNodeRegistry is
      * @dev length of the validatorIds array for an operator
      * @param _operatorId ID of node operator
      */
-    function getOperatorTotalKeys(uint256 _operatorId) external view override returns (uint256 _totalKeys) {
+    function getOperatorTotalKeys(uint256 _operatorId) public view override returns (uint256 _totalKeys) {
         _totalKeys = validatorIdsByOperatorId[_operatorId].length;
     }
 
@@ -461,7 +482,7 @@ contract PermissionlessNodeRegistry is
      * @notice returns the operator reward address
      * @param _operatorId operator ID
      */
-    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
+    function getOperatorRewardAddress(uint256 _operatorId) public view override returns (address payable) {
         return operatorStructById[_operatorId].operatorRewardAddress;
     }
 
@@ -486,7 +507,7 @@ contract PermissionlessNodeRegistry is
      * @dev loop over all validator to filter out the initialized, front run and withdrawn and return the rest
      */
     function getAllActiveValidators() public view override returns (Validator[] memory) {
-        Validator[] memory validators = new Validator[](this.getTotalActiveValidatorCount());
+        Validator[] memory validators = new Validator[](getTotalActiveValidatorCount());
         uint256 validatorCount = 0;
         for (uint256 i = 1; i < nextValidatorId; i++) {
             if (_isActiveValidator(i)) {
@@ -512,13 +533,13 @@ contract PermissionlessNodeRegistry is
     }
 
     function _onboardOperator(
-        bool _optInForMevSocialize,
+        bool _optInForSocializingPool,
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) internal {
         operatorStructById[nextOperatorId] = Operator(
             true,
-            _optInForMevSocialize,
+            _optInForSocializingPool,
             _operatorName,
             _operatorRewardAddress,
             msg.sender
@@ -536,7 +557,7 @@ contract PermissionlessNodeRegistry is
         uint256 _operatorId,
         address payable _operatorRewardAddress
     ) internal {
-        uint256 totalKeys = this.getOperatorTotalKeys(_operatorId);
+        uint256 totalKeys = getOperatorTotalKeys(_operatorId);
         _validateKeys(_pubkey, _signature);
         address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
             poolId,

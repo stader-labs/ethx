@@ -44,13 +44,13 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     }
 
     function deployWithdrawVault(
-        uint8 poolType,
+        uint8 poolId,
         uint256 operatorId,
         uint256 validatorCount,
         address payable nodeRecipient
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address withdrawVaultAddress;
-        bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
+        bytes32 salt = sha256(abi.encode(poolId, operatorId, validatorCount));
         withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(validatorWithdrawVaultImplementation, salt);
         ValidatorWithdrawVault(payable(withdrawVaultAddress)).initialize(
             vaultOwner,
@@ -58,7 +58,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
             staderTreasury,
             staderStakePoolsManager,
             poolFactory,
-            poolType
+            poolId
         );
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
@@ -66,12 +66,12 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     }
 
     function deployNodeELRewardVault(
-        uint8 poolType,
+        uint8 poolId,
         uint256 operatorId,
         address payable nodeRecipient
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address nodeELRewardVaultAddress;
-        bytes32 salt = sha256(abi.encode(poolType, operatorId));
+        bytes32 salt = sha256(abi.encode(poolId, operatorId));
         nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
         NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(
             vaultOwner,
@@ -79,7 +79,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
             staderTreasury,
             staderStakePoolsManager,
             poolFactory,
-            poolType
+            poolId
         );
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
@@ -87,21 +87,17 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     }
 
     function computeWithdrawVaultAddress(
-        uint8 poolType,
+        uint8 poolId,
         uint256 operatorId,
         uint256 validatorCount
     ) public view override returns (address) {
-        bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
+        bytes32 salt = sha256(abi.encode(poolId, operatorId, validatorCount));
         return ClonesUpgradeable.predictDeterministicAddress(validatorWithdrawVaultImplementation, salt);
     }
 
-    function computeNodeELRewardVaultAddress(uint8 poolType, uint256 operatorId)
-        public
-        view
-        override
-        returns (address)
-    {
-        bytes32 salt = sha256(abi.encode(poolType, operatorId));
+    // TODO change it to poolID
+    function computeNodeELRewardVaultAddress(uint8 poolId, uint256 operatorId) public view override returns (address) {
+        bytes32 salt = sha256(abi.encode(poolId, operatorId));
         return ClonesUpgradeable.predictDeterministicAddress(nodeELRewardVaultImplementation, salt);
     }
 

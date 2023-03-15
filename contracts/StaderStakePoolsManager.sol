@@ -72,7 +72,8 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         poolSelector = _poolSelector;
         staderOracle = _staderOracle;
         userWithdrawalManager = _userWithdrawManager;
-        _initialSetup();
+        minDepositAmount = 100;
+        maxDepositAmount = 32 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -295,14 +296,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      */
     function unpause() external onlyRole(EXECUTOR_ROLE) {
         _unpause();
-    }
-
-    /**
-     * @notice initializes variable
-     */
-    function _initialSetup() internal {
-        minDepositAmount = 100;
-        maxDepositAmount = 32 ether;
     }
 
     /**

@@ -13,7 +13,7 @@ interface IPermissionlessNodeRegistry {
     error InvalidBondEthValue();
     error InSufficientBalance();
     error OperatorAlreadyOnBoarded();
-    error NoKeysProvided();
+    error InvalidCountOfKeys();
     error PubkeyAlreadyExist();
     error PubkeyDoesNotExist();
     error InvalidStartAndEndIndex();
@@ -22,6 +22,8 @@ interface IPermissionlessNodeRegistry {
     error InvalidLengthOfSignature();
     error InvalidSizeOfInputKeys();
     error PubkeyNotFoundOrDuplicateInput();
+    error RewardIntervalNotPasses();
+    error NoChangeInState();
 
     //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
@@ -37,6 +39,7 @@ interface IPermissionlessNodeRegistry {
     event UpdatedELRewardSocializePool(address _elRewardSocializePool);
     event UpdatedStaderPenaltyFund(address _staderPenaltyFund);
     event UpdatedPermissionlessPoolAddress(address _permissionlessPool);
+    event UpdatedBatchKeyDepositLimit(uint256 _batchKeyDepositLimit);
     event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
@@ -76,6 +79,8 @@ interface IPermissionlessNodeRegistry {
 
     function totalActiveValidatorCount() external view returns (uint256);
 
+    function BATCH_KEY_DEPOSIT_LIMIT() external view returns (uint256);
+
     function PRE_DEPOSIT() external view returns (uint256);
 
     function FRONT_RUN_PENALTY() external view returns (uint256);
@@ -83,6 +88,8 @@ interface IPermissionlessNodeRegistry {
     function collateralETH() external view returns (uint256);
 
     function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
+
+    function socializePoolRewardDistributionCycle() external view returns (uint256);
 
     function validatorRegistry(uint256)
         external
@@ -157,11 +164,15 @@ interface IPermissionlessNodeRegistry {
 
     function updateStaderPenaltyFundAddress(address _staderPenaltyFund) external;
 
+    function updateBatchKeyDepositLimit(uint256 _batchKeyDepositLimit) external;
+
     function updatePermissionlessPoolAddress(address _permissionlessPool) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 
-    function changeSocializingPoolState(bool _optedForSocializingPool) external;
+    function changeSocializingPoolState(bool _optInForSocializingPool)
+        external
+        returns (address mevFeeRecipientAddress);
 
     function pause() external;
 
