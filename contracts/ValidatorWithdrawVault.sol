@@ -9,7 +9,7 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
 
-contract StaderWithdrawVault is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     // Pool information
     uint8 public poolId;
     address public poolFactory;

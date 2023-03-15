@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import '../library/Address.sol';
 
-import '../StaderWithdrawVault.sol';
+import '../ValidatorWithdrawVault.sol';
 import '../NodeELRewardVault.sol';
 import '../interfaces/IVaultFactory.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol';
@@ -38,7 +38,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         __AccessControl_init_unchained();
 
         nodeELRewardVaultImplementation = address(new NodeELRewardVault());
-        nodeWithdrawVaultImplementation = address(new StaderWithdrawVault());
+        nodeWithdrawVaultImplementation = address(new ValidatorWithdrawVault());
 
         _grantRole(DEFAULT_ADMIN_ROLE, _factoryAdmin);
     }
@@ -52,7 +52,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(poolType, operatorId, validatorCount));
         withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeWithdrawVaultImplementation, salt);
-        StaderWithdrawVault(payable(withdrawVaultAddress)).initialize(
+        ValidatorWithdrawVault(payable(withdrawVaultAddress)).initialize(
             vaultOwner,
             nodeRecipient,
             staderTreasury,
