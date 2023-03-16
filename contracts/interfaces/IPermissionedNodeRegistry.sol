@@ -13,6 +13,7 @@ interface IPermissionedNodeRegistry {
     error NameCrossedMaxLength();
     error PubkeyAlreadyExist();
     error PubkeyDoesNotExist();
+    error PubkeyNotFoundOrDuplicateInput();
     error OperatorIsDeactivate();
     error InvalidLengthOfpubkey();
     error InvalidStartAndEndIndex();
@@ -114,6 +115,8 @@ interface IPermissionedNodeRegistry {
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+
+    function onlyPreDepositValidator(bytes calldata _pubkey) external view;
 
     // Setters
 

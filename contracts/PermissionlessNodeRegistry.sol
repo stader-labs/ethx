@@ -98,13 +98,13 @@ contract PermissionlessNodeRegistry is
      * @param _optInForSocializingPool opted in or not to socialize mev and priority fee
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
-     * @return mevFeeRecipientAddress fee recipient address for all validator clients
+     * @return feeRecipientAddress fee recipient address for all validator clients
      */
     function onboardNodeOperator(
         bool _optInForSocializingPool,
         string calldata _operatorName,
         address payable _operatorRewardAddress
-    ) external override whenNotPaused returns (address mevFeeRecipientAddress) {
+    ) external override whenNotPaused returns (address feeRecipientAddress) {
         _onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_operatorRewardAddress);
 
@@ -117,9 +117,9 @@ contract PermissionlessNodeRegistry is
             nextOperatorId,
             payable(_operatorRewardAddress)
         );
-        mevFeeRecipientAddress = _optInForSocializingPool ? elRewardSocializePool : nodeELRewardVault;
+        feeRecipientAddress = _optInForSocializingPool ? elRewardSocializePool : nodeELRewardVault;
         _onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
-        return mevFeeRecipientAddress;
+        return feeRecipientAddress;
     }
 
     /**
@@ -199,7 +199,7 @@ contract PermissionlessNodeRegistry is
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
-            if (validatorId == 0) revert PubkeyDoesNotExist();
+            _onlyNonWithdrawnValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnTime = block.timestamp;
             //take out money from withdraw vault --need interface of withdrawVault
@@ -232,17 +232,17 @@ contract PermissionlessNodeRegistry is
     function changeSocializingPoolState(bool _optInForSocializingPool)
         external
         override
-        returns (address mevFeeRecipientAddress)
+        returns (address feeRecipientAddress)
     {
         uint256 operatorId = _onlyActiveOperator(msg.sender);
         if (block.timestamp < socializingPoolStateChangeTimestamp[operatorId] + socializePoolRewardDistributionCycle)
             revert RewardIntervalNotPasses();
         if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool)
             revert NoChangeInState();
-        mevFeeRecipientAddress = IVaultFactory(vaultFactoryAddress).computeNodeELRewardVaultAddress(poolId, operatorId);
+        feeRecipientAddress = IVaultFactory(vaultFactoryAddress).computeNodeELRewardVaultAddress(poolId, operatorId);
         if (_optInForSocializingPool) {
             //TODO empty NodeELRewardVault --need to integrate function signature
-            mevFeeRecipientAddress = elRewardSocializePool;
+            feeRecipientAddress = elRewardSocializePool;
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
         socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
@@ -633,8 +633,7 @@ contract PermissionlessNodeRegistry is
 
     // checks if validator is withdrawn
     function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
-        Validator memory validator = validatorRegistry[_validatorId];
-        if (validator.status == ValidatorStatus.WITHDRAWN) return true;
+        if (validatorRegistry[_validatorId].status == ValidatorStatus.WITHDRAWN) return true;
         return false;
     }
 
@@ -653,6 +652,11 @@ contract PermissionlessNodeRegistry is
 
     function _onlyInitializedValidator(uint256 _validatorId) internal view {
         if (_validatorId == 0 || validatorRegistry[_validatorId].status != ValidatorStatus.INITIALIZED)
+            revert PubkeyNotFoundOrDuplicateInput();
+    }
+
+    function _onlyNonWithdrawnValidator(uint256 _validatorId) internal view {
+        if (_validatorId == 0 || validatorRegistry[_validatorId].status == ValidatorStatus.WITHDRAWN)
             revert PubkeyNotFoundOrDuplicateInput();
     }
 }

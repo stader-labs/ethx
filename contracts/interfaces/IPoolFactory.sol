@@ -71,5 +71,7 @@ interface IPoolFactory {
 
     function getCollateralETH(uint8 _poolId) external view returns (uint256);
 
+    function getBeaconChainDepositSize() external pure returns (uint256);
+
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

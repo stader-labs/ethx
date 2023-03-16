@@ -32,7 +32,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     address public poolSelector;
     address public poolFactory;
     uint256 public constant DECIMALS = 10**18;
-    uint256 public constant DEPOSIT_SIZE = 32 ether;
     uint256 public minDepositAmount;
     uint256 public maxDepositAmount;
     uint256 public override depositedPooledETH;
@@ -267,6 +266,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
     function validatorBatchDeposit() external override whenNotPaused {
         uint256 pooledETH = depositedPooledETH -
             IUserWithdrawalManager(userWithdrawalManager).ethRequestedForWithdraw();
+        uint256 DEPOSIT_SIZE = IPoolFactory(poolFactory).getBeaconChainDepositSize();
         if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
         uint256[] memory selectedPoolCapacity = IPoolSelector(poolSelector).computePoolAllocationForDeposit(pooledETH);
         for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {

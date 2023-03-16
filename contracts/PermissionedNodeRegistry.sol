@@ -107,22 +107,22 @@ contract PermissionedNodeRegistry is
      * @dev only whitelisted NOs can call
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
-     * @return mevFeeRecipientAddress fee recipient address for all validator clients
+     * @return feeRecipientAddress fee recipient address for all validator clients
      */
     function onboardNodeOperator(string calldata _operatorName, address payable _operatorRewardAddress)
         external
         override
         whenNotPaused
-        returns (address mevFeeRecipientAddress)
+        returns (address feeRecipientAddress)
     {
         _onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_operatorRewardAddress);
         if (!permissionList[msg.sender]) revert NotAPermissionedNodeOperator();
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
-        mevFeeRecipientAddress = elRewardSocializePool;
+        feeRecipientAddress = elRewardSocializePool;
         _onboardOperator(_operatorName, _operatorRewardAddress);
-        return mevFeeRecipientAddress;
+        return feeRecipientAddress;
     }
 
     /**
@@ -222,6 +222,7 @@ contract PermissionedNodeRegistry is
         uint256 pubkeyLength = _pubkeys.length;
         for (uint256 i = 0; i < pubkeyLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            _onlyPreDepositValidator(validatorId);
             _handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_pubkeys[i], validatorId);
         }
@@ -232,12 +233,16 @@ contract PermissionedNodeRegistry is
      * @notice handle the invalid signature validators
      * @dev only permissioned pool can call, mark validator status as `INVALID_SIGNATURE`
      */
+    //TODO decrease total active validator count
     function reportInvalidSignatureValidator(bytes[] calldata _pubkeys) external override onlyRole(PERMISSIONED_POOL) {
-        for (uint256 i = 0; i < _pubkeys.length; i++) {
+        uint256 pubkeyLength = _pubkeys.length;
+        for (uint256 i = 0; i < pubkeyLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            _onlyPreDepositValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
             emit ValidatorStatusMarkedAsInvalidSignature(_pubkeys[i], validatorId);
         }
+        _decreaseTotalActiveValidatorCount(pubkeyLength);
     }
 
     /**
@@ -554,6 +559,12 @@ contract PermissionedNodeRegistry is
         return false;
     }
 
+    // check for only PRE_DEPOSIT state validators
+    function onlyPreDepositValidator(bytes calldata _pubkey) external view override {
+        uint256 validatorId = validatorIdByPubkey[_pubkey];
+        _onlyPreDepositValidator(validatorId);
+    }
+
     function _onboardOperator(string calldata _operatorName, address payable _operatorRewardAddress) internal {
         operatorStructById[nextOperatorId] = Operator(true, true, _operatorName, _operatorRewardAddress, msg.sender);
         operatorIDByAddress[msg.sender] = nextOperatorId;
@@ -650,5 +661,10 @@ contract PermissionedNodeRegistry is
     // decreases the pool total active validator count
     function _decreaseTotalActiveValidatorCount(uint256 _count) internal {
         totalActiveValidatorCount -= _count;
+    }
+
+    function _onlyPreDepositValidator(uint256 _validatorId) internal view {
+        if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT)
+            revert PubkeyNotFoundOrDuplicateInput();
     }
 }

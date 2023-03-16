@@ -6,7 +6,7 @@ import './INodeRegistry.sol';
 interface IStaderPoolBase {
     //Error events
 
-    error NotEnoughValidatorReadyToDeposit();
+    error TooManyVerifiedKeysToDeposit();
 
     // Events
     event UpdatedNodeRegistryAddress(address _nodeRegistryAddress);

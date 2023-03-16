@@ -31,7 +31,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     uint256 public balanceForDeposit;
     uint256 public nextIndexToDeposit;
     uint256 public MAX_DEPOSIT_BATCH_SIZE;
-    uint256 public readyToDepositValidatorSize;
+    // uint256 public readyToDepositValidatorSize;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 32 ether;
@@ -43,7 +43,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     // @inheritdoc IStaderPoolBase
     uint256 public override operatorFeePercent;
 
-    mapping(uint256 => bytes) public readyToDepositValidator;
+    // mapping(uint256 => bytes) public readyToDepositValidator;
 
     function initialize(
         address _adminOwner,
@@ -75,27 +75,31 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         bytes[] calldata _frontRunPubkey,
         bytes[] calldata _invalidSignaturePubkey
     ) external onlyRole(STADER_DAO) {
-        uint256 frontRunValidatorLength = _frontRunPubkey.length;
         uint256 verifiedValidatorLength = _readyToDepositPubkey.length;
+        if (verifiedValidatorLength > MAX_DEPOSIT_BATCH_SIZE) revert TooManyVerifiedKeysToDeposit();
+
+        uint256 frontRunValidatorLength = _frontRunPubkey.length;
         uint256 invalidSignatureValidatorLength = _invalidSignaturePubkey.length;
-        // TODO put a check that pubkey is in PRE_DEPOSIT
+
         if (frontRunValidatorLength > 0) {
-            uint256 amountToSendToPoolManager = frontRunValidatorLength * DEPOSIT_SIZE;
-            balanceForDeposit -= amountToSendToPoolManager;
-            IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: amountToSendToPoolManager}(
-                poolId
-            );
             IPermissionedNodeRegistry(nodeRegistryAddress).reportFrontRunValidator(_frontRunPubkey);
         }
 
-        //TODO transfer back 31 ETH to pool manager
         if (invalidSignatureValidatorLength > 0) {
             IPermissionedNodeRegistry(nodeRegistryAddress).reportInvalidSignatureValidator(_invalidSignaturePubkey);
         }
 
+        // send back 31 ETH for front run and invalid signature validators back to pool manager
+        uint256 amountToSendToPoolManager = (frontRunValidatorLength + invalidSignatureValidatorLength) * DEPOSIT_SIZE;
+        balanceForDeposit -= amountToSendToPoolManager;
+        IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: amountToSendToPoolManager}(
+            poolId
+        );
+
         for (uint256 i = 0; i < verifiedValidatorLength; i++) {
-            readyToDepositValidator[readyToDepositValidatorSize] = _readyToDepositPubkey[i];
-            readyToDepositValidatorSize++;
+            IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_readyToDepositPubkey[i]);
+            _depositOnBeaconChain(_readyToDepositPubkey[i]);
+            balanceForDeposit -= verifiedValidatorLength * DEPOSIT_SIZE;
         }
     }
 
@@ -183,39 +187,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         }
         balanceForDeposit += requiredValidators * DEPOSIT_SIZE;
         IPermissionedNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
-    }
-
-    /**
-     * @notice deposit `DEPOSIT_SIZE` for the processed batch of preDeposited Validator
-     * @dev anyone can call, check of available readyToDeposit Validators
-     */
-    function depositOnBeaconChain() external {
-        uint256 count;
-        while (nextIndexToDeposit < readyToDepositValidatorSize && count < MAX_DEPOSIT_BATCH_SIZE) {
-            bytes memory pubkey = readyToDepositValidator[nextIndexToDeposit];
-            uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(pubkey);
-            (, , bytes memory signature, address withdrawVaultAddress, , , , ) = IPermissionedNodeRegistry(
-                nodeRegistryAddress
-            ).validatorRegistry(validatorId);
-            bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
-                withdrawVaultAddress
-            );
-            bytes32 depositDataRoot = this.computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
-
-            //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
-                pubkey,
-                withdrawCredential,
-                signature,
-                depositDataRoot
-            );
-            IPermissionedNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(validatorId);
-            IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
-            count++;
-            nextIndexToDeposit++;
-            emit ValidatorDepositedOnBeaconChain(validatorId, pubkey);
-        }
-        balanceForDeposit -= count * DEPOSIT_SIZE;
     }
 
     /**
@@ -342,6 +313,29 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                     sha256(abi.encodePacked(amount, bytes24(0), signature_root))
                 )
             );
+    }
+
+    // deposit `DEPOSIT_SIZE` for the verified preDeposited Validator
+    function _depositOnBeaconChain(bytes calldata _pubkey) internal {
+        uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey);
+        (, , bytes memory signature, address withdrawVaultAddress, , , , ) = IPermissionedNodeRegistry(
+            nodeRegistryAddress
+        ).validatorRegistry(validatorId);
+        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+            withdrawVaultAddress
+        );
+        bytes32 depositDataRoot = this.computeDepositDataRoot(_pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
+
+        //slither-disable-next-line arbitrary-send-eth
+        IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
+            _pubkey,
+            withdrawCredential,
+            signature,
+            depositDataRoot
+        );
+        IPermissionedNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(validatorId);
+        IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(_pubkey, ValidatorStatus.DEPOSITED);
+        emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey);
     }
 
     //ethereum deposit contract function to get amount into little_endian_64
