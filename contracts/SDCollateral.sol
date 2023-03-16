@@ -6,8 +6,10 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+
 import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
+import '../contracts/interfaces/IPoolFactory.sol';
 
 contract SDCollateral is
     ISDCollateral,
@@ -21,15 +23,18 @@ contract SDCollateral is
         uint256 withdrawThreshold;
         string units;
     }
+    bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
 
     IERC20 public sdERC20;
     IPriceFetcher public priceFetcher;
+    IPoolFactory public poolFactory;
 
     uint256 public totalShares;
     uint256 public totalSDCollateral;
     // TODO: Manoj we can instead use sdBalnce(address(this))
 
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
+    mapping(address => uint8) public poolIdByOperator;
     mapping(address => uint256) public operatorShares;
 
     /**
@@ -50,8 +55,16 @@ contract SDCollateral is
     function initialize(
         address _admin,
         address _sdERC20Addr,
-        address _priceFetcherAddr
-    ) external initializer checkZeroAddress(_admin) checkZeroAddress(_sdERC20Addr) checkZeroAddress(_priceFetcherAddr) {
+        address _priceFetcherAddr,
+        address _poolFactory
+    )
+        external
+        initializer
+        checkZeroAddress(_admin)
+        checkZeroAddress(_sdERC20Addr)
+        checkZeroAddress(_priceFetcherAddr)
+        checkZeroAddress(_poolFactory)
+    {
         __AccessControl_init();
         __Pausable_init();
 
@@ -59,6 +72,7 @@ contract SDCollateral is
 
         sdERC20 = IERC20(_sdERC20Addr);
         priceFetcher = IPriceFetcher(_priceFetcherAddr);
+        poolFactory = IPoolFactory(_poolFactory);
     }
 
     /**
@@ -78,8 +92,30 @@ contract SDCollateral is
     }
 
     function withdraw(uint256 _requestedSD) external {
-        revert('phase 2');
+        address operator = msg.sender;
+        uint256 numShares = operatorShares[operator];
+        uint256 sdBalance = convertSharesToSD(numShares);
+
+        uint8 poolId = poolIdByOperator[operator];
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
+
+        // TODO: Manoj update startIndex, endIndex
+        uint256 validatorCount = poolFactory.getOperatorTotalNonWithdrawnKeys(poolId, operator, 0, 1000);
+        uint256 withdrawableSD = sdBalance - convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+
+        require(_requestedSD <= withdrawableSD, 'withdraw less SD');
+
+        totalSDCollateral -= _requestedSD;
+        operatorShares[operator] -= numShares;
+        totalShares -= numShares;
+
+        require(sdERC20.transfer(payable(operator), _requestedSD), 'sd transfer failed');
     }
+
+    // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //     totalXSDCollateral += _xsdAmount;
+    //     xsdERC20.safeTransferFrom(msg.sender, address(this), _xsdAmount);
+    // }
 
     // SETTERS
 
@@ -96,6 +132,15 @@ contract SDCollateral is
             withdrawThreshold: _withdrawThreshold,
             units: _units
         });
+    }
+
+    function updatePoolIdForOperator(uint8 _poolId, address _operator)
+        public
+        onlyRole(WHITELISTED_CONTRACT)
+        checkZeroAddress(_operator)
+    {
+        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+        poolIdByOperator[_operator] = _poolId;
     }
 
     // GETTERS
