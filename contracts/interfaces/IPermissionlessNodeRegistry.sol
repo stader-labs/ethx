@@ -21,6 +21,7 @@ interface IPermissionlessNodeRegistry {
     error InvalidLengthOfpubkey();
     error InvalidLengthOfSignature();
     error InvalidSizeOfInputKeys();
+    error maxKeyLimitReached();
     error PubkeyNotFoundOrDuplicateInput();
     error RewardIntervalNotPasses();
     error NoChangeInState();
@@ -39,7 +40,8 @@ interface IPermissionlessNodeRegistry {
     event UpdatedELRewardSocializePool(address _elRewardSocializePool);
     event UpdatedStaderPenaltyFund(address _staderPenaltyFund);
     event UpdatedPermissionlessPoolAddress(address _permissionlessPool);
-    event UpdatedBatchKeyDepositLimit(uint256 _batchKeyDepositLimit);
+    event UpdatedInputKeyCountLimit(uint16 _inputKeyCountLimit);
+    event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
     event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
@@ -79,7 +81,9 @@ interface IPermissionlessNodeRegistry {
 
     function totalActiveValidatorCount() external view returns (uint256);
 
-    function BATCH_KEY_DEPOSIT_LIMIT() external view returns (uint256);
+    function inputKeyCountLimit() external view returns (uint16);
+
+    function maxKeyPerOperator() external view returns (uint64);
 
     function PRE_DEPOSIT() external view returns (uint256);
 
@@ -164,7 +168,9 @@ interface IPermissionlessNodeRegistry {
 
     function updateStaderPenaltyFundAddress(address _staderPenaltyFund) external;
 
-    function updateBatchKeyDepositLimit(uint256 _batchKeyDepositLimit) external;
+    function updateInputKeyCountLimit(uint16 _batchKeyDepositLimit) external;
+
+    function updateMaxKeyPerOperator(uint64 _keyDepositLimit) external;
 
     function updatePermissionlessPoolAddress(address _permissionlessPool) external;
 

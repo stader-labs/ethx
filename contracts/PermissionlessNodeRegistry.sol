@@ -20,6 +20,8 @@ contract PermissionlessNodeRegistry is
     PausableUpgradeable
 {
     uint8 public constant override poolId = 1;
+    uint16 public override inputKeyCountLimit;
+    uint64 public override maxKeyPerOperator;
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
 
@@ -35,12 +37,11 @@ contract PermissionlessNodeRegistry is
     uint256 public override validatorQueueSize;
     uint256 public override nextQueuedValidatorIndex;
     uint256 public override totalActiveValidatorCount;
-    uint256 public override BATCH_KEY_DEPOSIT_LIMIT;
     uint256 public constant override PRE_DEPOSIT = 1 ether;
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
-    uint256 public override socializePoolRewardDistributionCycle; //TODO move all DOA related values to a separate contract
+    uint256 public override socializePoolRewardDistributionCycle; //TODO move all DOA related values to index contract
 
     bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
@@ -89,6 +90,8 @@ contract PermissionlessNodeRegistry is
         poolFactoryAddress = _poolFactoryAddress;
         nextOperatorId = 1;
         nextValidatorId = 1;
+        inputKeyCountLimit = 100;
+        maxKeyPerOperator = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
@@ -138,16 +141,17 @@ contract PermissionlessNodeRegistry is
         if (_pubkey.length != _signature.length) revert InvalidSizeOfInputKeys();
 
         uint256 keyCount = _pubkey.length;
-        if (keyCount == 0 || keyCount > BATCH_KEY_DEPOSIT_LIMIT) revert InvalidCountOfKeys();
+        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidCountOfKeys();
 
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
-        uint256 operatorTotalKeys = getOperatorTotalKeys(operatorId);
-        uint256 operatorTotalNonWithdrawnKeys = getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
+        uint256 totalKeys = getOperatorTotalKeys(operatorId);
+        uint256 totalNonWithdrawnKeys = getOperatorTotalNonWithdrawnKeys(msg.sender, 0, totalKeys);
+        if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, operatorTotalNonWithdrawnKeys + keyCount);
+        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_pubkey[i], _signature[i], operatorId, operatorRewardAddress);
@@ -185,7 +189,7 @@ contract PermissionlessNodeRegistry is
         for (uint256 i = 0; i < _invalidSignaturePubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkey[i]];
             _onlyInitializedValidator(validatorId);
-            validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
+            _handleInvalidSignature(validatorId);
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
         }
     }
@@ -235,10 +239,10 @@ contract PermissionlessNodeRegistry is
         returns (address feeRecipientAddress)
     {
         uint256 operatorId = _onlyActiveOperator(msg.sender);
-        if (block.timestamp < socializingPoolStateChangeTimestamp[operatorId] + socializePoolRewardDistributionCycle)
-            revert RewardIntervalNotPasses();
         if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool)
             revert NoChangeInState();
+        if (block.timestamp < socializingPoolStateChangeTimestamp[operatorId] + socializePoolRewardDistributionCycle)
+            revert RewardIntervalNotPasses();
         feeRecipientAddress = IVaultFactory(vaultFactoryAddress).computeNodeELRewardVaultAddress(poolId, operatorId);
         if (_optInForSocializingPool) {
             //TODO empty NodeELRewardVault --need to integrate function signature
@@ -376,15 +380,29 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice update maximum key to be deposited in a batch
      * @dev only admin can call
-     * @param _batchKeyDepositLimit updated maximum key limit in a batch
+     * @param _inputKeyCountLimit updated maximum key limit in the input
      */
-    function updateBatchKeyDepositLimit(uint256 _batchKeyDepositLimit)
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit)
         external
         override
         onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
     {
-        BATCH_KEY_DEPOSIT_LIMIT = _batchKeyDepositLimit;
-        emit UpdatedBatchKeyDepositLimit(BATCH_KEY_DEPOSIT_LIMIT);
+        inputKeyCountLimit = _inputKeyCountLimit;
+        emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
+    }
+
+    /**
+     * @notice update the maximum non withdrawn key limit per operator
+     * @dev only admin can call
+     * @param _maxKeyPerOperator updated maximum non withdrawn key per operator limit
+     */
+    function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator)
+        external
+        override
+        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
+    {
+        maxKeyPerOperator = _maxKeyPerOperator;
+        emit UpdatedMaxKeyPerOperator(maxKeyPerOperator);
     }
 
     /**
@@ -433,14 +451,14 @@ contract PermissionlessNodeRegistry is
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
-    ) public view override returns (uint256) {
+    ) public view override returns (uint64) {
         if (startIndex > endIndex) {
             revert InvalidStartAndEndIndex();
         }
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
-        uint256 totalNonWithdrawnKeyCount;
+        uint64 totalNonWithdrawnKeyCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (_isWithdrawnValidator(validatorId)) continue;
@@ -600,7 +618,16 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
+        //TODO take SD bond too in penalty, need some function on tokonomics
         _sendValue(staderPenaltyFund, FRONT_RUN_PENALTY);
+    }
+
+    // handle validator with invalid signature for 1ETH deposit
+    function _handleInvalidSignature(uint256 _validatorId) internal {
+        validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
+        uint256 operatorId = validatorRegistry[_validatorId].operatorId;
+        address operatorAddress = operatorStructById[operatorId].operatorAddress;
+        _sendValue(operatorAddress, collateralETH - PRE_DEPOSIT);
     }
 
     // checks for keys lengths, and if pubkey is already there

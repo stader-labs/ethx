@@ -133,7 +133,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             .computeOperatorAllocationForDeposit(requiredValidators);
 
         // i is the operator ID
-        for (uint256 i = 1; i < selectedOperatorCapacity.length; i++) {
+        for (uint16 i = 1; i < selectedOperatorCapacity.length; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) continue;
             uint256 nextQueuedValidatorIndex = IPermissionedNodeRegistry(nodeRegistryAddress)

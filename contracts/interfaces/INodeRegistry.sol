@@ -50,7 +50,7 @@ interface INodeRegistry {
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
-    ) external view returns (uint256);
+    ) external view returns (uint64);
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 

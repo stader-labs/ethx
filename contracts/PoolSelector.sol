@@ -72,7 +72,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint8 poolCount = IPoolFactory(poolFactoryAddress).poolCount();
 
         uint256 depositedETh;
-        for (uint8 i = 1; i <= IPoolFactory(poolFactoryAddress).poolCount(); i++) {
+        for (uint8 i = 1; i <= poolCount; i++) {
             depositedETh += (IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i)) * DEPOSIT_SIZE;
         }
         uint256 totalEth = depositedETh + _pooledEth;
@@ -85,11 +85,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256[] memory remainingPoolCapacity = new uint256[](poolCount + 1);
 
         uint256 validatorSpunCount;
-        for (
-            uint8 i = 1;
-            i <= IPoolFactory(poolFactoryAddress).poolCount() && validatorSpunCount < newValidatorsToDeposit;
-            i++
-        ) {
+        for (uint8 i = 1; i <= poolCount && validatorSpunCount < newValidatorsToDeposit; i++) {
             remainingPoolCapacity[i] = IPoolFactory(poolFactoryAddress).getQueuedValidatorCountByPool(i);
             uint256 currentActiveValidators = IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i);
             uint256 poolTotalTarget = (poolTargets[i] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
@@ -106,26 +102,31 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         // and update the starting index of pool for next sequence after every iteration
         if (validatorSpunCount < newValidatorsToDeposit) {
             uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
-            uint8[] memory poolQueue = new uint8[](IPoolFactory(poolFactoryAddress).poolCount());
-            uint8 counter;
-            for (uint8 i = poolIdForExcessDeposit; i <= IPoolFactory(poolFactoryAddress).poolCount(); i++) {
-                poolQueue[counter++] = i;
-            }
-            for (uint8 i = 1; i < poolIdForExcessDeposit; i++) {
-                poolQueue[counter++] = i;
-            }
-            for (uint8 i = 0; i < poolQueue.length; i++) {
-                uint256 newSelectedCapacity = Math.min(
-                    remainingPoolCapacity[poolQueue[i]],
-                    remainingValidatorsToDeposit
-                );
-                selectedPoolCapacity[poolQueue[i]] += newSelectedCapacity;
+            // uint8[] memory poolQueue = new uint8[](IPoolFactory(poolFactoryAddress).poolCount());
+            for (uint8 i = poolIdForExcessDeposit; i <= poolCount; i++) {
+                //poolQueue[counter++] = i;
+                uint256 newSelectedCapacity = Math.min(remainingPoolCapacity[i], remainingValidatorsToDeposit);
+                selectedPoolCapacity[i] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
                 // Don't have to update poolID if the `remainingValidatorsToDeposit` does not become 0
                 // As we have scanned through all pool, will start from same pool in same iteration
                 if (remainingValidatorsToDeposit == 0) {
-                    poolIdForExcessDeposit = poolQueue[(i + 1) % poolQueue.length];
+                    poolIdForExcessDeposit = (i % poolCount) + 1;
                     break;
+                }
+            }
+            if (remainingValidatorsToDeposit != 0) {
+                for (uint8 i = 1; i < poolIdForExcessDeposit; i++) {
+                    //poolQueue[counter++] = i;
+                    uint256 newSelectedCapacity = Math.min(remainingPoolCapacity[i], remainingValidatorsToDeposit);
+                    selectedPoolCapacity[i] += newSelectedCapacity;
+                    remainingValidatorsToDeposit -= newSelectedCapacity;
+                    // Don't have to update poolID if the `remainingValidatorsToDeposit` does not become 0
+                    // As we have scanned through all pool, will start from same pool in same iteration
+                    if (remainingValidatorsToDeposit == 0) {
+                        poolIdForExcessDeposit = (i % poolCount) + 1;
+                        break;
+                    }
                 }
             }
         }

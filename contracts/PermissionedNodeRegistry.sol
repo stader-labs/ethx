@@ -23,20 +23,23 @@ contract PermissionedNodeRegistry is
     using Math for uint256;
 
     uint8 public constant override poolId = 2;
+
+    uint16 public override nextOperatorId;
+    uint16 public override inputKeyCountLimit;
+    uint16 public override operatorIdForExcessDeposit;
+    uint16 public override totalActiveOperatorCount;
+
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
+    uint64 public override maxKeyPerOperator;
 
     address public override poolFactoryAddress;
     address public override vaultFactoryAddress;
     address public override sdCollateral;
     address public override elRewardSocializePool;
-    uint256 public override nextOperatorId;
+
     uint256 public override nextValidatorId;
-    uint256 public override maxKeyPerOperator;
-    uint256 public override BATCH_KEY_DEPOSIT_LIMIT;
-    uint256 public override operatorIdForExcessDeposit;
     uint256 public override totalActiveValidatorCount;
-    uint256 public override totalActiveOperatorCount;
 
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
     bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
@@ -50,15 +53,15 @@ contract PermissionedNodeRegistry is
     // mapping of bytes public key and validator Id
     mapping(bytes => uint256) public override validatorIdByPubkey;
     // mapping of operaot ID and Operator struct
-    mapping(uint256 => Operator) public override operatorStructById;
+    mapping(uint16 => Operator) public override operatorStructById;
     // mapping of operator address and operator Id
-    mapping(address => uint256) public override operatorIDByAddress;
+    mapping(address => uint16) public override operatorIDByAddress;
     // mapping of whitelisted permissioned node operator
     mapping(address => bool) public override permissionList;
     //mapping of operator wise queued validator IDs arrays
-    mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
+    mapping(uint16 => uint256[]) public override validatorIdsByOperatorId;
     //mapping of operator ID and nextQueuedValidatorIndex
-    mapping(uint256 => uint256) public override nextQueuedValidatorIndexByOperatorId;
+    mapping(uint16 => uint256) public override nextQueuedValidatorIndexByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
 
     function initialize(
@@ -82,7 +85,7 @@ contract PermissionedNodeRegistry is
         nextOperatorId = 1;
         nextValidatorId = 1;
         operatorIdForExcessDeposit = 1;
-        BATCH_KEY_DEPOSIT_LIMIT = 100;
+        inputKeyCountLimit = 100;
         maxKeyPerOperator = 1000;
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
@@ -135,12 +138,12 @@ contract PermissionedNodeRegistry is
         if (_pubkey.length != _signature.length) revert InvalidSizeOfInputKeys();
 
         uint256 keyCount = _pubkey.length;
-        if (keyCount == 0 || keyCount > BATCH_KEY_DEPOSIT_LIMIT) revert InvalidCountOfKeys();
+        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidCountOfKeys();
 
-        uint256 operatorId = _onlyActiveOperator(msg.sender);
+        uint16 operatorId = _onlyActiveOperator(msg.sender);
 
-        uint256 operatorTotalKeyCount = getOperatorTotalKeys(operatorId);
-        uint256 totalNonWithdrawnKeys = getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeyCount);
+        uint256 totalKey = getOperatorTotalKeys(operatorId);
+        uint256 totalNonWithdrawnKeys = getOperatorTotalNonWithdrawnKeys(msg.sender, 0, totalKey);
         if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
@@ -175,7 +178,7 @@ contract PermissionedNodeRegistry is
         uint256 totalValidatorToDeposit;
 
         if (validatorPerOperator != 0) {
-            for (uint256 i = 1; i < nextOperatorId; i++) {
+            for (uint16 i = 1; i < nextOperatorId; i++) {
                 if (!operatorStructById[i].active) continue;
                 remainingOperatorCapacity[i] = _getOperatorQueuedValidatorCount(i);
                 selectedOperatorCapacity[i] = Math.min(remainingOperatorCapacity[i], validatorPerOperator);
@@ -187,27 +190,29 @@ contract PermissionedNodeRegistry is
         // check for more validators to deposit and select operators with excess supply in a sequential order
         // and update the starting index of operator for next sequence after every iteration
         if (numValidators > totalValidatorToDeposit) {
-            uint256 totalOperators = nextOperatorId - 1;
+            uint16 totalOperators = nextOperatorId - 1;
             uint256 remainingValidatorsToDeposit = numValidators - totalValidatorToDeposit;
-            uint256[] memory operatorIdQueue = new uint256[](totalOperators);
-            uint256 counter;
-            for (uint256 i = operatorIdForExcessDeposit; i <= totalOperators; i++) {
-                operatorIdQueue[counter++] = i;
-            }
-            for (uint256 i = 1; i < operatorIdForExcessDeposit; i++) {
-                operatorIdQueue[counter++] = i;
-            }
 
-            for (uint256 i = 0; i < totalOperators; i++) {
-                uint256 newSelectedCapacity = Math.min(
-                    remainingOperatorCapacity[operatorIdQueue[i]],
-                    remainingValidatorsToDeposit
-                );
-                selectedOperatorCapacity[operatorIdQueue[i]] += newSelectedCapacity;
+            for (uint16 i = operatorIdForExcessDeposit; i <= totalOperators; i++) {
+                if (!operatorStructById[i].active) continue;
+                uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
+                selectedOperatorCapacity[i] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
                 if (remainingValidatorsToDeposit == 0) {
-                    operatorIdForExcessDeposit = operatorIdQueue[(i + 1) % operatorIdQueue.length];
+                    operatorIdForExcessDeposit = (i % totalOperators) + 1;
                     break;
+                }
+            }
+            if (remainingValidatorsToDeposit != 0) {
+                for (uint16 i = 1; i < operatorIdForExcessDeposit; i++) {
+                    if (!operatorStructById[i].active) continue;
+                    uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
+                    selectedOperatorCapacity[i] += newSelectedCapacity;
+                    remainingValidatorsToDeposit -= newSelectedCapacity;
+                    if (remainingValidatorsToDeposit == 0) {
+                        operatorIdForExcessDeposit = (i % totalOperators) + 1;
+                        break;
+                    }
                 }
             }
         }
@@ -233,7 +238,6 @@ contract PermissionedNodeRegistry is
      * @notice handle the invalid signature validators
      * @dev only permissioned pool can call, mark validator status as `INVALID_SIGNATURE`
      */
-    //TODO decrease total active validator count
     function reportInvalidSignatureValidator(bytes[] calldata _pubkeys) external override onlyRole(PERMISSIONED_POOL) {
         uint256 pubkeyLength = _pubkeys.length;
         for (uint256 i = 0; i < pubkeyLength; i++) {
@@ -269,7 +273,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
      * @param _operatorID ID of the operator to deactivate
      */
-    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
+    function deactivateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
     }
@@ -279,7 +283,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
      * @param _operatorID ID of the operator to activate
      */
-    function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
+    function activateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
     }
@@ -290,7 +294,7 @@ contract PermissionedNodeRegistry is
      * @param _operatorID ID of the node operator
      * @param _nextQueuedValidatorIndex updated next index of queued validator per operator
      */
-    function updateQueuedValidatorIndex(uint256 _operatorID, uint256 _nextQueuedValidatorIndex)
+    function updateQueuedValidatorIndex(uint16 _operatorID, uint256 _nextQueuedValidatorIndex)
         external
         override
         onlyRole(PERMISSIONED_POOL)
@@ -381,7 +385,7 @@ contract PermissionedNodeRegistry is
         _onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_rewardAddress);
         _onlyActiveOperator(msg.sender);
-        uint256 operatorId = operatorIDByAddress[msg.sender];
+        uint16 operatorId = operatorIDByAddress[msg.sender];
         operatorStructById[operatorId].operatorName = _operatorName;
         operatorStructById[operatorId].operatorRewardAddress = _rewardAddress;
         emit UpdatedOperatorDetails(msg.sender, _operatorName, _rewardAddress);
@@ -392,7 +396,7 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call
      * @param _maxKeyPerOperator updated maximum non withdrawn key per operator limit
      */
-    function updateMaxKeyPerOperator(uint256 _maxKeyPerOperator)
+    function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator)
         external
         override
         onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
@@ -404,15 +408,15 @@ contract PermissionedNodeRegistry is
     /**
      * @notice update maximum key to be deposited in a batch
      * @dev only admin can call
-     * @param _batchKeyDepositLimit updated maximum key limit in a batch
+     * @param _inputKeyCountLimit updated maximum key limit in the input
      */
-    function updateBatchKeyDepositLimit(uint256 _batchKeyDepositLimit)
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit)
         external
         override
         onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
     {
-        BATCH_KEY_DEPOSIT_LIMIT = _batchKeyDepositLimit;
-        emit UpdatedBatchKeyDepositLimit(BATCH_KEY_DEPOSIT_LIMIT);
+        inputKeyCountLimit = _inputKeyCountLimit;
+        emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
 
     // @inheritdoc INodeRegistry
@@ -428,8 +432,7 @@ contract PermissionedNodeRegistry is
 
             return emptyOperator;
         }
-
-        uint256 operatorId = validatorRegistry[validatorId].operatorId;
+        uint16 operatorId = uint16(validatorRegistry[validatorId].operatorId);
         return operatorStructById[operatorId];
     }
 
@@ -449,7 +452,7 @@ contract PermissionedNodeRegistry is
      */
     function getTotalQueuedValidatorCount() external view override returns (uint256) {
         uint256 totalQueuedValidators;
-        for (uint256 i = 1; i < nextOperatorId; i++) {
+        for (uint16 i = 1; i < nextOperatorId; i++) {
             if (operatorStructById[i].active) {
                 totalQueuedValidators += _getOperatorQueuedValidatorCount(i);
             }
@@ -471,7 +474,7 @@ contract PermissionedNodeRegistry is
      * @dev length of the validatorIds array for an operator
      * @param _operatorId ID of node operator
      */
-    function getOperatorTotalKeys(uint256 _operatorId) public view override returns (uint256 _totalKeys) {
+    function getOperatorTotalKeys(uint16 _operatorId) public view override returns (uint256 _totalKeys) {
         _totalKeys = validatorIdsByOperatorId[_operatorId].length;
     }
 
@@ -485,14 +488,14 @@ contract PermissionedNodeRegistry is
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
-    ) public view override returns (uint256) {
+    ) public view override returns (uint64) {
         if (startIndex > endIndex) {
             revert InvalidStartAndEndIndex();
         }
-        uint256 operatorId = operatorIDByAddress[_nodeOperator];
+        uint16 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
-        uint256 totalNonWithdrawnKeyCount;
+        uint64 totalNonWithdrawnKeyCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (_isWithdrawnValidator(validatorId)) continue;
@@ -509,7 +512,7 @@ contract PermissionedNodeRegistry is
      * @notice returns the operator reward address
      * @param _operatorId operator ID
      */
-    function getOperatorRewardAddress(uint256 _operatorId) public view override returns (address payable) {
+    function getOperatorRewardAddress(uint16 _operatorId) public view override returns (address payable) {
         return operatorStructById[_operatorId].operatorRewardAddress;
     }
 
@@ -577,7 +580,7 @@ contract PermissionedNodeRegistry is
     function _addValidatorKey(
         bytes calldata _pubkey,
         bytes calldata _signature,
-        uint256 _operatorId,
+        uint16 _operatorId,
         address payable operatorRewardAddress
     ) internal {
         _validateKeys(_pubkey, _signature);
@@ -608,12 +611,12 @@ contract PermissionedNodeRegistry is
     // handle front run validator by changing their status and deactivating operator
     function _handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
-        uint256 operatorId = validatorRegistry[_validatorId].operatorId;
+        uint16 operatorId = uint16(validatorRegistry[_validatorId].operatorId);
         operatorStructById[operatorId].active = false;
     }
 
     // returns operator total queued validator count, internal use
-    function _getOperatorQueuedValidatorCount(uint256 _operatorId) internal view returns (uint256 _validatorCount) {
+    function _getOperatorQueuedValidatorCount(uint16 _operatorId) internal view returns (uint256 _validatorCount) {
         _validatorCount =
             validatorIdsByOperatorId[_operatorId].length -
             nextQueuedValidatorIndexByOperatorId[_operatorId];
@@ -627,7 +630,7 @@ contract PermissionedNodeRegistry is
     }
 
     // operator in active state
-    function _onlyActiveOperator(address _operAddr) internal view returns (uint256 _operatorId) {
+    function _onlyActiveOperator(address _operAddr) internal view returns (uint16 _operatorId) {
         _operatorId = operatorIDByAddress[_operAddr];
         if (_operatorId == 0) revert OperatorNotOnBoarded();
         if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();
@@ -648,7 +651,11 @@ contract PermissionedNodeRegistry is
     // checks if validator is withdrawn
     function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
-        if (validator.status == ValidatorStatus.WITHDRAWN) return true;
+        if (
+            validator.status == ValidatorStatus.WITHDRAWN ||
+            validator.status == ValidatorStatus.FRONT_RUN ||
+            validator.status == ValidatorStatus.INVALID_SIGNATURE
+        ) return true;
         return false;
     }
 

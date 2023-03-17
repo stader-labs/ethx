@@ -17,7 +17,7 @@ contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
 
-    constructor(address _admin) ERC20('ETHX', 'ETHX') {
+    constructor(address _admin) ERC20('ETHx', 'ETHx') {
         Address.checkNonZeroAddress(_admin);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }

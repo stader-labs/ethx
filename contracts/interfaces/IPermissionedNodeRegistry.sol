@@ -33,8 +33,8 @@ interface IPermissionedNodeRegistry {
     event UpdatedSDCollateralAddress(address _sdCollateral);
     event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
     event UpdatedELRewardSocializePool(address _elRewardSocializePool);
-    event UpdatedMaxKeyPerOperator(uint256 _keyDepositLimit);
-    event UpdatedBatchKeyDepositLimit(uint256 _batchKeyDepositLimit);
+    event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
+    event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
     event UpdatedValidatorStatus(bytes indexed _pubkey, ValidatorStatus _status);
     event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
@@ -51,21 +51,21 @@ interface IPermissionedNodeRegistry {
 
     function elRewardSocializePool() external view returns (address);
 
-    function nextOperatorId() external view returns (uint256);
+    function nextOperatorId() external view returns (uint16);
 
     function nextValidatorId() external view returns (uint256);
 
-    function maxKeyPerOperator() external view returns (uint256);
+    function maxKeyPerOperator() external view returns (uint64);
 
-    function BATCH_KEY_DEPOSIT_LIMIT() external view returns (uint256);
+    function inputKeyCountLimit() external view returns (uint16);
 
-    function operatorIdForExcessDeposit() external view returns (uint256);
+    function operatorIdForExcessDeposit() external view returns (uint16);
 
     function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
 
     function totalActiveValidatorCount() external view returns (uint256);
 
-    function totalActiveOperatorCount() external view returns (uint256);
+    function totalActiveOperatorCount() external view returns (uint16);
 
     function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
 
@@ -93,7 +93,7 @@ interface IPermissionedNodeRegistry {
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
-    function operatorStructById(uint256)
+    function operatorStructById(uint16)
         external
         view
         returns (
@@ -104,17 +104,17 @@ interface IPermissionedNodeRegistry {
             address operatorAddress
         );
 
-    function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);
+    function nextQueuedValidatorIndexByOperatorId(uint16) external view returns (uint256);
 
-    function operatorIDByAddress(address) external view returns (uint256);
+    function operatorIDByAddress(address) external view returns (uint16);
 
     function permissionList(address) external view returns (bool);
 
-    function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
+    function validatorIdsByOperatorId(uint16, uint256) external view returns (uint256);
 
-    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
+    function getOperatorTotalKeys(uint16 _operatorId) external view returns (uint256 _totalKeys);
 
-    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+    function getOperatorRewardAddress(uint16 _operatorId) external view returns (address payable);
 
     function onlyPreDepositValidator(bytes calldata _pubkey) external view;
 
@@ -136,13 +136,13 @@ interface IPermissionedNodeRegistry {
         external
         returns (uint256[] memory selectedOperatorCapacity);
 
-    function activateNodeOperator(uint256 _operatorId) external;
+    function activateNodeOperator(uint16 _operatorId) external;
 
-    function deactivateNodeOperator(uint256 _operatorId) external;
+    function deactivateNodeOperator(uint16 _operatorId) external;
 
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 
-    function updateQueuedValidatorIndex(uint256 _operatorId, uint256 _nextQueuedValidatorIndex) external;
+    function updateQueuedValidatorIndex(uint16 _operatorId, uint256 _nextQueuedValidatorIndex) external;
 
     function setValidatorDepositTime(uint256 _validatorId) external;
 
@@ -154,9 +154,9 @@ interface IPermissionedNodeRegistry {
 
     function updateELRewardSocializePool(address _elRewardSocializePool) external;
 
-    function updateMaxKeyPerOperator(uint256 _keyDepositLimit) external;
+    function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator) external;
 
-    function updateBatchKeyDepositLimit(uint256 _batchKeyDepositLimit) external;
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 
