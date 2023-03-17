@@ -3,7 +3,6 @@
 pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
-    error ZeroAddress();
     error TransferFailed();
     error InSufficientBalance();
     error ProtocolNotHealthy();

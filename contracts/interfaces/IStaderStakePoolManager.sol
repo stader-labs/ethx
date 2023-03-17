@@ -78,7 +78,5 @@ interface IStaderStakePoolManager {
 
     function updatePoolSelectorAddress(address _poolSelector) external;
 
-    function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey) external returns (uint256 requestId);
-
     function validatorBatchDeposit() external;
 }

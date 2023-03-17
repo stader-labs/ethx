@@ -251,13 +251,6 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         return shares;
     }
 
-    function nodeWithdraw(uint256 _operatorId, bytes memory _pubKey)
-        public
-        override
-        whenNotPaused
-        returns (uint256 requestId)
-    {}
-
     /**
      * @notice spinning off validators in different pools
      * @dev get pool wise validator to deposit from pool helper and
