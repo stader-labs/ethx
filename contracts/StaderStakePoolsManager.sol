@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 import './library/Address.sol';
 
-import './ETHX.sol';
+import './ETHx.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IStaderStakePoolManager.sol';
@@ -15,6 +15,7 @@ import './interfaces/IUserWithdrawalManager.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 /**
  *  @title Liquid Staking Pool Implementation
@@ -23,7 +24,12 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  *  We are building key staking middleware infra for multiple PoS networks
  * for retail crypto users, exchanges and custodians.
  */
-contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerUpgradeable, PausableUpgradeable {
+contract StaderStakePoolsManager is
+    IStaderStakePoolManager,
+    TimelockControllerUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     using Math for uint256;
 
     address public ethX;
@@ -66,6 +72,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
         __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
         __Pausable_init();
+        __ReentrancyGuard_init();
         ethX = _ethX;
         poolFactory = _poolFactory;
         poolSelector = _poolSelector;
@@ -111,7 +118,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @notice transfer the ETH to user withdraw manager to finalize requests
      * @param _amount amount of ETH to transfer
      */
-    function transferETHToUserWithdrawManager(uint256 _amount) external override {
+    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
         if (msg.sender != userWithdrawalManager) revert CallerNotUserWithdrawManager();
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
@@ -229,7 +236,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
 
     /** @dev See {IERC4626-maxWithdraw}. */
     function maxWithdraw(address owner) public view override returns (uint256) {
-        return _convertToAssets(ETHX(ethX).balanceOf(owner), Math.Rounding.Down);
+        return _convertToAssets(ETHx(ethX).balanceOf(owner), Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-previewDeposit}. */
@@ -256,12 +263,14 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @dev get pool wise validator to deposit from pool helper and
      * transfer that much eth to individual pool to register on beacon chain
      */
-    function validatorBatchDeposit() external override whenNotPaused {
-        uint256 pooledETH = depositedPooledETH -
+    function validatorBatchDeposit() external override nonReentrant whenNotPaused {
+        uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(userWithdrawalManager).ethRequestedForWithdraw();
         uint256 DEPOSIT_SIZE = IPoolFactory(poolFactory).getBeaconChainDepositSize();
-        if (pooledETH < DEPOSIT_SIZE) revert insufficientBalance();
-        uint256[] memory selectedPoolCapacity = IPoolSelector(poolSelector).computePoolAllocationForDeposit(pooledETH);
+        if (availableETHForNewDeposit < DEPOSIT_SIZE) revert insufficientBalance();
+        uint256[] memory selectedPoolCapacity = IPoolSelector(poolSelector).computePoolAllocationForDeposit(
+            availableETHForNewDeposit
+        );
         for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) continue;
@@ -269,7 +278,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
             uint256 poolDepositSize = DEPOSIT_SIZE - IPoolFactory(poolFactory).getCollateralETH(i);
 
             //slither-disable-next-line arbitrary-send-eth
-            IStaderPoolBase(poolAddress).registerOnBeaconChain{value: validatorToDeposit * poolDepositSize}();
+            IStaderPoolBase(poolAddress).receiveUserShareFromPoolManager{value: validatorToDeposit * poolDepositSize}();
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
         }
@@ -347,7 +356,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
         uint256 assets,
         uint256 shares
     ) internal {
-        ETHX(ethX).mint(receiver, shares);
+        ETHx(ethX).mint(receiver, shares);
         depositedPooledETH += assets;
         emit Deposited(caller, receiver, assets, shares);
     }

@@ -154,7 +154,7 @@ contract PermissionlessNodeRegistry is
         ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
-            _addValidatorKey(_pubkey[i], _signature[i], operatorId, operatorRewardAddress);
+            _addValidatorKey(_pubkey[i], _signature[i], operatorRewardAddress, operatorId, totalKeys);
         }
     }
 
@@ -572,15 +572,15 @@ contract PermissionlessNodeRegistry is
     function _addValidatorKey(
         bytes calldata _pubkey,
         bytes calldata _signature,
+        address payable _operatorRewardAddress,
         uint256 _operatorId,
-        address payable _operatorRewardAddress
+        uint256 _totalKeys
     ) internal {
-        uint256 totalKeys = getOperatorTotalKeys(_operatorId);
         _validateKeys(_pubkey, _signature);
         address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
             poolId,
             _operatorId,
-            totalKeys,
+            _totalKeys,
             _operatorRewardAddress
         );
         validatorRegistry[nextValidatorId] = Validator(
@@ -660,7 +660,12 @@ contract PermissionlessNodeRegistry is
 
     // checks if validator is withdrawn
     function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
-        if (validatorRegistry[_validatorId].status == ValidatorStatus.WITHDRAWN) return true;
+        Validator memory validator = validatorRegistry[_validatorId];
+        if (
+            validator.status == ValidatorStatus.WITHDRAWN ||
+            validator.status == ValidatorStatus.FRONT_RUN ||
+            validator.status == ValidatorStatus.INVALID_SIGNATURE
+        ) return true;
         return false;
     }
 
@@ -679,11 +684,11 @@ contract PermissionlessNodeRegistry is
 
     function _onlyInitializedValidator(uint256 _validatorId) internal view {
         if (_validatorId == 0 || validatorRegistry[_validatorId].status != ValidatorStatus.INITIALIZED)
-            revert PubkeyNotFoundOrDuplicateInput();
+            revert UNEXPECTED_STATUS();
     }
 
     function _onlyNonWithdrawnValidator(uint256 _validatorId) internal view {
         if (_validatorId == 0 || validatorRegistry[_validatorId].status == ValidatorStatus.WITHDRAWN)
-            revert PubkeyNotFoundOrDuplicateInput();
+            revert UNEXPECTED_STATUS();
     }
 }

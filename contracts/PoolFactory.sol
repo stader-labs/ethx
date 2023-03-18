@@ -94,20 +94,6 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getAllActiveValidators() public view override returns (Validator[] memory) {
-        Validator[] memory allValidators = new Validator[](getTotalActiveValidatorCount());
-        uint256 index;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            Validator[] memory validators = IStaderPoolBase(pools[i].poolAddress).getAllActiveValidators();
-            for (uint256 j = 0; j < validators.length; j++) {
-                allValidators[index] = validators[j];
-                index++;
-            }
-        }
-        return allValidators;
-    }
-
-    /// @inheritdoc IPoolFactory
     function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
         public
         view

@@ -9,11 +9,11 @@ import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
 
 /**
- * @title ethXVault Contract
+ * @title ETHx token Contract
  * @author Stader Labs
- * @notice The ERC20 contract for the ethX token and Vault
+ * @notice The ERC20 contract for the ETHx token
  */
-contract ETHX is ERC20, ERC20Burnable, AccessControl, Pausable {
+contract ETHx is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
 

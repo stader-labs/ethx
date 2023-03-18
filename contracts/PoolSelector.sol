@@ -14,7 +14,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     using SafeMath for uint256;
 
     uint8 public poolIdForExcessDeposit;
-    uint16 public BATCH_LIMIT;
+    uint16 public POOL_ALLOCATION_MAX_SIZE;
 
     address public poolFactoryAddress;
 
@@ -47,7 +47,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         __AccessControl_init_unchained();
 
         poolIdForExcessDeposit = 1;
-        BATCH_LIMIT = 100;
+        POOL_ALLOCATION_MAX_SIZE = 100;
         poolFactoryAddress = _poolFactoryAddress;
         poolTargets[1] = _permissionlessTarget;
         poolTargets[2] = _permissionedTarget;
@@ -77,8 +77,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         }
         uint256 totalEth = depositedETh + _pooledEth;
         uint256 totalValidatorsRequired = totalEth / DEPOSIT_SIZE;
-        // new validators to register on beacon chain with `_pooledEth` taking `BATCH_LIMIT` into consideration
-        uint256 newValidatorsToDeposit = Math.min(BATCH_LIMIT, _pooledEth / DEPOSIT_SIZE);
+        // new validators to register on beacon chain with `_pooledEth` taking `POOL_ALLOCATION_MAX_SIZE` into consideration
+        uint256 newValidatorsToDeposit = Math.min(POOL_ALLOCATION_MAX_SIZE, _pooledEth / DEPOSIT_SIZE);
         // `poolCapacity` array start with index 1
 
         selectedPoolCapacity = new uint256[](poolCount + 1);
@@ -102,9 +102,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         // and update the starting index of pool for next sequence after every iteration
         if (validatorSpunCount < newValidatorsToDeposit) {
             uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
-            // uint8[] memory poolQueue = new uint8[](IPoolFactory(poolFactoryAddress).poolCount());
-            for (uint8 i = poolIdForExcessDeposit; i <= poolCount; i++) {
-                //poolQueue[counter++] = i;
+            uint8 i = poolIdForExcessDeposit;
+            do {
                 uint256 newSelectedCapacity = Math.min(remainingPoolCapacity[i], remainingValidatorsToDeposit);
                 selectedPoolCapacity[i] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
@@ -114,21 +113,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
                     poolIdForExcessDeposit = (i % poolCount) + 1;
                     break;
                 }
-            }
-            if (remainingValidatorsToDeposit != 0) {
-                for (uint8 i = 1; i < poolIdForExcessDeposit; i++) {
-                    //poolQueue[counter++] = i;
-                    uint256 newSelectedCapacity = Math.min(remainingPoolCapacity[i], remainingValidatorsToDeposit);
-                    selectedPoolCapacity[i] += newSelectedCapacity;
-                    remainingValidatorsToDeposit -= newSelectedCapacity;
-                    // Don't have to update poolID if the `remainingValidatorsToDeposit` does not become 0
-                    // As we have scanned through all pool, will start from same pool in same iteration
-                    if (remainingValidatorsToDeposit == 0) {
-                        poolIdForExcessDeposit = (i % poolCount) + 1;
-                        break;
-                    }
-                }
-            }
+                i = (i % poolCount) + 1;
+            } while (i != poolIdForExcessDeposit);
         }
     }
 
@@ -149,7 +135,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         if (totalTarget != POOL_WEIGHTS_SUM) revert InvalidSumOfPoolTargets();
     }
 
-    function updateBatchLimit(uint16 _batchLimit) external onlyRole(POOL_SELECTOR_ADMIN) {
-        BATCH_LIMIT = _batchLimit;
+    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(POOL_SELECTOR_ADMIN) {
+        POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
     }
 }

@@ -14,8 +14,15 @@ import './interfaces/IPermissionedNodeRegistry.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionedPool is
+    IStaderPoolBase,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     using Math for uint256;
 
     uint8 public constant poolId = 2;
@@ -26,12 +33,11 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
     bytes32 public constant PERMISSIONED_POOL_ADMIN = keccak256('PERMISSIONED_POOL_ADMIN');
-    bytes32 public constant STADER_DAO = keccak256('STADER_DAO');
+    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
     uint256 public balanceForDeposit;
     uint256 public nextIndexToDeposit;
-    uint256 public MAX_DEPOSIT_BATCH_SIZE;
-    // uint256 public readyToDepositValidatorSize;
+    uint256 public VERIFIED_KEYS_BATCH_SIZE;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 32 ether;
@@ -42,8 +48,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     // @inheritdoc IStaderPoolBase
     uint256 public override operatorFeePercent;
-
-    // mapping(uint256 => bytes) public readyToDepositValidator;
 
     function initialize(
         address _adminOwner,
@@ -57,10 +61,10 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         Address.checkNonZeroAddress(_ethDepositContract);
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_staderStakePoolManager);
-        __Pausable_init();
         __AccessControl_init_unchained();
-
-        MAX_DEPOSIT_BATCH_SIZE = 100;
+        __Pausable_init();
+        __ReentrancyGuard_init();
+        VERIFIED_KEYS_BATCH_SIZE = 100;
         nodeRegistryAddress = _nodeRegistryAddress;
         ethDepositContract = _ethDepositContract;
         vaultFactoryAddress = _vaultFactoryAddress;
@@ -71,35 +75,39 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     receive() external payable {}
 
     function markValidatorReadyToDeposit(
-        bytes[] calldata _readyToDepositPubkey,
-        bytes[] calldata _frontRunPubkey,
-        bytes[] calldata _invalidSignaturePubkey
-    ) external onlyRole(STADER_DAO) {
-        uint256 verifiedValidatorLength = _readyToDepositPubkey.length;
-        if (verifiedValidatorLength > MAX_DEPOSIT_BATCH_SIZE) revert TooManyVerifiedKeysToDeposit();
+        bytes[] calldata _readyToDepositPubkeys,
+        bytes[] calldata _frontRunPubkeys,
+        bytes[] calldata _invalidSignaturePubkeys
+    ) external nonReentrant onlyRole(STADER_ORACLE) {
+        uint256 verifiedValidatorsLength = _readyToDepositPubkeys.length;
+        if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) revert TooManyVerifiedKeysToDeposit();
 
-        uint256 frontRunValidatorLength = _frontRunPubkey.length;
-        uint256 invalidSignatureValidatorLength = _invalidSignaturePubkey.length;
+        uint256 frontRunValidatorsLength = _frontRunPubkeys.length;
+        uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkeys.length;
 
-        if (frontRunValidatorLength > 0) {
-            IPermissionedNodeRegistry(nodeRegistryAddress).reportFrontRunValidator(_frontRunPubkey);
+        if (frontRunValidatorsLength > 0) {
+            IPermissionedNodeRegistry(nodeRegistryAddress).reportFrontRunValidator(_frontRunPubkeys);
         }
 
-        if (invalidSignatureValidatorLength > 0) {
-            IPermissionedNodeRegistry(nodeRegistryAddress).reportInvalidSignatureValidator(_invalidSignaturePubkey);
+        if (invalidSignatureValidatorsLength > 0) {
+            IPermissionedNodeRegistry(nodeRegistryAddress).reportInvalidSignatureValidator(_invalidSignaturePubkeys);
         }
 
         // send back 31 ETH for front run and invalid signature validators back to pool manager
-        uint256 amountToSendToPoolManager = (frontRunValidatorLength + invalidSignatureValidatorLength) * DEPOSIT_SIZE;
-        balanceForDeposit -= amountToSendToPoolManager;
+        // These counts are correct because any double reporting of frontrun/invalid statuses results in an error.
+        uint256 amountToSendToPoolManager = (frontRunValidatorsLength + invalidSignatureValidatorsLength) *
+            DEPOSIT_SIZE;
+        // update the remaining balance for 31 ETH deposit by subtracting the amount, sending to SSMP
+        // for invalid or front run keys and `verifiedValidatorLength` keys 31 ETH deposit amount
+        balanceForDeposit -= (amountToSendToPoolManager + verifiedValidatorsLength * DEPOSIT_SIZE);
+        //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: amountToSendToPoolManager}(
             poolId
         );
 
-        for (uint256 i = 0; i < verifiedValidatorLength; i++) {
-            IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_readyToDepositPubkey[i]);
-            _depositOnBeaconChain(_readyToDepositPubkey[i]);
-            balanceForDeposit -= verifiedValidatorLength * DEPOSIT_SIZE;
+        for (uint256 i = 0; i < verifiedValidatorsLength; i++) {
+            IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_readyToDepositPubkeys[i]);
+            _fullDepositOnBeaconChain(_readyToDepositPubkeys[i]);
         }
     }
 
@@ -124,10 +132,10 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     /**
-     * @notice receives eth from pool Manager to pre deposit validators
-     * @dev pre deposit validator taking care of pool capacity
+     * @notice receives eth from pool manager to deposit for validators on beacon chain
+     * @dev deposit `PRE_DEPOSIT_SIZE` for validator taking care of pool capacity
      */
-    function registerOnBeaconChain() external payable override onlyRole(POOL_MANAGER) {
+    function receiveUserShareFromPoolManager() external payable override onlyRole(POOL_MANAGER) {
         uint256 requiredValidators = msg.value / FULL_DEPOSIT_SIZE;
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
@@ -145,40 +153,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 index++
             ) {
                 uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
-
-                (
-                    ,
-                    bytes memory pubkey,
-                    bytes memory signature,
-                    address withdrawVaultAddress,
-                    ,
-                    ,
-                    ,
-
-                ) = IPermissionedNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
-
-                bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
-                    withdrawVaultAddress
-                );
-                bytes32 depositDataRoot = this.computeDepositDataRoot(
-                    pubkey,
-                    signature,
-                    withdrawCredential,
-                    PRE_DEPOSIT_SIZE
-                );
-
-                //slither-disable-next-line arbitrary-send-eth
-                IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
-                    pubkey,
-                    withdrawCredential,
-                    signature,
-                    depositDataRoot
-                );
-                IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(
-                    pubkey,
-                    ValidatorStatus.PRE_DEPOSIT
-                );
-                emit ValidatorPreDepositedOnBeaconChain(pubkey);
+                _preDepositOnBeaconChain(validatorId);
             }
             IPermissionedNodeRegistry(nodeRegistryAddress).updateQueuedValidatorIndex(
                 i,
@@ -282,8 +257,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
-    function updateMaxBatchDepositSize(uint256 _batchDepositSize) external onlyRole(PERMISSIONED_POOL_ADMIN) {
-        MAX_DEPOSIT_BATCH_SIZE = _batchDepositSize;
+    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+        VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
     }
 
     function getCollateralETH() external view override returns (uint256) {
@@ -315,8 +290,37 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
     }
 
+    // deposit `PRE_DEPOSIT_SIZE` for validator
+    function _preDepositOnBeaconChain(uint256 _validatorId) internal {
+        (
+            ,
+            bytes memory pubkey,
+            bytes memory signature,
+            address withdrawVaultAddress,
+            ,
+            ,
+            ,
+
+        ) = IPermissionedNodeRegistry(nodeRegistryAddress).validatorRegistry(_validatorId);
+
+        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+            withdrawVaultAddress
+        );
+        bytes32 depositDataRoot = this.computeDepositDataRoot(pubkey, signature, withdrawCredential, PRE_DEPOSIT_SIZE);
+
+        //slither-disable-next-line arbitrary-send-eth
+        IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
+            pubkey,
+            withdrawCredential,
+            signature,
+            depositDataRoot
+        );
+        IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.PRE_DEPOSIT);
+        emit ValidatorPreDepositedOnBeaconChain(pubkey);
+    }
+
     // deposit `DEPOSIT_SIZE` for the verified preDeposited Validator
-    function _depositOnBeaconChain(bytes calldata _pubkey) internal {
+    function _fullDepositOnBeaconChain(bytes calldata _pubkey) internal {
         uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey);
         (, , bytes memory signature, address withdrawVaultAddress, , , , ) = IPermissionedNodeRegistry(
             nodeRegistryAddress

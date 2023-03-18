@@ -25,12 +25,6 @@ interface IPoolFactory {
 
     /**
      * @notice Returns an array of active validators from all the pools.
-     * @return An array of `Validator` objects representing the active validators.
-     */
-    function getAllActiveValidators() external view returns (Validator[] memory);
-
-    /**
-     * @notice Returns an array of active validators from all the pools.
      *
      * @param pageNumber The page number of the results to fetch (starting from 1).
      * @param pageSize The maximum number of items per page.

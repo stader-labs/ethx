@@ -52,8 +52,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         Address.checkNonZeroAddress(_ethDepositContract);
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_staderStakePoolManager);
-        __Pausable_init();
         __AccessControl_init_unchained();
+        __Pausable_init();
         nodeRegistryAddress = _nodeRegistryAddress;
         ethDepositContract = _ethDepositContract;
         vaultFactoryAddress = _vaultFactoryAddress;
@@ -106,6 +106,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             withdrawCredential,
             PRE_DEPOSIT_SIZE
         );
+        //slither-disable-next-line arbitrary-send-eth
         IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
             _pubkey,
             withdrawCredential,
@@ -116,11 +117,11 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     /**
-     * @notice receives eth from pool Manager to register validators
+     * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit validator taking care of pool capacity
      * send back the excess amount of ETH back to poolManager
      */
-    function registerOnBeaconChain() external payable onlyRole(POOL_MANAGER) {
+    function receiveUserShareFromPoolManager() external payable override onlyRole(POOL_MANAGER) {
         uint256 requiredValidators = msg.value / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
             requiredValidators * DEPOSIT_NODE_BOND
@@ -129,31 +130,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistryAddress).nextQueuedValidatorIndex();
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
-            (
-                ,
-                bytes memory pubkey,
-                bytes memory signature,
-                address withdrawVaultAddress,
-                ,
-                ,
-                ,
-
-            ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
-
-            bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
-                withdrawVaultAddress
-            );
-
-            bytes32 depositDataRoot = this.computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
-            IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
-                pubkey,
-                withdrawCredential,
-                signature,
-                depositDataRoot
-            );
-            IPermissionlessNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(validatorId);
-            IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
-            emit ValidatorDepositedOnBeaconChain(validatorId, pubkey);
+            _fullDepositOnBeaconChain(validatorId);
         }
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(
             depositQueueStartIndex + requiredValidators
@@ -291,6 +268,34 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                     sha256(abi.encodePacked(amount, bytes24(0), signature_root))
                 )
             );
+    }
+
+    function _fullDepositOnBeaconChain(uint256 _validatorId) internal {
+        (
+            ,
+            bytes memory pubkey,
+            bytes memory signature,
+            address withdrawVaultAddress,
+            ,
+            ,
+            ,
+
+        ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(_validatorId);
+
+        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+            withdrawVaultAddress
+        );
+
+        bytes32 depositDataRoot = this.computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
+        IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
+            pubkey,
+            withdrawCredential,
+            signature,
+            depositDataRoot
+        );
+        IPermissionlessNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(_validatorId);
+        IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
+        emit ValidatorDepositedOnBeaconChain(_validatorId, pubkey);
     }
 
     //ethereum deposit contract function to get amount into little_endian_64

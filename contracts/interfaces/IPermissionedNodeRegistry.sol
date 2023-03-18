@@ -13,7 +13,7 @@ interface IPermissionedNodeRegistry {
     error NameCrossedMaxLength();
     error PubkeyAlreadyExist();
     error PubkeyDoesNotExist();
-    error PubkeyNotFoundOrDuplicateInput();
+    error UNEXPECTED_STATUS();
     error OperatorIsDeactivate();
     error InvalidLengthOfpubkey();
     error InvalidStartAndEndIndex();

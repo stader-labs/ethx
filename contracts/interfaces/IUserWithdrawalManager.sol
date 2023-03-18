@@ -4,6 +4,8 @@ pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
     error TransferFailed();
+    error TokenTransferFailed();
+    error ProtocolInSlashingMode();
     error InSufficientBalance();
     error ProtocolNotHealthy();
     error InvalidWithdrawAmount();
@@ -12,11 +14,10 @@ interface IUserWithdrawalManager {
     error InvalidRequestId(uint256 _requestId);
     error requestIdNotFinalized(uint256 _requestId);
     error RequestAlreadyRedeemed(uint256 _requestId);
-    error InvalidFinalizationRequestId(uint256 _requestId);
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
-    event UpdatedPaginationLimit(uint256 paginationLimit);
+    event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
     event WithdrawRequestReceived(
         address indexed _msgSender,
         address _recipient,
@@ -44,13 +45,11 @@ interface IUserWithdrawalManager {
 
     function maxWithdrawAmount() external view returns (uint256);
 
-    function paginationLimit() external view returns (uint256);
-
-    function lockedEtherAmount() external view returns (uint256);
+    function finalizationBatchLimit() external view returns (uint256);
 
     function nextRequestIdToFinalize() external view returns (uint256);
 
-    function latestRequestId() external view returns (uint256);
+    function nextRequestId() external view returns (uint256);
 
     function DECIMALS() external view returns (uint256);
 
@@ -63,9 +62,9 @@ interface IUserWithdrawalManager {
             bool redeemStatus,
             address owner,
             address payable recipient,
-            uint256 ethAmount,
             uint256 ethXAmount,
-            uint256 finalizedExchangeRate
+            uint256 ethExpected,
+            uint256 ethFinalized
         );
 
     function requestIdsByUserAddress(address, uint256) external view returns (uint256);
@@ -74,7 +73,7 @@ interface IUserWithdrawalManager {
 
     function updateMaxWithdrawAmount(uint256 _minWithdrawAmount) external;
 
-    function updatePaginationLimit(uint256 _paginationLimit) external;
+    function updateFinalizationBatchLimit(uint256 _paginationLimit) external;
 
     function withdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
 

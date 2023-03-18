@@ -8,6 +8,7 @@ interface IPermissionlessNodeRegistry {
     // Error events
     error TransferFailed();
     error EmptyNameString();
+    error UNEXPECTED_STATUS();
     error NameCrossedMaxLength();
     error OperatorNotOnBoarded();
     error InvalidBondEthValue();

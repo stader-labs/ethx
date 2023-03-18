@@ -151,7 +151,7 @@ contract PermissionedNodeRegistry is
         ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
-            _addValidatorKey(_pubkey[i], _signature[i], operatorId, operatorRewardAddress);
+            _addValidatorKey(_pubkey[i], _signature[i], operatorRewardAddress, operatorId, totalKey);
         }
     }
 
@@ -192,8 +192,8 @@ contract PermissionedNodeRegistry is
         if (numValidators > totalValidatorToDeposit) {
             uint16 totalOperators = nextOperatorId - 1;
             uint256 remainingValidatorsToDeposit = numValidators - totalValidatorToDeposit;
-
-            for (uint16 i = operatorIdForExcessDeposit; i <= totalOperators; i++) {
+            uint16 i = operatorIdForExcessDeposit;
+            do {
                 if (!operatorStructById[i].active) continue;
                 uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
                 selectedOperatorCapacity[i] += newSelectedCapacity;
@@ -202,19 +202,8 @@ contract PermissionedNodeRegistry is
                     operatorIdForExcessDeposit = (i % totalOperators) + 1;
                     break;
                 }
-            }
-            if (remainingValidatorsToDeposit != 0) {
-                for (uint16 i = 1; i < operatorIdForExcessDeposit; i++) {
-                    if (!operatorStructById[i].active) continue;
-                    uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
-                    selectedOperatorCapacity[i] += newSelectedCapacity;
-                    remainingValidatorsToDeposit -= newSelectedCapacity;
-                    if (remainingValidatorsToDeposit == 0) {
-                        operatorIdForExcessDeposit = (i % totalOperators) + 1;
-                        break;
-                    }
-                }
-            }
+                i = (i % totalOperators) + 1;
+            } while (i != operatorIdForExcessDeposit);
         }
     }
 
@@ -250,7 +239,7 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice handling of fully withdrawn validators
+     * @notice Flag fully withdrawn validators as reported by oracle.
      * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
@@ -258,11 +247,11 @@ contract PermissionedNodeRegistry is
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
-            if (validatorId == 0) revert PubkeyDoesNotExist();
+            _onlyNonWithdrawnValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnTime = block.timestamp;
-            //take out money from withdraw vault --need interface of withdrawVault
-            //if optout, clear nodeELVault --need interfaces of NodeELVault
+            //TODO sanjay take out money from withdraw vault --need interface of withdrawVault
+            //TODO sanjay if optout, clear nodeELVault --need interfaces of NodeELVault
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         _decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
@@ -406,7 +395,7 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice update maximum key to be deposited in a batch
+     * @notice update number of validator keys that can be added in a single tx by the operator
      * @dev only admin can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
@@ -537,7 +526,7 @@ contract PermissionedNodeRegistry is
      * @dev loop over all validator to filter out the initialized, front run and withdrawn and return the rest
      */
     function getAllActiveValidators() public view override returns (Validator[] memory) {
-        Validator[] memory validators = new Validator[](getTotalActiveValidatorCount());
+        Validator[] memory validators = new Validator[](totalActiveValidatorCount);
         uint256 validatorCount = 0;
         for (uint256 i = 1; i < nextValidatorId; i++) {
             if (_isActiveValidator(i)) {
@@ -558,8 +547,7 @@ contract PermissionedNodeRegistry is
 
     // check for duplicate keys in permissioned node registry
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
-        if (validatorIdByPubkey[_pubkey] != 0) return true;
-        return false;
+        return validatorIdByPubkey[_pubkey] != 0;
     }
 
     // check for only PRE_DEPOSIT state validators
@@ -580,16 +568,15 @@ contract PermissionedNodeRegistry is
     function _addValidatorKey(
         bytes calldata _pubkey,
         bytes calldata _signature,
+        address payable operatorRewardAddress,
         uint16 _operatorId,
-        address payable operatorRewardAddress
+        uint256 _totalKeys
     ) internal {
         _validateKeys(_pubkey, _signature);
-        uint256 totalKeys = getOperatorTotalKeys(_operatorId);
-
         address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
             poolId,
             _operatorId,
-            totalKeys,
+            _totalKeys,
             operatorRewardAddress
         );
         validatorRegistry[nextValidatorId] = Validator(
@@ -636,7 +623,8 @@ contract PermissionedNodeRegistry is
         if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();
     }
 
-    // checks if validator is active, active validator are those having user share on beacon chain
+    // checks if validator is active,
+    //active validator are those having user share deposited on ET2 deposit contract
     function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (
@@ -648,7 +636,7 @@ contract PermissionedNodeRegistry is
         return true;
     }
 
-    // checks if validator is withdrawn
+    // checks if validator status enum is withdrawn ,front run and invalid signature
     function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (
@@ -671,7 +659,11 @@ contract PermissionedNodeRegistry is
     }
 
     function _onlyPreDepositValidator(uint256 _validatorId) internal view {
-        if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT)
-            revert PubkeyNotFoundOrDuplicateInput();
+        if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT) revert UNEXPECTED_STATUS();
+    }
+
+    function _onlyNonWithdrawnValidator(uint256 _validatorId) internal view {
+        if (_validatorId == 0 || validatorRegistry[_validatorId].status == ValidatorStatus.WITHDRAWN)
+            revert UNEXPECTED_STATUS();
     }
 }
