@@ -6,17 +6,20 @@ import './library/Address.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
+import './interfaces/IValidatorWithdrawVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderConfig.sol';
 
-contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract ValidatorWithdrawVault is
+    IValidatorWithdrawVault,
+    Initializable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
+{
+    bytes32 public constant STADER_NODE_REGISTRY_CONTRACT = keccak256('STADER_NODE_REGISTRY_CONTRACT');
     IStaderConfig staderConfig;
-
-    // Pool information
     uint8 public poolId;
-
-    // Recipients
     address payable public nodeRecipient;
 
     // TODO: update params where this is deployed
@@ -33,7 +36,7 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
 
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
         staderConfig = IStaderConfig(_staderConfig);
@@ -44,12 +47,17 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
      * @dev skimmed rewards may be sent as plain ETH transfers
      */
     receive() external payable {
-        // emit ETHReceived(msg.value);
+        emit ETHReceived(msg.sender, msg.value);
     }
 
     function distributeRewards() external nonReentrant {
         uint256 totalRewards = address(this).balance;
-        require(totalRewards <= staderConfig.rewardThreshold(), 'more fund in contract');
+
+        // TODO: in below condition, let staderManager handle it, impl to byPass below revert for staderManager
+        if (totalRewards > staderConfig.rewardThreshold()) {
+            emit DistributeRewardFailed(totalRewards, staderConfig.rewardThreshold());
+            revert InvalidRewardAmount();
+        }
 
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(totalRewards);
 
@@ -59,6 +67,8 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
         _sendValue(payable(staderConfig.treasury()), protocolShare);
     }
 
+    // TODO: add penalty changes
+    // TODO: change percent to fee and 100 to 10_000
     function _calculateRewardShare(uint256 _totalRewards)
         internal
         view
@@ -84,8 +94,8 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function settleFunds() external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateFinalShare();
+    function settleFunds() external nonReentrant onlyRole(STADER_NODE_REGISTRY_CONTRACT) {
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawShare();
 
         // Final settlement
         IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
@@ -93,7 +103,8 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
         _sendValue(payable(staderConfig.treasury()), protocolShare);
     }
 
-    function _calculateFinalShare()
+    // TODO: add penalty changes
+    function _calculateValidatorWithdrawShare()
         internal
         view
         returns (
@@ -109,17 +120,12 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
 
         uint256 totalRewards;
 
-        if (contractBalance <= staderConfig.rewardThreshold()) {
-            totalRewards = contractBalance;
-        } else if (contractBalance < usersETH) {
+        if (contractBalance < usersETH) {
             _userShare = contractBalance;
-            _operatorShare = 0;
-            _protocolShare = 0;
             return (_userShare, _operatorShare, _protocolShare);
         } else if (contractBalance < TOTAL_STAKED_ETH) {
             _userShare = usersETH;
             _operatorShare = contractBalance - _userShare;
-            _protocolShare = 0;
             return (_userShare, _operatorShare, _protocolShare);
         } else {
             totalRewards = contractBalance - TOTAL_STAKED_ETH;
@@ -138,7 +144,7 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
 
         //slither-disable-next-line arbitrary-send-eth
         if (amount > 0) {
-            (bool success, ) = recipient.call{value: amount}('');
+            (bool success, ) = recipient.call{value: amount}(''); // TODO: Manoj check if call is best ??
             require(success, 'Address: unable to send value, recipient may have reverted');
         }
     }
