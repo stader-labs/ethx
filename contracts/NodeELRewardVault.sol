@@ -11,7 +11,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
-    address public staderConfig;
+    IStaderConfig public staderConfig;
 
     // Pool information
     uint8 public poolId;
@@ -34,7 +34,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
 
-        staderConfig = _staderConfig;
+        staderConfig = IStaderConfig(_staderConfig);
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
     }
@@ -55,9 +55,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         bool success;
 
         // Distribute rewards
-        IStaderStakePoolManager(getStaderStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
+        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(getStaderTreasury()).call{value: protocolShare}('');
+        (success, ) = payable(staderConfig.treasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
@@ -76,7 +76,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = getTotalStakedEth();
+        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeePercent = getProtocolFeePercent();
@@ -93,31 +93,15 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function getTotalStakedEth() public view returns (uint256) {
-        return IStaderConfig(staderConfig).totalStakedEth();
-    }
-
-    function getPoolFactory() public view returns (address) {
-        return IStaderConfig(staderConfig).poolFactory();
-    }
-
-    function getStaderTreasury() public view returns (address) {
-        return IStaderConfig(staderConfig).treasury();
-    }
-
-    function getStaderStakePoolManager() public view returns (address) {
-        return IStaderConfig(staderConfig).stakePoolManager();
-    }
-
     function getProtocolFeePercent() internal view returns (uint256) {
-        return IPoolFactory(getPoolFactory()).getProtocolFeePercent(poolId);
+        return IPoolFactory(staderConfig.poolFactory()).getProtocolFeePercent(poolId);
     }
 
     function getOperatorFeePercent() internal view returns (uint256) {
-        return IPoolFactory(getPoolFactory()).getOperatorFeePercent(poolId);
+        return IPoolFactory(staderConfig.poolFactory()).getOperatorFeePercent(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {
-        return IPoolFactory(getPoolFactory()).getCollateralETH(poolId);
+        return IPoolFactory(staderConfig.poolFactory()).getCollateralETH(poolId);
     }
 }
