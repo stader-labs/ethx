@@ -11,6 +11,11 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
     address public poolFactory;
     address public stakePoolManager;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _admin) external initializer {
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
