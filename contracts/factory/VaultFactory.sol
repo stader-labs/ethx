@@ -57,9 +57,11 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         return withdrawVaultAddress;
     }
 
+    // TODO: update the signature where this method is invoked
     function deployNodeELRewardVault(
         uint8 poolType,
         uint256 operatorId,
+        address staderConfig,
         address payable nodeRecipient
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address nodeELRewardVaultAddress;
@@ -67,10 +69,8 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
         NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(
             vaultOwner,
+            staderConfig,
             nodeRecipient,
-            staderTreasury,
-            staderStakePoolsManager,
-            poolFactory,
             poolType
         );
 
