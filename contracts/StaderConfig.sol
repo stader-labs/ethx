@@ -5,6 +5,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract StaderConfig is Initializable, AccessControlUpgradeable {
     uint256 public totalStakedEth;
+    uint256 public rewardThreshold;
 
     address public treasury;
     address public poolFactory;
@@ -19,6 +20,10 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
 
     function updateTotalStakedEth(uint256 _totalStakedEth) external onlyRole(DEFAULT_ADMIN_ROLE) {
         totalStakedEth = _totalStakedEth;
+    }
+
+    function updateRewardThreshold(uint256 _rewardThreshold) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        rewardThreshold = _rewardThreshold;
     }
 
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
