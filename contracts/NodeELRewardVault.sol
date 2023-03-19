@@ -2,6 +2,7 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
+import './interfaces/IStaderConfig.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
@@ -10,41 +11,32 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+    address public staderConfig;
+
     // Pool information
     uint8 public poolId;
-    address public poolFactory;
 
     // Recipients
     address payable public nodeRecipient;
-    address payable public staderTreasury;
-    address payable public staderStakePoolsManager;
-
-    uint256 public constant TOTAL_STAKED_ETH = 32 ether;
 
     function initialize(
         address _owner,
+        address _staderConfig,
         address payable _nodeRecipient,
-        address payable _staderTreasury,
-        address payable _staderStakePoolsManager,
-        address _poolFactory,
         uint8 _poolId
     ) external initializer {
         Address.checkNonZeroAddress(_owner);
+        Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_nodeRecipient);
-        Address.checkNonZeroAddress(_staderTreasury);
-        Address.checkNonZeroAddress(_staderStakePoolsManager);
-        Address.checkNonZeroAddress(_poolFactory);
-
-        staderTreasury = _staderTreasury;
-        nodeRecipient = _nodeRecipient;
-        staderStakePoolsManager = _staderStakePoolsManager;
-        poolFactory = _poolFactory;
-        poolId = _poolId;
-
-        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
 
         __AccessControl_init();
         __ReentrancyGuard_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+
+        staderConfig = _staderConfig;
+        nodeRecipient = _nodeRecipient;
+        poolId = _poolId;
     }
 
     /**
@@ -63,9 +55,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         bool success;
 
         // Distribute rewards
-        IStaderStakePoolManager(staderStakePoolsManager).receiveExecutionLayerRewards{value: userShare}();
+        IStaderStakePoolManager(getStaderStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderTreasury).call{value: protocolShare}('');
+        (success, ) = payable(getStaderTreasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
@@ -83,6 +75,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             uint256 _protocolShare
         )
     {
+        uint256 TOTAL_STAKED_ETH = getTotalStakedEth();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeePercent = getProtocolFeePercent();
@@ -98,15 +91,31 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
+    function getTotalStakedEth() public view returns (uint256) {
+        return IStaderConfig(staderConfig).totalStakedEth();
+    }
+
+    function getPoolFactory() public view returns (address) {
+        return IStaderConfig(staderConfig).poolFactory();
+    }
+
+    function getStaderTreasury() public view returns (address) {
+        return IStaderConfig(staderConfig).treasury();
+    }
+
+    function getStaderStakePoolManager() public view returns (address) {
+        return IStaderConfig(staderConfig).stakePoolManager();
+    }
+
     function getProtocolFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getProtocolFeePercent(poolId);
+        return IPoolFactory(getPoolFactory()).getProtocolFeePercent(poolId);
     }
 
     function getOperatorFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getOperatorFeePercent(poolId);
+        return IPoolFactory(getPoolFactory()).getOperatorFeePercent(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {
-        return IPoolFactory(poolFactory).getCollateralETH(poolId);
+        return IPoolFactory(getPoolFactory()).getCollateralETH(poolId);
     }
 }
