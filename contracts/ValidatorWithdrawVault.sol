@@ -8,43 +8,35 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
+import './interfaces/IStaderConfig.sol';
 
 contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+    IStaderConfig staderConfig;
+
     // Pool information
     uint8 public poolId;
-    address public poolFactory;
 
     // Recipients
     address payable public nodeRecipient;
-    address payable public staderTreasury;
-    address payable public staderStakePoolsManager;
 
-    uint256 public maxPossibleReward; // TODO: Manoj remove it later, when read from index contract.
-    uint256 public constant TOTAL_STAKED_ETH = 32 ether;
-
+    // TODO: update params where this is deployed
     function initialize(
         address _admin,
+        address _staderConfig,
         address payable _nodeRecipient,
-        address payable _staderTreasury,
-        address payable _staderStakePoolsManager,
-        address _poolFactory,
         uint8 _poolId
     ) external initializer {
         Address.checkNonZeroAddress(_admin);
+        Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_nodeRecipient);
-        Address.checkNonZeroAddress(_staderTreasury);
-        Address.checkNonZeroAddress(_staderStakePoolsManager);
-        Address.checkNonZeroAddress(_poolFactory);
 
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
-        staderTreasury = _staderTreasury;
         nodeRecipient = _nodeRecipient;
-        staderStakePoolsManager = _staderStakePoolsManager;
-        poolFactory = _poolFactory;
         poolId = _poolId;
+        staderConfig = IStaderConfig(_staderConfig);
     }
 
     /**
@@ -57,14 +49,14 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
 
     function distributeRewards() external nonReentrant {
         uint256 totalRewards = address(this).balance;
-        require(totalRewards <= maxPossibleReward, 'more fund in contract');
+        require(totalRewards <= staderConfig.rewardThreshold(), 'more fund in contract');
 
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(totalRewards);
 
         // Distribute rewards
-        IStaderStakePoolManager(staderStakePoolsManager).receiveWithdrawVaultUserShare{value: userShare}();
+        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
-        _sendValue(staderTreasury, protocolShare);
+        _sendValue(payable(staderConfig.treasury()), protocolShare);
     }
 
     function _calculateRewardShare(uint256 _totalRewards)
@@ -76,6 +68,7 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
             uint256 _protocolShare
         )
     {
+        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeePercent = getProtocolFeePercent();
@@ -95,9 +88,9 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateFinalShare();
 
         // Final settlement
-        IStaderStakePoolManager(staderStakePoolsManager).receiveWithdrawVaultUserShare{value: userShare}();
+        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
-        _sendValue(staderTreasury, protocolShare);
+        _sendValue(payable(staderConfig.treasury()), protocolShare);
     }
 
     function _calculateFinalShare()
@@ -109,13 +102,14 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
             uint256 _protocolShare
         )
     {
+        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
         uint256 collateralETH = getCollateralETH(); // 0, incase of permissioned NOs
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 contractBalance = address(this).balance;
 
         uint256 totalRewards;
 
-        if (contractBalance <= maxPossibleReward) {
+        if (contractBalance <= staderConfig.rewardThreshold()) {
             totalRewards = contractBalance;
         } else if (contractBalance < usersETH) {
             _userShare = contractBalance;
@@ -152,15 +146,15 @@ contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, Reen
     // getters
 
     function getProtocolFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getProtocolFeePercent(poolId);
+        return IPoolFactory(staderConfig.poolFactory()).getProtocolFeePercent(poolId);
     }
 
     // should return 0, for permissioned NOs
     function getOperatorFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getOperatorFeePercent(poolId);
+        return IPoolFactory(staderConfig.poolFactory()).getOperatorFeePercent(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {
-        return IPoolFactory(poolFactory).getCollateralETH(poolId);
+        return IPoolFactory(staderConfig.poolFactory()).getCollateralETH(poolId);
     }
 }
