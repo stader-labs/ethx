@@ -18,9 +18,9 @@ contract UserWithdrawalManager is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    bool public override slashingMode; //TODO read this from stader oracle contract
-    address public override ethX; //not setting the value for now, will read from index contract
-    address public override poolManager; //not setting the value for now, will read from index contract
+    bool public override slashingMode; //TODO sanjay read this from stader oracle contract
+    address public override ethX; //TODO sanjay not setting the value for now, will read from index contract
+    address public override poolManager; //TODO sanjay not setting the value for now, will read from index contract
     uint256 public constant override DECIMALS = 10**18;
     uint256 public override nextRequestIdToFinalize;
     uint256 public override nextRequestId;
@@ -28,17 +28,20 @@ contract UserWithdrawalManager is
     uint256 public override maxWithdrawAmount;
     uint256 public override finalizationBatchLimit;
     uint256 public override ethRequestedForWithdraw;
+    //upper cap on user non redeemed withdraw request count
+    uint256 public override maxNonRedeemedUserRequestCount;
 
     bytes32 public constant override USER_WITHDRAWAL_MANAGER_ADMIN = keccak256('USER_WITHDRAWAL_MANAGER_ADMIN');
 
     /// @notice user withdrawal requests
     mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
 
+    //TODO sanjay cap the size of array
+    //TODO sanjay delete entry once redeemed
     mapping(address => uint256[]) public override requestIdsByUserAddress;
 
     /// @notice structure representing a user request for withdrawal.
     struct UserWithdrawInfo {
-        bool redeemStatus; // set to true after user redeem the request
         address owner; // ethX owner
         address payable recipient; //payable address of the recipient to transfer withdrawal
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
@@ -56,6 +59,7 @@ contract UserWithdrawalManager is
         minWithdrawAmount = 100;
         maxWithdrawAmount = 10000 ether;
         finalizationBatchLimit = 50;
+        maxNonRedeemedUserRequestCount = 1000;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
@@ -68,7 +72,7 @@ contract UserWithdrawalManager is
         override
         onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
     {
-        if (_minWithdrawAmount == 0 || _minWithdrawAmount >= maxWithdrawAmount) revert InvalidMinWithdrawValue();
+        if (_minWithdrawAmount == 0 || _minWithdrawAmount > maxWithdrawAmount) revert InvalidMinWithdrawValue();
         minWithdrawAmount = _minWithdrawAmount;
         emit UpdatedMinWithdrawAmount(minWithdrawAmount);
     }
@@ -82,7 +86,7 @@ contract UserWithdrawalManager is
         override
         onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
     {
-        if (_maxWithdrawAmount <= minWithdrawAmount) revert InvalidMaxWithdrawValue();
+        if (_maxWithdrawAmount < minWithdrawAmount) revert InvalidMaxWithdrawValue();
         maxWithdrawAmount = _maxWithdrawAmount;
         emit UpdatedMaxWithdrawAmount(maxWithdrawAmount);
     }
@@ -109,20 +113,16 @@ contract UserWithdrawalManager is
     function withdraw(uint256 _ethXAmount, address receiver) external override whenNotPaused returns (uint256) {
         uint256 assets = IStaderStakePoolManager(poolManager).previewWithdraw(_ethXAmount);
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
+        if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
+            revert MaxLimitOnWithdrawRequestCountReached();
         address msgSender = msg.sender;
+        //TODO sanjay user safeTransfer
         if (!ETHx(ethX).transferFrom(msgSender, (address(this)), _ethXAmount)) revert TokenTransferFailed();
         ethRequestedForWithdraw += assets;
-        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
-            false,
-            msgSender,
-            payable(receiver),
-            _ethXAmount,
-            assets,
-            0
-        );
+        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(msgSender, payable(receiver), _ethXAmount, assets, 0);
         requestIdsByUserAddress[msgSender].push(nextRequestId);
+        emit WithdrawRequestReceived(msgSender, receiver, nextRequestId, _ethXAmount, assets);
         nextRequestId++;
-        emit WithdrawRequestReceived(msgSender, receiver, nextRequestId - 1, _ethXAmount, assets);
         return nextRequestId - 1;
     }
 
@@ -149,29 +149,29 @@ contract UserWithdrawalManager is
                 break;
             }
             userWithdrawRequests[requestId].ethFinalized = minEThRequiredToFinalizeRequest;
+            ethRequestedForWithdraw -= requiredEth;
             lockedEthXToBurn += lockedEthX;
             ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
         }
         if (requestId >= nextRequestIdToFinalize) {
             ETHx(ethX).burnFrom(address(this), lockedEthXToBurn);
-            ethRequestedForWithdraw -= ethToSendToFinalizeRequest;
             nextRequestIdToFinalize = requestId + 1;
             IStaderStakePoolManager(poolManager).transferETHToUserWithdrawManager(ethToSendToFinalizeRequest);
         }
     }
 
     /**
-     * @notice transfer the eth of finalized request and delete the request
+     * @notice transfer the eth of finalized request to recipient and delete the request
      * @param _requestId request id to redeem
      */
     function redeem(uint256 _requestId) external override {
         if (_requestId >= nextRequestId) revert InvalidRequestId(_requestId);
         if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
         UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
-        if (userRequest.redeemStatus) revert RequestAlreadyRedeemed(_requestId);
+        if (userRequest.ethExpected == 0) revert RequestAlreadyRedeemed(_requestId);
         uint256 etherToTransfer = userRequest.ethFinalized;
+        _deleteRequestId(_requestId, userRequest.owner);
         _sendValue(userRequest.recipient, etherToTransfer);
-
         emit RequestRedeemed(msg.sender, userRequest.recipient, etherToTransfer);
     }
 
@@ -193,6 +193,21 @@ contract UserWithdrawalManager is
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
+    }
+
+    // delete entry from userWithdrawRequests mapping and in requestIdsByUserAddress mapping
+    function _deleteRequestId(uint256 _requestId, address _owner) internal {
+        delete (userWithdrawRequests[_requestId]);
+        uint256 requestIdIndex;
+        uint256 userRequestCount = requestIdsByUserAddress[_owner].length;
+        for (uint256 i = 0; i < userRequestCount; i++) {
+            if (_requestId == requestIdsByUserAddress[_owner][i]) {
+                requestIdIndex = i;
+                break;
+            }
+        }
+        requestIdsByUserAddress[_owner][requestIdIndex] = requestIdsByUserAddress[_owner][userRequestCount - 1];
+        requestIdsByUserAddress[_owner].pop();
     }
 
     function _sendValue(address payable recipient, uint256 amount) internal {

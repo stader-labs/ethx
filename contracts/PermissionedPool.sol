@@ -42,6 +42,7 @@ contract PermissionedPool is
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 32 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
+    uint256 public constant TOTAL_FEE = 10000;
 
     // @inheritdoc IStaderPoolBase
     uint256 public override protocolFeePercent;
@@ -107,13 +108,14 @@ contract PermissionedPool is
 
         for (uint256 i = 0; i < verifiedValidatorsLength; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_readyToDepositPubkeys[i]);
+            // TODO sanjay update 31ETH limbo
             _fullDepositOnBeaconChain(_readyToDepositPubkeys[i]);
         }
     }
 
     // @inheritdoc IStaderPoolBase
     function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
-        require(_protocolFeePercent <= 100, 'Protocol fee percent should be less than 100');
+        require(_protocolFeePercent <= TOTAL_FEE, 'Protocol fee percent should be less than 10000');
         require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
 
         protocolFeePercent = _protocolFeePercent;
@@ -123,7 +125,7 @@ contract PermissionedPool is
 
     // @inheritdoc IStaderPoolBase
     function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONED_POOL_ADMIN) {
-        require(_operatorFeePercent <= 100, 'Operator fee percent should be less than 100');
+        require(_operatorFeePercent <= TOTAL_FEE, 'Operator fee percent should be less than 10000');
         require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
 
         operatorFeePercent = _operatorFeePercent;
@@ -133,9 +135,9 @@ contract PermissionedPool is
 
     /**
      * @notice receives eth from pool manager to deposit for validators on beacon chain
-     * @dev deposit `PRE_DEPOSIT_SIZE` for validator taking care of pool capacity
+     * @dev deposit PRE_DEPOSIT_SIZE of ETH for validators while adhering to pool capacity.
      */
-    function receiveUserShareFromPoolManager() external payable override onlyRole(POOL_MANAGER) {
+    function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
         uint256 requiredValidators = msg.value / FULL_DEPOSIT_SIZE;
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
@@ -153,6 +155,7 @@ contract PermissionedPool is
                 index++
             ) {
                 uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
+                // TODO sanjay update 1ETH limbo
                 _preDepositOnBeaconChain(validatorId);
             }
             IPermissionedNodeRegistry(nodeRegistryAddress).updateQueuedValidatorIndex(
@@ -338,7 +341,6 @@ contract PermissionedPool is
             depositDataRoot
         );
         IPermissionedNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(validatorId);
-        IPermissionedNodeRegistry(nodeRegistryAddress).updateValidatorStatus(_pubkey, ValidatorStatus.DEPOSITED);
         emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey);
     }
 

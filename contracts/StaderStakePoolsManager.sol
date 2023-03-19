@@ -278,7 +278,7 @@ contract StaderStakePoolsManager is
             uint256 poolDepositSize = DEPOSIT_SIZE - IPoolFactory(poolFactory).getCollateralETH(i);
 
             //slither-disable-next-line arbitrary-send-eth
-            IStaderPoolBase(poolAddress).receiveUserShareFromPoolManager{value: validatorToDeposit * poolDepositSize}();
+            IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
         }

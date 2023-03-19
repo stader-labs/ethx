@@ -7,7 +7,7 @@ import './INodeRegistry.sol';
 interface IPermissionedNodeRegistry {
     // Error events
     error EmptyNameString();
-    error InvalidCountOfKeys();
+    error InvalidKeyCount();
     error maxKeyLimitReached();
     error OperatorNotOnBoarded();
     error NameCrossedMaxLength();
@@ -15,10 +15,10 @@ interface IPermissionedNodeRegistry {
     error PubkeyDoesNotExist();
     error UNEXPECTED_STATUS();
     error OperatorIsDeactivate();
-    error InvalidLengthOfpubkey();
+    error InvalidLengthOfPubkey();
     error InvalidStartAndEndIndex();
     error InvalidLengthOfSignature();
-    error InvalidSizeOfInputKeys();
+    error MisMatchingInputKeysSize();
     error OperatorAlreadyOnBoarded();
     error NotAPermissionedNodeOperator();
 

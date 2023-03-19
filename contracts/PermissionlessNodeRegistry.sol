@@ -12,12 +12,14 @@ import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract PermissionlessNodeRegistry is
     INodeRegistry,
     IPermissionlessNodeRegistry,
     AccessControlUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     uint8 public constant override poolId = 1;
     uint16 public override inputKeyCountLimit;
@@ -83,6 +85,7 @@ contract PermissionlessNodeRegistry is
         Address.checkNonZeroAddress(_poolFactoryAddress);
         __AccessControl_init_unchained();
         __Pausable_init();
+        __ReentrancyGuard_init();
         sdCollateral = _sdCollateral;
         staderPenaltyFund = _staderPenaltyFund;
         vaultFactoryAddress = _vaultFactoryAddress;
@@ -135,13 +138,14 @@ contract PermissionlessNodeRegistry is
         external
         payable
         override
+        nonReentrant
         whenNotPaused
     {
         uint256 operatorId = _onlyActiveOperator(msg.sender);
-        if (_pubkey.length != _signature.length) revert InvalidSizeOfInputKeys();
+        if (_pubkey.length != _signature.length) revert MisMatchingInputKeysSize();
 
         uint256 keyCount = _pubkey.length;
-        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidCountOfKeys();
+        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
 
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
@@ -171,7 +175,6 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _frontRunnedPubkey,
         bytes[] calldata _invalidSignaturePubkey
     ) external override whenNotPaused onlyRole(STADER_ORACLE) {
-        //TODO put a check that pubkey is in PRE_DEPOSIT
         for (uint256 i = 0; i < _readyToDepositPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             _onlyInitializedValidator(validatorId);
@@ -203,11 +206,11 @@ contract PermissionlessNodeRegistry is
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
-            _onlyNonWithdrawnValidator(validatorId);
+            _isTerminalValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnTime = block.timestamp;
-            //take out money from withdraw vault --need interface of withdrawVault
-            //if optout, clear nodeELVault --need interfaces of NodeELVault
+            //TODO sanjay take out money from withdraw vault --need interface of withdrawVault
+            //TODO sanjay if optout, clear nodeELVault --need interfaces of NodeELVault
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         totalActiveValidatorCount -= withdrawnValidatorCount;
@@ -230,6 +233,7 @@ contract PermissionlessNodeRegistry is
      */
     function setValidatorDepositTime(uint256 _validatorId) external override onlyRole(PERMISSIONLESS_POOL) {
         validatorRegistry[_validatorId].depositTime = block.timestamp;
+        _markValidatorDeposited(_validatorId);
         emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
     }
 
@@ -239,10 +243,11 @@ contract PermissionlessNodeRegistry is
         returns (address feeRecipientAddress)
     {
         uint256 operatorId = _onlyActiveOperator(msg.sender);
+        //TODO sanjay configure formatter to put braces in single if/else statements
         if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool)
             revert NoChangeInState();
         if (block.timestamp < socializingPoolStateChangeTimestamp[operatorId] + socializePoolRewardDistributionCycle)
-            revert RewardIntervalNotPasses();
+            revert CooldownNotComplete();
         feeRecipientAddress = IVaultFactory(vaultFactoryAddress).computeNodeELRewardVaultAddress(poolId, operatorId);
         if (_optInForSocializingPool) {
             //TODO empty NodeELRewardVault --need to integrate function signature
@@ -414,7 +419,6 @@ contract PermissionlessNodeRegistry is
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
         _onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_rewardAddress);
-
         _onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
         operatorStructById[operatorId].operatorName = _operatorName;
@@ -461,7 +465,7 @@ contract PermissionlessNodeRegistry is
         uint64 totalNonWithdrawnKeyCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
-            if (_isWithdrawnValidator(validatorId)) continue;
+            if (_isTerminalValidator(validatorId)) continue;
             totalNonWithdrawnKeyCount++;
         }
         return totalNonWithdrawnKeyCount;
@@ -546,8 +550,7 @@ contract PermissionlessNodeRegistry is
 
     // check for duplicate keys in permissionless node registry
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
-        if (validatorIdByPubkey[_pubkey] != 0) return true;
-        return false;
+        return validatorIdByPubkey[_pubkey] != 0;
     }
 
     function _onboardOperator(
@@ -618,7 +621,6 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
-        //TODO take SD bond too in penalty, need some function on tokonomics
         _sendValue(staderPenaltyFund, FRONT_RUN_PENALTY);
     }
 
@@ -632,7 +634,7 @@ contract PermissionlessNodeRegistry is
 
     // checks for keys lengths, and if pubkey is already there
     function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
-        if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
+        if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
         if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
     }
@@ -659,7 +661,7 @@ contract PermissionlessNodeRegistry is
     }
 
     // checks if validator is withdrawn
-    function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
+    function _isTerminalValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (
             validator.status == ValidatorStatus.WITHDRAWN ||
@@ -687,8 +689,7 @@ contract PermissionlessNodeRegistry is
             revert UNEXPECTED_STATUS();
     }
 
-    function _onlyNonWithdrawnValidator(uint256 _validatorId) internal view {
-        if (_validatorId == 0 || validatorRegistry[_validatorId].status == ValidatorStatus.WITHDRAWN)
-            revert UNEXPECTED_STATUS();
+    function _markValidatorDeposited(uint256 _validatorId) internal {
+        validatorRegistry[_validatorId].status = ValidatorStatus.DEPOSITED;
     }
 }

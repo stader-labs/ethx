@@ -135,10 +135,10 @@ contract PermissionedNodeRegistry is
      * @param _signature signature of a validators for deposit
      */
     function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature) external override whenNotPaused {
-        if (_pubkey.length != _signature.length) revert InvalidSizeOfInputKeys();
+        if (_pubkey.length != _signature.length) revert MisMatchingInputKeysSize();
 
         uint256 keyCount = _pubkey.length;
-        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidCountOfKeys();
+        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
 
         uint16 operatorId = _onlyActiveOperator(msg.sender);
 
@@ -198,11 +198,11 @@ contract PermissionedNodeRegistry is
                 uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
                 selectedOperatorCapacity[i] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
+                i = (i % totalOperators) + 1;
                 if (remainingValidatorsToDeposit == 0) {
-                    operatorIdForExcessDeposit = (i % totalOperators) + 1;
+                    operatorIdForExcessDeposit = i;
                     break;
                 }
-                i = (i % totalOperators) + 1;
             } while (i != operatorIdForExcessDeposit);
         }
     }
@@ -216,6 +216,8 @@ contract PermissionedNodeRegistry is
         uint256 pubkeyLength = _pubkeys.length;
         for (uint256 i = 0; i < pubkeyLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            // only PRE_DEPOSIT status check will also include validatorId = 0 check
+            // as status for that will be INITIALIZED(default status)
             _onlyPreDepositValidator(validatorId);
             _handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_pubkeys[i], validatorId);
@@ -231,6 +233,8 @@ contract PermissionedNodeRegistry is
         uint256 pubkeyLength = _pubkeys.length;
         for (uint256 i = 0; i < pubkeyLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            // only PRE_DEPOSIT status check will also include validatorId = 0 check
+            // as status for that will be INITIALIZED(default status)
             _onlyPreDepositValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
             emit ValidatorStatusMarkedAsInvalidSignature(_pubkeys[i], validatorId);
@@ -240,14 +244,14 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice Flag fully withdrawn validators as reported by oracle.
-     * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances
+     * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances, revert if terminal validators are reported
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
     function withdrawnValidators(bytes[] calldata _pubkeys) external onlyRole(STADER_ORACLE) {
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
-            _onlyNonWithdrawnValidator(validatorId);
+            _isTerminalValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnTime = block.timestamp;
             //TODO sanjay take out money from withdraw vault --need interface of withdrawVault
@@ -293,12 +297,13 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice sets the depositTime for a validator
+     * @notice sets the depositTime for a validator and update status to DEPOSITED
      * @dev only permissioned pool can call
      * @param _validatorId ID of the validator
      */
     function setValidatorDepositTime(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
         validatorRegistry[_validatorId].depositTime = block.timestamp;
+        _markValidatorDeposited(_validatorId);
         emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
     }
 
@@ -454,7 +459,7 @@ contract PermissionedNodeRegistry is
      * @dev return the variable totalActiveValidatorCount
      * @return _validatorCount active validator count
      */
-    function getTotalActiveValidatorCount() public view override returns (uint256) {
+    function getTotalActiveValidatorCount() external view override returns (uint256) {
         return totalActiveValidatorCount;
     }
 
@@ -487,7 +492,7 @@ contract PermissionedNodeRegistry is
         uint64 totalNonWithdrawnKeyCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
-            if (_isWithdrawnValidator(validatorId)) continue;
+            if (_isTerminalValidator(validatorId)) continue;
             totalNonWithdrawnKeyCount++;
         }
         return totalNonWithdrawnKeyCount;
@@ -611,7 +616,7 @@ contract PermissionedNodeRegistry is
 
     // checks for keys lengths, and if pubkey is already there
     function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
-        if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfpubkey();
+        if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
         if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
     }
@@ -624,7 +629,7 @@ contract PermissionedNodeRegistry is
     }
 
     // checks if validator is active,
-    //active validator are those having user share deposited on ET2 deposit contract
+    //active validator are those having user deposit staked on beacon chain
     function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (
@@ -637,7 +642,7 @@ contract PermissionedNodeRegistry is
     }
 
     // checks if validator status enum is withdrawn ,front run and invalid signature
-    function _isWithdrawnValidator(uint256 _validatorId) internal view returns (bool) {
+    function _isTerminalValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
         if (
             validator.status == ValidatorStatus.WITHDRAWN ||
@@ -662,8 +667,7 @@ contract PermissionedNodeRegistry is
         if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT) revert UNEXPECTED_STATUS();
     }
 
-    function _onlyNonWithdrawnValidator(uint256 _validatorId) internal view {
-        if (_validatorId == 0 || validatorRegistry[_validatorId].status == ValidatorStatus.WITHDRAWN)
-            revert UNEXPECTED_STATUS();
+    function _markValidatorDeposited(uint256 _validatorId) internal {
+        validatorRegistry[_validatorId].status = ValidatorStatus.DEPOSITED;
     }
 }

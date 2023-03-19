@@ -14,17 +14,17 @@ interface IPermissionlessNodeRegistry {
     error InvalidBondEthValue();
     error InSufficientBalance();
     error OperatorAlreadyOnBoarded();
-    error InvalidCountOfKeys();
+    error InvalidKeyCount();
     error PubkeyAlreadyExist();
     error PubkeyDoesNotExist();
     error InvalidStartAndEndIndex();
     error OperatorIsDeactivate();
-    error InvalidLengthOfpubkey();
+    error InvalidLengthOfPubkey();
     error InvalidLengthOfSignature();
-    error InvalidSizeOfInputKeys();
+    error MisMatchingInputKeysSize();
     error maxKeyLimitReached();
     error PubkeyNotFoundOrDuplicateInput();
-    error RewardIntervalNotPasses();
+    error CooldownNotComplete();
     error NoChangeInState();
 
     //Events

@@ -109,11 +109,11 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
                 remainingValidatorsToDeposit -= newSelectedCapacity;
                 // Don't have to update poolID if the `remainingValidatorsToDeposit` does not become 0
                 // As we have scanned through all pool, will start from same pool in same iteration
+                i = (i % poolCount) + 1;
                 if (remainingValidatorsToDeposit == 0) {
-                    poolIdForExcessDeposit = (i % poolCount) + 1;
+                    poolIdForExcessDeposit = i;
                     break;
                 }
-                i = (i % poolCount) + 1;
             } while (i != poolIdForExcessDeposit);
         }
     }

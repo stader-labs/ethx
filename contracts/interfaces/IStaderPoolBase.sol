@@ -41,7 +41,7 @@ interface IStaderPoolBase {
         uint256 endIndex
     ) external view returns (uint256);
 
-    function receiveUserShareFromPoolManager() external payable;
+    function stakeUserETHToBeaconChain() external payable;
 
     function updateNodeRegistryAddress(address _nodeRegistryAddress) external;
 

@@ -14,6 +14,7 @@ interface IUserWithdrawalManager {
     error InvalidRequestId(uint256 _requestId);
     error requestIdNotFinalized(uint256 _requestId);
     error RequestAlreadyRedeemed(uint256 _requestId);
+    error MaxLimitOnWithdrawRequestCountReached();
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
@@ -55,11 +56,12 @@ interface IUserWithdrawalManager {
 
     function ethRequestedForWithdraw() external view returns (uint256);
 
+    function maxNonRedeemedUserRequestCount() external view returns (uint256);
+
     function userWithdrawRequests(uint256)
         external
         view
         returns (
-            bool redeemStatus,
             address owner,
             address payable recipient,
             uint256 ethXAmount,

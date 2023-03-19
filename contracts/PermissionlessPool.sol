@@ -33,6 +33,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
+    uint256 public constant TOTAL_FEE = 10000;
 
     /// @inheritdoc IStaderPoolBase
     uint256 public override protocolFeePercent;
@@ -66,7 +67,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     /// @inheritdoc IStaderPoolBase
     function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        require(_protocolFeePercent <= 100, 'Protocol fee percent should be less than 100');
+        require(_protocolFeePercent <= TOTAL_FEE, 'Protocol fee percent should be less than TOTAL_FEE');
         require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
 
         protocolFeePercent = _protocolFeePercent;
@@ -76,7 +77,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     /// @inheritdoc IStaderPoolBase
     function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        require(_operatorFeePercent <= 100, 'Operator fee percent should be less than 100');
+        require(_operatorFeePercent <= TOTAL_FEE, 'Operator fee percent should be less than TOTAL_FEE');
         require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
 
         operatorFeePercent = _operatorFeePercent;
@@ -121,7 +122,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @dev deposit validator taking care of pool capacity
      * send back the excess amount of ETH back to poolManager
      */
-    function receiveUserShareFromPoolManager() external payable override onlyRole(POOL_MANAGER) {
+    function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
         uint256 requiredValidators = msg.value / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
             requiredValidators * DEPOSIT_NODE_BOND
@@ -294,7 +295,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             depositDataRoot
         );
         IPermissionlessNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(_validatorId);
-        IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
         emit ValidatorDepositedOnBeaconChain(_validatorId, pubkey);
     }
 
