@@ -66,6 +66,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
+    // TODO: add penalty changes
     function _calculateRewardShare(uint256 _totalRewards)
         internal
         view
@@ -83,6 +84,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
+        // TODO: change percent to bps => 100 to 10_000
         _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100;
 
         _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
