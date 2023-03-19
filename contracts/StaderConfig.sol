@@ -7,6 +7,7 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
     uint256 public totalStakedEth;
 
     address public treasury;
+    address public poolFactory;
     address public stakePoolManager;
 
     function initialize(address _admin) external initializer {
@@ -22,6 +23,10 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
 
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         treasury = _treasury;
+    }
+
+    function updatePoolFactory(address _poolFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        poolFactory = _poolFactory;
     }
 
     function updateStakePoolManager(address _stakePoolManager) external onlyRole(DEFAULT_ADMIN_ROLE) {

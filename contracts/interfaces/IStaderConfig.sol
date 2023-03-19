@@ -7,4 +7,6 @@ interface IStaderConfig {
     function treasury() external view returns (address);
 
     function stakePoolManager() external view returns (address);
+
+    function poolFactory() external view returns (address);
 }
