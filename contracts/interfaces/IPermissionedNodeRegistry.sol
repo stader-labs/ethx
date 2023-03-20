@@ -144,7 +144,7 @@ interface IPermissionedNodeRegistry {
 
     function updateQueuedValidatorIndex(uint16 _operatorId, uint256 _nextQueuedValidatorIndex) external;
 
-    function setValidatorDepositTime(uint256 _validatorId) external;
+    function updateDepositStatusAndTime(uint256 _validatorId) external;
 
     function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
 

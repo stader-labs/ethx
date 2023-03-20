@@ -130,9 +130,9 @@ contract PermissionlessNodeRegistry is
 
     /**
      * @notice add signing keys
-     * @dev only accepts if bond of 4 ETH provided along with sufficient SD lockup
+     * @dev only accepts if bond of 4 ETH per key is provided along with sufficient SD lockup
      * @param _pubkey public key of validators
-     * @param _signature signature of a validators for Deposit for checking front running
+     * @param _signature signature of a validators for Deposit
      */
     function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature)
         external
@@ -144,27 +144,30 @@ contract PermissionlessNodeRegistry is
         uint256 operatorId = _onlyActiveOperator(msg.sender);
         if (_pubkey.length != _signature.length) revert MisMatchingInputKeysSize();
 
+        // TODO sanjay try to merge these check in a single internal function
         uint256 keyCount = _pubkey.length;
         if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
 
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
         uint256 totalKeys = getOperatorTotalKeys(operatorId);
-        uint256 totalNonWithdrawnKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
-        if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
+        if ((totalNonTerminalKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
+        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonTerminalKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
+            //TODO sanjay check if we can remove this internal function call
             _addValidatorKey(_pubkey[i], _signature[i], operatorRewardAddress, operatorId, totalKeys);
         }
     }
 
     /**
-     * @notice move validator state from INITIALIZE to PRE_DEPOSIT after receiving pre-signed
-     * messages for withdrawal, handle front runned validator
+     * @notice move validator state from INITIALIZE to PRE_DEPOSIT
+     * after verifying pre-sign message, front running and deposit signature.
+     * report front run and invalid signature pubkeys
      * @dev only oracle can call
      * @param _readyToDepositPubkey array of pubkeys ready to be moved to PRE_DEPOSIT state
      * @param _frontRunnedPubkey array for pubkeys which got front deposit
@@ -231,12 +234,13 @@ contract PermissionlessNodeRegistry is
      * @dev only permissionless pool can call
      * @param _validatorId ID of the validator
      */
-    function setValidatorDepositTime(uint256 _validatorId) external override onlyRole(PERMISSIONLESS_POOL) {
+    function updateDepositStatusAndTime(uint256 _validatorId) external override onlyRole(PERMISSIONLESS_POOL) {
         validatorRegistry[_validatorId].depositTime = block.timestamp;
         _markValidatorDeposited(_validatorId);
         emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
     }
 
+    // allow NOs to opt in/out of socialize pool after coolDownPeriod i.e `socializePoolRewardDistributionCycle`
     function changeSocializingPoolState(bool _optInForSocializingPool)
         external
         override
@@ -250,7 +254,7 @@ contract PermissionlessNodeRegistry is
             revert CooldownNotComplete();
         feeRecipientAddress = IVaultFactory(vaultFactoryAddress).computeNodeELRewardVaultAddress(poolId, operatorId);
         if (_optInForSocializingPool) {
-            //TODO empty NodeELRewardVault --need to integrate function signature
+            //TODO sanjay empty NodeELRewardVault --need to integrate function signature
             feeRecipientAddress = elRewardSocializePool;
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
@@ -338,7 +342,7 @@ contract PermissionlessNodeRegistry is
 
     /**
      * @notice add the permission less pool address in permission less node registry
-     * for the purpose of doing 1ETH PRE DEPOSIT
+     * for the purpose of doing 1ETH DEPOSIT
      * @dev only admin can update
      * @param _permissionlessPool permission less pool address
      */
@@ -413,7 +417,7 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice update the name and reward address of an operator
      * @dev only operator msg.sender can update
-     * @param _operatorName new Name of the operator
+     * @param _operatorName new name of the operator
      * @param _rewardAddress new reward address
      */
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
@@ -599,6 +603,7 @@ contract PermissionlessNodeRegistry is
             0
         );
 
+        //TODO sanjay why are we not marking PRE_DEPOSIT status after 1ETH deposit
         //slither-disable-next-line arbitrary-send-eth
         IPermissionlessPool(permissionlessPool).preDepositOnBeacon{value: PRE_DEPOSIT}(
             _pubkey,
@@ -634,7 +639,7 @@ contract PermissionlessNodeRegistry is
         _sendValue(operatorAddress, collateralETH - PRE_DEPOSIT);
     }
 
-    // checks for keys lengths, and if pubkey is already there
+    // checks for keys lengths, and if pubkey is already present in stader protocol(not just permissionless pool)
     function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
         if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
         if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();

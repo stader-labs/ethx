@@ -137,20 +137,22 @@ contract PermissionedNodeRegistry is
     function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature) external override whenNotPaused {
         if (_pubkey.length != _signature.length) revert MisMatchingInputKeysSize();
 
+        // TODO sanjay try to merge these check in a single internal function
         uint256 keyCount = _pubkey.length;
         if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
 
         uint16 operatorId = _onlyActiveOperator(msg.sender);
 
         uint256 totalKey = getOperatorTotalKeys(operatorId);
-        uint256 totalNonWithdrawnKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKey);
-        if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKey);
+        if ((totalNonTerminalKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
+        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonTerminalKeys + keyCount);
 
         for (uint256 i = 0; i < keyCount; i++) {
+            //TODO sanjay check if we can remove this internal function call
             _addValidatorKey(_pubkey[i], _signature[i], operatorRewardAddress, operatorId, totalKey);
         }
     }
@@ -301,7 +303,7 @@ contract PermissionedNodeRegistry is
      * @dev only permissioned pool can call
      * @param _validatorId ID of the validator
      */
-    function setValidatorDepositTime(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
+    function updateDepositStatusAndTime(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
         validatorRegistry[_validatorId].depositTime = block.timestamp;
         _markValidatorDeposited(_validatorId);
         emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
@@ -609,14 +611,14 @@ contract PermissionedNodeRegistry is
         operatorStructById[operatorId].active = false;
     }
 
-    // returns operator total queued validator count, internal use
+    // returns operator total queued validator count
     function _getOperatorQueuedValidatorCount(uint16 _operatorId) internal view returns (uint256 _validatorCount) {
         _validatorCount =
             validatorIdsByOperatorId[_operatorId].length -
             nextQueuedValidatorIndexByOperatorId[_operatorId];
     }
 
-    // checks for keys lengths, and if pubkey is already there
+    // checks for keys lengths, and if pubkey is already present in stader protocol(not just permissioned pool)
     function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
         if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
         if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();

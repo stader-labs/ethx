@@ -151,7 +151,7 @@ interface IPermissionlessNodeRegistry {
 
     function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external;
 
-    function setValidatorDepositTime(uint256 _validatorId) external;
+    function updateDepositStatusAndTime(uint256 _validatorId) external;
 
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 

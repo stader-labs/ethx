@@ -35,6 +35,7 @@ contract PermissionedPool is
     bytes32 public constant PERMISSIONED_POOL_ADMIN = keccak256('PERMISSIONED_POOL_ADMIN');
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
+    //TODO sanjay remove this variable after making sure we are not receiving EAO eth
     uint256 public balanceForDeposit;
     uint256 public nextIndexToDeposit;
     uint256 public VERIFIED_KEYS_BATCH_SIZE;
@@ -73,8 +74,10 @@ contract PermissionedPool is
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
+    //TODO remove functions to receive EAO ETH, check for fallback function too
     receive() external payable {}
 
+    //TODO move it to PD node registry
     function markValidatorReadyToDeposit(
         bytes[] calldata _readyToDepositPubkeys,
         bytes[] calldata _frontRunPubkeys,

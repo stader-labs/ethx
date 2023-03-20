@@ -115,13 +115,12 @@ contract UserWithdrawalManager is
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
             revert MaxLimitOnWithdrawRequestCountReached();
-        address msgSender = msg.sender;
         //TODO sanjay user safeTransfer
-        if (!ETHx(ethX).transferFrom(msgSender, (address(this)), _ethXAmount)) revert TokenTransferFailed();
+        if (!ETHx(ethX).transferFrom(msg.sender, (address(this)), _ethXAmount)) revert TokenTransferFailed();
         ethRequestedForWithdraw += assets;
-        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(msgSender, payable(receiver), _ethXAmount, assets, 0);
-        requestIdsByUserAddress[msgSender].push(nextRequestId);
-        emit WithdrawRequestReceived(msgSender, receiver, nextRequestId, _ethXAmount, assets);
+        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(msg.sender, payable(receiver), _ethXAmount, assets, 0);
+        requestIdsByUserAddress[msg.sender].push(nextRequestId);
+        emit WithdrawRequestReceived(msg.sender, receiver, nextRequestId, _ethXAmount, assets);
         nextRequestId++;
         return nextRequestId - 1;
     }
