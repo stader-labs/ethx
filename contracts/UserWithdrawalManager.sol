@@ -206,7 +206,7 @@ contract UserWithdrawalManager is
                 return;
             }
         }
-        revert cannotFindRequestId();
+        revert CannotFindRequestId();
     }
 
     function _sendValue(address payable recipient, uint256 amount) internal {

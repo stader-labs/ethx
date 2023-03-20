@@ -14,7 +14,7 @@ interface IUserWithdrawalManager {
     error requestIdNotFinalized(uint256 _requestId);
     error RequestAlreadyRedeemed(uint256 _requestId);
     error MaxLimitOnWithdrawRequestCountReached();
-    error cannotFindRequestId();
+    error CannotFindRequestId();
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
