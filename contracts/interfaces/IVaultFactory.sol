@@ -24,6 +24,7 @@ interface IVaultFactory {
     function deployNodeELRewardVault(
         uint8 poolType,
         uint256 operatorId,
+        address staderConfig,
         address payable nodeRecipient
     ) external returns (address);
 
