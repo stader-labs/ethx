@@ -92,11 +92,11 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function getProtocolFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getProtocolFeePercent(poolId);
+        return IPoolFactory(poolFactory).getProtocolFee(poolId);
     }
 
     function getOperatorFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getOperatorFeePercent(poolId);
+        return IPoolFactory(poolFactory).getOperatorFee(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {

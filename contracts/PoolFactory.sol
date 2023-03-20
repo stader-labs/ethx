@@ -58,13 +58,13 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getProtocolFeePercent(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).protocolFeePercent();
+    function getProtocolFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).protocolFee();
     }
 
     /// @inheritdoc IPoolFactory
-    function getOperatorFeePercent(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).operatorFeePercent();
+    function getOperatorFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).operatorFee();
     }
 
     /// @inheritdoc IPoolFactory

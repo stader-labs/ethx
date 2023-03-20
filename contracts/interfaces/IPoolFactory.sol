@@ -51,9 +51,9 @@ interface IPoolFactory {
     function getSocializingPoolAddress(uint8 _poolId) external view returns (address);
 
     // Pool getters
-    function getProtocolFeePercent(uint8 _poolId) external view returns (uint256); // returns the protocol fee percent (0-100)
+    function getProtocolFee(uint8 _poolId) external view returns (uint256); // returns the protocol fee (0-10000)
 
-    function getOperatorFeePercent(uint8 _poolId) external view returns (uint256); // returns the operator fee percent (0-100)
+    function getOperatorFee(uint8 _poolId) external view returns (uint256); // returns the operator fee (0-10000)
 
     function poolCount() external view returns (uint8); // returns the number of pools in the factory
 

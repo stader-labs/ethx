@@ -36,10 +36,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint256 public constant TOTAL_FEE = 10000;
 
     /// @inheritdoc IStaderPoolBase
-    uint256 public override protocolFeePercent;
+    uint256 public override protocolFee;
 
     /// @inheritdoc IStaderPoolBase
-    uint256 public override operatorFeePercent;
+    uint256 public override operatorFee;
 
     function initialize(
         address _adminOwner,
@@ -66,23 +66,23 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     receive() external payable {}
 
     /// @inheritdoc IStaderPoolBase
-    function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        require(_protocolFeePercent <= TOTAL_FEE, 'Protocol fee percent should be less than TOTAL_FEE');
-        require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
+    function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+        if (_protocolFee > TOTAL_FEE) revert ProtocolFeeMoreThanTOTAL_FEE();
+        if (protocolFee == _protocolFee) revert ProtocolFeeUnchanged();
 
-        protocolFeePercent = _protocolFeePercent;
+        protocolFee = _protocolFee;
 
-        emit ProtocolFeePercentUpdated(_protocolFeePercent);
+        emit ProtocolFeeUpdated(_protocolFee);
     }
 
     /// @inheritdoc IStaderPoolBase
-    function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        require(_operatorFeePercent <= TOTAL_FEE, 'Operator fee percent should be less than TOTAL_FEE');
-        require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
+    function setOperatorFee(uint256 _operatorFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+        if (_operatorFee > TOTAL_FEE) revert OperatorFeeMoreThanTOTAL_FEE();
+        if (operatorFee == _operatorFee) revert OperatorFeeUnchanged();
 
-        operatorFeePercent = _operatorFeePercent;
+        operatorFee = _operatorFee;
 
-        emit OperatorFeePercentUpdated(_operatorFeePercent);
+        emit OperatorFeeUpdated(_operatorFee);
     }
 
     /**
