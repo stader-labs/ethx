@@ -38,7 +38,7 @@ interface IStaderPoolBase {
 
     function getAllActiveValidators() external view returns (Validator[] memory);
 
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex

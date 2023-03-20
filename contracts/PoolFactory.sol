@@ -171,14 +171,14 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
     ) public view override returns (uint256) {
         return
-            IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonWithdrawnKeys(
+            IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonTerminalKeys(
                 _nodeOperator,
                 _startIndex,
                 _endIndex

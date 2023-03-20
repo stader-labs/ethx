@@ -41,7 +41,7 @@ interface IPoolFactory {
 
     function getOperator(uint8 _poolId, bytes calldata _pubkey) external view returns (Operator memory);
 
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
         address _nodeOperator,
         uint256 _startIndex,

@@ -165,9 +165,9 @@ contract UserWithdrawalManager is
      * @param _requestId request id to redeem
      */
     function redeem(uint256 _requestId) external override {
-        if (_requestId >= nextRequestId) revert InvalidRequestId(_requestId);
         if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
         UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
+        // below is a default entry as no userRequest will be found for a redeemed request.
         if (userRequest.ethExpected == 0) revert RequestAlreadyRedeemed(_requestId);
         uint256 etherToTransfer = userRequest.ethFinalized;
         _deleteRequestId(_requestId, userRequest.owner);
@@ -198,16 +198,15 @@ contract UserWithdrawalManager is
     // delete entry from userWithdrawRequests mapping and in requestIdsByUserAddress mapping
     function _deleteRequestId(uint256 _requestId, address _owner) internal {
         delete (userWithdrawRequests[_requestId]);
-        uint256 requestIdIndex;
         uint256 userRequestCount = requestIdsByUserAddress[_owner].length;
         for (uint256 i = 0; i < userRequestCount; i++) {
             if (_requestId == requestIdsByUserAddress[_owner][i]) {
-                requestIdIndex = i;
-                break;
+                requestIdsByUserAddress[_owner][i] = requestIdsByUserAddress[_owner][userRequestCount - 1];
+                requestIdsByUserAddress[_owner].pop();
+                return;
             }
         }
-        requestIdsByUserAddress[_owner][requestIdIndex] = requestIdsByUserAddress[_owner][userRequestCount - 1];
-        requestIdsByUserAddress[_owner].pop();
+        revert cannotFindRequestId();
     }
 
     function _sendValue(address payable recipient, uint256 amount) internal {

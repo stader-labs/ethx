@@ -182,15 +182,15 @@ contract PermissionedPool is
     }
 
     /**
-     * @notice returns the total non withdrawn keys of a operator
+     * @notice returns the total non terminal keys of a operator
      */
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
     ) external view override returns (uint256) {
         return
-            INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator, _startIndex, _endIndex);
+            INodeRegistry(nodeRegistryAddress).getOperatorTotalNonTerminalKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
     /**

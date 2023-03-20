@@ -46,7 +46,7 @@ interface INodeRegistry {
      * @param startIndex start index in validator queue to start with
      * @param endIndex  up to end index of validator queue to to count
      */
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex

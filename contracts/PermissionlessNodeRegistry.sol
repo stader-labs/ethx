@@ -150,7 +150,7 @@ contract PermissionlessNodeRegistry is
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
 
         uint256 totalKeys = getOperatorTotalKeys(operatorId);
-        uint256 totalNonWithdrawnKeys = getOperatorTotalNonWithdrawnKeys(msg.sender, 0, totalKeys);
+        uint256 totalNonWithdrawnKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
         if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
@@ -206,7 +206,7 @@ contract PermissionlessNodeRegistry is
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
-            _isTerminalValidator(validatorId);
+            if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnTime = block.timestamp;
             //TODO sanjay take out money from withdraw vault --need interface of withdrawVault
@@ -446,12 +446,13 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice get the total non withdrawn keys for an operator
+     * @notice get the total non terminal keys for an operator
+     * //non terminal keys are front run, invalid signature and withdrawn
      * @dev loop over all keys of an operator from start index till
-     *  end index (exclusive) to get the count excluding the withdrawn keys
+     *  end index (exclusive) to get the count excluding the terminal keys
      * @param _nodeOperator address of node operator
      */
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
@@ -465,8 +466,9 @@ contract PermissionlessNodeRegistry is
         uint64 totalNonWithdrawnKeyCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
-            if (_isTerminalValidator(validatorId)) continue;
-            totalNonWithdrawnKeyCount++;
+            if (_isNonTerminalValidator(validatorId)) {
+                totalNonWithdrawnKeyCount++;
+            }
         }
         return totalNonWithdrawnKeyCount;
     }
@@ -660,15 +662,13 @@ contract PermissionlessNodeRegistry is
         if (bytes(_name).length > OPERATOR_MAX_NAME_LENGTH) revert NameCrossedMaxLength();
     }
 
-    // checks if validator is withdrawn
-    function _isTerminalValidator(uint256 _validatorId) internal view returns (bool) {
+    // checks if validator status enum is not withdrawn ,front run and invalid signature
+    function _isNonTerminalValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
-        if (
-            validator.status == ValidatorStatus.WITHDRAWN ||
-            validator.status == ValidatorStatus.FRONT_RUN ||
-            validator.status == ValidatorStatus.INVALID_SIGNATURE
-        ) return true;
-        return false;
+        return
+            !(validator.status == ValidatorStatus.WITHDRAWN ||
+                validator.status == ValidatorStatus.FRONT_RUN ||
+                validator.status == ValidatorStatus.INVALID_SIGNATURE);
     }
 
     // checks if validator is active, active validator are those having user share on beacon chain

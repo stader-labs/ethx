@@ -11,10 +11,10 @@ interface IUserWithdrawalManager {
     error InvalidWithdrawAmount();
     error InvalidMinWithdrawValue();
     error InvalidMaxWithdrawValue();
-    error InvalidRequestId(uint256 _requestId);
     error requestIdNotFinalized(uint256 _requestId);
     error RequestAlreadyRedeemed(uint256 _requestId);
     error MaxLimitOnWithdrawRequestCountReached();
+    error cannotFindRequestId();
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
