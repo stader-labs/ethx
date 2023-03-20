@@ -94,6 +94,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
+    // TODO sanjay implement this pagination at pool level
     function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
         public
         view
