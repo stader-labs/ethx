@@ -177,7 +177,7 @@ contract PermissionlessNodeRegistry is
 
         //TODO sanjay why are we not marking PRE_DEPOSIT status after 1ETH deposit
         //slither-disable-next-line arbitrary-send-eth
-        IPermissionlessPool(permissionlessPool).preDepositOnBeaconChain{value: PRE_DEPOSIT}(
+        IPermissionlessPool(permissionlessPool).preDepositOnBeaconChain{value: PRE_DEPOSIT * keyCount}(
             _pubkey,
             _preDepositSignature,
             operatorId,
@@ -198,7 +198,7 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _readyToDepositPubkey,
         bytes[] calldata _frontRunnedPubkey,
         bytes[] calldata _invalidSignaturePubkey
-    ) external override whenNotPaused onlyRole(STADER_ORACLE) {
+    ) external override whenNotPaused nonReentrant onlyRole(STADER_ORACLE) {
         for (uint256 i = 0; i < _readyToDepositPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             _onlyInitializedValidator(validatorId);

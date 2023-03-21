@@ -131,7 +131,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /**
      * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit validator taking care of pool capacity
-     * send back the excess amount of ETH back to poolManager
      */
     function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
         uint256 requiredValidators = msg.value / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);

@@ -15,6 +15,7 @@ interface IUserWithdrawalManager {
     error RequestAlreadyRedeemed(uint256 _requestId);
     error MaxLimitOnWithdrawRequestCountReached();
     error CannotFindRequestId();
+    error CallerNotAuthorizedToRedeem();
     error OnlyStaderStakePoolManagerCanCall();
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
@@ -64,8 +65,7 @@ interface IUserWithdrawalManager {
         external
         view
         returns (
-            address owner,
-            address payable recipient,
+            address payable owner,
             uint256 ethXAmount,
             uint256 ethExpected,
             uint256 ethFinalized

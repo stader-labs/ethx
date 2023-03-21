@@ -271,7 +271,7 @@ contract PermissionedNodeRegistry is
 
         for (uint256 i = 0; i < verifiedValidatorsLength; i++) {
             // TODO sanjay update 31ETH limbo
-            //TODO sanjay check of only PRE_DEPOSIT for now moved to pool contract, discuss with dheeraj
+            //TODO sanjay check of only PRE_DEPOSIT key is moved to pool contract, discuss with dheeraj
             IPermissionedPool(permissionedPool).fullDepositOnBeaconChain(_readyToDepositPubkeys);
         }
     }
@@ -445,6 +445,13 @@ contract PermissionedNodeRegistry is
     {
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
+    }
+
+    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize)
+        external
+        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
+    {
+        VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
     }
 
     // @inheritdoc INodeRegistry

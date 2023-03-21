@@ -35,7 +35,6 @@ contract PermissionedPool is
     bytes32 public constant PERMISSIONED_POOL_ADMIN = keccak256('PERMISSIONED_POOL_ADMIN');
     bytes32 public constant PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
 
-    uint256 public VERIFIED_KEYS_BATCH_SIZE;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 32 ether;
@@ -63,7 +62,6 @@ contract PermissionedPool is
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
-        VERIFIED_KEYS_BATCH_SIZE = 100;
         nodeRegistryAddress = _nodeRegistryAddress;
         ethDepositContract = _ethDepositContract;
         vaultFactoryAddress = _vaultFactoryAddress;
@@ -264,10 +262,6 @@ contract PermissionedPool is
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         vaultFactoryAddress = _vaultFactoryAddress;
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
-    }
-
-    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external onlyRole(PERMISSIONED_POOL_ADMIN) {
-        VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
     }
 
     // @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
