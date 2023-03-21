@@ -3,6 +3,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import './interfaces/SDCollateral/ISwapRouter.sol';
+import './interfaces/IStaderConfig.sol';
 
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
@@ -19,31 +20,24 @@ interface IERC20 {
 }
 
 contract SingleSwap {
+    IStaderConfig public staderConfig;
     ISwapRouter public swapRouter;
 
     uint24 public poolFee;
     uint160 public sqrtPriceLimitX96;
-    address public immutable WETH9;
-    address public admin;
-
     modifier checkZeroAddress(address _address) {
         require(_address != address(0), 'Address cannot be zero');
         _;
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, 'Accessible only by StakeManager Contract');
+        require(msg.sender == staderConfig.admin(), 'Accessible only by StakeManager Contract');
         _;
     }
 
-    constructor(
-        address _admin,
-        address _router,
-        address _weth9
-    ) checkZeroAddress(_admin) checkZeroAddress(_router) checkZeroAddress(_weth9) {
-        admin = _admin;
+    constructor(address _staderConfig, address _router) checkZeroAddress(_staderConfig) checkZeroAddress(_router) {
+        staderConfig = IStaderConfig(_staderConfig);
         swapRouter = ISwapRouter(_router);
-        WETH9 = _weth9;
         poolFee = 3000;
     }
 
@@ -63,7 +57,7 @@ contract SingleSwap {
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: tokenIn,
-            tokenOut: WETH9,
+            tokenOut: staderConfig.wethToken(),
             fee: poolFee,
             recipient: address(this),
             deadline: block.timestamp,
