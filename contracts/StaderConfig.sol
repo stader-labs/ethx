@@ -7,16 +7,30 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
     uint256 public totalStakedEth;
     uint256 public rewardThreshold;
 
+    address public admin;
     address public treasury;
     address public poolFactory;
     address public stakePoolManager;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _admin) external initializer {
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        admin = _admin;
     }
 
     // SETTERS
+
+    // TODO: Manoj propose-accept two step required ??
+    function updateAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(DEFAULT_ADMIN_ROLE, admin);
+        admin = _admin;
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    }
 
     function updateTotalStakedEth(uint256 _totalStakedEth) external onlyRole(DEFAULT_ADMIN_ROLE) {
         totalStakedEth = _totalStakedEth;
