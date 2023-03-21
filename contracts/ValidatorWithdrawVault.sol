@@ -22,7 +22,6 @@ contract ValidatorWithdrawVault is
     uint8 public poolId;
     address payable public nodeRecipient;
 
-    // TODO: update params where this is deployed
     function initialize(
         address _staderConfig,
         address payable _nodeRecipient,
@@ -85,10 +84,10 @@ contract ValidatorWithdrawVault is
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        _protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 100;
+        _protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 10000;
 
         _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 100;
+        _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
 
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
