@@ -10,6 +10,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/IPoolFactory.sol';
+import '../contracts/interfaces/SDCollateral/ISingleSwap.sol';
 
 contract SDCollateral is
     ISDCollateral,
@@ -28,6 +29,7 @@ contract SDCollateral is
     IERC20 public sdERC20;
     IPriceFetcher public priceFetcher;
     IPoolFactory public poolFactory;
+    ISingleSwap public swapUtil;
 
     uint256 public totalShares;
     uint256 public totalSDCollateral;
@@ -112,12 +114,22 @@ contract SDCollateral is
         require(sdERC20.transfer(payable(operator), _requestedSD), 'sd transfer failed');
     }
 
+    // update addr of swapUtil once this contract is deployed
+    function swapSDToETH(uint256 _sdAmount) external {
+        uint256 ethOutMinimum = convertSDToETH(_sdAmount);
+        swapUtil.swapExactInputForETH(address(sdERC20), _sdAmount, ethOutMinimum, msg.sender);
+    }
+
     // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
     //     totalXSDCollateral += _xsdAmount;
     //     xsdERC20.safeTransferFrom(msg.sender, address(this), _xsdAmount);
     // }
 
     // SETTERS
+
+    function updateSwapUtil(address _swapUtil) external checkZeroAddress(_swapUtil) {
+        swapUtil = ISingleSwap(_swapUtil);
+    }
 
     function updatePoolThreshold(
         uint8 _poolId,
