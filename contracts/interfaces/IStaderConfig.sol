@@ -6,6 +6,8 @@ interface IStaderConfig {
 
     function staderToken() external view returns (address);
 
+    function wethToken() external view returns (address);
+
     function totalStakedEth() external view returns (uint256);
 
     function rewardThreshold() external view returns (uint256);
