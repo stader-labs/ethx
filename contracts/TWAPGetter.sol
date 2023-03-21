@@ -11,16 +11,6 @@ interface IERC20Extended {
 }
 
 contract TWAPGetter {
-    /**
-     * @notice Check for zero address
-     * @dev Modifier
-     * @param _address the address to check
-     */
-    modifier checkZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
-
     function getPrice(
         address _uniswapV3Pool,
         address _baseToken,
