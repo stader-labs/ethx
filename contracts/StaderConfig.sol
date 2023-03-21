@@ -3,7 +3,9 @@ pragma solidity ^0.8.16;
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderConfig is Initializable, AccessControlUpgradeable {
+import './interfaces/IStaderConfig.sol';
+
+contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
     uint256 public totalStakedEth;
     uint256 public rewardThreshold;
 
