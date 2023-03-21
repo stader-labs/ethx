@@ -42,7 +42,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
      * @dev execution layer rewards may be sent as plain ETH transfers
      */
     receive() external payable {
-        emit ETHReceived(msg.value);
+        emit ETHReceived(msg.sender, msg.value);
     }
 
     function withdraw() external override nonReentrant {
