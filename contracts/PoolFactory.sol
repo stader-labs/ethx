@@ -58,20 +58,20 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getProtocolFeePercent(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).protocolFeePercent();
+    function getProtocolFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).protocolFee();
     }
 
     /// @inheritdoc IPoolFactory
-    function getOperatorFeePercent(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).operatorFeePercent();
+    function getOperatorFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).operatorFee();
     }
 
     /// @inheritdoc IPoolFactory
-    function getTotalActiveValidatorCount() external view override returns (uint256) {
+    function getTotalActiveValidatorCount() public view override returns (uint256) {
         uint256 totalActiveValidatorCount;
         for (uint8 i = 1; i <= poolCount; i++) {
-            totalActiveValidatorCount += this.getActiveValidatorCountByPool(i);
+            totalActiveValidatorCount += getActiveValidatorCountByPool(i);
         }
 
         return totalActiveValidatorCount;
@@ -89,31 +89,12 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getActiveValidatorCountByPool(uint8 _poolId)
-        external
-        view
-        override
-        validPoolId(_poolId)
-        returns (uint256)
-    {
+    function getActiveValidatorCountByPool(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getTotalActiveValidatorCount();
     }
 
     /// @inheritdoc IPoolFactory
-    function getAllActiveValidators() public view override returns (Validator[] memory) {
-        Validator[] memory allValidators = new Validator[](this.getTotalActiveValidatorCount());
-        uint256 index;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            Validator[] memory validators = IStaderPoolBase(pools[i].poolAddress).getAllActiveValidators();
-            for (uint256 j = 0; j < validators.length; j++) {
-                allValidators[index] = validators[j];
-                index++;
-            }
-        }
-        return allValidators;
-    }
-
-    /// @inheritdoc IPoolFactory
+    // TODO sanjay implement this pagination at pool level
     function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
         public
         view
@@ -191,23 +172,39 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
     ) public view override returns (uint256) {
         return
-            IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonWithdrawnKeys(
+            IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonTerminalKeys(
                 _nodeOperator,
                 _startIndex,
                 _endIndex
             );
     }
 
+    function getCollateralETH(uint8 _poolId) external view override returns (uint256) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
+    }
+
+    // return validator full deposit amount on beacon chain
+    function getBeaconChainDepositSize() external pure override returns (uint256) {
+        return 32 ether;
+    }
+
+    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
+        for (uint8 i = 1; i <= poolCount; i++) {
+            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) return true;
+        }
+        return false;
+    }
+
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
-        require(_poolId > 0 && _poolId <= this.poolCount(), 'Invalid pool ID');
+        require(_poolId > 0 && _poolId <= poolCount, 'Invalid pool ID');
         _;
     }
 }
