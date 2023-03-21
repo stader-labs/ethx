@@ -133,6 +133,7 @@ contract PermissionedNodeRegistry is
      * @dev only accepts node operator onboarded along with sufficient SD lockup
      * @param _pubkey public key of validators
      * @param _signature signature of a validators for deposit
+     * //TODO check this signature should not show invalid deposit on beacon chain UI
      */
     function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature) external override whenNotPaused {
         if (_pubkey.length != _signature.length) revert MisMatchingInputKeysSize();

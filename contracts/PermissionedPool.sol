@@ -343,7 +343,7 @@ contract PermissionedPool is
             signature,
             depositDataRoot
         );
-        IPermissionedNodeRegistry(nodeRegistryAddress).setValidatorDepositTime(validatorId);
+        IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndTime(validatorId);
         emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey);
     }
 

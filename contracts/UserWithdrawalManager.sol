@@ -43,6 +43,7 @@ contract UserWithdrawalManager is
     /// @notice structure representing a user request for withdrawal.
     struct UserWithdrawInfo {
         address owner; // ethX owner
+        //TODO remove this recipient?
         address payable recipient; //payable address of the recipient to transfer withdrawal
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
         uint256 ethExpected; //eth requested according to given share and exchangeRate
@@ -130,6 +131,7 @@ contract UserWithdrawalManager is
      * @dev when slashing mode, only process and don't finalize
      */
     function finalizeUserWithdrawalRequest() external override whenNotPaused {
+        //TODO sanjay read from index file
         if (slashingMode) revert ProtocolInSlashingMode();
         uint256 exchangeRate = IStaderStakePoolManager(poolManager).getExchangeRate();
         if (exchangeRate == 0) revert ProtocolNotHealthy();
@@ -163,6 +165,7 @@ contract UserWithdrawalManager is
      * @notice transfer the eth of finalized request to recipient and delete the request
      * @param _requestId request id to redeem
      */
+    //TODO only allow owner/recipient to redeem
     function redeem(uint256 _requestId) external override {
         if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
         UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
@@ -199,6 +202,7 @@ contract UserWithdrawalManager is
         delete (userWithdrawRequests[_requestId]);
         uint256 userRequestCount = requestIdsByUserAddress[_owner].length;
         for (uint256 i = 0; i < userRequestCount; i++) {
+            //TODO check if we can define `requestIdsByUserAddress[_owner]` as a variable
             if (_requestId == requestIdsByUserAddress[_owner][i]) {
                 requestIdsByUserAddress[_owner][i] = requestIdsByUserAddress[_owner][userRequestCount - 1];
                 requestIdsByUserAddress[_owner].pop();
