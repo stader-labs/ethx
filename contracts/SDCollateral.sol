@@ -7,10 +7,13 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
+import '../contracts/interfaces/IPoolFactory.sol';
+import '../contracts/interfaces/IStaderConfig.sol';
 import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
-import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/SDCollateral/ISingleSwap.sol';
+
+import './library/Address.sol';
 
 contract SDCollateral is
     ISDCollateral,
@@ -26,9 +29,8 @@ contract SDCollateral is
     }
     bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
 
-    IERC20 public sdERC20;
+    IStaderConfig public staderConfig;
     IPriceFetcher public priceFetcher;
-    IPoolFactory public poolFactory;
     ISingleSwap public swapUtil;
 
     uint256 public totalShares;
@@ -39,42 +41,29 @@ contract SDCollateral is
     mapping(address => uint8) public poolIdByOperator;
     mapping(address => uint256) public operatorShares;
 
-    /**
-     * @notice Check for zero address
-     * @dev Modifier
-     * @param _address the address to check
-     */
-    modifier checkZeroAddress(address _address) {
-        require(_address != address(0), 'Address cannot be zero');
-        _;
-    }
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
     function initialize(
-        address _admin,
-        address _sdERC20Addr,
+        address _staderConfig,
         address _priceFetcherAddr,
-        address _poolFactory
-    )
-        external
-        initializer
-        checkZeroAddress(_admin)
-        checkZeroAddress(_sdERC20Addr)
-        checkZeroAddress(_priceFetcherAddr)
-        checkZeroAddress(_poolFactory)
-    {
+        address _swapUtil
+    ) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
+        Address.checkNonZeroAddress(_priceFetcherAddr);
+        Address.checkNonZeroAddress(_swapUtil);
+
         __AccessControl_init();
         __Pausable_init();
+        __ReentrancyGuard_init();
 
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
-
-        sdERC20 = IERC20(_sdERC20Addr);
+        staderConfig = IStaderConfig(_staderConfig);
         priceFetcher = IPriceFetcher(_priceFetcherAddr);
-        poolFactory = IPoolFactory(_poolFactory);
+        swapUtil = ISingleSwap(_swapUtil);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
     }
 
     /**
@@ -90,7 +79,8 @@ contract SDCollateral is
         operatorShares[operator] += numShares;
 
         // TODO: Manoj check if the below line could be moved to start of this method
-        require(sdERC20.transferFrom(operator, address(this), _sdAmount), 'sd transfer failed');
+        bool success = IERC20(staderConfig.staderToken()).transferFrom(operator, address(this), _sdAmount);
+        require(success, 'sd transfer failed');
     }
 
     function withdraw(uint256 _requestedSD) external {
@@ -102,7 +92,12 @@ contract SDCollateral is
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
         // TODO: Manoj update startIndex, endIndex
-        uint256 validatorCount = poolFactory.getOperatorTotalNonWithdrawnKeys(poolId, operator, 0, 1000);
+        uint256 validatorCount = IPoolFactory(staderConfig.poolFactory()).getOperatorTotalNonWithdrawnKeys(
+            poolId,
+            operator,
+            0,
+            1000
+        );
         uint256 withdrawableSD = sdBalance - convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
 
         require(_requestedSD <= withdrawableSD, 'withdraw less SD');
@@ -111,13 +106,15 @@ contract SDCollateral is
         operatorShares[operator] -= numShares;
         totalShares -= numShares;
 
-        require(sdERC20.transfer(payable(operator), _requestedSD), 'sd transfer failed');
+        bool success = IERC20(staderConfig.staderToken()).transfer(payable(operator), _requestedSD);
+        require(success, 'sd transfer failed');
     }
 
-    // update addr of swapUtil once this contract is deployed
+    // sends eth (not weth) to msg.sender
+    // TODO: discuss if we need to send weth (instead of eth), sending weth is easier.
     function swapSDToETH(uint256 _sdAmount) external {
         uint256 ethOutMinimum = convertSDToETH(_sdAmount);
-        swapUtil.swapExactInputForETH(address(sdERC20), _sdAmount, ethOutMinimum, msg.sender);
+        swapUtil.swapExactInputForETH(staderConfig.staderToken(), _sdAmount, ethOutMinimum, msg.sender);
     }
 
     // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -127,7 +124,8 @@ contract SDCollateral is
 
     // SETTERS
 
-    function updateSwapUtil(address _swapUtil) external checkZeroAddress(_swapUtil) {
+    function updateSwapUtil(address _swapUtil) external {
+        Address.checkNonZeroAddress(_swapUtil);
         swapUtil = ISingleSwap(_swapUtil);
     }
 
@@ -146,11 +144,8 @@ contract SDCollateral is
         });
     }
 
-    function updatePoolIdForOperator(uint8 _poolId, address _operator)
-        public
-        onlyRole(WHITELISTED_CONTRACT)
-        checkZeroAddress(_operator)
-    {
+    function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(WHITELISTED_CONTRACT) {
+        Address.checkNonZeroAddress(_operator);
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
         poolIdByOperator[_operator] = _poolId;
     }
