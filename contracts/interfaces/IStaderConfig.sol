@@ -4,6 +4,8 @@ pragma solidity ^0.8.16;
 interface IStaderConfig {
     function admin() external view returns (address);
 
+    function staderToken() external view returns (address);
+
     function totalStakedEth() external view returns (uint256);
 
     function rewardThreshold() external view returns (uint256);

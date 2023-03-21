@@ -7,10 +7,16 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
     uint256 public totalStakedEth;
     uint256 public rewardThreshold;
 
+    // ACCOUNTS
     address public admin;
     address public treasury;
-    address public poolFactory;
     address public stakePoolManager;
+
+    // TOKENS
+    address public staderToken;
+
+    // CONTRACTS
+    address public poolFactory;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -38,6 +44,10 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
 
     function updateRewardThreshold(uint256 _rewardThreshold) external onlyRole(DEFAULT_ADMIN_ROLE) {
         rewardThreshold = _rewardThreshold;
+    }
+
+    function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        staderToken = _staderToken;
     }
 
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
