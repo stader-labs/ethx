@@ -73,13 +73,13 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         address payable nodeRecipient
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address nodeELRewardVaultAddress;
-        bytes32 salt = sha256(abi.encode(poolType, operatorId));
+        bytes32 salt = sha256(abi.encode(poolId, operatorId));
         nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
         NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(
             vaultOwner,
             staderConfig,
             nodeRecipient,
-            poolType
+            poolId
         );
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
