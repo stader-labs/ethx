@@ -9,7 +9,6 @@ interface IStaderPoolBase {
     error ProtocolFeeUnchanged();
     error OperatorFeeMoreThanTOTAL_FEE();
     error OperatorFeeUnchanged();
-    error TooManyVerifiedKeysToDeposit();
 
     // Events
     event UpdatedNodeRegistryAddress(address _nodeRegistryAddress);
@@ -19,6 +18,7 @@ interface IStaderPoolBase {
     event ValidatorDepositedOnBeaconChain(uint256 indexed _validatorId, bytes _pubKey);
     event OperatorFeeUpdated(uint256 _operatorFee);
     event ProtocolFeeUpdated(uint256 _protocolFee);
+    event ReceivedCollateralETH(uint256 _amount);
 
     // Setters
 

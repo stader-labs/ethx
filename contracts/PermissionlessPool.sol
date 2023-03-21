@@ -62,8 +62,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
-    // receive to get bond ETH from permissionless node registry
-    receive() external payable {}
+    // receive `DEPOSIT_NODE_BOND` collateral ETH from permissionless node registry
+    function receiveRemainingCollateralETH() external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
+        emit ReceivedCollateralETH(msg.value);
+    }
 
     /// @inheritdoc IStaderPoolBase
     function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
@@ -88,33 +90,42 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /**
      * @notice pre deposit for permission less validator to avoid front running
      * @dev only permissionless node registry can call
-     * @param _pubkey public key of validator
-     * @param _signature signature of validator
-     * @param withdrawVault withdraw address to se set for validator
+     * @param _pubkey public key array of validators
+     * @param _signature signature array of validators for 1ETH deposit
+     * @param _operatorId operator Id of the NO
+     * @param _operatorTotalKeys total keys of operator at the starting of adding new keys
      */
-    function preDepositOnBeacon(
-        bytes calldata _pubkey,
-        bytes calldata _signature,
-        address withdrawVault
+    function preDepositOnBeaconChain(
+        bytes[] calldata _pubkey,
+        bytes[] calldata _signature,
+        uint256 _operatorId,
+        uint256 _operatorTotalKeys
     ) external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
-        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
-            withdrawVault
-        );
+        for (uint256 i = 0; i < _pubkey.length; i++) {
+            address withdrawVault = IVaultFactory(vaultFactoryAddress).computeWithdrawVaultAddress(
+                poolId,
+                _operatorId,
+                _operatorTotalKeys + i
+            );
+            bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+                withdrawVault
+            );
 
-        bytes32 depositDataRoot = this.computeDepositDataRoot(
-            _pubkey,
-            _signature,
-            withdrawCredential,
-            PRE_DEPOSIT_SIZE
-        );
-        //slither-disable-next-line arbitrary-send-eth
-        IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
-            _pubkey,
-            withdrawCredential,
-            _signature,
-            depositDataRoot
-        );
-        emit ValidatorPreDepositedOnBeaconChain(_pubkey);
+            bytes32 depositDataRoot = this.computeDepositDataRoot(
+                _pubkey[i],
+                _signature[i],
+                withdrawCredential,
+                PRE_DEPOSIT_SIZE
+            );
+            //slither-disable-next-line arbitrary-send-eth
+            IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
+                _pubkey[i],
+                withdrawCredential,
+                _signature[i],
+                depositDataRoot
+            );
+            emit ValidatorPreDepositedOnBeaconChain(_pubkey[i]);
+        }
     }
 
     /**
@@ -137,13 +148,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             depositQueueStartIndex + requiredValidators
         );
         IPermissionlessNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
-        // if EOA send any ETH to this contract transfer it to stader stake pool manager
-        if (address(this).balance > 0) {
-            //slither-disable-next-line arbitrary-send-eth
-            IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
-                poolId
-            );
-        }
+        // balance must be 0 at this point
+        assert(address(this).balance == 0);
     }
 
     /**
@@ -275,7 +281,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         (
             ,
             bytes memory pubkey,
-            bytes memory signature,
+            ,
+            bytes memory depositSignature,
             address withdrawVaultAddress,
             ,
             ,
@@ -287,11 +294,16 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             withdrawVaultAddress
         );
 
-        bytes32 depositDataRoot = this.computeDepositDataRoot(pubkey, signature, withdrawCredential, DEPOSIT_SIZE);
+        bytes32 depositDataRoot = this.computeDepositDataRoot(
+            pubkey,
+            depositSignature,
+            withdrawCredential,
+            DEPOSIT_SIZE
+        );
         IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
             pubkey,
             withdrawCredential,
-            signature,
+            depositSignature,
             depositDataRoot
         );
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateDepositStatusAndTime(_validatorId);

@@ -15,6 +15,7 @@ interface IUserWithdrawalManager {
     error RequestAlreadyRedeemed(uint256 _requestId);
     error MaxLimitOnWithdrawRequestCountReached();
     error CannotFindRequestId();
+    error OnlyStaderStakePoolManagerCanCall();
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
@@ -33,6 +34,7 @@ interface IUserWithdrawalManager {
         address _oldRecipient,
         address _newRecipient
     );
+    event ReceivedETHToFinalizeRequests(uint256 _amount);
 
     function USER_WITHDRAWAL_MANAGER_ADMIN() external view returns (bytes32);
 
@@ -70,6 +72,8 @@ interface IUserWithdrawalManager {
         );
 
     function requestIdsByUserAddress(address, uint256) external view returns (uint256);
+
+    function receiveETHToFinalizeRequest() external payable;
 
     function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external;
 

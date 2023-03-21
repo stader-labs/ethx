@@ -43,7 +43,7 @@ contract PermissionlessNodeRegistry is
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
-    uint256 public override socializePoolRewardDistributionCycle; //TODO move all DOA related values to index contract
+    uint256 public override socializePoolRewardDistributionCycle; //TODO sanjay move all DOA related values to index contract
 
     bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
@@ -132,36 +132,57 @@ contract PermissionlessNodeRegistry is
      * @notice add signing keys
      * @dev only accepts if bond of 4 ETH per key is provided along with sufficient SD lockup
      * @param _pubkey public key of validators
-     * @param _signature signature of a validators for Deposit
+     * @param _preDepositSignature signature of a validators for 1ETH deposit
+     * @param _depositSignature signature of a validator for 31ETH deposit
      */
-    function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature)
-        external
-        payable
-        override
-        nonReentrant
-        whenNotPaused
-    {
+    function addValidatorKeys(
+        bytes[] calldata _pubkey,
+        bytes[] calldata _preDepositSignature,
+        bytes[] calldata _depositSignature
+    ) external payable override nonReentrant whenNotPaused {
         uint256 operatorId = _onlyActiveOperator(msg.sender);
-        if (_pubkey.length != _signature.length) revert MisMatchingInputKeysSize();
-
-        // TODO sanjay try to merge these check in a single internal function
-        uint256 keyCount = _pubkey.length;
-        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
-
-        if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
-
-        uint256 totalKeys = getOperatorTotalKeys(operatorId);
-        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
-        if ((totalNonTerminalKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+        (uint256 keyCount, uint256 operatorTotalKeys) = _checkInputKeysCountAndCollateral(
+            _pubkey.length,
+            _preDepositSignature.length,
+            _depositSignature.length,
+            operatorId
+        );
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
-        //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonTerminalKeys + keyCount);
-
         for (uint256 i = 0; i < keyCount; i++) {
-            //TODO sanjay check if we can remove this internal function call
-            _addValidatorKey(_pubkey[i], _signature[i], operatorRewardAddress, operatorId, totalKeys);
+            _validateKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
+            address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
+                poolId,
+                operatorId,
+                operatorTotalKeys + i, //operator totalKeys
+                operatorRewardAddress
+            );
+            validatorRegistry[nextValidatorId] = Validator(
+                ValidatorStatus.INITIALIZED,
+                _pubkey[i],
+                _preDepositSignature[i],
+                _depositSignature[i],
+                withdrawVault,
+                operatorId,
+                collateralETH,
+                0,
+                0
+            );
+
+            validatorIdByPubkey[_pubkey[i]] = nextValidatorId;
+            validatorIdsByOperatorId[operatorId].push(nextValidatorId);
+            emit AddedKeys(msg.sender, _pubkey[i], nextValidatorId);
+            nextValidatorId++;
         }
+
+        //TODO sanjay why are we not marking PRE_DEPOSIT status after 1ETH deposit
+        //slither-disable-next-line arbitrary-send-eth
+        IPermissionlessPool(permissionlessPool).preDepositOnBeaconChain{value: PRE_DEPOSIT}(
+            _pubkey,
+            _preDepositSignature,
+            operatorId,
+            operatorTotalKeys
+        );
     }
 
     /**
@@ -445,8 +466,7 @@ contract PermissionlessNodeRegistry is
      * @param _amount amount of eth to send to permissionless pool
      */
     function transferCollateralToPool(uint256 _amount) external override whenNotPaused onlyRole(PERMISSIONLESS_POOL) {
-        (, address poolAddress) = IPoolFactory(poolFactoryAddress).pools(poolId);
-        _sendValue(poolAddress, _amount);
+        IPermissionlessPool(permissionlessPool).receiveRemainingCollateralETH{value: _amount}();
     }
 
     /**
@@ -578,44 +598,6 @@ contract PermissionlessNodeRegistry is
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
     }
 
-    function _addValidatorKey(
-        bytes calldata _pubkey,
-        bytes calldata _signature,
-        address payable _operatorRewardAddress,
-        uint256 _operatorId,
-        uint256 _totalKeys
-    ) internal {
-        _validateKeys(_pubkey, _signature);
-        address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
-            poolId,
-            _operatorId,
-            _totalKeys,
-            _operatorRewardAddress
-        );
-        validatorRegistry[nextValidatorId] = Validator(
-            ValidatorStatus.INITIALIZED,
-            _pubkey,
-            _signature,
-            withdrawVault,
-            _operatorId,
-            collateralETH,
-            0,
-            0
-        );
-
-        //TODO sanjay why are we not marking PRE_DEPOSIT status after 1ETH deposit
-        //slither-disable-next-line arbitrary-send-eth
-        IPermissionlessPool(permissionlessPool).preDepositOnBeacon{value: PRE_DEPOSIT}(
-            _pubkey,
-            _signature,
-            withdrawVault
-        );
-        validatorIdByPubkey[_pubkey] = nextValidatorId;
-        validatorIdsByOperatorId[_operatorId].push(nextValidatorId);
-        nextValidatorId++;
-        emit AddedKeys(msg.sender, _pubkey, nextValidatorId - 1);
-    }
-
     // mark validator ready to deposit after successful key verification and front run check
     function _markKeyReadyToDeposit(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.PRE_DEPOSIT;
@@ -640,10 +622,37 @@ contract PermissionlessNodeRegistry is
     }
 
     // checks for keys lengths, and if pubkey is already present in stader protocol(not just permissionless pool)
-    function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
+    function _validateKeys(
+        bytes calldata _pubkey,
+        bytes calldata _preDepositSignature,
+        bytes calldata _depositSignature
+    ) private view {
         if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
-        if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
+        if (_preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
+        if (_depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
+    }
+
+    // validate the input of `addValidatorKeys` function
+    function _checkInputKeysCountAndCollateral(
+        uint256 _pubkeyLength,
+        uint256 _preDepositSignatureLength,
+        uint256 _depositSignatureLength,
+        uint256 _operatorId
+    ) internal view returns (uint256 keyCount, uint256 totalKeys) {
+        if (_pubkeyLength != _preDepositSignatureLength || _pubkeyLength != _depositSignatureLength)
+            revert MisMatchingInputKeysSize();
+        keyCount = _pubkeyLength;
+        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
+
+        totalKeys = getOperatorTotalKeys(_operatorId);
+        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
+        if ((totalNonTerminalKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+
+        // check for collateral ETH for adding keys
+        if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
+        //check if operator has enough SD collateral for adding `keyCount` keys
+        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonTerminalKeys + keyCount);
     }
 
     function _sendValue(address receiver, uint256 _amount) internal {
@@ -676,17 +685,16 @@ contract PermissionlessNodeRegistry is
                 validator.status == ValidatorStatus.INVALID_SIGNATURE);
     }
 
-    // checks if validator is active, active validator are those having user share on beacon chain
+    // checks if validator is active,
+    //active validator are those having user deposit staked on beacon chain
     function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
-        if (
-            validator.status == ValidatorStatus.INITIALIZED ||
-            validator.status == ValidatorStatus.INVALID_SIGNATURE ||
-            validator.status == ValidatorStatus.FRONT_RUN ||
-            validator.status == ValidatorStatus.PRE_DEPOSIT ||
-            validator.status == ValidatorStatus.WITHDRAWN
-        ) return false;
-        return true;
+        return
+            !(validator.status == ValidatorStatus.INITIALIZED ||
+                validator.status == ValidatorStatus.INVALID_SIGNATURE ||
+                validator.status == ValidatorStatus.FRONT_RUN ||
+                validator.status == ValidatorStatus.PRE_DEPOSIT ||
+                validator.status == ValidatorStatus.WITHDRAWN);
     }
 
     function _onlyInitializedValidator(uint256 _validatorId) internal view {

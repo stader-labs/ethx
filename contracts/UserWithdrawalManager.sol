@@ -64,6 +64,12 @@ contract UserWithdrawalManager is
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
+    function receiveETHToFinalizeRequest() external payable override {
+        //TODO call this poolManager from index file
+        if (msg.sender != poolManager) revert OnlyStaderStakePoolManagerCanCall();
+        emit ReceivedETHToFinalizeRequests(msg.value);
+    }
+
     /**
      * @dev update the minimum withdraw amount
      * @param _minWithdrawAmount minimum withdraw value

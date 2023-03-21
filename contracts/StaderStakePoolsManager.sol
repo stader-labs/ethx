@@ -122,8 +122,7 @@ contract StaderStakePoolsManager is
         if (msg.sender != userWithdrawalManager) revert CallerNotUserWithdrawManager();
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(userWithdrawalManager).call{value: _amount}('');
-        if (!success) revert TransferFailed();
+        IUserWithdrawalManager(userWithdrawalManager).receiveETHToFinalizeRequest{value: _amount}();
         emit TransferredETHToUserWithdrawManager(_amount);
     }
 

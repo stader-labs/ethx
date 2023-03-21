@@ -11,7 +11,6 @@ interface IStaderStakePoolManager {
     error InvalidMaxDepositValue();
     error UnsupportedOperation();
     error insufficientBalance();
-    error TransferFailed();
     error CallerNotUserWithdrawManager();
 
     // Events
