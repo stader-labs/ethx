@@ -44,7 +44,6 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         return withdrawVaultAddress;
     }
 
-    // TODO: update the signature where this method is invoked
     function deployNodeELRewardVault(
         uint8 poolId,
         uint256 operatorId,
