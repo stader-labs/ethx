@@ -179,15 +179,15 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     {
         uint256 collateralETH = getCollateralETH(_poolId);
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
-        uint256 protocolFeePercent = getProtocolFeePercent(_poolId);
-        uint256 operatorFeePercent = getOperatorFeePercent(_poolId);
+        uint256 protocolFeeBps = getProtocolFeeBps(_poolId);
+        uint256 operatorFeeBps = getOperatorFeeBps(_poolId);
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100;
+        _protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 10000;
 
         _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
+        _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
 
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
@@ -230,12 +230,12 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         emit UpdatedStaderTreasury(staderTreasury);
     }
 
-    function getProtocolFeePercent(uint8 _poolId) internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getProtocolFeePercent(_poolId);
+    function getProtocolFeeBps(uint8 _poolId) internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getProtocolFee(_poolId);
     }
 
-    function getOperatorFeePercent(uint8 _poolId) internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getOperatorFeePercent(_poolId);
+    function getOperatorFeeBps(uint8 _poolId) internal view returns (uint256) {
+        return IPoolFactory(poolFactory).getOperatorFee(_poolId);
     }
 
     function getCollateralETH(uint8 _poolId) private view returns (uint256) {
