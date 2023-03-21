@@ -14,6 +14,7 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
 
     // TOKENS
     address public staderToken;
+    address public wethToken;
 
     // CONTRACTS
     address public poolFactory;
@@ -48,6 +49,10 @@ contract StaderConfig is Initializable, AccessControlUpgradeable {
 
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
         staderToken = _staderToken;
+    }
+
+    function updateWethToken(address _wethToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        wethToken = _wethToken;
     }
 
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
