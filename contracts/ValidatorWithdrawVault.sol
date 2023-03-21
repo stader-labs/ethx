@@ -2,181 +2,165 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract ValidatorWithdrawVault is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+import './interfaces/IValidatorWithdrawVault.sol';
+import './interfaces/IStaderStakePoolManager.sol';
+import './interfaces/IPoolFactory.sol';
+import './interfaces/IStaderConfig.sol';
+
+contract ValidatorWithdrawVault is
+    IValidatorWithdrawVault,
+    Initializable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
+{
+    bytes32 public constant STADER_NODE_REGISTRY_CONTRACT = keccak256('STADER_NODE_REGISTRY_CONTRACT');
+    IStaderConfig staderConfig;
     uint8 public poolId;
-    address public poolFactory;
-
-    event ETHReceived(uint256 _amount);
-    event Withdrawal(uint256 _protocolShare, uint256 _operatorShare, uint256 _userShare);
-
-    // Recipients
     address payable public nodeRecipient;
-    address payable public staderTreasury;
-    address payable public staderStakePoolsManager;
 
+    // TODO: update params where this is deployed
     function initialize(
-        address _owner,
+        address _admin,
+        address _staderConfig,
         address payable _nodeRecipient,
-        address payable _staderTreasury,
-        address payable _staderStakePoolsManager,
-        address _poolFactory,
         uint8 _poolId
     ) external initializer {
-        Address.checkNonZeroAddress(_owner);
+        Address.checkNonZeroAddress(_admin);
+        Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_nodeRecipient);
-        Address.checkNonZeroAddress(_staderTreasury);
-        Address.checkNonZeroAddress(_staderStakePoolsManager);
-        Address.checkNonZeroAddress(_poolFactory);
 
-        staderTreasury = _staderTreasury;
-        nodeRecipient = _nodeRecipient;
-        staderStakePoolsManager = _staderStakePoolsManager;
-        poolFactory = _poolFactory;
-        poolId = _poolId;
-
-        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
-
-        __AccessControl_init();
+        __AccessControl_init_unchained();
         __ReentrancyGuard_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        nodeRecipient = _nodeRecipient;
+        poolId = _poolId;
+        staderConfig = IStaderConfig(_staderConfig);
     }
 
     /**
      * @notice Allows the contract to receive ETH
-     * @dev execution layer rewards may be sent as plain ETH transfers
+     * @dev skimmed rewards may be sent as plain ETH transfers
      */
     receive() external payable {
-        emit ETHReceived(msg.value);
+        emit ETHReceived(msg.sender, msg.value);
     }
 
-    function withdraw() external nonReentrant {
-        uint256 protocolShare = calculateProtocolShare();
-        uint256 operatorShare = calculateOperatorShare();
-        uint256 userShare = calculateUserShare();
+    function distributeRewards() external nonReentrant {
+        uint256 totalRewards = address(this).balance;
 
-        bool success;
+        // TODO: in below condition, let staderManager handle it, impl to byPass below revert for staderManager
+        if (totalRewards > staderConfig.rewardThreshold()) {
+            emit DistributeRewardFailed(totalRewards, staderConfig.rewardThreshold());
+            revert InvalidRewardAmount();
+        }
+
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(totalRewards);
 
         // Distribute rewards
-        IStaderStakePoolManager(staderStakePoolsManager).receiveExecutionLayerRewards{value: userShare}();
-        // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderTreasury).call{value: protocolShare}('');
-        require(success, 'Protocol share transfer failed');
-        // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
-        require(success, 'Operator share transfer failed');
-
-        emit Withdrawal(protocolShare, operatorShare, userShare);
+        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
+        _sendValue(nodeRecipient, operatorShare);
+        _sendValue(payable(staderConfig.treasury()), protocolShare);
     }
 
-    function calculateProtocolShare() public view returns (uint256) {
-        return address(this).balance * (getProtocolFeePercent() / 100);
-    }
-
-    function calculateOperatorShare() public view returns (uint256) {
+    // TODO: add penalty changes
+    // TODO: change percent to fee and 100 to 10_000
+    function _calculateRewardShare(uint256 _totalRewards)
+        internal
+        view
+        returns (
+            uint256 _userShare,
+            uint256 _operatorShare,
+            uint256 _protocolShare
+        )
+    {
+        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
         uint256 collateralETH = getCollateralETH();
-        uint256 fullBalance = address(this).balance;
-        uint256 remainingBalance = fullBalance - calculateProtocolShare();
-        uint256 userBalance = (remainingBalance * (32 ether - collateralETH)) / 32 ether;
-        uint256 operatorFee = userBalance * (getOperatorFeePercent() / 100);
-        return remainingBalance - userBalance + operatorFee;
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 protocolFeeBps = getProtocolFeeBps();
+        uint256 operatorFeeBps = getOperatorFeeBps();
+
+        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
+
+        _protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 100;
+
+        _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
+        _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 100;
+
+        _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function calculateUserShare() public view returns (uint256) {
-        uint256 fullBalance = address(this).balance;
-        uint256 remainingBalance = fullBalance - calculateProtocolShare();
-        return remainingBalance - calculateOperatorShare();
+    function settleFunds() external nonReentrant onlyRole(STADER_NODE_REGISTRY_CONTRACT) {
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawShare();
+
+        // Final settlement
+        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
+        _sendValue(nodeRecipient, operatorShare);
+        _sendValue(payable(staderConfig.treasury()), protocolShare);
     }
 
-    function getProtocolFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getProtocolFee(poolId);
+    // TODO: add penalty changes
+    function _calculateValidatorWithdrawShare()
+        internal
+        view
+        returns (
+            uint256 _userShare,
+            uint256 _operatorShare,
+            uint256 _protocolShare
+        )
+    {
+        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
+        uint256 collateralETH = getCollateralETH(); // 0, incase of permissioned NOs
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 contractBalance = address(this).balance;
+
+        uint256 totalRewards;
+
+        if (contractBalance < usersETH) {
+            _userShare = contractBalance;
+            return (_userShare, _operatorShare, _protocolShare);
+        } else if (contractBalance < TOTAL_STAKED_ETH) {
+            _userShare = usersETH;
+            _operatorShare = contractBalance - _userShare;
+            return (_userShare, _operatorShare, _protocolShare);
+        } else {
+            totalRewards = contractBalance - TOTAL_STAKED_ETH;
+            _operatorShare = collateralETH;
+            _userShare = usersETH;
+        }
+
+        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = _calculateRewardShare(totalRewards);
+        _userShare += userReward;
+        _operatorShare += operatorReward;
+        _protocolShare += protocolReward;
     }
 
-    function getOperatorFeePercent() internal view returns (uint256) {
-        return IPoolFactory(poolFactory).getOperatorFee(poolId);
+    function _sendValue(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, 'Address: insufficient balance');
+
+        //slither-disable-next-line arbitrary-send-eth
+        if (amount > 0) {
+            (bool success, ) = recipient.call{value: amount}(''); // TODO: Manoj check if call is best ??
+            require(success, 'Address: unable to send value, recipient may have reverted');
+        }
+    }
+
+    // getters
+
+    function getProtocolFeeBps() internal view returns (uint256) {
+        return IPoolFactory(staderConfig.poolFactory()).getProtocolFee(poolId);
+    }
+
+    // should return 0, for permissioned NOs
+    function getOperatorFeeBps() internal view returns (uint256) {
+        return IPoolFactory(staderConfig.poolFactory()).getOperatorFee(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {
-        return IPoolFactory(poolFactory).getCollateralETH(poolId);
+        return IPoolFactory(staderConfig.poolFactory()).getCollateralETH(poolId);
     }
 }
-
-// /**
-//  * @notice Allows the contract to receive ETH
-//  * @dev skimmed rewards may be sent as plain ETH transfers
-//  */
-// receive() external payable {
-//     // emit ETHReceived(msg.value);
-// }
-
-// function transferUserShareToPoolManager(
-//     uint256 _userDeposit,
-//     bool _withdrawStatus,
-//     address payable _operatorRewardAddress
-// ) external onlyRole(POOL_MANAGER) {
-//     uint256 userShare = calculateUserShare(_userDeposit, _withdrawStatus);
-//     uint256 staderFeeShare = calculateStaderFee(_userDeposit, _withdrawStatus);
-//     uint256 nodeShare = calculateNodeShare(validatorDeposit - _userDeposit, _userDeposit, _withdrawStatus);
-//     //slither-disable-next-line arbitrary-send-eth
-//     IStaderStakePoolManager(staderPoolManager).receiveWithdrawVaultUserShare{value: userShare}();
-//     _sendValue(staderTreasury, staderFeeShare);
-//     _sendValue(_operatorRewardAddress, nodeShare);
-//     //TODO transfer node commission
-// }
-
-// function calculateUserShare(uint256 _userDeposit, bool _withdrawStatus) public view returns (uint256) {
-//     if (_withdrawStatus) {
-//         if (address(this).balance > validatorDeposit) {
-//             return
-//                 _userDeposit +
-//                 ((address(this).balance - validatorDeposit) * _userDeposit * (100 - protocolCommission)) /
-//                 (validatorDeposit * 100);
-//         } else if (address(this).balance < _userDeposit) {
-//             return address(this).balance;
-//         } else {
-//             return _userDeposit;
-//         }
-//     }
-//     return (address(this).balance * _userDeposit * (100 - protocolCommission)) / (validatorDeposit * 100);
-// }
-
-// function calculateNodeShare(
-//     uint256 _nodeDeposit,
-//     uint256 _userDeposit,
-//     bool _withdrawStatus
-// ) public view returns (uint256) {
-//     require(_nodeDeposit + _userDeposit == validatorDeposit, 'invalid input');
-//     if (_withdrawStatus) {
-//         if (address(this).balance > validatorDeposit) {
-//             return
-//                 address(this).balance -
-//                 calculateUserShare(_userDeposit, _withdrawStatus) -
-//                 calculateStaderFee(_userDeposit, _withdrawStatus);
-//         } else if (address(this).balance <= _userDeposit) {
-//             return 0;
-//         } else {
-//             return address(this).balance - _userDeposit;
-//         }
-//     }
-//     return
-//         (address(this).balance * _nodeDeposit) /
-//         validatorDeposit +
-//         ((address(this).balance * _userDeposit * protocolCommission) / (validatorDeposit * 100 * 2));
-// }
-
-// function calculateStaderFee(uint256 _userDeposit, bool _withdrawStatus) public view returns (uint256) {
-//     if (_withdrawStatus) {
-//         if (address(this).balance > validatorDeposit) {
-//             return
-//                 ((address(this).balance - validatorDeposit) * _userDeposit * protocolCommission) /
-//                 (validatorDeposit * 100 * 2);
-//         } else {
-//             return 0;
-//         }
-//     }
-//     return (address(this).balance * _userDeposit * protocolCommission) / (validatorDeposit * 100 * 2);
-// }
