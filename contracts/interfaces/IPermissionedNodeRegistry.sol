@@ -118,8 +118,6 @@ interface IPermissionedNodeRegistry {
 
     function onlyPreDepositValidator(bytes calldata _pubkey) external view;
 
-    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
-
     // Setters
 
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external;

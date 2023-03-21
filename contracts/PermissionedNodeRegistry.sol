@@ -507,10 +507,6 @@ contract PermissionedNodeRegistry is
         return 0;
     }
 
-    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
-        return operatorStructById[_operatorId].operatorRewardAddress;
-    }
-
     /**
      * @notice returns the operator reward address
      * @param _operatorId operator ID
