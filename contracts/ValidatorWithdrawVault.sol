@@ -24,22 +24,21 @@ contract ValidatorWithdrawVault is
 
     // TODO: update params where this is deployed
     function initialize(
-        address _admin,
         address _staderConfig,
         address payable _nodeRecipient,
         uint8 _poolId
     ) external initializer {
-        Address.checkNonZeroAddress(_admin);
         Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_nodeRecipient);
 
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        staderConfig = IStaderConfig(_staderConfig);
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
-        staderConfig = IStaderConfig(_staderConfig);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
     }
 
     /**

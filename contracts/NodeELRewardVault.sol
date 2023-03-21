@@ -20,23 +20,21 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     address payable public nodeRecipient;
 
     function initialize(
-        address _owner,
         address _staderConfig,
         address payable _nodeRecipient,
         uint8 _poolId
     ) external initializer {
-        Address.checkNonZeroAddress(_owner);
         Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_nodeRecipient);
 
         __AccessControl_init();
         __ReentrancyGuard_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
-
         staderConfig = IStaderConfig(_staderConfig);
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
     }
 
     /**
