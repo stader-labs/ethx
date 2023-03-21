@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity >=0.7.5;
 
 interface IStaderConfig {
     function admin() external view returns (address);
