@@ -73,7 +73,7 @@ contract SingleSwap {
         });
 
         amountOut = swapRouter.exactInputSingle(params);
-        swapRouter.unwrapWETH9(amountOut, recipient); // unwraps weth of this contract and sends to msg.sender
+        swapRouter.unwrapWETH9(amountOutMinimum, recipient); // unwraps all weth of this contract and sends to msg.sender
     }
 
     // SETTERS

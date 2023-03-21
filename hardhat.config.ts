@@ -35,7 +35,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  defaultNetwork: 'goerli',
+  defaultNetwork: 'hardhat',
   networks: {
     hardhat: {},
     goerli: {
