@@ -79,26 +79,25 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
-        uint256 protocolFeePercent = getProtocolFeePercent();
-        uint256 operatorFeePercent = getOperatorFeePercent();
+        uint256 protocolFeeBps = getProtocolFeeBps();
+        uint256 operatorFeeBps = getOperatorFeeBps();
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        // TODO: change percent to bps => 100 to 10_000
-        _protocolShare = (protocolFeePercent * _userShareBeforeCommision) / 100;
+        _protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 10000;
 
         _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        _operatorShare += (operatorFeePercent * _userShareBeforeCommision) / 100;
+        _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
 
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function getProtocolFeePercent() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getProtocolFeePercent(poolId);
+    function getProtocolFeeBps() internal view returns (uint256) {
+        return IPoolFactory(staderConfig.poolFactory()).getProtocolFee(poolId);
     }
 
-    function getOperatorFeePercent() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getOperatorFeePercent(poolId);
+    function getOperatorFeeBps() internal view returns (uint256) {
+        return IPoolFactory(staderConfig.poolFactory()).getOperatorFee(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {
