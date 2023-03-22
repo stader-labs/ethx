@@ -15,6 +15,8 @@ interface IUserWithdrawalManager {
     error RequestAlreadyRedeemed(uint256 _requestId);
     error MaxLimitOnWithdrawRequestCountReached();
     error CannotFindRequestId();
+    error CallerNotAuthorizedToRedeem();
+    error ZeroAddressReceived();
 
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
@@ -33,6 +35,7 @@ interface IUserWithdrawalManager {
         address _oldRecipient,
         address _newRecipient
     );
+    event ReceivedETH(uint256 _amount);
 
     function USER_WITHDRAWAL_MANAGER_ADMIN() external view returns (bytes32);
 
@@ -62,8 +65,7 @@ interface IUserWithdrawalManager {
         external
         view
         returns (
-            address owner,
-            address payable recipient,
+            address payable owner,
             uint256 ethXAmount,
             uint256 ethExpected,
             uint256 ethFinalized

@@ -21,6 +21,7 @@ interface IPermissionedNodeRegistry {
     error MisMatchingInputKeysSize();
     error OperatorAlreadyOnBoarded();
     error NotAPermissionedNodeOperator();
+    error TooManyVerifiedKeysToDeposit();
 
     //Events
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
@@ -83,7 +84,8 @@ interface IPermissionedNodeRegistry {
         returns (
             ValidatorStatus status,
             bytes calldata pubkey,
-            bytes calldata signature,
+            bytes calldata preDepositSignature,
+            bytes calldata depositSignature,
             address withdrawVaultAddress,
             uint256 operatorId,
             uint256 initialBondEth,
@@ -126,15 +128,21 @@ interface IPermissionedNodeRegistry {
         external
         returns (address mevFeeRecipientAddress);
 
-    function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature) external;
-
-    function reportFrontRunValidator(bytes[] calldata _pubkeys) external;
-
-    function reportInvalidSignatureValidator(bytes[] calldata _pubkeys) external;
+    function addValidatorKeys(
+        bytes[] calldata _pubkey,
+        bytes[] calldata _preDepositSignature,
+        bytes[] calldata _depositSignature
+    ) external;
 
     function computeOperatorAllocationForDeposit(uint256 numValidators)
         external
         returns (uint256[] memory selectedOperatorCapacity);
+
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkeys,
+        bytes[] calldata _frontRunPubkeys,
+        bytes[] calldata _invalidSignaturePubkeys
+    ) external;
 
     function activateNodeOperator(uint16 _operatorId) external;
 
