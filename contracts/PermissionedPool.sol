@@ -69,6 +69,16 @@ contract PermissionedPool is
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
+    // protection against accidental submissions by calling non-existent function
+    receive() external payable {
+        revert UnsupportedOperation();
+    }
+
+    // protection against accidental submissions by calling non-existent function
+    fallback() external payable {
+        revert UnsupportedOperation();
+    }
+
     //TODO sanjay Stader Insurance fund to reimburse lost 1 ETH.
     // transfer the 31ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
     function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount)

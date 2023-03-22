@@ -62,6 +62,16 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
+    // protection against accidental submissions by calling non-existent function
+    receive() external payable {
+        revert UnsupportedOperation();
+    }
+
+    // protection against accidental submissions by calling non-existent function
+    fallback() external payable {
+        revert UnsupportedOperation();
+    }
+
     // receive `DEPOSIT_NODE_BOND` collateral ETH from permissionless node registry
     function receiveRemainingCollateralETH() external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
         emit ReceivedCollateralETH(msg.value);

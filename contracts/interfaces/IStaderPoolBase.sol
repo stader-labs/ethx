@@ -9,6 +9,7 @@ interface IStaderPoolBase {
     error ProtocolFeeUnchanged();
     error OperatorFeeMoreThanTOTAL_FEE();
     error OperatorFeeUnchanged();
+    error UnsupportedOperation();
 
     // Events
     event UpdatedNodeRegistryAddress(address _nodeRegistryAddress);

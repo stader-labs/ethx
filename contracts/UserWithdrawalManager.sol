@@ -62,10 +62,8 @@ contract UserWithdrawalManager is
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
-    function receiveETHToFinalizeRequest() external payable override {
-        //TODO call this poolManager from index file
-        if (msg.sender != poolManager) revert OnlyStaderStakePoolManagerCanCall();
-        emit ReceivedETHToFinalizeRequests(msg.value);
+    receive() external payable {
+        emit ReceivedETH(msg.value);
     }
 
     /**
@@ -116,12 +114,12 @@ contract UserWithdrawalManager is
      * @param _owner owner of withdraw request to redeem
      */
     function withdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
+        if (_owner == address(0)) revert ZeroAddressReceived();
         uint256 assets = IStaderStakePoolManager(poolManager).previewWithdraw(_ethXAmount);
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
             revert MaxLimitOnWithdrawRequestCountReached();
         //TODO sanjay user safeTransfer
-        if (_owner == address(0)) _owner = msg.sender;
         if (!ETHx(ethX).transferFrom(msg.sender, (address(this)), _ethXAmount)) revert TokenTransferFailed();
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(payable(_owner), _ethXAmount, assets, 0);

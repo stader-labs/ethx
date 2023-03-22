@@ -83,16 +83,15 @@ contract StaderStakePoolsManager is
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /**
-     * @notice Send funds to the pool
-     * @dev Users are able to deposit their funds by transacting to the fallback function.
-     * protection against accidental submissions by calling non-existent function
-     */
+    // protection against accidental submissions by calling non-existent function
     fallback() external payable {
         revert UnsupportedOperation();
     }
 
-    //TODO sanjay add a revert on receive function as well
+    // protection against accidental submissions by calling non-existent function
+    receive() external payable override {
+        revert UnsupportedOperation();
+    }
 
     /**
      * @notice A payable function for execution layer rewards.
@@ -124,7 +123,8 @@ contract StaderStakePoolsManager is
         if (msg.sender != userWithdrawalManager) revert CallerNotUserWithdrawManager();
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
-        IUserWithdrawalManager(userWithdrawalManager).receiveETHToFinalizeRequest{value: _amount}();
+        (bool success, ) = payable(userWithdrawalManager).call{value: _amount}('');
+        if (!success) revert TransferFailed();
         emit TransferredETHToUserWithdrawManager(_amount);
     }
 

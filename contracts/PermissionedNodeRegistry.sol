@@ -243,27 +243,23 @@ contract PermissionedNodeRegistry is
         uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkeys.length;
 
         //handle the front run validators
-        if (frontRunValidatorsLength > 0) {
-            for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
-                uint256 validatorId = validatorIdByPubkey[_frontRunPubkeys[i]];
-                // only PRE_DEPOSIT status check will also include validatorId = 0 check
-                // as status for that will be INITIALIZED(default status)
-                _onlyPreDepositValidator(validatorId);
-                _handleFrontRun(validatorId);
-                emit ValidatorMarkedAsFrontRunned(_frontRunPubkeys[i], validatorId);
-            }
+        for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
+            uint256 validatorId = validatorIdByPubkey[_frontRunPubkeys[i]];
+            // only PRE_DEPOSIT status check will also include validatorId = 0 check
+            // as status for that will be INITIALIZED(default status)
+            _onlyPreDepositValidator(validatorId);
+            _handleFrontRun(validatorId);
+            emit ValidatorMarkedAsFrontRunned(_frontRunPubkeys[i], validatorId);
         }
 
         //handle the invalid signature validators
-        if (invalidSignatureValidatorsLength > 0) {
-            for (uint256 i = 0; i < invalidSignatureValidatorsLength; i++) {
-                uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkeys[i]];
-                // only PRE_DEPOSIT status check will also include validatorId = 0 check
-                // as status for that will be INITIALIZED(default status)
-                _onlyPreDepositValidator(validatorId);
-                validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
-                emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkeys[i], validatorId);
-            }
+        for (uint256 i = 0; i < invalidSignatureValidatorsLength; i++) {
+            uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkeys[i]];
+            // only PRE_DEPOSIT status check will also include validatorId = 0 check
+            // as status for that will be INITIALIZED(default status)
+            _onlyPreDepositValidator(validatorId);
+            validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
+            emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkeys[i], validatorId);
         }
         uint256 totalDefectedKeys = frontRunValidatorsLength + invalidSignatureValidatorsLength;
         _decreaseTotalActiveValidatorCount(totalDefectedKeys);
