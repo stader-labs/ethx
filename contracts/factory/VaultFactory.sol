@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import '../library/Address.sol';
 
-import '../ValidatorWithdrawVault.sol';
+import '../ValidatorWithdrawalVault.sol';
 import '../NodeELRewardVault.sol';
 
 import '../interfaces/IVaultFactory.sol';
@@ -15,7 +15,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
     address public nodeELRewardVaultImplementation;
-    address public validatorWithdrawVaultImplementation;
+    address public validatorWithdrawalVaultImplementation;
 
     bytes32 public constant override STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
 
@@ -24,7 +24,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
 
         staderConfig = IStaderConfig(_staderConfig);
         nodeELRewardVaultImplementation = address(new NodeELRewardVault());
-        validatorWithdrawVaultImplementation = address(new ValidatorWithdrawVault());
+        validatorWithdrawalVaultImplementation = address(new ValidatorWithdrawalVault());
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
     }
@@ -37,8 +37,12 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(poolId, operatorId, validatorCount));
-        withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(validatorWithdrawVaultImplementation, salt);
-        ValidatorWithdrawVault(payable(withdrawVaultAddress)).initialize(address(staderConfig), nodeRecipient, poolId);
+        withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(validatorWithdrawalVaultImplementation, salt);
+        ValidatorWithdrawalVault(payable(withdrawVaultAddress)).initialize(
+            address(staderConfig),
+            nodeRecipient,
+            poolId
+        );
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
         return withdrawVaultAddress;
@@ -64,7 +68,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 validatorCount
     ) public view override returns (address) {
         bytes32 salt = sha256(abi.encode(poolId, operatorId, validatorCount));
-        return ClonesUpgradeable.predictDeterministicAddress(validatorWithdrawVaultImplementation, salt);
+        return ClonesUpgradeable.predictDeterministicAddress(validatorWithdrawalVaultImplementation, salt);
     }
 
     // TODO change it to poolID

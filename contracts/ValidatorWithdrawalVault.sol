@@ -6,18 +6,18 @@ import './library/Address.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-import './interfaces/IValidatorWithdrawVault.sol';
+import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderConfig.sol';
 
-contract ValidatorWithdrawVault is
-    IValidatorWithdrawVault,
+contract ValidatorWithdrawalVault is
+    IValidatorWithdrawalVault,
     Initializable,
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    bytes32 public constant STADER_NODE_REGISTRY_CONTRACT = keccak256('STADER_NODE_REGISTRY_CONTRACT');
+    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
     IStaderConfig staderConfig;
     uint8 public poolId;
     address payable public nodeRecipient;
@@ -92,8 +92,8 @@ contract ValidatorWithdrawVault is
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function settleFunds() external nonReentrant onlyRole(STADER_NODE_REGISTRY_CONTRACT) {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawShare();
+    function settleFunds() external nonReentrant onlyRole(STADER_ORACLE) {
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         // Final settlement
         IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
@@ -102,7 +102,7 @@ contract ValidatorWithdrawVault is
     }
 
     // TODO: add penalty changes
-    function _calculateValidatorWithdrawShare()
+    function _calculateValidatorWithdrawalShare()
         internal
         view
         returns (
@@ -118,10 +118,10 @@ contract ValidatorWithdrawVault is
 
         uint256 totalRewards;
 
-        if (contractBalance < usersETH) {
+        if (contractBalance <= usersETH) {
             _userShare = contractBalance;
             return (_userShare, _operatorShare, _protocolShare);
-        } else if (contractBalance < TOTAL_STAKED_ETH) {
+        } else if (contractBalance <= TOTAL_STAKED_ETH) {
             _userShare = usersETH;
             _operatorShare = contractBalance - _userShare;
             return (_userShare, _operatorShare, _protocolShare);

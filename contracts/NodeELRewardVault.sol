@@ -74,6 +74,10 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             uint256 _protocolShare
         )
     {
+        if (_totalRewards == 0) {
+            return (0, 0, 0);
+        }
+
         uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;

@@ -3,8 +3,8 @@ const hre = require('hardhat')
 
 async function main() {
   const [owner] = await ethers.getSigners()
-  const validatorWithdrawVaultFactory = await ethers.getContractFactory('ValidatorWithdrawVault')
-  const withdrawVault = await upgrades.deployProxy(validatorWithdrawVaultFactory, [owner.address])
+  const validatorWithdrawalVaultFactory = await ethers.getContractFactory('ValidatorWithdrawalVault')
+  const withdrawVault = await upgrades.deployProxy(validatorWithdrawalVaultFactory, [owner.address])
 
   await withdrawVault.deployed()
   console.log('withdrawVault deployed to:', withdrawVault.address)
