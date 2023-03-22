@@ -6,11 +6,14 @@ import '../library/ValidatorStatus.sol';
 struct Validator {
     ValidatorStatus status; // state of validator
     bytes pubkey; //public Key of the validator
-    bytes preDepositSignature; //signature for 1 ETH deposit to Ethereum Deposit contract
-    bytes depositSignature; //signature for 31 ETH deposit on Ethereum Deposit contract
+    bytes preDepositSignature; //signature for 1 ETH deposit on beacon chain
+    bytes depositSignature; //signature for 31 ETH deposit on beacon chain
     address withdrawVaultAddress; //eth1 withdrawal address for validator
     uint256 operatorId; // stader network assigned Id
+    //TODO do we need this if we are not changing it, we already have collateralETH parameter
     uint256 initialBondEth; // amount of bond eth in gwei
+    uint256 depositTime; // time of the 31ETH deposit
+    uint256 withdrawnTime; //time when oracle report validator as withdrawn
 }
 
 struct Operator {
@@ -45,13 +48,17 @@ interface INodeRegistry {
      * @param startIndex start index in validator queue to start with
      * @param endIndex  up to end index of validator queue to to count
      */
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
-    ) external view returns (uint256);
+    ) external view returns (uint64);
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
+
+    function getCollateralETH() external view returns (uint256);
+
+    function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

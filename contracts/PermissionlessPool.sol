@@ -2,7 +2,6 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import './library/BytesLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IVaultFactory.sol';
@@ -34,12 +33,13 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant DEPOSIT_SIZE = 31 ether;
     uint256 internal constant SIGNATURE_LENGTH = 96;
+    uint256 public constant TOTAL_FEE = 10000;
 
     /// @inheritdoc IStaderPoolBase
-    uint256 public override protocolFeePercent;
+    uint256 public override protocolFee;
 
     /// @inheritdoc IStaderPoolBase
-    uint256 public override operatorFeePercent;
+    uint256 public override operatorFee;
 
     function initialize(
         address _adminOwner,
@@ -53,8 +53,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         Address.checkNonZeroAddress(_ethDepositContract);
         Address.checkNonZeroAddress(_vaultFactoryAddress);
         Address.checkNonZeroAddress(_staderStakePoolManager);
-        __Pausable_init();
         __AccessControl_init_unchained();
+        __Pausable_init();
         nodeRegistryAddress = _nodeRegistryAddress;
         ethDepositContract = _ethDepositContract;
         vaultFactoryAddress = _vaultFactoryAddress;
@@ -62,62 +62,89 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
-    // receive to get bond ETH from permissionless node registry
-    receive() external payable {}
+    // protection against accidental submissions by calling non-existent function
+    receive() external payable {
+        revert UnsupportedOperation();
+    }
 
+    // protection against accidental submissions by calling non-existent function
+    fallback() external payable {
+        revert UnsupportedOperation();
+    }
+
+    // receive `DEPOSIT_NODE_BOND` collateral ETH from permissionless node registry
+    function receiveRemainingCollateralETH() external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
+        emit ReceivedCollateralETH(msg.value);
+    }
+
+    //TODO sanjay merge setProtocolFee and setOperatorFee function
     /// @inheritdoc IStaderPoolBase
-    function setProtocolFeePercent(uint256 _protocolFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        require(_protocolFeePercent <= 100, 'Protocol fee percent should be less than 100');
-        require(protocolFeePercent != _protocolFeePercent, 'Protocol fee percent is unchanged');
+    function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+        if (_protocolFee > TOTAL_FEE) revert ProtocolFeeMoreThanTOTAL_FEE();
+        if (protocolFee == _protocolFee) revert ProtocolFeeUnchanged();
 
-        protocolFeePercent = _protocolFeePercent;
+        protocolFee = _protocolFee;
 
-        emit ProtocolFeePercentUpdated(_protocolFeePercent);
+        emit ProtocolFeeUpdated(_protocolFee);
     }
 
     /// @inheritdoc IStaderPoolBase
-    function setOperatorFeePercent(uint256 _operatorFeePercent) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        require(_operatorFeePercent <= 100, 'Operator fee percent should be less than 100');
-        require(operatorFeePercent != _operatorFeePercent, 'Operator fee percent is unchanged');
+    function setOperatorFee(uint256 _operatorFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+        if (_operatorFee > TOTAL_FEE) revert OperatorFeeMoreThanTOTAL_FEE();
+        if (operatorFee == _operatorFee) revert OperatorFeeUnchanged();
 
-        operatorFeePercent = _operatorFeePercent;
+        operatorFee = _operatorFee;
 
-        emit OperatorFeePercentUpdated(_operatorFeePercent);
+        emit OperatorFeeUpdated(_operatorFee);
     }
 
     /**
      * @notice pre deposit for permission less validator to avoid front running
      * @dev only permissionless node registry can call
-     * @param _pubkey public key of validator
-     * @param _signature signature of validator
-     * @param withdrawVault withdraw address to se set for validator
+     * @param _pubkey public key array of validators
+     * @param _preDepositSignature signature array of validators for 1ETH deposit
+     * @param _operatorId operator Id of the NO
+     * @param _operatorTotalKeys total keys of operator at the starting of adding new keys
      */
-    function preDepositOnBeacon(
-        bytes calldata _pubkey,
-        bytes calldata _signature,
-        address withdrawVault
+    function preDepositOnBeaconChain(
+        bytes[] calldata _pubkey,
+        bytes[] calldata _preDepositSignature,
+        uint256 _operatorId,
+        uint256 _operatorTotalKeys
     ) external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
-        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
-            withdrawVault
-        );
+        for (uint256 i = 0; i < _pubkey.length; i++) {
+            address withdrawVault = IVaultFactory(vaultFactoryAddress).computeWithdrawVaultAddress(
+                poolId,
+                _operatorId,
+                _operatorTotalKeys + i
+            );
+            bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+                withdrawVault
+            );
 
-        bytes32 depositDataRoot = _computeDepositDataRoot(_pubkey, _signature, withdrawCredential, PRE_DEPOSIT_SIZE);
-        IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
-            _pubkey,
-            withdrawCredential,
-            _signature,
-            depositDataRoot
-        );
-        emit ValidatorPreDepositedOnBeaconChain(_pubkey);
+            bytes32 depositDataRoot = this.computeDepositDataRoot(
+                _pubkey[i],
+                _preDepositSignature[i],
+                withdrawCredential,
+                PRE_DEPOSIT_SIZE
+            );
+            //slither-disable-next-line arbitrary-send-eth
+            IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
+                _pubkey[i],
+                withdrawCredential,
+                _preDepositSignature[i],
+                depositDataRoot
+            );
+            emit ValidatorPreDepositedOnBeaconChain(_pubkey[i]);
+        }
     }
 
     /**
-     * @notice receives eth from pool Manager to register validators
+     * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit validator taking care of pool capacity
-     * send back the excess amount of ETH back to poolManager
      */
-    function registerOnBeaconChain() external payable onlyRole(POOL_MANAGER) {
-        uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
+    function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
+        uint256 requiredValidators = msg.value / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
             requiredValidators * DEPOSIT_NODE_BOND
         );
@@ -125,47 +152,14 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistryAddress).nextQueuedValidatorIndex();
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
-            (
-                ,
-                bytes memory pubkey,
-                ,
-                bytes memory depositSignature,
-                address withdrawVaultAddress,
-                ,
-
-            ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(validatorId);
-
-            bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
-                withdrawVaultAddress
-            );
-
-            bytes32 depositDataRoot = _computeDepositDataRoot(
-                pubkey,
-                depositSignature,
-                withdrawCredential,
-                DEPOSIT_SIZE
-            );
-            IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
-                pubkey,
-                withdrawCredential,
-                depositSignature,
-                depositDataRoot
-            );
-
-            IPermissionlessNodeRegistry(nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.DEPOSITED);
-            emit ValidatorDepositedOnBeaconChain(validatorId, pubkey);
+            _fullDepositOnBeaconChain(validatorId);
         }
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(
             depositQueueStartIndex + requiredValidators
         );
         IPermissionlessNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
-        // TODO only use case i see for this is if some external account directly send to this contract
-        if (address(this).balance > 0) {
-            //slither-disable-next-line arbitrary-send-eth
-            IStaderStakePoolManager(staderStakePoolManager).receiveExcessEthFromPool{value: address(this).balance}(
-                poolId
-            );
-        }
+        // balance must be 0 at this point
+        assert(address(this).balance == 0);
     }
 
     /**
@@ -213,7 +207,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
     }
 
-    /// @inheritdoc IStaderPoolBase
+    // @inheritdoc IStaderPoolBase
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
         return INodeRegistry(nodeRegistryAddress).getOperator(_pubkey);
     }
@@ -249,57 +243,84 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     /**
-     * @notice returns the total non withdrawn keys of a operator
+     * @notice returns the total non terminal keys of a operator
      */
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
     ) external view override returns (uint256) {
         return
-            INodeRegistry(nodeRegistryAddress).getOperatorTotalNonWithdrawnKeys(_nodeOperator, _startIndex, _endIndex);
+            INodeRegistry(nodeRegistryAddress).getOperatorTotalNonTerminalKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
-    /// @notice calculate the deposit data root based on pubkey, signature and withdrawCredential
-    function _computeDepositDataRoot(
-        bytes memory _pubkey,
-        bytes memory _signature,
-        bytes memory _withdrawCredential,
+    function getCollateralETH() external view override returns (uint256) {
+        return INodeRegistry(nodeRegistryAddress).getCollateralETH();
+    }
+
+    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
+        return INodeRegistry(nodeRegistryAddress).isExistingPubkey(_pubkey);
+    }
+
+    // @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
+    // formula based on ethereum deposit contract
+    function computeDepositDataRoot(
+        bytes calldata _pubkey,
+        bytes calldata _signature,
+        bytes calldata _withdrawCredential,
         uint256 _depositAmount
-    ) private pure returns (bytes32) {
+    ) external pure returns (bytes32) {
         bytes memory amount = to_little_endian_64(_depositAmount);
-        bytes32 publicKeyRoot = sha256(_pad64(_pubkey));
-        bytes32 signatureRoot = sha256(
+        bytes32 pubkey_root = sha256(abi.encodePacked(_pubkey, bytes16(0)));
+        bytes32 signature_root = sha256(
             abi.encodePacked(
-                sha256(BytesLib.slice(_signature, 0, 64)),
-                sha256(_pad64(BytesLib.slice(_signature, 64, SIGNATURE_LENGTH - 64)))
+                sha256(abi.encodePacked(_signature[:64])),
+                sha256(abi.encodePacked(_signature[64:], bytes32(0)))
             )
         );
-
         return
             sha256(
                 abi.encodePacked(
-                    sha256(abi.encodePacked(publicKeyRoot, _withdrawCredential)),
-                    sha256(abi.encodePacked(amount, bytes24(0), signatureRoot))
+                    sha256(abi.encodePacked(pubkey_root, _withdrawCredential)),
+                    sha256(abi.encodePacked(amount, bytes24(0), signature_root))
                 )
             );
     }
 
-    /// @dev Padding memory array with zeroes up to 64 bytes on the right
-    /// @param _b Memory array of size 32 .. 64
-    function _pad64(bytes memory _b) internal pure returns (bytes memory) {
-        assert(_b.length >= 32 && _b.length <= 64);
-        if (64 == _b.length) return _b;
+    function _fullDepositOnBeaconChain(uint256 _validatorId) internal {
+        (
+            ,
+            bytes memory pubkey,
+            ,
+            bytes memory depositSignature,
+            address withdrawVaultAddress,
+            ,
+            ,
+            ,
 
-        bytes memory zero32 = new bytes(32);
-        assembly {
-            mstore(add(zero32, 0x20), 0)
-        }
+        ) = IPermissionlessNodeRegistry(nodeRegistryAddress).validatorRegistry(_validatorId);
 
-        if (32 == _b.length) return BytesLib.concat(_b, zero32);
-        else return BytesLib.concat(_b, BytesLib.slice(zero32, 0, uint256(64) - _b.length));
+        bytes memory withdrawCredential = IVaultFactory(vaultFactoryAddress).getValidatorWithdrawCredential(
+            withdrawVaultAddress
+        );
+
+        bytes32 depositDataRoot = this.computeDepositDataRoot(
+            pubkey,
+            depositSignature,
+            withdrawCredential,
+            DEPOSIT_SIZE
+        );
+        IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
+            pubkey,
+            withdrawCredential,
+            depositSignature,
+            depositDataRoot
+        );
+        IPermissionlessNodeRegistry(nodeRegistryAddress).updateDepositStatusAndTime(_validatorId);
+        emit ValidatorDepositedOnBeaconChain(_validatorId, pubkey);
     }
 
+    //ethereum deposit contract function to get amount into little_endian_64
     function to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
         uint64 value = uint64(_depositAmount / 1 gwei);
 

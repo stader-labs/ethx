@@ -5,8 +5,11 @@ import './INodeRegistry.sol';
 
 interface IStaderPoolBase {
     //Error events
-
-    error NotEnoughValidatorReadyToDeposit();
+    error ProtocolFeeMoreThanTOTAL_FEE();
+    error ProtocolFeeUnchanged();
+    error OperatorFeeMoreThanTOTAL_FEE();
+    error OperatorFeeUnchanged();
+    error UnsupportedOperation();
 
     // Events
     event UpdatedNodeRegistryAddress(address _nodeRegistryAddress);
@@ -14,20 +17,21 @@ interface IStaderPoolBase {
     event UpdatedStaderStakePoolManager(address _staderStakePoolManager);
     event ValidatorPreDepositedOnBeaconChain(bytes indexed _pubKey);
     event ValidatorDepositedOnBeaconChain(uint256 indexed _validatorId, bytes _pubKey);
-    event OperatorFeePercentUpdated(uint256 _operatorFeePercent);
-    event ProtocolFeePercentUpdated(uint256 _protocolFeePercent);
+    event OperatorFeeUpdated(uint256 _operatorFee);
+    event ProtocolFeeUpdated(uint256 _protocolFee);
+    event ReceivedCollateralETH(uint256 _amount);
 
     // Setters
 
-    function setProtocolFeePercent(uint256 _protocolFeePercent) external; // sets the protocol fee percent (0-100)
+    function setProtocolFee(uint256 _protocolFee) external; // sets the protocol fee percent (0-100)
 
-    function setOperatorFeePercent(uint256 _operatorFeePercent) external; // sets the operator fee percent (0-100)
+    function setOperatorFee(uint256 _operatorFee) external; // sets the operator fee percent (0-100)
 
     //Getters
 
-    function protocolFeePercent() external view returns (uint256); // returns the protocol fee percent (0-100)
+    function protocolFee() external view returns (uint256); // returns the protocol fee percent (0-100)
 
-    function operatorFeePercent() external view returns (uint256); // returns the operator fee percent (0-100)
+    function operatorFee() external view returns (uint256); // returns the operator fee percent (0-100)
 
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 
@@ -35,13 +39,13 @@ interface IStaderPoolBase {
 
     function getAllActiveValidators() external view returns (Validator[] memory);
 
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 startIndex,
         uint256 endIndex
     ) external view returns (uint256);
 
-    function registerOnBeaconChain() external payable;
+    function stakeUserETHToBeaconChain() external payable;
 
     function updateNodeRegistryAddress(address _nodeRegistryAddress) external;
 
@@ -59,4 +63,8 @@ interface IStaderPoolBase {
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
 
     function getSocializingPoolAddress() external view returns (address);
+
+    function getCollateralETH() external view returns (uint256);
+
+    function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }
