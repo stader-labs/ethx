@@ -67,6 +67,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit ReceivedCollateralETH(msg.value);
     }
 
+    //TODO sanjay merge setProtocolFee and setOperatorFee function
     /// @inheritdoc IStaderPoolBase
     function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
         if (_protocolFee > TOTAL_FEE) revert ProtocolFeeMoreThanTOTAL_FEE();
@@ -91,13 +92,13 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @notice pre deposit for permission less validator to avoid front running
      * @dev only permissionless node registry can call
      * @param _pubkey public key array of validators
-     * @param _signature signature array of validators for 1ETH deposit
+     * @param _preDepositSignature signature array of validators for 1ETH deposit
      * @param _operatorId operator Id of the NO
      * @param _operatorTotalKeys total keys of operator at the starting of adding new keys
      */
     function preDepositOnBeaconChain(
         bytes[] calldata _pubkey,
-        bytes[] calldata _signature,
+        bytes[] calldata _preDepositSignature,
         uint256 _operatorId,
         uint256 _operatorTotalKeys
     ) external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
@@ -113,7 +114,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
             bytes32 depositDataRoot = this.computeDepositDataRoot(
                 _pubkey[i],
-                _signature[i],
+                _preDepositSignature[i],
                 withdrawCredential,
                 PRE_DEPOSIT_SIZE
             );
@@ -121,7 +122,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             IDepositContract(ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
                 _pubkey[i],
                 withdrawCredential,
-                _signature[i],
+                _preDepositSignature[i],
                 depositDataRoot
             );
             emit ValidatorPreDepositedOnBeaconChain(_pubkey[i]);

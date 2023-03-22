@@ -42,8 +42,7 @@ contract UserWithdrawalManager is
 
     /// @notice structure representing a user request for withdrawal.
     struct UserWithdrawInfo {
-        address payable owner; // ethX owner or ethX Owner defined new recipient for withdraw request
-        //TODO remove this recipient?
+        address payable owner; // address that can claim eth on behalf of this request
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
         uint256 ethExpected; //eth requested according to given share and exchangeRate
         uint256 ethFinalized; // final eth for claiming according to finalize exchange rate

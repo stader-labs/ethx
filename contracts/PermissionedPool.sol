@@ -69,6 +69,7 @@ contract PermissionedPool is
         _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
     }
 
+    //TODO sanjay Stader Insurance fund to reimburse lost 1 ETH.
     // transfer the 31ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
     function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount)
         external
@@ -199,6 +200,7 @@ contract PermissionedPool is
         return INodeRegistry(nodeRegistryAddress).getCollateralETH();
     }
 
+    //TODO sanjay merge setProtocolFee and setOperatorFee function
     // @inheritdoc IStaderPoolBase
     function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONED_POOL_ADMIN) {
         if (_protocolFee > TOTAL_FEE) revert ProtocolFeeMoreThanTOTAL_FEE();

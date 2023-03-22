@@ -92,6 +92,8 @@ contract StaderStakePoolsManager is
         revert UnsupportedOperation();
     }
 
+    //TODO sanjay add a revert on receive function as well
+
     /**
      * @notice A payable function for execution layer rewards.
      */
