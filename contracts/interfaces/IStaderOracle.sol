@@ -17,6 +17,21 @@ interface IStaderOracle {
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
     event BalanceUpdateFrequencyUpdated(uint256 balanceUpdateFrequency);
+    event ValidatorCountsSubmitted(
+        address indexed from,
+        uint256 block,
+        uint256 activeValidatorsCount,
+        uint256 exitedValidatorsCount,
+        uint256 slashedValidatorsCount,
+        uint256 time
+    );
+    event ValidatorCountsUpdated(
+        uint256 block,
+        uint256 activeValidatorsCount,
+        uint256 exitedValidatorsCount,
+        uint256 slashedValidatorsCount,
+        uint256 time
+    );
 
     // The block number which balances are current for
     function lastBlockNumberBalancesUpdated() external view returns (uint256);
@@ -32,6 +47,14 @@ interface IStaderOracle {
 
     // The frequency in blocks at which network balances should be submitted by trusted nodes
     function balanceUpdateFrequency() external view returns (uint256);
+
+    function activeValidatorsCount() external view returns (uint256);
+
+    function exitedValidatorsCount() external view returns (uint256);
+
+    function slashedValidatorsCount() external view returns (uint256);
+
+    function lastBlockNumberCountsUpdated() external view returns (uint256);
 
     function trustedNodesCount() external view returns (uint256);
 
@@ -58,18 +81,29 @@ interface IStaderOracle {
     ) external;
 
     /**
-    @notice Submits the given ValidatorStatus for the public key at a specified block number.
-    @param _pubkey The public key of the validator the status belong.
-    @param _status The ValidatorStatus corresponding to the public key.
-    */
-    function submitStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
-
-    /**
-    @notice Submits the whether the validator has a bad withdrawal.
-    @param _pubkey The public key of the validator
-    @param _isBadWithdrawal Whether the validator has a bad withdrawal
-    */
-    function submitValidatorWithdrawalValidity(bytes calldata _pubkey, bool _isBadWithdrawal) external;
+     * @notice Submit validator counts for a specific block.
+     * @dev This function can only be called by trusted nodes.
+     * @param _block The block number for which validator counts are being submitted.
+     * @param _activeValidatorsCount The number of active validators at the given block on the beaconchain.
+     * @param _exitedValidatorsCount The number of exited validators at the given block on the beaconchain.
+     * @param _slashedValidatorsCount The number of slashed validators at the given block on the beaconchain.
+     *
+     * Function Flow:
+     * 1. Validates that the submission is for a past block and not a future one.
+     * 2. Validates that the submission is for a block higher than the last block number with updated counts.
+     * 3. Generates submission keys using the input parameters.
+     * 4. Validates that this is not a duplicate submission from the same node.
+     * 5. Updates the submission count for the given counts.
+     * 6. Emits a ValidatorCountsSubmitted event with the submitted data.
+     * 7. If the submission count reaches a majority (trustedNodesCount / 2 + 1), checks whether the counts are not already updated,
+     *    then updates the validator counts, and emits a CountsUpdated event.
+     */
+    function submitValidatorCounts(
+        uint256 _block,
+        uint256 _activeValidatorsCount,
+        uint256 _exitedValidatorsCount,
+        uint256 _slashedValidatorsCount
+    ) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }
