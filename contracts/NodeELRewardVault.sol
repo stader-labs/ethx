@@ -34,7 +34,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -53,9 +53,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         bool success;
 
         // Distribute rewards
-        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderConfig.treasury()).call{value: protocolShare}('');
+        (success, ) = payable(staderConfig.getTreasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
@@ -78,7 +78,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             return (0, 0, 0);
         }
 
-        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeeBps = getProtocolFeeBps();
@@ -95,14 +95,14 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function getProtocolFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getProtocolFee(poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
     }
 
     function getOperatorFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getOperatorFee(poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getCollateralETH(poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 }

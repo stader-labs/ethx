@@ -37,7 +37,7 @@ contract ValidatorWithdrawalVault is
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -52,17 +52,17 @@ contract ValidatorWithdrawalVault is
         uint256 totalRewards = address(this).balance;
 
         // TODO: in below condition, let staderManager handle it, impl to byPass below revert for staderManager
-        if (totalRewards > staderConfig.rewardThreshold()) {
-            emit DistributeRewardFailed(totalRewards, staderConfig.rewardThreshold());
+        if (totalRewards > staderConfig.getRewardsThreshold()) {
+            emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }
 
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(totalRewards);
 
         // Distribute rewards
-        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
-        _sendValue(payable(staderConfig.treasury()), protocolShare);
+        _sendValue(payable(staderConfig.getTreasury()), protocolShare);
     }
 
     // TODO: add penalty changes
@@ -76,7 +76,7 @@ contract ValidatorWithdrawalVault is
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeeBps = getProtocolFeeBps();
@@ -96,9 +96,9 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         // Final settlement
-        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
-        _sendValue(payable(staderConfig.treasury()), protocolShare);
+        _sendValue(payable(staderConfig.getTreasury()), protocolShare);
     }
 
     // TODO: add penalty changes
@@ -111,7 +111,7 @@ contract ValidatorWithdrawalVault is
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(); // 0, incase of permissioned NOs
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 contractBalance = address(this).balance;
@@ -150,15 +150,15 @@ contract ValidatorWithdrawalVault is
     // getters
 
     function getProtocolFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getProtocolFee(poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
     }
 
     // should return 0, for permissioned NOs
     function getOperatorFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getOperatorFee(poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
     }
 
     function getCollateralETH() private view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getCollateralETH(poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 }
