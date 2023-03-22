@@ -6,6 +6,7 @@ import './library/ValidatorStatus.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/IPermissionedPool.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
@@ -37,9 +38,11 @@ contract PermissionedNodeRegistry is
     address public override vaultFactoryAddress;
     address public override sdCollateral;
     address public override elRewardSocializePool;
+    address public permissionedPool; //TODO sanjay will initialize in index contract
 
     uint256 public override nextValidatorId;
     uint256 public override totalActiveValidatorCount;
+    uint256 public VERIFIED_KEYS_BATCH_SIZE; //TODO sanjay will initialize in index contract
 
     uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
     bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
@@ -132,29 +135,46 @@ contract PermissionedNodeRegistry is
      * @notice add signing keys
      * @dev only accepts node operator onboarded along with sufficient SD lockup
      * @param _pubkey public key of validators
-     * @param _signature signature of a validators for deposit
-     * //TODO check this signature should not show invalid deposit on beacon chain UI
+     * @param _preDepositSignature signature of a validators for 1ETH deposit
+     * @param _depositSignature signature of a validator for 31ETH deposit
      */
-    function addValidatorKeys(bytes[] calldata _pubkey, bytes[] calldata _signature) external override whenNotPaused {
-        if (_pubkey.length != _signature.length) revert MisMatchingInputKeysSize();
-
-        // TODO sanjay try to merge these check in a single internal function
-        uint256 keyCount = _pubkey.length;
-        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
-
+    function addValidatorKeys(
+        bytes[] calldata _pubkey,
+        bytes[] calldata _preDepositSignature,
+        bytes[] calldata _depositSignature
+    ) external override whenNotPaused {
         uint16 operatorId = _onlyActiveOperator(msg.sender);
-
-        uint256 totalKey = getOperatorTotalKeys(operatorId);
-        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKey);
-        if ((totalNonTerminalKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+        (uint256 keyCount, uint256 operatorTotalKeys) = _checkInputKeysCountAndCollateral(
+            _pubkey.length,
+            _preDepositSignature.length,
+            _depositSignature.length,
+            operatorId
+        );
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
-        //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonTerminalKeys + keyCount);
-
         for (uint256 i = 0; i < keyCount; i++) {
-            //TODO sanjay check if we can remove this internal function call
-            _addValidatorKey(_pubkey[i], _signature[i], operatorRewardAddress, operatorId, totalKey);
+            _validateKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
+            address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
+                poolId,
+                operatorId,
+                operatorTotalKeys + i, //operator totalKeys
+                operatorRewardAddress
+            );
+            validatorRegistry[nextValidatorId] = Validator(
+                ValidatorStatus.INITIALIZED,
+                _pubkey[i],
+                _preDepositSignature[i],
+                _depositSignature[i],
+                withdrawVault,
+                operatorId,
+                0,
+                0,
+                0
+            );
+            validatorIdByPubkey[_pubkey[i]] = nextValidatorId;
+            validatorIdsByOperatorId[operatorId].push(nextValidatorId);
+            emit AddedKeys(msg.sender, _pubkey[i], nextValidatorId);
+            nextValidatorId++;
         }
     }
 
@@ -210,39 +230,44 @@ contract PermissionedNodeRegistry is
         }
     }
 
-    /**
-     * @notice handles the front run validators
-     * @dev only permissioned pool can call,
-     * reduce the total active validator count by length of input pubkey
-     */
-    function reportFrontRunValidator(bytes[] calldata _pubkeys) external override onlyRole(PERMISSIONED_POOL) {
-        uint256 pubkeyLength = _pubkeys.length;
-        for (uint256 i = 0; i < pubkeyLength; i++) {
-            uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+    //oracle report of front run, invalid signature and verified validators
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkeys,
+        bytes[] calldata _frontRunPubkeys,
+        bytes[] calldata _invalidSignaturePubkeys
+    ) external onlyRole(STADER_ORACLE) {
+        uint256 verifiedValidatorsLength = _readyToDepositPubkeys.length;
+        if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) revert TooManyVerifiedKeysToDeposit();
+
+        uint256 frontRunValidatorsLength = _frontRunPubkeys.length;
+        uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkeys.length;
+
+        //handle the front run validators
+        for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
+            uint256 validatorId = validatorIdByPubkey[_frontRunPubkeys[i]];
             // only PRE_DEPOSIT status check will also include validatorId = 0 check
             // as status for that will be INITIALIZED(default status)
             _onlyPreDepositValidator(validatorId);
             _handleFrontRun(validatorId);
-            emit ValidatorMarkedAsFrontRunned(_pubkeys[i], validatorId);
+            emit ValidatorMarkedAsFrontRunned(_frontRunPubkeys[i], validatorId);
         }
-        _decreaseTotalActiveValidatorCount(pubkeyLength);
-    }
 
-    /**
-     * @notice handle the invalid signature validators
-     * @dev only permissioned pool can call, mark validator status as `INVALID_SIGNATURE`
-     */
-    function reportInvalidSignatureValidator(bytes[] calldata _pubkeys) external override onlyRole(PERMISSIONED_POOL) {
-        uint256 pubkeyLength = _pubkeys.length;
-        for (uint256 i = 0; i < pubkeyLength; i++) {
-            uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+        //handle the invalid signature validators
+        for (uint256 i = 0; i < invalidSignatureValidatorsLength; i++) {
+            uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkeys[i]];
             // only PRE_DEPOSIT status check will also include validatorId = 0 check
             // as status for that will be INITIALIZED(default status)
             _onlyPreDepositValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
-            emit ValidatorStatusMarkedAsInvalidSignature(_pubkeys[i], validatorId);
+            emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkeys[i], validatorId);
         }
-        _decreaseTotalActiveValidatorCount(pubkeyLength);
+        uint256 totalDefectedKeys = frontRunValidatorsLength + invalidSignatureValidatorsLength;
+        _decreaseTotalActiveValidatorCount(totalDefectedKeys);
+        IPermissionedPool(permissionedPool).transferETHOfDefectiveKeysToSSPM(totalDefectedKeys);
+
+        // TODO sanjay update 31ETH limbo
+        //TODO sanjay check of only PRE_DEPOSIT key is moved to pool contract, discuss with dheeraj
+        IPermissionedPool(permissionedPool).fullDepositOnBeaconChain(_readyToDepositPubkeys);
     }
 
     /**
@@ -416,6 +441,13 @@ contract PermissionedNodeRegistry is
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
 
+    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize)
+        external
+        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
+    {
+        VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
+    }
+
     // @inheritdoc INodeRegistry
     function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256) {
         return socializingPoolStateChangeTimestamp[_operatorId];
@@ -575,36 +607,6 @@ contract PermissionedNodeRegistry is
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
     }
 
-    function _addValidatorKey(
-        bytes calldata _pubkey,
-        bytes calldata _signature,
-        address payable operatorRewardAddress,
-        uint16 _operatorId,
-        uint256 _totalKeys
-    ) internal {
-        _validateKeys(_pubkey, _signature);
-        address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
-            poolId,
-            _operatorId,
-            _totalKeys,
-            operatorRewardAddress
-        );
-        validatorRegistry[nextValidatorId] = Validator(
-            ValidatorStatus.INITIALIZED,
-            _pubkey,
-            _signature,
-            withdrawVault,
-            _operatorId,
-            0,
-            0,
-            0
-        );
-        validatorIdByPubkey[_pubkey] = nextValidatorId;
-        validatorIdsByOperatorId[_operatorId].push(nextValidatorId);
-        nextValidatorId++;
-        emit AddedKeys(msg.sender, _pubkey, nextValidatorId - 1);
-    }
-
     // handle front run validator by changing their status and deactivating operator
     function _handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
@@ -620,10 +622,36 @@ contract PermissionedNodeRegistry is
     }
 
     // checks for keys lengths, and if pubkey is already present in stader protocol(not just permissioned pool)
-    function _validateKeys(bytes calldata _pubkey, bytes calldata _signature) private view {
+    function _validateKeys(
+        bytes calldata _pubkey,
+        bytes calldata _preDepositSignature,
+        bytes calldata _depositSignature
+    ) private view {
         if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
-        if (_signature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
+        if (_preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
+        if (_depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
+    }
+
+    // validate the input of `addValidatorKeys` function
+    function _checkInputKeysCountAndCollateral(
+        uint256 _pubkeyLength,
+        uint256 _preDepositSignatureLength,
+        uint256 _depositSignatureLength,
+        uint16 _operatorId
+    ) internal view returns (uint256 keyCount, uint256 totalKeys) {
+        if (_pubkeyLength != _preDepositSignatureLength || _pubkeyLength != _depositSignatureLength)
+            revert MisMatchingInputKeysSize();
+        keyCount = _pubkeyLength;
+        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
+
+        totalKeys = getOperatorTotalKeys(_operatorId);
+        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
+        if ((totalNonTerminalKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+
+        //check if operator has enough SD collateral for adding `keyCount` keys
+        //TODO sanjay put a comment saying phase1 limit will be 0 for permissioned NOs?
+        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonTerminalKeys + keyCount);
     }
 
     // operator in active state
@@ -637,13 +665,11 @@ contract PermissionedNodeRegistry is
     //active validator are those having user deposit staked on beacon chain
     function _isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
-        if (
-            validator.status == ValidatorStatus.INITIALIZED ||
-            validator.status == ValidatorStatus.INVALID_SIGNATURE ||
-            validator.status == ValidatorStatus.FRONT_RUN ||
-            validator.status == ValidatorStatus.WITHDRAWN
-        ) return false;
-        return true;
+        return
+            !(validator.status == ValidatorStatus.INITIALIZED ||
+                validator.status == ValidatorStatus.INVALID_SIGNATURE ||
+                validator.status == ValidatorStatus.FRONT_RUN ||
+                validator.status == ValidatorStatus.WITHDRAWN);
     }
 
     // checks if validator status enum is not withdrawn ,front run and invalid signature

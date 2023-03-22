@@ -83,12 +83,13 @@ contract StaderStakePoolsManager is
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /**
-     * @notice Send funds to the pool
-     * @dev Users are able to deposit their funds by transacting to the fallback function.
-     * protection against accidental submissions by calling non-existent function
-     */
+    // protection against accidental submissions by calling non-existent function
     fallback() external payable {
+        revert UnsupportedOperation();
+    }
+
+    // protection against accidental submissions by calling non-existent function
+    receive() external payable override {
         revert UnsupportedOperation();
     }
 
