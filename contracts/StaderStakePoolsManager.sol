@@ -88,11 +88,6 @@ contract StaderStakePoolsManager is
         revert UnsupportedOperation();
     }
 
-    // protection against accidental submissions by calling non-existent function
-    receive() external payable override {
-        revert UnsupportedOperation();
-    }
-
     /**
      * @notice A payable function for execution layer rewards.
      */
