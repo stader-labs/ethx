@@ -15,7 +15,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract SocializingPool is
     ISocializingPool,
@@ -82,8 +82,7 @@ contract SocializingPool is
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof,
-        uint8 _poolId
+        bytes32[][] calldata _merkleProof
     ) external override nonReentrant whenNotPaused {
         _claim(_index, msg.sender, _amountSD, _amountETH, _merkleProof);
         // Calculate totals
@@ -94,32 +93,18 @@ contract SocializingPool is
             totalAmountETH += _amountETH[i];
         }
 
+        // TODO: Discuss where to send these rewards? operator_addr or operator_rewards_addr
+        // CL and Node EL rewards were sent to operator_rewards_addr
+
         bool success;
-
-        // distribute ETH rewards
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(
-            totalAmountETH,
-            _poolId
-        );
-
-        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
-        // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderConfig.getTreasury()).call{value: protocolShare}('');
-        require(success, 'Protocol share transfer failed');
-        // slither-disable-next-line arbitrary-send-eth
-        if (operatorShare > 0) {
-            (success, ) = payable(msg.sender).call{value: operatorShare}('');
-            require(success, 'Operator share transfer failed');
+        if (totalAmountETH > 0) {
+            (success, ) = payable(msg.sender).call{value: totalAmountETH}('');
+            require(success, 'Operator ETH rewards transfer failed');
         }
 
-        // distribute SD rewards
-        (userShare, operatorShare, protocolShare) = _calculateRewardShare(totalAmountSD, _poolId);
-        address staderToken = staderConfig.getStaderToken();
-
-        IERC20Upgradeable(staderToken).transfer(staderConfig.getStakePoolManager(), userShare); // TODO: Manoj discuss if this is okay ?
-        IERC20Upgradeable(staderToken).transfer(staderConfig.getTreasury(), protocolShare);
-        if (operatorShare > 0) {
-            IERC20Upgradeable(staderToken).transfer(msg.sender, operatorShare);
+        if (totalAmountSD > 0) {
+            success = IERC20(staderConfig.getStaderToken()).transfer(msg.sender, totalAmountSD);
+            require(success, 'Operator SD rewards transfer failed');
         }
     }
 
@@ -153,46 +138,9 @@ contract SocializingPool is
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
 
-    function _calculateRewardShare(uint256 _totalRewards, uint8 _poolId)
-        internal
-        view
-        returns (
-            uint256 _userShare,
-            uint256 _operatorShare,
-            uint256 _protocolShare
-        )
-    {
-        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
-        uint256 collateralETH = getCollateralETH(_poolId);
-        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
-        uint256 protocolFeeBps = getProtocolFeeBps(_poolId);
-        uint256 operatorFeeBps = getOperatorFeeBps(_poolId);
-
-        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
-
-        _protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 10000;
-
-        _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
-
-        _userShare = _totalRewards - _protocolShare - _operatorShare;
-    }
-
     function updatePoolSelector(address _poolSelector) external onlyRole(SOCIALIZE_POOL_OWNER) {
         Address.checkNonZeroAddress(_poolSelector);
         poolSelector = _poolSelector;
         emit UpdatedPoolSelector(_poolSelector);
-    }
-
-    function getProtocolFeeBps(uint8 _poolId) internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(_poolId);
-    }
-
-    function getOperatorFeeBps(uint8 _poolId) internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(_poolId);
-    }
-
-    function getCollateralETH(uint8 _poolId) private view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(_poolId);
     }
 }
