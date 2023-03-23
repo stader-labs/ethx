@@ -40,7 +40,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         oracle = _oracle;
         initialTimestamp = block.timestamp;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
         emit UpdatedOracle(_oracle);
     }
@@ -99,9 +99,9 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
             _poolId
         );
 
-        IStaderStakePoolManager(staderConfig.stakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderConfig.treasury()).call{value: protocolShare}('');
+        (success, ) = payable(staderConfig.getTreasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
         if (operatorShare > 0) {
@@ -111,10 +111,10 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
 
         // distribute SD rewards
         (userShare, operatorShare, protocolShare) = _calculateRewardShare(totalAmountSD, _poolId);
-        address staderToken = staderConfig.staderToken();
+        address staderToken = staderConfig.getStaderToken();
 
-        IERC20Upgradeable(staderToken).transfer(staderConfig.stakePoolManager(), userShare); // TODO: Manoj discuss if this is okay ?
-        IERC20Upgradeable(staderToken).transfer(staderConfig.treasury(), protocolShare);
+        IERC20Upgradeable(staderToken).transfer(staderConfig.getStakePoolManager(), userShare); // TODO: Manoj discuss if this is okay ?
+        IERC20Upgradeable(staderToken).transfer(staderConfig.getTreasury(), protocolShare);
         if (operatorShare > 0) {
             IERC20Upgradeable(staderToken).transfer(msg.sender, operatorShare);
         }
@@ -159,7 +159,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = staderConfig.totalStakedEth();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(_poolId);
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeeBps = getProtocolFeeBps(_poolId);
@@ -188,14 +188,14 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
     }
 
     function getProtocolFeeBps(uint8 _poolId) internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getProtocolFee(_poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(_poolId);
     }
 
     function getOperatorFeeBps(uint8 _poolId) internal view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getOperatorFee(_poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(_poolId);
     }
 
     function getCollateralETH(uint8 _poolId) private view returns (uint256) {
-        return IPoolFactory(staderConfig.poolFactory()).getCollateralETH(_poolId);
+        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(_poolId);
     }
 }
