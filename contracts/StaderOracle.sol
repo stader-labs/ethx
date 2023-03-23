@@ -6,9 +6,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import './interfaces/IStaderOracle.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
-    /// @inheritdoc IStaderOracle
     ExchangeRate public exchangeRate;
-    /// @inheritdoc IStaderOracle
     ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
     uint256 public override updateFrequency;
