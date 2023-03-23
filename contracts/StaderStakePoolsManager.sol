@@ -207,7 +207,7 @@ contract StaderStakePoolsManager is
      */
     function getExchangeRate() public view override returns (uint256) {
         uint256 totalETH = totalAssets();
-        uint256 totalETHx = IStaderOracle(staderOracle).totalETHXSupply();
+        uint256 totalETHx = IStaderOracle(staderOracle).getExchangeRate().totalETHXSupply;
 
         if (totalETH == 0 || totalETHx == 0) {
             return 1 * DECIMALS;
@@ -217,7 +217,7 @@ contract StaderStakePoolsManager is
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view override returns (uint256) {
-        return IStaderOracle(staderOracle).totalETHBalance();
+        return IStaderOracle(staderOracle).getExchangeRate().totalETHBalance;
     }
 
     /** @dev See {IERC4626-convertToShares}. */
@@ -308,7 +308,7 @@ contract StaderStakePoolsManager is
      * would represent an infinite amount of shares.
      */
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = IStaderOracle(staderOracle).totalETHXSupply();
+        uint256 supply = IStaderOracle(staderOracle).getExchangeRate().totalETHXSupply;
         return
             (assets == 0 || supply == 0)
                 ? _initialConvertToShares(assets, rounding)
@@ -331,7 +331,7 @@ contract StaderStakePoolsManager is
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = IStaderOracle(staderOracle).totalETHXSupply();
+        uint256 supply = IStaderOracle(staderOracle).getExchangeRate().totalETHXSupply;
         return
             (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
     }
@@ -366,6 +366,6 @@ contract StaderStakePoolsManager is
      * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
      */
     function _isVaultHealthy() private view returns (bool) {
-        return totalAssets() > 0 || IStaderOracle(staderOracle).totalETHXSupply() == 0;
+        return totalAssets() > 0 || IStaderOracle(staderOracle).getExchangeRate().totalETHXSupply == 0;
     }
 }

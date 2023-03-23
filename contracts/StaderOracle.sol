@@ -7,30 +7,21 @@ import './interfaces/IStaderOracle.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
-    uint256 public override lastBlockNumberBalancesUpdated;
+    ExchangeRate public exchangeRate;
     /// @inheritdoc IStaderOracle
-    uint256 public override totalETHBalance;
+    ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
-    uint256 public override totalStakingETHBalance;
-    /// @inheritdoc IStaderOracle
-    uint256 public override totalETHXSupply;
-    /// @inheritdoc IStaderOracle
-    uint256 public override balanceUpdateFrequency;
+    uint256 public override updateFrequency;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
 
-    uint256 public override activeValidatorsCount;
-    uint256 public override exitedValidatorsCount;
-    uint256 public override slashedValidatorsCount;
-    uint256 public override lastBlockNumberCountsUpdated;
-
     function initialize() external initializer {
         __AccessControl_init_unchained();
 
-        balanceUpdateFrequency = 7200; // 24 hours
+        updateFrequency = 7200; // 24 hours
         isTrustedNode[msg.sender] = true;
         trustedNodesCount = 1;
 
@@ -59,12 +50,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit TrustedNodeRemoved(_nodeAddress);
     }
 
-    function setUpdateFrequency(uint256 _balanceUpdateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_balanceUpdateFrequency > 0, 'Frequency is zero');
-        require(_balanceUpdateFrequency != balanceUpdateFrequency, 'Frequency is unchanged');
-        balanceUpdateFrequency = _balanceUpdateFrequency;
+    function setUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_updateFrequency > 0, 'Frequency is zero');
+        require(_updateFrequency != updateFrequency, 'Frequency is unchanged');
+        updateFrequency = _updateFrequency;
 
-        emit BalanceUpdateFrequencyUpdated(_balanceUpdateFrequency);
+        emit UpdateFrequencyUpdated(_updateFrequency);
     }
 
     /// @inheritdoc IStaderOracle
@@ -74,11 +65,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         uint256 _stakingEth,
         uint256 _ethxSupply
     ) external override trustedNodeOnly {
-        // Check block
         require(_block < block.number, 'Balances can not be submitted for a future block');
-        require(_block > lastBlockNumberBalancesUpdated, 'Network balances for an equal or higher block are set');
-        // Check balances
+        require(_block > exchangeRate.lastUpdatedBlockNumber, 'Network balances for an equal or higher block are set');
         require(_stakingEth <= _totalEth, 'Invalid network balances');
+
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply)
@@ -91,12 +81,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
         // Emit balances submitted event
         emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
-        if (submissionCount >= trustedNodesCount / 2 + 1 && _block > lastBlockNumberBalancesUpdated) {
+
+        if (submissionCount >= trustedNodesCount / 2 + 1 && _block > exchangeRate.lastUpdatedBlockNumber) {
             // Update balances
-            lastBlockNumberBalancesUpdated = _block;
-            totalETHBalance = _totalEth;
-            totalStakingETHBalance = _stakingEth;
-            totalETHXSupply = _ethxSupply;
+            exchangeRate.lastUpdatedBlockNumber = _block;
+            exchangeRate.totalETHBalance = _totalEth;
+            exchangeRate.totalStakingETHBalance = _stakingEth;
+            exchangeRate.totalETHXSupply = _ethxSupply;
+
             // Emit balances updated event
             emit BalancesUpdated(_block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
         }
@@ -105,60 +97,97 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     // Returns the latest block number that oracles should be reporting balances for
     function getLatestReportableBlock() external view override returns (uint256) {
         // Calculate the last reportable block based on update frequency
-        return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
+        return (block.number / updateFrequency) * updateFrequency;
     }
 
-    function submitValidatorCounts(
-        uint256 _block,
-        uint256 _activeValidatorsCount,
-        uint256 _exitedValidatorsCount,
-        uint256 _slashedValidatorsCount
+    /// @inheritdoc IStaderOracle
+    function submitValidatorStats(
+        uint256 _blockNumber,
+        uint128 _activeValidatorsBalance,
+        uint128 _exitedValidatorsBalance,
+        uint128 _slashedValidatorsBalance,
+        uint32 _activeValidatorsCount,
+        uint32 _exitedValidatorsCount,
+        uint32 _slashedValidatorsCount
     ) external override trustedNodeOnly {
-        // Check block
-        require(_block < block.number, 'Balances can not be submitted for a future block');
-        require(_block > lastBlockNumberBalancesUpdated, 'Network balances for an equal or higher block are set');
+        require(_blockNumber < block.number, 'Balances can not be submitted for a future block');
+        require(
+            _blockNumber > validatorStats.lastUpdatedBlockNumber,
+            'Network balances for an equal or higher block are set'
+        );
+
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(
                 msg.sender,
-                _block,
+                _blockNumber,
+                _activeValidatorsBalance,
+                _exitedValidatorsBalance,
+                _slashedValidatorsBalance,
                 _activeValidatorsCount,
                 _exitedValidatorsCount,
                 _slashedValidatorsCount
             )
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(_block, _activeValidatorsCount, _exitedValidatorsCount, _slashedValidatorsCount)
+            abi.encodePacked(
+                _blockNumber,
+                _activeValidatorsBalance,
+                _exitedValidatorsBalance,
+                _slashedValidatorsBalance,
+                _activeValidatorsCount,
+                _exitedValidatorsCount,
+                _slashedValidatorsCount
+            )
         );
         // Check & update node submission status
         require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
         nodeSubmissionKeys[nodeSubmissionKey] = true;
         submissionCountKeys[submissionCountKey]++;
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
-        // Emit validator counts submitted event
-        emit ValidatorCountsSubmitted(
+        // Emit validator stats submitted event
+        emit ValidatorStatsSubmitted(
             msg.sender,
-            _block,
+            _blockNumber,
+            _activeValidatorsBalance,
+            _exitedValidatorsBalance,
+            _slashedValidatorsBalance,
             _activeValidatorsCount,
             _exitedValidatorsCount,
             _slashedValidatorsCount,
             block.timestamp
         );
-        if (submissionCount >= trustedNodesCount / 2 + 1 && _block > lastBlockNumberCountsUpdated) {
-            // Update counts
-            lastBlockNumberCountsUpdated = _block;
-            activeValidatorsCount = _activeValidatorsCount;
-            exitedValidatorsCount = _exitedValidatorsCount;
-            slashedValidatorsCount = _slashedValidatorsCount;
-            // Emit counts updated event
-            emit ValidatorCountsUpdated(
-                _block,
-                activeValidatorsCount,
-                exitedValidatorsCount,
-                slashedValidatorsCount,
+
+        if (submissionCount >= trustedNodesCount / 2 + 1 && _blockNumber > validatorStats.lastUpdatedBlockNumber) {
+            // Update stats
+            validatorStats.lastUpdatedBlockNumber = _blockNumber;
+            validatorStats.activeValidatorsBalance = _activeValidatorsBalance;
+            validatorStats.exitedValidatorsBalance = _exitedValidatorsBalance;
+            validatorStats.slashedValidatorsBalance = _slashedValidatorsBalance;
+            validatorStats.activeValidatorsCount = _activeValidatorsCount;
+            validatorStats.exitedValidatorsCount = _exitedValidatorsCount;
+            validatorStats.slashedValidatorsCount = _slashedValidatorsCount;
+
+            // Emit stats updated event
+            emit ValidatorStatsUpdated(
+                _blockNumber,
+                _activeValidatorsBalance,
+                _exitedValidatorsBalance,
+                _slashedValidatorsBalance,
+                _activeValidatorsCount,
+                _exitedValidatorsCount,
+                _slashedValidatorsCount,
                 block.timestamp
             );
         }
+    }
+
+    function getValidatorStats() external view override returns (ValidatorStats memory) {
+        return (validatorStats);
+    }
+
+    function getExchangeRate() external view override returns (ExchangeRate memory) {
+        return (exchangeRate);
     }
 
     modifier trustedNodeOnly() {
