@@ -5,6 +5,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
+import './library/Address.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
@@ -30,18 +31,19 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     function initialize() external initializer {
         __AccessControl_init_unchained();
 
+        // TODO: Manoj: how 7200 is 24 hrs??
         balanceUpdateFrequency = 7200; // 24 hours
         isTrustedNode[msg.sender] = true;
         trustedNodesCount = 1;
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         emit TrustedNodeAdded(msg.sender);
     }
 
     /// @inheritdoc IStaderOracle
     function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_nodeAddress != address(0), 'nodeAddress is zero');
+        Address.checkNonZeroAddress(_nodeAddress);
         require(!isTrustedNode[_nodeAddress], 'Node is already trusted');
         isTrustedNode[_nodeAddress] = true;
         trustedNodesCount++;
@@ -51,7 +53,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_nodeAddress != address(0), 'nodeAddress is zero');
+        Address.checkNonZeroAddress(_nodeAddress);
         require(isTrustedNode[_nodeAddress], 'Node is not trusted');
         isTrustedNode[_nodeAddress] = false;
         trustedNodesCount--;
@@ -108,42 +110,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
 
-    /// @inheritdoc IStaderOracle
-    function submitStatus(bytes calldata _pubkey, ValidatorStatus _status) external override trustedNodeOnly {
-        // TODO: complete implementation
-        // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _pubkey, _status));
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_pubkey, _status));
-        // Check & update node submission status
-        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
-        nodeSubmissionKeys[nodeSubmissionKey] = true;
-        submissionCountKeys[submissionCountKey]++;
-        uint8 submissionCount = submissionCountKeys[submissionCountKey];
-        if (submissionCount >= trustedNodesCount / 2 + 1) {
-            // Update statuses
-        }
-    }
-
-    /// @inheritdoc IStaderOracle
-    function submitValidatorWithdrawalValidity(bytes calldata _pubkey, bool _isBadWithdrawal)
-        external
-        override
-        trustedNodeOnly
-    {
-        // TODO: complete implementation
-        // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _pubkey, _isBadWithdrawal));
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_pubkey, _isBadWithdrawal));
-        // Check & update node submission status
-        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
-        nodeSubmissionKeys[nodeSubmissionKey] = true;
-        submissionCountKeys[submissionCountKey]++;
-        uint8 submissionCount = submissionCountKeys[submissionCountKey];
-        if (submissionCount >= trustedNodesCount / 2 + 1) {
-            // Update bad validator
-        }
-    }
-
     function submitSocializingRewardsMerkleRoot(uint256 _index, bytes32 _merkleRoot) external override trustedNodeOnly {
         require(_index > socializingRewardsIndex, 'Merkle root index is not higher than the current one');
 
@@ -157,7 +123,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
         // Emit merkle root submitted event
         emit SocializingRewardsMerkleRootSubmitted(msg.sender, _index, _merkleRoot, block.timestamp);
-        if (submissionCount >= trustedNodesCount / 2 + 1) {
+        if (submissionCount == trustedNodesCount / 2 + 1) {
             // Update merkle root
             socializingRewardsMerkleRoot[_index] = _merkleRoot;
             socializingRewardsIndex = _index;

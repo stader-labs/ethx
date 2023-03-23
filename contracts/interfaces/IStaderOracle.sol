@@ -65,20 +65,6 @@ interface IStaderOracle {
     ) external;
 
     /**
-    @notice Submits the given ValidatorStatus for the public key at a specified block number.
-    @param _pubkey The public key of the validator the status belong.
-    @param _status The ValidatorStatus corresponding to the public key.
-    */
-    function submitStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
-
-    /**
-    @notice Submits the whether the validator has a bad withdrawal.
-    @param _pubkey The public key of the validator
-    @param _isBadWithdrawal Whether the validator has a bad withdrawal
-    */
-    function submitValidatorWithdrawalValidity(bytes calldata _pubkey, bool _isBadWithdrawal) external;
-
-    /**
     @notice Submits the root of the merkle tree containing the socializing rewards.
     @param _merkleRoot The new root of the merkle tree.
     */
