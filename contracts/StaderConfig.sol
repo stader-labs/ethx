@@ -23,7 +23,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     enum Contract {
-        PoolFactory
+        PoolFactory,
+        StaderOracle
     }
 
     enum Token {
@@ -79,6 +80,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function updatePoolFactory(address _poolFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setContract(Contract.PoolFactory, _poolFactory);
+    }
+
+    function updateStaderOracle(address _staderOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setContract(Contract.StaderOracle, _staderOracle);
     }
 
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -142,6 +147,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getPoolFactory() external view override returns (address) {
         return contractsMap[Contract.PoolFactory];
+    }
+
+    function getStaderOracle() external view override returns (address) {
+        return contractsMap[Contract.StaderOracle];
     }
 
     function getStaderToken() external view override returns (address) {

@@ -25,6 +25,8 @@ interface IStaderConfig {
     // Contracts
     function getPoolFactory() external view returns (address);
 
+    function getStaderOracle() external view returns (address);
+
     // Tokens
     function getStaderToken() external view returns (address);
 

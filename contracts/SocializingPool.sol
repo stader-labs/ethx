@@ -13,13 +13,19 @@ import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol';
 
-contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract SocializingPool is
+    ISocializingPool,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     IStaderConfig public staderConfig;
     address public override poolSelector;
-    address public override oracle;
     uint256 public override totalELRewardsCollected;
     uint256 public constant CYCLE_DURATION = 28 days;
     uint256 public initialTimestamp;
@@ -29,20 +35,17 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
 
-    function initialize(address _staderConfig, address _oracle) external initializer {
+    function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_oracle);
 
-        __AccessControl_init_unchained();
+        __AccessControl_init();
         __Pausable_init();
+        __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        oracle = _oracle;
         initialTimestamp = block.timestamp;
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
-
-        emit UpdatedOracle(_oracle);
     }
 
     /**
@@ -65,7 +68,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
             uint256
         )
     {
-        uint256 currentIndex = IStaderOracle(oracle).socializingRewardsIndex();
+        uint256 currentIndex = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsIndex();
         uint256 currentStartTime = initialTimestamp + (currentIndex * CYCLE_DURATION);
         uint256 currentEndTime = currentStartTime + CYCLE_DURATION;
         uint256 nextIndex = currentIndex + 1;
@@ -81,7 +84,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof,
         uint8 _poolId
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         _claim(_index, msg.sender, _amountSD, _amountETH, _merkleProof);
         // Calculate totals
         uint256 totalAmountSD;
@@ -145,7 +148,7 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         uint256 _amountETH,
         bytes32[] calldata _merkleProof
     ) internal view returns (bool) {
-        bytes32 merkleRoot = IStaderOracle(oracle).socializingRewardsMerkleRoot(_index);
+        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
@@ -173,12 +176,6 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
         _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
 
         _userShare = _totalRewards - _protocolShare - _operatorShare;
-    }
-
-    function updateOracle(address _oracle) external override onlyRole(SOCIALIZE_POOL_OWNER) {
-        Address.checkNonZeroAddress(_oracle);
-        oracle = _oracle;
-        emit UpdatedOracle(_oracle);
     }
 
     function updatePoolSelector(address _poolSelector) external onlyRole(SOCIALIZE_POOL_OWNER) {
