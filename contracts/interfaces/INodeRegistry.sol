@@ -6,9 +6,11 @@ import '../library/ValidatorStatus.sol';
 struct Validator {
     ValidatorStatus status; // state of validator
     bytes pubkey; //public Key of the validator
-    bytes _signature; //signature for deposit to Ethereum Deposit contract
+    bytes preDepositSignature; //signature for 1 ETH deposit on beacon chain
+    bytes depositSignature; //signature for 31 ETH deposit on beacon chain
     address withdrawVaultAddress; //eth1 withdrawal address for validator
     uint256 operatorId; // stader network assigned Id
+    //TODO do we need this if we are not changing it, we already have collateralETH parameter
     uint256 initialBondEth; // amount of bond eth in gwei
     uint256 depositTime; // time of the 31ETH deposit
     uint256 withdrawnTime; //time when oracle report validator as withdrawn

@@ -42,9 +42,7 @@ contract UserWithdrawalManager is
 
     /// @notice structure representing a user request for withdrawal.
     struct UserWithdrawInfo {
-        address owner; // ethX owner
-        //TODO remove this recipient?
-        address payable recipient; //payable address of the recipient to transfer withdrawal
+        address payable owner; // address that can claim eth on behalf of this request
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
         uint256 ethExpected; //eth requested according to given share and exchangeRate
         uint256 ethFinalized; // final eth for claiming according to finalize exchange rate
@@ -62,6 +60,10 @@ contract UserWithdrawalManager is
         finalizationBatchLimit = 50;
         maxNonRedeemedUserRequestCount = 1000;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+    }
+
+    receive() external payable {
+        emit ReceivedETH(msg.value);
     }
 
     /**
@@ -109,9 +111,10 @@ contract UserWithdrawalManager is
     /**
      * @notice put a withdrawal request
      * @param _ethXAmount amount of ethX shares to withdraw
-     * @param receiver withdraw address for user to get back eth
+     * @param _owner owner of withdraw request to redeem
      */
-    function withdraw(uint256 _ethXAmount, address receiver) external override whenNotPaused returns (uint256) {
+    function withdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
+        if (_owner == address(0)) revert ZeroAddressReceived();
         uint256 assets = IStaderStakePoolManager(poolManager).previewWithdraw(_ethXAmount);
         if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
@@ -119,9 +122,9 @@ contract UserWithdrawalManager is
         //TODO sanjay user safeTransfer
         if (!ETHx(ethX).transferFrom(msg.sender, (address(this)), _ethXAmount)) revert TokenTransferFailed();
         ethRequestedForWithdraw += assets;
-        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(msg.sender, payable(receiver), _ethXAmount, assets, 0);
-        requestIdsByUserAddress[msg.sender].push(nextRequestId);
-        emit WithdrawRequestReceived(msg.sender, receiver, nextRequestId, _ethXAmount, assets);
+        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(payable(_owner), _ethXAmount, assets, 0);
+        requestIdsByUserAddress[_owner].push(nextRequestId);
+        emit WithdrawRequestReceived(msg.sender, _owner, nextRequestId, _ethXAmount, assets);
         nextRequestId++;
         return nextRequestId - 1;
     }
@@ -169,12 +172,13 @@ contract UserWithdrawalManager is
     function redeem(uint256 _requestId) external override {
         if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
         UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
+        if (msg.sender != userRequest.owner) revert CallerNotAuthorizedToRedeem();
         // below is a default entry as no userRequest will be found for a redeemed request.
         if (userRequest.ethExpected == 0) revert RequestAlreadyRedeemed(_requestId);
         uint256 etherToTransfer = userRequest.ethFinalized;
         _deleteRequestId(_requestId, userRequest.owner);
-        _sendValue(userRequest.recipient, etherToTransfer);
-        emit RequestRedeemed(msg.sender, userRequest.recipient, etherToTransfer);
+        _sendValue(userRequest.owner, etherToTransfer);
+        emit RequestRedeemed(msg.sender, userRequest.owner, etherToTransfer);
     }
 
     /**
