@@ -6,9 +6,6 @@ interface ISocializingPool {
     event ETHReceived(address indexed sender, uint256 amount);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
-    event UpdatedPoolSelector(address poolSelector);
-
-    function poolSelector() external view returns (address);
 
     function claimedRewards(address _user, uint256 _index) external view returns (bool);
 

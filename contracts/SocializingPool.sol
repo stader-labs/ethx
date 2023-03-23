@@ -5,7 +5,6 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/ISocializingPool.sol';
-import './interfaces/IPoolSelector.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 import './interfaces/IStaderOracle.sol';
@@ -25,7 +24,6 @@ contract SocializingPool is
     ReentrancyGuardUpgradeable
 {
     IStaderConfig public staderConfig;
-    address public override poolSelector;
     uint256 public override totalELRewardsCollected;
     uint256 public constant CYCLE_DURATION = 28 days;
     uint256 public initialTimestamp;
@@ -136,11 +134,5 @@ contract SocializingPool is
         bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
-    }
-
-    function updatePoolSelector(address _poolSelector) external onlyRole(SOCIALIZE_POOL_OWNER) {
-        Address.checkNonZeroAddress(_poolSelector);
-        poolSelector = _poolSelector;
-        emit UpdatedPoolSelector(_poolSelector);
     }
 }
