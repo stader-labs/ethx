@@ -28,8 +28,7 @@ contract SocializingPool is
     uint256 public constant CYCLE_DURATION = 28 days;
     uint256 public initialTimestamp;
 
-    bytes32 public constant SOCIALIZE_POOL_OWNER = keccak256('SOCIALIZE_POOL_OWNER');
-    bytes32 public constant REWARD_DISTRIBUTOR = keccak256('REWARD_DISTRIBUTOR');
+    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
 
@@ -74,6 +73,16 @@ contract SocializingPool is
         uint256 nextEndTime = nextStartTime + CYCLE_DURATION;
 
         return (currentIndex, currentStartTime, currentEndTime, nextIndex, nextStartTime, nextEndTime);
+    }
+
+    function distributeUserRewards(uint256 _userRewardsAmt) external onlyRole(STADER_ORACLE) {
+        (bool success, ) = payable(staderConfig.getStakePoolManager()).call{value: _userRewardsAmt}('');
+        require(success, 'User ETH rewards transfer failed');
+    }
+
+    function distributeProtocolRewards(uint256 _protocolRewardsAmt) external onlyRole(STADER_ORACLE) {
+        (bool success, ) = payable(staderConfig.getTreasury()).call{value: _protocolRewardsAmt}('');
+        require(success, 'Protocol ETH rewards transfer failed');
     }
 
     function claim(

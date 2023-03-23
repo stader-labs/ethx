@@ -3,11 +3,13 @@ pragma solidity ^0.8.16;
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
+import './interfaces/IStaderConfig.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './library/Address.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
+    IStaderConfig public staderConfig;
     /// @inheritdoc IStaderOracle
     uint256 public override lastBlockNumberBalancesUpdated;
     /// @inheritdoc IStaderOracle
@@ -28,14 +30,17 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
 
-    function initialize() external initializer {
-        __AccessControl_init_unchained();
+    function initialize(address _staderConfig) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
+
+        __AccessControl_init();
 
         // TODO: Manoj: how 7200 is 24 hrs??
         balanceUpdateFrequency = 7200; // 24 hours
         isTrustedNode[msg.sender] = true;
         trustedNodesCount = 1;
-
+        staderConfig = IStaderConfig(_staderConfig);
+        // TODO: admin role be give to staderAdmin or creator?
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         emit TrustedNodeAdded(msg.sender);
@@ -110,25 +115,45 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
 
-    function submitSocializingRewardsMerkleRoot(uint256 _index, bytes32 _merkleRoot) external override trustedNodeOnly {
+    function submitSocializingRewardsMerkleRoot(
+        uint256 _index,
+        bytes32 _merkleRoot,
+        uint256 _userRewardsAmt,
+        uint256 _protocolRewardsAmt
+    ) external override trustedNodeOnly {
         require(_index > socializingRewardsIndex, 'Merkle root index is not higher than the current one');
 
         // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _merkleRoot));
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_merkleRoot));
-        // Check & update node submission status
-        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
-        nodeSubmissionKeys[nodeSubmissionKey] = true;
-        submissionCountKeys[submissionCountKey]++;
-        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(msg.sender, _merkleRoot, _userRewardsAmt, _protocolRewardsAmt)
+        );
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_merkleRoot, _userRewardsAmt, _protocolRewardsAmt));
+
+        uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
         // Emit merkle root submitted event
         emit SocializingRewardsMerkleRootSubmitted(msg.sender, _index, _merkleRoot, block.timestamp);
+
         if (submissionCount == trustedNodesCount / 2 + 1) {
             // Update merkle root
             socializingRewardsMerkleRoot[_index] = _merkleRoot;
             socializingRewardsIndex = _index;
+
+            ISocializingPool(staderConfig.getSocializingPool()).distributeUserRewards(_userRewardsAmt);
+            ISocializingPool(staderConfig.getSocializingPool()).distributeProtocolRewards(_protocolRewardsAmt);
+
             emit SocializingRewardsMerkleRootUpdated(_index, _merkleRoot, block.timestamp);
         }
+    }
+
+    function _getSubmissionCount(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
+        internal
+        returns (uint8 _submissionCount)
+    {
+        // Check & update node submission status
+        require(!nodeSubmissionKeys[_nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[_nodeSubmissionKey] = true;
+        submissionCountKeys[_submissionCountKey]++;
+        _submissionCount = submissionCountKeys[_submissionCountKey];
     }
 
     modifier trustedNodeOnly() {

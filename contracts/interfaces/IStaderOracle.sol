@@ -68,7 +68,12 @@ interface IStaderOracle {
     @notice Submits the root of the merkle tree containing the socializing rewards.
     @param _merkleRoot The new root of the merkle tree.
     */
-    function submitSocializingRewardsMerkleRoot(uint256 _index, bytes32 _merkleRoot) external;
+    function submitSocializingRewardsMerkleRoot(
+        uint256 _index,
+        bytes32 _merkleRoot,
+        uint256 _userRewardsAmt,
+        uint256 _protocolRewardsAmt
+    ) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }

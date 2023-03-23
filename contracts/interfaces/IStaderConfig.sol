@@ -27,6 +27,8 @@ interface IStaderConfig {
 
     function getStaderOracle() external view returns (address);
 
+    function getSocializingPool() external view returns (address);
+
     // Tokens
     function getStaderToken() external view returns (address);
 
