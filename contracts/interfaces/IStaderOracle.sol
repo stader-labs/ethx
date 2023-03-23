@@ -90,28 +90,14 @@ interface IStaderOracle {
 
     /**
     @dev Submits the given balances for a specified block number.
-    @param _block The block number at which the balances are being submitted.
-    @param _totalEth The total amount of ETH in the system at the specified block number.
-    @param _stakingEth The amount of ETH currently staked in the beaconchain at the specified block number.
-    @param _ethxSupply The total supply of ETHX tokens at the specified block number.
+    @param _exchangeRate The exchange rate to submit.
     */
-    function submitBalances(
-        uint256 _block,
-        uint256 _totalEth,
-        uint256 _stakingEth,
-        uint256 _ethxSupply
-    ) external;
+    function submitBalances(ExchangeRate calldata _exchangeRate) external;
 
     /**
      * @notice Submit validator stats for a specific block.
      * @dev This function can only be called by trusted nodes.
-     * @param _blockNumber The block number for which validator stats are being submitted.
-     * @param _activeValidatorsBalance The total balance of all active validators.
-     * @param _exitedValidatorsBalance The total balance of all exited validators.
-     * @param _slashedValidatorsBalance The total balance of all slashed validators.
-     * @param _activeValidatorsCount The number of active validators at the given block on the beaconchain.
-     * @param _exitedValidatorsCount The number of exited validators at the given block on the beaconchain.
-     * @param _slashedValidatorsCount The number of slashed validators at the given block on the beaconchain.
+     * @param _validatorStats The validator stats to submit.
      *
      * Function Flow:
      * 1. Validates that the submission is for a past block and not a future one.
@@ -123,15 +109,7 @@ interface IStaderOracle {
      * 7. If the submission count reaches a majority (trustedNodesCount / 2 + 1), checks whether the counts are not already updated,
      *    then updates the validator counts, and emits a CountsUpdated event.
      */
-    function submitValidatorStats(
-        uint256 _blockNumber,
-        uint128 _activeValidatorsBalance,
-        uint128 _exitedValidatorsBalance,
-        uint128 _slashedValidatorsBalance,
-        uint32 _activeValidatorsCount,
-        uint32 _exitedValidatorsCount,
-        uint32 _slashedValidatorsCount
-    ) external;
+    function submitValidatorStats(ValidatorStats calldata _validatorStats) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }

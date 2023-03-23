@@ -57,38 +57,64 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(
-        uint256 _block,
-        uint256 _totalEth,
-        uint256 _stakingEth,
-        uint256 _ethxSupply
-    ) external override trustedNodeOnly {
-        require(_block < block.number, 'Balances can not be submitted for a future block');
-        require(_block > exchangeRate.lastUpdatedBlockNumber, 'Network balances for an equal or higher block are set');
-        require(_stakingEth <= _totalEth, 'Invalid network balances');
+    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
+        require(
+            _exchangeRate.lastUpdatedBlockNumber < block.number,
+            'Balances can not be submitted for a future block'
+        );
+        require(
+            _exchangeRate.lastUpdatedBlockNumber > exchangeRate.lastUpdatedBlockNumber,
+            'Network balances for an equal or higher block are set'
+        );
+        require(_exchangeRate.totalStakingETHBalance <= _exchangeRate.totalETHBalance, 'Invalid network balances');
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply)
+            abi.encodePacked(
+                msg.sender,
+                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.totalETHBalance,
+                _exchangeRate.totalStakingETHBalance,
+                _exchangeRate.totalETHXSupply
+            )
         );
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply));
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.totalETHBalance,
+                _exchangeRate.totalStakingETHBalance,
+                _exchangeRate.totalETHXSupply
+            )
+        );
         // Check & update node submission status
         require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
         nodeSubmissionKeys[nodeSubmissionKey] = true;
         submissionCountKeys[submissionCountKey]++;
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
         // Emit balances submitted event
-        emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
+        emit BalancesSubmitted(
+            msg.sender,
+            _exchangeRate.lastUpdatedBlockNumber,
+            _exchangeRate.totalETHBalance,
+            _exchangeRate.totalStakingETHBalance,
+            _exchangeRate.totalETHXSupply,
+            block.timestamp
+        );
 
-        if (submissionCount >= trustedNodesCount / 2 + 1 && _block > exchangeRate.lastUpdatedBlockNumber) {
-            // Update balances
-            exchangeRate.lastUpdatedBlockNumber = _block;
-            exchangeRate.totalETHBalance = _totalEth;
-            exchangeRate.totalStakingETHBalance = _stakingEth;
-            exchangeRate.totalETHXSupply = _ethxSupply;
+        if (
+            submissionCount >= trustedNodesCount / 2 + 1 &&
+            _exchangeRate.lastUpdatedBlockNumber > exchangeRate.lastUpdatedBlockNumber
+        ) {
+            exchangeRate = _exchangeRate;
 
             // Emit balances updated event
-            emit BalancesUpdated(_block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
+            emit BalancesUpdated(
+                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.totalETHBalance,
+                _exchangeRate.totalStakingETHBalance,
+                _exchangeRate.totalETHXSupply,
+                block.timestamp
+            );
         }
     }
 
@@ -99,18 +125,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function submitValidatorStats(
-        uint256 _blockNumber,
-        uint128 _activeValidatorsBalance,
-        uint128 _exitedValidatorsBalance,
-        uint128 _slashedValidatorsBalance,
-        uint32 _activeValidatorsCount,
-        uint32 _exitedValidatorsCount,
-        uint32 _slashedValidatorsCount
-    ) external override trustedNodeOnly {
-        require(_blockNumber < block.number, 'Balances can not be submitted for a future block');
+    function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
         require(
-            _blockNumber > validatorStats.lastUpdatedBlockNumber,
+            _validatorStats.lastUpdatedBlockNumber < block.number,
+            'Balances can not be submitted for a future block'
+        );
+        require(
+            _validatorStats.lastUpdatedBlockNumber > validatorStats.lastUpdatedBlockNumber,
             'Network balances for an equal or higher block are set'
         );
 
@@ -118,24 +139,24 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(
                 msg.sender,
-                _blockNumber,
-                _activeValidatorsBalance,
-                _exitedValidatorsBalance,
-                _slashedValidatorsBalance,
-                _activeValidatorsCount,
-                _exitedValidatorsCount,
-                _slashedValidatorsCount
+                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitedValidatorsBalance,
+                _validatorStats.slashedValidatorsBalance,
+                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitedValidatorsCount,
+                _validatorStats.slashedValidatorsCount
             )
         );
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(
-                _blockNumber,
-                _activeValidatorsBalance,
-                _exitedValidatorsBalance,
-                _slashedValidatorsBalance,
-                _activeValidatorsCount,
-                _exitedValidatorsCount,
-                _slashedValidatorsCount
+                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitedValidatorsBalance,
+                _validatorStats.slashedValidatorsBalance,
+                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitedValidatorsCount,
+                _validatorStats.slashedValidatorsCount
             )
         );
         // Check & update node submission status
@@ -146,35 +167,31 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         // Emit validator stats submitted event
         emit ValidatorStatsSubmitted(
             msg.sender,
-            _blockNumber,
-            _activeValidatorsBalance,
-            _exitedValidatorsBalance,
-            _slashedValidatorsBalance,
-            _activeValidatorsCount,
-            _exitedValidatorsCount,
-            _slashedValidatorsCount,
+            _validatorStats.lastUpdatedBlockNumber,
+            _validatorStats.activeValidatorsBalance,
+            _validatorStats.exitedValidatorsBalance,
+            _validatorStats.slashedValidatorsBalance,
+            _validatorStats.activeValidatorsCount,
+            _validatorStats.exitedValidatorsCount,
+            _validatorStats.slashedValidatorsCount,
             block.timestamp
         );
 
-        if (submissionCount >= trustedNodesCount / 2 + 1 && _blockNumber > validatorStats.lastUpdatedBlockNumber) {
-            // Update stats
-            validatorStats.lastUpdatedBlockNumber = _blockNumber;
-            validatorStats.activeValidatorsBalance = _activeValidatorsBalance;
-            validatorStats.exitedValidatorsBalance = _exitedValidatorsBalance;
-            validatorStats.slashedValidatorsBalance = _slashedValidatorsBalance;
-            validatorStats.activeValidatorsCount = _activeValidatorsCount;
-            validatorStats.exitedValidatorsCount = _exitedValidatorsCount;
-            validatorStats.slashedValidatorsCount = _slashedValidatorsCount;
+        if (
+            submissionCount >= trustedNodesCount / 2 + 1 &&
+            _validatorStats.lastUpdatedBlockNumber > validatorStats.lastUpdatedBlockNumber
+        ) {
+            validatorStats = _validatorStats;
 
             // Emit stats updated event
             emit ValidatorStatsUpdated(
-                _blockNumber,
-                _activeValidatorsBalance,
-                _exitedValidatorsBalance,
-                _slashedValidatorsBalance,
-                _activeValidatorsCount,
-                _exitedValidatorsCount,
-                _slashedValidatorsCount,
+                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitedValidatorsBalance,
+                _validatorStats.slashedValidatorsBalance,
+                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitedValidatorsCount,
+                _validatorStats.slashedValidatorsCount,
                 block.timestamp
             );
         }
