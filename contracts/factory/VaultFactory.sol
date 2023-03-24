@@ -26,7 +26,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         nodeELRewardVaultImplementation = address(new NodeELRewardVault());
         validatorWithdrawalVaultImplementation = address(new ValidatorWithdrawalVault());
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
     }
 
     function deployWithdrawVault(

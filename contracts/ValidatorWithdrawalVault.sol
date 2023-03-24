@@ -37,7 +37,7 @@ contract ValidatorWithdrawalVault is
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
     }
 
     /**
@@ -62,7 +62,7 @@ contract ValidatorWithdrawalVault is
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
-        _sendValue(payable(staderConfig.getTreasury()), protocolShare);
+        _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
     }
 
     // TODO: add penalty changes
@@ -76,7 +76,7 @@ contract ValidatorWithdrawalVault is
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getFullDepositOnBeaconChain();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeeBps = getProtocolFeeBps();
@@ -98,7 +98,7 @@ contract ValidatorWithdrawalVault is
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
-        _sendValue(payable(staderConfig.getTreasury()), protocolShare);
+        _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
     }
 
     // TODO: add penalty changes
@@ -111,7 +111,7 @@ contract ValidatorWithdrawalVault is
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getFullDepositOnBeaconChain();
         uint256 collateralETH = getCollateralETH(); // 0, incase of permissioned NOs
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 contractBalance = address(this).balance;

@@ -34,7 +34,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
     }
 
     /**
@@ -55,7 +55,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderConfig.getTreasury()).call{value: protocolShare}('');
+        (success, ) = payable(staderConfig.getStaderTreasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
@@ -78,7 +78,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             return (0, 0, 0);
         }
 
-        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getFullDepositOnBeaconChain();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeeBps = getProtocolFeeBps();
