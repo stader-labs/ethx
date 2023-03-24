@@ -2,6 +2,7 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
+import {IStaderConfig} from './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolSelector.sol';
 import './interfaces/IPoolFactory.sol';
 
@@ -16,10 +17,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     uint8 public poolIdForExcessDeposit;
     uint16 public POOL_ALLOCATION_MAX_SIZE;
 
-    address public poolFactoryAddress;
-
+    IStaderConfig public staderConfig;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
-    uint256 public constant DEPOSIT_SIZE = 32 ether;
 
     mapping(uint8 => uint256) public poolTargets;
 
@@ -29,18 +28,18 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     /**
      * @notice initialize with permissioned and permissionless Pool
      * @dev pool index start from 1 with permission less pool
-     * @param _adminOwner admin address for pool selector
+     * @param _staderConfig config contract address
      * @param _poolFactoryAddress address for poolFactory contract
      * @param _permissionlessTarget target weight of permissionless pool
      * @param _permissionedTarget target weight of permissioned pool
      */
     function initialize(
-        address _adminOwner,
+        address _staderConfig,
         address _poolFactoryAddress,
         uint256 _permissionlessTarget,
         uint256 _permissionedTarget
     ) external initializer {
-        Address.checkNonZeroAddress(_adminOwner);
+        Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_poolFactoryAddress);
         if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) revert InvalidTargetWeight();
 
@@ -48,11 +47,11 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
         poolIdForExcessDeposit = 1;
         POOL_ALLOCATION_MAX_SIZE = 100;
-        poolFactoryAddress = _poolFactoryAddress;
+        staderConfig = IStaderConfig(_staderConfig);
         poolTargets[1] = _permissionlessTarget;
         poolTargets[2] = _permissionedTarget;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
     }
 
     /**
@@ -69,6 +68,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         onlyRole(STADER_STAKE_POOL_MANAGER)
         returns (uint256[] memory selectedPoolCapacity)
     {
+        address poolFactoryAddress = staderConfig.getPoolFactory();
+        uint256 DEPOSIT_SIZE = staderConfig.getFullDepositOnBeaconChain();
         uint8 poolCount = IPoolFactory(poolFactoryAddress).poolCount();
 
         uint256 depositedETh;
@@ -124,7 +125,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @param _poolTargets new target weights of pools
      */
     function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(POOL_SELECTOR_ADMIN) {
-        if (IPoolFactory(poolFactoryAddress).poolCount() != _poolTargets.length) revert InvalidNewTargetInput();
+        if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length)
+            revert InvalidNewTargetInput();
 
         uint8 totalTarget;
         for (uint8 i = 0; i < _poolTargets.length; i++) {

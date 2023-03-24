@@ -12,9 +12,6 @@ interface IStaderPoolBase {
     error UnsupportedOperation();
 
     // Events
-    event UpdatedNodeRegistryAddress(address _nodeRegistryAddress);
-    event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
-    event UpdatedStaderStakePoolManager(address _staderStakePoolManager);
     event ValidatorPreDepositedOnBeaconChain(bytes indexed _pubKey);
     event ValidatorDepositedOnBeaconChain(uint256 indexed _validatorId, bytes _pubKey);
     event OperatorFeeUpdated(uint256 _operatorFee);
@@ -46,12 +43,6 @@ interface IStaderPoolBase {
     ) external view returns (uint256);
 
     function stakeUserETHToBeaconChain() external payable;
-
-    function updateNodeRegistryAddress(address _nodeRegistryAddress) external;
-
-    function updateVaultFactoryAddress(address _vaultFactoryAddress) external;
-
-    function updateStaderStakePoolManager(address _staderStakePoolManager) external;
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
 

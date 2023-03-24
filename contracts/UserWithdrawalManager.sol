@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 
 import './ETHx.sol';
+import './interfaces/IStaderConfig.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IUserWithdrawalManager.sol';
 
@@ -19,13 +20,10 @@ contract UserWithdrawalManager is
     ReentrancyGuardUpgradeable
 {
     bool public override slashingMode; //TODO sanjay read this from stader oracle contract
-    address public override ethX; //TODO sanjay not setting the value for now, will read from index contract
-    address public override poolManager; //TODO sanjay not setting the value for now, will read from index contract
-    uint256 public constant override DECIMALS = 10**18;
+
+    IStaderConfig public staderConfig;
     uint256 public override nextRequestIdToFinalize;
     uint256 public override nextRequestId;
-    uint256 public override minWithdrawAmount;
-    uint256 public override maxWithdrawAmount;
     uint256 public override finalizationBatchLimit;
     uint256 public override ethRequestedForWithdraw;
     //upper cap on user non redeemed withdraw request count
@@ -48,50 +46,21 @@ contract UserWithdrawalManager is
         uint256 ethFinalized; // final eth for claiming according to finalize exchange rate
     }
 
-    function initialize(address _admin) external initializer {
-        Address.checkNonZeroAddress(_admin);
+    function initialize(address _staderConfig) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
+        staderConfig = IStaderConfig(_staderConfig);
         nextRequestIdToFinalize = 1;
         nextRequestId = 1;
-        minWithdrawAmount = 100;
-        maxWithdrawAmount = 10000 ether;
         finalizationBatchLimit = 50;
         maxNonRedeemedUserRequestCount = 1000;
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
     }
 
     receive() external payable {
         emit ReceivedETH(msg.value);
-    }
-
-    /**
-     * @dev update the minimum withdraw amount
-     * @param _minWithdrawAmount minimum withdraw value
-     */
-    function updateMinWithdrawAmount(uint256 _minWithdrawAmount)
-        external
-        override
-        onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
-    {
-        if (_minWithdrawAmount == 0 || _minWithdrawAmount > maxWithdrawAmount) revert InvalidMinWithdrawValue();
-        minWithdrawAmount = _minWithdrawAmount;
-        emit UpdatedMinWithdrawAmount(minWithdrawAmount);
-    }
-
-    /**
-     * @dev update the maximum withdraw amount
-     * @param _maxWithdrawAmount maximum withdraw value
-     */
-    function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount)
-        external
-        override
-        onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
-    {
-        if (_maxWithdrawAmount < minWithdrawAmount) revert InvalidMaxWithdrawValue();
-        maxWithdrawAmount = _maxWithdrawAmount;
-        emit UpdatedMaxWithdrawAmount(maxWithdrawAmount);
     }
 
     /**
@@ -115,12 +84,14 @@ contract UserWithdrawalManager is
      */
     function withdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
         if (_owner == address(0)) revert ZeroAddressReceived();
-        uint256 assets = IStaderStakePoolManager(poolManager).previewWithdraw(_ethXAmount);
-        if (assets < minWithdrawAmount || assets > maxWithdrawAmount) revert InvalidWithdrawAmount();
+        uint256 assets = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
+        if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount())
+            revert InvalidWithdrawAmount();
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
             revert MaxLimitOnWithdrawRequestCountReached();
         //TODO sanjay user safeTransfer
-        if (!ETHx(ethX).transferFrom(msg.sender, (address(this)), _ethXAmount)) revert TokenTransferFailed();
+        if (!ETHx(staderConfig.getETHxToken()).transferFrom(msg.sender, (address(this)), _ethXAmount))
+            revert TokenTransferFailed();
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(payable(_owner), _ethXAmount, assets, 0);
         requestIdsByUserAddress[_owner].push(nextRequestId);
@@ -136,6 +107,8 @@ contract UserWithdrawalManager is
     function finalizeUserWithdrawalRequest() external override whenNotPaused {
         //TODO sanjay read from index file
         if (slashingMode) revert ProtocolInSlashingMode();
+        address poolManager = staderConfig.getStakePoolManager();
+        uint256 DECIMALS = staderConfig.getDecimals();
         uint256 exchangeRate = IStaderStakePoolManager(poolManager).getExchangeRate();
         if (exchangeRate == 0) revert ProtocolNotHealthy();
 
@@ -158,7 +131,7 @@ contract UserWithdrawalManager is
             ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
         }
         if (requestId >= nextRequestIdToFinalize) {
-            ETHx(ethX).burnFrom(address(this), lockedEthXToBurn);
+            ETHx(staderConfig.getETHxToken()).burnFrom(address(this), lockedEthXToBurn);
             nextRequestIdToFinalize = requestId + 1;
             IStaderStakePoolManager(poolManager).transferETHToUserWithdrawManager(ethToSendToFinalizeRequest);
         }

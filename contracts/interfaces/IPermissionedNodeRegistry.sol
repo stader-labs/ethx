@@ -29,11 +29,7 @@ interface IPermissionedNodeRegistry {
     event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
-    event UpdatedPoolHelper(address _poolSelector);
     event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
-    event UpdatedSDCollateralAddress(address _sdCollateral);
-    event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
-    event UpdatedELRewardSocializePool(address _elRewardSocializePool);
     event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
     event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
     event UpdatedValidatorStatus(bytes indexed _pubkey, ValidatorStatus _status);
@@ -44,14 +40,6 @@ interface IPermissionedNodeRegistry {
 
     function poolId() external view returns (uint8);
 
-    function poolFactoryAddress() external view returns (address);
-
-    function vaultFactoryAddress() external view returns (address);
-
-    function sdCollateral() external view returns (address);
-
-    function elRewardSocializePool() external view returns (address);
-
     function nextOperatorId() external view returns (uint16);
 
     function nextValidatorId() external view returns (uint256);
@@ -61,8 +49,6 @@ interface IPermissionedNodeRegistry {
     function inputKeyCountLimit() external view returns (uint16);
 
     function operatorIdForExcessDeposit() external view returns (uint16);
-
-    function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
 
     function totalActiveValidatorCount() external view returns (uint256);
 
@@ -155,12 +141,6 @@ interface IPermissionedNodeRegistry {
     function updateDepositStatusAndTime(uint256 _validatorId) external;
 
     function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
-
-    function updateSDCollateralAddress(address _sdCollateral) external;
-
-    function updateVaultFactoryAddress(address _vaultFactory) external;
-
-    function updateELRewardSocializePool(address _elRewardSocializePool) external;
 
     function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator) external;
 

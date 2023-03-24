@@ -7,6 +7,7 @@ enum ValidatorStatus {
     FRONT_RUN,
     PRE_DEPOSIT,
     DEPOSITED,
+    //TODO sanjay remove unused
     IN_ACTIVATION_QUEUE,
     ACTIVE,
     IN_EXIT_QUEUE,
