@@ -2,7 +2,7 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
-import {IStaderConfig} from './interfaces/IStaderConfig.sol';
+import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolSelector.sol';
 import './interfaces/IPoolFactory.sol';
 
@@ -139,5 +139,11 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
     function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(POOL_SELECTOR_ADMIN) {
         POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
+    }
+
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(POOL_SELECTOR_ADMIN) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
     }
 }

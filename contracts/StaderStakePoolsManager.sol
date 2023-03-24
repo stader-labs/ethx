@@ -88,6 +88,12 @@ contract StaderStakePoolsManager is
         emit TransferredETHToUserWithdrawManager(_amount);
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
+
     /**
      * @notice Returns the amount of ETHER equivalent 1 ETHX (with 18 decimals)
      */

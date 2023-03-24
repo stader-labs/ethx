@@ -230,6 +230,12 @@ contract PermissionedPool is
         emit OperatorFeeUpdated(_operatorFee);
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
+
     // @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
     // formula based on ethereum deposit contract
     function computeDepositDataRoot(

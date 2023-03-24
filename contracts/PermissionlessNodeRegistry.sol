@@ -329,6 +329,12 @@ contract PermissionlessNodeRegistry is
         emit UpdatedMaxKeyPerOperator(maxKeyPerOperator);
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
+
     /**
      * @notice update the name and reward address of an operator
      * @dev only operator msg.sender can update

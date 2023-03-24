@@ -105,4 +105,10 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     function getCollateralETH() private view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
+
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
 }

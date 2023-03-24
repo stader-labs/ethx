@@ -18,7 +18,7 @@ contract ValidatorWithdrawalVault is
     ReentrancyGuardUpgradeable
 {
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
-    IStaderConfig staderConfig;
+    IStaderConfig public staderConfig;
     uint8 public poolId;
     address payable public nodeRecipient;
 
@@ -160,5 +160,11 @@ contract ValidatorWithdrawalVault is
 
     function getCollateralETH() private view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
+    }
+
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
     }
 }

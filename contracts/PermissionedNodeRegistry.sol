@@ -392,6 +392,12 @@ contract PermissionedNodeRegistry is
         VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
+
     // @inheritdoc INodeRegistry
     function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256) {
         return socializingPoolStateChangeTimestamp[_operatorId];

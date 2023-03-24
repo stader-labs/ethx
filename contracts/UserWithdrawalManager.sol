@@ -77,6 +77,12 @@ contract UserWithdrawalManager is
         emit UpdatedFinalizationBatchLimit(_finalizationBatchLimit);
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
+
     /**
      * @notice put a withdrawal request
      * @param _ethXAmount amount of ethX shares to withdraw
