@@ -5,14 +5,6 @@ interface IVaultFactory {
     event WithdrawVaultCreated(address withdrawVault);
     event NodeELRewardVaultCreated(address nodeDistributor);
 
-    function vaultOwner() external view returns (address);
-
-    function staderTreasury() external view returns (address payable);
-
-    function staderStakePoolsManager() external view returns (address payable);
-
-    function poolFactory() external view returns (address);
-
     function STADER_NETWORK_CONTRACT() external view returns (bytes32);
 
     function deployWithdrawVault(
