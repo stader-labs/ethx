@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.7.5;
+pragma solidity ^0.8.16;
 
 interface IStaderConfig {
     //error
@@ -9,12 +9,11 @@ interface IStaderConfig {
     error InvalidMaxWithdrawValue();
 
     // events
-    event SetConstant(uint256, uint256);
-    event SetVariable(uint256, uint256);
-    event SetAccount(uint256, address);
-    event SetContract(uint256, address);
-    event SetToken(uint256, address);
-    event SetPoolId(bytes32, uint8);
+    event SetConstant(bytes32, uint256);
+    event SetVariable(bytes32, uint256);
+    event SetAccount(bytes32, address);
+    event SetContract(bytes32, address);
+    event SetToken(bytes32, address);
 
     // Constants
     function getFullDepositOnBeaconChain() external view returns (uint256);

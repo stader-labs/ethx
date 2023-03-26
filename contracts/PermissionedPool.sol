@@ -104,13 +104,7 @@ contract PermissionedPool is
             ) {
                 uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
                 // TODO sanjay update 1ETH limbo
-                _preDepositOnBeaconChain(
-                    nodeRegistryAddress,
-                    vaultFactory,
-                    ethDepositContract,
-                    validatorId,
-                    PRE_DEPOSIT_SIZE
-                );
+                _preDepositOnBeaconChain(nodeRegistryAddress, vaultFactory, ethDepositContract, validatorId);
             }
             IPermissionedNodeRegistry(nodeRegistryAddress).updateQueuedValidatorIndex(
                 i,
@@ -266,8 +260,7 @@ contract PermissionedPool is
         address _nodeRegistryAddress,
         address _vaultFactory,
         address _ethDepositContract,
-        uint256 _validatorId,
-        uint256 PRE_DEPOSIT_SIZE
+        uint256 _validatorId
     ) internal {
         (
             ,

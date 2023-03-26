@@ -152,7 +152,7 @@ contract StaderStakePoolsManager is
      * @dev get pool wise validator to deposit from pool helper and
      * transfer that much eth to individual pool to register on beacon chain
      */
-    //TODO sanjay put a check if slashing mode do not do batch deposit 
+    //TODO sanjay put a check if slashing mode do not do batch deposit
     function validatorBatchDeposit() external override nonReentrant whenNotPaused {
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
