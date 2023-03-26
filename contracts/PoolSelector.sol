@@ -29,18 +29,15 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @notice initialize with permissioned and permissionless Pool
      * @dev pool index start from 1 with permission less pool
      * @param _staderConfig config contract address
-     * @param _poolFactoryAddress address for poolFactory contract
      * @param _permissionlessTarget target weight of permissionless pool
      * @param _permissionedTarget target weight of permissioned pool
      */
     function initialize(
         address _staderConfig,
-        address _poolFactoryAddress,
         uint256 _permissionlessTarget,
         uint256 _permissionedTarget
     ) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_poolFactoryAddress);
         if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) revert InvalidTargetWeight();
 
         __AccessControl_init_unchained();
