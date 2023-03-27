@@ -37,13 +37,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         // TODO: Manoj: how 7200 is 24 hrs??
         balanceUpdateFrequency = 7200; // 24 hours
-        isTrustedNode[msg.sender] = true;
+        isTrustedNode[staderConfig.getAdmin()] = true;
         trustedNodesCount = 1;
         staderConfig = IStaderConfig(_staderConfig);
         // TODO: admin role be give to staderAdmin or creator?
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
-        emit TrustedNodeAdded(msg.sender);
+        emit TrustedNodeAdded(staderConfig.getAdmin());
     }
 
     /// @inheritdoc IStaderOracle
