@@ -8,7 +8,6 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
-import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/ISingleSwap.sol';
 
@@ -29,7 +28,6 @@ contract SDCollateral is
     bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
 
     IStaderConfig public staderConfig;
-    IPriceFetcher public priceFetcher;
     ISingleSwap public swapUtil;
 
     uint256 public totalShares;
@@ -45,13 +43,8 @@ contract SDCollateral is
         _disableInitializers();
     }
 
-    function initialize(
-        address _staderConfig,
-        address _priceFetcherAddr,
-        address _swapUtil
-    ) external initializer {
+    function initialize(address _staderConfig, address _swapUtil) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_priceFetcherAddr);
         Address.checkNonZeroAddress(_swapUtil);
 
         __AccessControl_init();
@@ -59,7 +52,6 @@ contract SDCollateral is
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        priceFetcher = IPriceFetcher(_priceFetcherAddr);
         swapUtil = ISingleSwap(_swapUtil);
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
@@ -179,7 +171,7 @@ contract SDCollateral is
         uint256 minThresholdInSD = convertETHToSD(poolThresholdInfo.minThreshold);
         minThresholdInSD *= _numValidators;
 
-        return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD);
+        return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD - sdBalance);
     }
 
     function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) public view returns (uint256) {
