@@ -35,7 +35,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant PenaltyContract = keccak256('PenaltyContract');
     bytes32 public constant PermissionedPool = keccak256('PermissionedPool');
     bytes32 public constant StakePoolManager = keccak256('StakePoolManager');
-    bytes32 public constant SocializingPool = keccak256('SocializingPool');
     bytes32 public constant ETHDepositContract = keccak256('ETHDepositContract');
     bytes32 public constant PermissionlessPool = keccak256('PermissionlessPool');
     bytes32 public constant UserWithdrawManager = keccak256('UserWithdrawManager');
@@ -178,10 +177,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function updateStakePoolManager(address _stakePoolManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setContract(StakePoolManager, _stakePoolManager);
-    }
-
-    function updateSocializingPool(address _socializingPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(SocializingPool, _socializingPool);
     }
 
     function updatePermissionlessPool(address _permissionlessPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -331,10 +326,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getUserWithdrawManager() external view override returns (address) {
         return contractsMap[UserWithdrawManager];
-    }
-
-    function getSocializingPool() external view override returns (address) {
-        return contractsMap[SocializingPool];
     }
 
     function getPermissionedNodeRegistry() external view override returns (address) {

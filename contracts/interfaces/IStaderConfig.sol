@@ -45,8 +45,6 @@ interface IStaderConfig {
 
     function getPoolFactory() external view returns (address);
 
-    function getSocializingPool() external view returns (address);
-
     function getPoolSelector() external view returns (address);
 
     function getPriceFetcher() external view returns (address);
