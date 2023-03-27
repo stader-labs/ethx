@@ -27,7 +27,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
-    uint256 public constant DEPOSIT_SIZE = 31 ether;
+    uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
     uint256 public constant TOTAL_FEE = 10000;
 
     /// @inheritdoc IStaderPoolBase
@@ -41,7 +41,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         __AccessControl_init_unchained();
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     // protection against accidental submissions by calling non-existent function
@@ -125,7 +125,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @dev deposit validator taking care of pool capacity
      */
     function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
-        uint256 requiredValidators = msg.value / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
+        uint256 requiredValidators = msg.value / (FULL_DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         address nodeRegistryAddress = staderConfig.getPermissionlessNodeRegistry();
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
             requiredValidators * DEPOSIT_NODE_BOND
@@ -141,7 +141,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 vaultFactoryAddress,
                 ethDepositContract,
                 validatorId,
-                DEPOSIT_SIZE
+                FULL_DEPOSIT_SIZE
             );
         }
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(
@@ -159,7 +159,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     /// @inheritdoc IStaderPoolBase
     function getSocializingPoolAddress() external view returns (address) {
-        return staderConfig.getPermissionlessSocializePool();
+        return staderConfig.getPermissionlessSocializingPool();
     }
 
     /**
@@ -212,7 +212,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
     }

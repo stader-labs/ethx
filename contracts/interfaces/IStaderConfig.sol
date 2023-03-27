@@ -16,7 +16,7 @@ interface IStaderConfig {
     event SetToken(bytes32, address);
 
     // Constants
-    function getFullDepositOnBeaconChain() external view returns (uint256);
+    function getStakedEthPerNode() external view returns (uint256);
 
     function getDecimals() external view returns (uint256);
 
@@ -34,7 +34,7 @@ interface IStaderConfig {
     function getMaxWithdrawAmount() external view returns (uint256);
 
     // Accounts
-    function getMultiSigAdmin() external view returns (address);
+    function getAdmin() external view returns (address);
 
     function getStaderTreasury() external view returns (address);
 
@@ -71,9 +71,9 @@ interface IStaderConfig {
 
     function getPermissionlessNodeRegistry() external view returns (address);
 
-    function getPermissionedSocializePool() external view returns (address);
+    function getPermissionedSocializingPool() external view returns (address);
 
-    function getPermissionlessSocializePool() external view returns (address);
+    function getPermissionlessSocializingPool() external view returns (address);
 
     // Tokens
     function getStaderToken() external view returns (address);

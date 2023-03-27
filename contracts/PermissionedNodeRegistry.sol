@@ -75,7 +75,7 @@ contract PermissionedNodeRegistry is
         inputKeyCountLimit = 100;
         maxKeyPerOperator = 1000;
         VERIFIED_KEYS_BATCH_SIZE = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -111,7 +111,7 @@ contract PermissionedNodeRegistry is
         if (!permissionList[msg.sender]) revert NotAPermissionedNodeOperator();
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
-        feeRecipientAddress = staderConfig.getPermissionedSocializePool();
+        feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
         _onboardOperator(_operatorName, _operatorRewardAddress);
         return feeRecipientAddress;
     }
@@ -393,7 +393,7 @@ contract PermissionedNodeRegistry is
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
     }
