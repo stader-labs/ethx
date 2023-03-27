@@ -75,7 +75,7 @@ contract PermissionlessNodeRegistry is
         nextValidatorId = 1;
         inputKeyCountLimit = 100;
         maxKeyPerOperator = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -104,7 +104,7 @@ contract PermissionlessNodeRegistry is
             payable(_operatorRewardAddress)
         );
         feeRecipientAddress = _optInForSocializingPool
-            ? staderConfig.getPermissionlessSocializePool()
+            ? staderConfig.getPermissionlessSocializingPool()
             : nodeELRewardVault;
         _onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
         return feeRecipientAddress;
@@ -261,7 +261,7 @@ contract PermissionlessNodeRegistry is
         );
         if (_optInForSocializingPool) {
             //TODO sanjay empty NodeELRewardVault --need to integrate function signature
-            feeRecipientAddress = staderConfig.getPermissionlessSocializePool();
+            feeRecipientAddress = staderConfig.getPermissionlessSocializingPool();
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
         socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
@@ -330,7 +330,7 @@ contract PermissionlessNodeRegistry is
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
     }

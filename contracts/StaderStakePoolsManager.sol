@@ -44,7 +44,7 @@ contract StaderStakePoolsManager is
         __Pausable_init();
         __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     // protection against accidental submissions by calling non-existent function
@@ -157,15 +157,15 @@ contract StaderStakePoolsManager is
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
         address poolFactory = staderConfig.getPoolFactory();
-        uint256 DEPOSIT_SIZE = IPoolFactory(poolFactory).getBeaconChainDepositSize();
-        if (availableETHForNewDeposit < DEPOSIT_SIZE) revert insufficientBalance();
+        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
+        if (availableETHForNewDeposit < ETH_PER_NODE) revert insufficientBalance();
         uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
             .computePoolAllocationForDeposit(availableETHForNewDeposit);
         for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) continue;
             (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
-            uint256 poolDepositSize = DEPOSIT_SIZE - IPoolFactory(poolFactory).getCollateralETH(i);
+            uint256 poolDepositSize = ETH_PER_NODE - IPoolFactory(poolFactory).getCollateralETH(i);
 
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();

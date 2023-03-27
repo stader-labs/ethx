@@ -192,11 +192,6 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
     }
 
-    // return validator full deposit amount on beacon chain
-    function getBeaconChainDepositSize() external pure override returns (uint256) {
-        return 32 ether;
-    }
-
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) return true;

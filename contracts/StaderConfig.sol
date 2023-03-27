@@ -9,7 +9,7 @@ import './library/Address.sol';
 
 contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
     // full deposit value on beacon chain i.e. 32 ETH
-    bytes32 public constant FullDepositSizeOnBeaconChain = keccak256('FullDepositSizeOnBeaconChain');
+    bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
     // ETH to WEI ratio i.e 10**18
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
     //maximum length of operator name string
@@ -21,7 +21,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant MinWithdrawAmount = keccak256('MinWithdrawAmount');
     bytes32 public constant MaxWithdrawAmount = keccak256('MaxWithdrawAmount');
 
-    bytes32 public constant MultiSigAdmin = keccak256('MultiSigAdmin');
+    bytes32 public constant Admin = keccak256('Admin');
     bytes32 public constant StaderTreasury = keccak256('StaderTreasury');
     bytes32 public constant StaderPenaltyFund = keccak256('StaderPenaltyFund');
 
@@ -40,8 +40,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant UserWithdrawManager = keccak256('UserWithdrawManager');
     bytes32 public constant PermissionedNodeRegistry = keccak256('PermissionedNodeRegistry');
     bytes32 public constant PermissionlessNodeRegistry = keccak256('PermissionlessNodeRegistry');
-    bytes32 public constant PermissionedSocializePool = keccak256('PermissionedSocializePool');
-    bytes32 public constant PermissionlessSocializePool = keccak256('PermissionlessSocializePool');
+    bytes32 public constant PermissionedSocializingPool = keccak256('PermissionedSocializingPool');
+    bytes32 public constant PermissionlessSocializingPool = keccak256('PermissionlessSocializingPool');
 
     bytes32 public constant SD = keccak256('SD');
     bytes32 public constant WETH = keccak256('WETH');
@@ -63,7 +63,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         Address.checkNonZeroAddress(_admin);
         Address.checkNonZeroAddress(_ethDepositContract);
         __AccessControl_init();
-        _setConstant(FullDepositSizeOnBeaconChain, 32 ether);
+        _setConstant(ETH_PER_NODE, 32 ether);
         _setConstant(DECIMALS, 10**18);
         _setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
         _setVariable(MinDepositAmount, 100);
@@ -72,7 +72,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         _setVariable(MaxWithdrawAmount, 10000 ether);
         _setContract(ETHDepositContract, _ethDepositContract);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _setAccount(MultiSigAdmin, _admin);
+        _setAccount(Admin, _admin);
     }
 
     //Variables Setters
@@ -121,10 +121,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     // TODO: Manoj propose-accept two step required ??
     function updateAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        address oldAdmin = getMultiSigAdmin();
+        address oldAdmin = getAdmin();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _setAccount(MultiSigAdmin, _admin);
+        _setAccount(Admin, _admin);
 
         _revokeRole(DEFAULT_ADMIN_ROLE, oldAdmin);
     }
@@ -198,15 +198,18 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         _setContract(PermissionlessNodeRegistry, _permissionlessNodeRegistry);
     }
 
-    function updatePermissionedSocializePool(address _permissionedSocializePool) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PermissionedSocializePool, _permissionedSocializePool);
-    }
-
-    function updatePermissionlessSocializePool(address _permissionlessSocializePool)
+    function updatePermissionedSocializingPool(address _permissionedSocializePool)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setContract(PermissionlessSocializePool, _permissionlessSocializePool);
+        _setContract(PermissionedSocializingPool, _permissionedSocializePool);
+    }
+
+    function updatePermissionlessSocializingPool(address _permissionlessSocializePool)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setContract(PermissionlessSocializingPool, _permissionlessSocializePool);
     }
 
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -223,8 +226,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Constants Getters
 
-    function getFullDepositOnBeaconChain() external view override returns (uint256) {
-        return constantsMap[FullDepositSizeOnBeaconChain];
+    function getStakedEthPerNode() external view override returns (uint256) {
+        return constantsMap[ETH_PER_NODE];
     }
 
     function getDecimals() external view override returns (uint256) {
@@ -259,8 +262,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Account Getters
 
-    function getMultiSigAdmin() public view returns (address) {
-        return accountsMap[MultiSigAdmin];
+    function getAdmin() public view returns (address) {
+        return accountsMap[Admin];
     }
 
     function getStaderTreasury() external view override returns (address) {
@@ -333,12 +336,12 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         return contractsMap[PermissionlessNodeRegistry];
     }
 
-    function getPermissionedSocializePool() external view override returns (address) {
-        return contractsMap[PermissionedSocializePool];
+    function getPermissionedSocializingPool() external view override returns (address) {
+        return contractsMap[PermissionedSocializingPool];
     }
 
-    function getPermissionlessSocializePool() external view override returns (address) {
-        return contractsMap[PermissionlessSocializePool];
+    function getPermissionlessSocializingPool() external view override returns (address) {
+        return contractsMap[PermissionlessSocializingPool];
     }
 
     //Token Getters

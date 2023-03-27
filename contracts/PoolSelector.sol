@@ -48,7 +48,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         poolTargets[1] = _permissionlessTarget;
         poolTargets[2] = _permissionedTarget;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -66,17 +66,17 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         returns (uint256[] memory selectedPoolCapacity)
     {
         address poolFactoryAddress = staderConfig.getPoolFactory();
-        uint256 DEPOSIT_SIZE = staderConfig.getFullDepositOnBeaconChain();
+        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
         uint8 poolCount = IPoolFactory(poolFactoryAddress).poolCount();
 
         uint256 depositedETh;
         for (uint8 i = 1; i <= poolCount; i++) {
-            depositedETh += (IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i)) * DEPOSIT_SIZE;
+            depositedETh += (IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i)) * ETH_PER_NODE;
         }
         uint256 totalEth = depositedETh + _pooledEth;
-        uint256 totalValidatorsRequired = totalEth / DEPOSIT_SIZE;
+        uint256 totalValidatorsRequired = totalEth / ETH_PER_NODE;
         // new validators to register on beacon chain with `_pooledEth` taking `POOL_ALLOCATION_MAX_SIZE` into consideration
-        uint256 newValidatorsToDeposit = Math.min(POOL_ALLOCATION_MAX_SIZE, _pooledEth / DEPOSIT_SIZE);
+        uint256 newValidatorsToDeposit = Math.min(POOL_ALLOCATION_MAX_SIZE, _pooledEth / ETH_PER_NODE);
         // `poolCapacity` array start with index 1
 
         selectedPoolCapacity = new uint256[](poolCount + 1);
@@ -139,7 +139,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(POOL_SELECTOR_ADMIN) {
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
     }

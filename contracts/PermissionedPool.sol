@@ -34,7 +34,7 @@ contract PermissionedPool is
     bytes32 public constant PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
 
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
-    uint256 public constant DEPOSIT_SIZE = 31 ether;
+    uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
     uint256 public constant TOTAL_FEE = 10000;
 
     // @inheritdoc IStaderPoolBase
@@ -49,7 +49,7 @@ contract PermissionedPool is
         __Pausable_init();
         __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     // protection against accidental submissions by calling non-existent function
@@ -70,7 +70,7 @@ contract PermissionedPool is
     {
         // send back 31 ETH for front run and invalid signature validators back to pool manager
         // These counts are correct because any double reporting of frontrun/invalid statuses results in an error.
-        uint256 amountToSendToPoolManager = _defectiveKeyCount * DEPOSIT_SIZE;
+        uint256 amountToSendToPoolManager = _defectiveKeyCount * FULL_DEPOSIT_SIZE;
         //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: amountToSendToPoolManager
@@ -83,7 +83,7 @@ contract PermissionedPool is
      */
     function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
         //TODO sanjay how to make sure pool capacity remain same at this point compared to pool selection
-        uint256 requiredValidators = msg.value / staderConfig.getFullDepositOnBeaconChain();
+        uint256 requiredValidators = msg.value / staderConfig.getStakedEthPerNode();
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
@@ -114,7 +114,7 @@ contract PermissionedPool is
         IPermissionedNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
     }
 
-    // deposit `DEPOSIT_SIZE` for the verified preDeposited Validator
+    // deposit `FULL_DEPOSIT_SIZE` for the verified preDeposited Validator
     function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external onlyRole(PERMISSIONED_NODE_REGISTRY) {
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();
@@ -132,11 +132,11 @@ contract PermissionedPool is
                 _pubkey[i],
                 depositSignature,
                 withdrawCredential,
-                DEPOSIT_SIZE
+                FULL_DEPOSIT_SIZE
             );
 
             //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(ethDepositContract).deposit{value: DEPOSIT_SIZE}(
+            IDepositContract(ethDepositContract).deposit{value: FULL_DEPOSIT_SIZE}(
                 _pubkey[i],
                 withdrawCredential,
                 depositSignature,
@@ -192,7 +192,7 @@ contract PermissionedPool is
 
     // @inheritdoc IStaderPoolBase
     function getSocializingPoolAddress() external view returns (address) {
-        return staderConfig.getPermissionedSocializePool();
+        return staderConfig.getPermissionedSocializingPool();
     }
 
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
@@ -225,7 +225,7 @@ contract PermissionedPool is
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
     }

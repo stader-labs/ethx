@@ -56,7 +56,7 @@ contract UserWithdrawalManager is
         nextRequestId = 1;
         finalizationBatchLimit = 50;
         maxNonRedeemedUserRequestCount = 1000;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     receive() external payable {
@@ -78,7 +78,7 @@ contract UserWithdrawalManager is
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
     }
