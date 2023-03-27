@@ -203,17 +203,20 @@ contract SDCollateral is
         return (eqEthBalance >= (poolThresholdInfo.minThreshold * _numValidators));
     }
 
-    function convertSDToETH(uint256 _sdAmount) public view returns (uint256) {
-        uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
-        uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
-
-        return (_sdAmount * sdPriceInUSD) / ethPriceInUSD;
+    function convertSDToETH(uint256 _sdAmount) public pure returns (uint256) {
+        // uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
+        // uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
+        // return (_sdAmount * sdPriceInUSD) / ethPriceInUSD;
+        //TODO: remove after beta
+        return _sdAmount / 1600;
     }
 
-    function convertETHToSD(uint256 _ethAmount) public view returns (uint256) {
-        uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
-        uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
-        return (_ethAmount * ethPriceInUSD) / sdPriceInUSD;
+    function convertETHToSD(uint256 _ethAmount) public pure returns (uint256) {
+        // uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
+        // uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
+        // return (_ethAmount * ethPriceInUSD) / sdPriceInUSD;
+        //TODO: remove after beta
+        return _ethAmount * 1600;
     }
 
     function convertSDToShares(uint256 _sdAmount) public view returns (uint256) {
