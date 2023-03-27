@@ -138,8 +138,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             socializingRewardsMerkleRoot[_index] = _merkleRoot;
             socializingRewardsIndex = _index;
 
-            ISocializingPool(staderConfig.getSocializingPool()).distributeUserRewards(_userRewardsAmt);
-            ISocializingPool(staderConfig.getSocializingPool()).distributeProtocolRewards(_protocolRewardsAmt);
+            // change it to getSocializingPool later
+            ISocializingPool(staderConfig.getPermissionlessSocializingPool()).distributeUserRewards(_userRewardsAmt);
+            ISocializingPool(staderConfig.getPermissionlessSocializingPool()).distributeProtocolRewards(
+                _protocolRewardsAmt
+            );
 
             emit SocializingRewardsMerkleRootUpdated(_index, _merkleRoot, block.timestamp);
         }
