@@ -80,4 +80,11 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     function getValidatorWithdrawCredential(address _withdrawVault) public pure override returns (bytes memory) {
         return abi.encodePacked(bytes1(0x01), bytes11(0x0), address(_withdrawVault));
     }
+
+    //update the address of staderConfig
+    //TODO sanjay double check on this role
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
 }

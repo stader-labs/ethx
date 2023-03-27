@@ -55,7 +55,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderConfig.getTreasury()).call{value: protocolShare}('');
+        (success, ) = payable(staderConfig.getStaderTreasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
@@ -104,5 +104,11 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
     function getCollateralETH() private view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
+    }
+
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
     }
 }

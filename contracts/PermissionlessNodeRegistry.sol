@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 
 import './library/Address.sol';
 import './library/ValidatorStatus.sol';
+import './interfaces/IStaderConfig.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
@@ -27,12 +28,7 @@ contract PermissionlessNodeRegistry is
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
 
-    address public override poolFactoryAddress;
-    address public override vaultFactoryAddress;
-    address public override sdCollateral;
-    address public override elRewardSocializePool;
-    address public override permissionlessPool;
-    address public override staderPenaltyFund;
+    IStaderConfig public staderConfig;
 
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
@@ -42,7 +38,7 @@ contract PermissionlessNodeRegistry is
     uint256 public constant override PRE_DEPOSIT = 1 ether;
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
-    uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
+    // uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
     uint256 public override socializePoolRewardDistributionCycle; //TODO sanjay move all DOA related values to index contract
 
     bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
@@ -69,33 +65,17 @@ contract PermissionlessNodeRegistry is
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
-    function initialize(
-        address _adminOwner,
-        address _sdCollateral,
-        address _staderPenaltyFund,
-        address _vaultFactoryAddress,
-        address _elRewardSocializePool,
-        address _poolFactoryAddress
-    ) external initializer {
-        Address.checkNonZeroAddress(_adminOwner);
-        Address.checkNonZeroAddress(_sdCollateral);
-        Address.checkNonZeroAddress(_staderPenaltyFund);
-        Address.checkNonZeroAddress(_vaultFactoryAddress);
-        Address.checkNonZeroAddress(_elRewardSocializePool);
-        Address.checkNonZeroAddress(_poolFactoryAddress);
+    function initialize(address _staderConfig) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
-        sdCollateral = _sdCollateral;
-        staderPenaltyFund = _staderPenaltyFund;
-        vaultFactoryAddress = _vaultFactoryAddress;
-        elRewardSocializePool = _elRewardSocializePool;
-        poolFactoryAddress = _poolFactoryAddress;
+        staderConfig = IStaderConfig(_staderConfig);
         nextOperatorId = 1;
         nextValidatorId = 1;
         inputKeyCountLimit = 100;
         maxKeyPerOperator = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -118,12 +98,14 @@ contract PermissionlessNodeRegistry is
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
 
         //deploy NodeELRewardVault for NO
-        address nodeELRewardVault = IVaultFactory(vaultFactoryAddress).deployNodeELRewardVault(
+        address nodeELRewardVault = IVaultFactory(staderConfig.getVaultFactory()).deployNodeELRewardVault(
             poolId,
             nextOperatorId,
             payable(_operatorRewardAddress)
         );
-        feeRecipientAddress = _optInForSocializingPool ? elRewardSocializePool : nodeELRewardVault;
+        feeRecipientAddress = _optInForSocializingPool
+            ? staderConfig.getPermissionlessSocializingPool()
+            : nodeELRewardVault;
         _onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
         return feeRecipientAddress;
     }
@@ -142,16 +124,18 @@ contract PermissionlessNodeRegistry is
     ) external payable override nonReentrant whenNotPaused {
         uint256 operatorId = _onlyActiveOperator(msg.sender);
         (uint256 keyCount, uint256 operatorTotalKeys) = _checkInputKeysCountAndCollateral(
+            poolId,
             _pubkey.length,
             _preDepositSignature.length,
             _depositSignature.length,
             operatorId
         );
         address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
-
+        address vaultFactory = staderConfig.getVaultFactory();
+        address poolFactory = staderConfig.getPoolFactory();
         for (uint256 i = 0; i < keyCount; i++) {
-            _validateKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
-            address withdrawVault = IVaultFactory(vaultFactoryAddress).deployWithdrawVault(
+            _validateKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i], poolFactory);
+            address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 poolId,
                 operatorId,
                 operatorTotalKeys + i, //operator totalKeys
@@ -177,12 +161,9 @@ contract PermissionlessNodeRegistry is
 
         //TODO sanjay why are we not marking PRE_DEPOSIT status after 1ETH deposit
         //slither-disable-next-line arbitrary-send-eth
-        IPermissionlessPool(permissionlessPool).preDepositOnBeaconChain{value: PRE_DEPOSIT * keyCount}(
-            _pubkey,
-            _preDepositSignature,
-            operatorId,
-            operatorTotalKeys
-        );
+        IPermissionlessPool(staderConfig.getPermissionlessPool()).preDepositOnBeaconChain{
+            value: PRE_DEPOSIT * keyCount
+        }(_pubkey, _preDepositSignature, operatorId, operatorTotalKeys);
     }
 
     /**
@@ -206,10 +187,11 @@ contract PermissionlessNodeRegistry is
             emit ValidatorMarkedReadyToDeposit(_readyToDepositPubkey[i], validatorId);
         }
 
+        address staderPenaltyFund = staderConfig.getStaderPenaltyFund();
         for (uint256 i = 0; i < _frontRunnedPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_frontRunnedPubkey[i]];
             _onlyInitializedValidator(validatorId);
-            _handleFrontRun(validatorId);
+            _handleFrontRun(staderPenaltyFund, validatorId);
             emit ValidatorMarkedAsFrontRunned(_frontRunnedPubkey[i], validatorId);
         }
 
@@ -273,10 +255,13 @@ contract PermissionlessNodeRegistry is
             revert NoChangeInState();
         if (block.timestamp < socializingPoolStateChangeTimestamp[operatorId] + socializePoolRewardDistributionCycle)
             revert CooldownNotComplete();
-        feeRecipientAddress = IVaultFactory(vaultFactoryAddress).computeNodeELRewardVaultAddress(poolId, operatorId);
+        feeRecipientAddress = IVaultFactory(staderConfig.getVaultFactory()).computeNodeELRewardVaultAddress(
+            poolId,
+            operatorId
+        );
         if (_optInForSocializingPool) {
             //TODO sanjay empty NodeELRewardVault --need to integrate function signature
-            feeRecipientAddress = elRewardSocializePool;
+            feeRecipientAddress = staderConfig.getPermissionlessSocializingPool();
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
         socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
@@ -317,97 +302,6 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice updates the address of pool factory
-     * @dev only admin can call
-     * @param _poolFactoryAddress address of pool factory
-     */
-    function updatePoolFactoryAddress(address _poolFactoryAddress)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
-        Address.checkNonZeroAddress(_poolFactoryAddress);
-        poolFactoryAddress = _poolFactoryAddress;
-        emit UpdatedPoolFactoryAddress(poolFactoryAddress);
-    }
-
-    /**
-     * @notice update the address of sd collateral contract
-     * @dev only admin can call
-     * @param _sdCollateral address of sd collateral contract
-     */
-    function updateSDCollateralAddress(address _sdCollateral)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
-        Address.checkNonZeroAddress(_sdCollateral);
-        sdCollateral = _sdCollateral;
-        emit UpdatedSDCollateralAddress(_sdCollateral);
-    }
-
-    /**
-     * @notice update the address of vault factory
-     * @dev only admin can call
-     * @param _vaultFactoryAddress address of vault factory
-     */
-    function updateVaultFactoryAddress(address _vaultFactoryAddress)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
-        Address.checkNonZeroAddress(_vaultFactoryAddress);
-        vaultFactoryAddress = _vaultFactoryAddress;
-        emit UpdatedVaultFactoryAddress(_vaultFactoryAddress);
-    }
-
-    /**
-     * @notice add the permission less pool address in permission less node registry
-     * for the purpose of doing 1ETH DEPOSIT
-     * @dev only admin can update
-     * @param _permissionlessPool permission less pool address
-     */
-    function updatePermissionlessPoolAddress(address _permissionlessPool)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
-        Address.checkNonZeroAddress(_permissionlessPool);
-        permissionlessPool = _permissionlessPool;
-        emit UpdatedPermissionlessPoolAddress(permissionlessPool);
-    }
-
-    /**
-     * @notice update the address of permissionless socialize pool
-     * @dev only admin can call
-     * @param _elRewardSocializePool address of permissionless EL reward socialize pool
-     */
-    function updateELRewardSocializePool(address _elRewardSocializePool)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
-        Address.checkNonZeroAddress(_elRewardSocializePool);
-        elRewardSocializePool = _elRewardSocializePool;
-        emit UpdatedELRewardSocializePool(_elRewardSocializePool);
-    }
-
-    /**
-     * @notice update the address of stader penalty fund
-     * @dev only admin can call
-     * @param _staderPenaltyFund address of stader penalty fund
-     */
-    function updateStaderPenaltyFundAddress(address _staderPenaltyFund)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
-        Address.checkNonZeroAddress(_staderPenaltyFund);
-        staderPenaltyFund = _staderPenaltyFund;
-        emit UpdatedStaderPenaltyFund(_staderPenaltyFund);
-    }
-
-    /**
      * @notice update maximum key to be deposited in a batch
      * @dev only admin can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
@@ -433,6 +327,12 @@ contract PermissionlessNodeRegistry is
     {
         maxKeyPerOperator = _maxKeyPerOperator;
         emit UpdatedMaxKeyPerOperator(maxKeyPerOperator);
+    }
+
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
     }
 
     /**
@@ -466,7 +366,7 @@ contract PermissionlessNodeRegistry is
      * @param _amount amount of eth to send to permissionless pool
      */
     function transferCollateralToPool(uint256 _amount) external override whenNotPaused onlyRole(PERMISSIONLESS_POOL) {
-        IPermissionlessPool(permissionlessPool).receiveRemainingCollateralETH{value: _amount}();
+        IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{value: _amount}();
     }
 
     /**
@@ -606,11 +506,11 @@ contract PermissionlessNodeRegistry is
     }
 
     // handle front run validator by changing their status, deactivating operator and imposing penalty
-    function _handleFrontRun(uint256 _validatorId) internal {
+    function _handleFrontRun(address _staderPenaltyFund, uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
-        _sendValue(staderPenaltyFund, FRONT_RUN_PENALTY);
+        _sendValue(_staderPenaltyFund, FRONT_RUN_PENALTY);
     }
 
     // handle validator with invalid signature for 1ETH deposit
@@ -625,16 +525,18 @@ contract PermissionlessNodeRegistry is
     function _validateKeys(
         bytes calldata _pubkey,
         bytes calldata _preDepositSignature,
-        bytes calldata _depositSignature
+        bytes calldata _depositSignature,
+        address _poolFactory
     ) private view {
         if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
         if (_preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
         if (_depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
-        if (IPoolFactory(poolFactoryAddress).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
+        if (IPoolFactory(_poolFactory).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
     }
 
     // validate the input of `addValidatorKeys` function
     function _checkInputKeysCountAndCollateral(
+        uint8 _poolId,
         uint256 _pubkeyLength,
         uint256 _preDepositSignatureLength,
         uint256 _depositSignatureLength,
@@ -652,7 +554,11 @@ contract PermissionlessNodeRegistry is
         // check for collateral ETH for adding keys
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonTerminalKeys + keyCount);
+        ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
+            msg.sender,
+            _poolId,
+            totalNonTerminalKeys + keyCount
+        );
     }
 
     function _sendValue(address receiver, uint256 _amount) internal {
@@ -671,9 +577,9 @@ contract PermissionlessNodeRegistry is
     }
 
     // only valid name with string length limit
-    function _onlyValidName(string calldata _name) internal pure {
+    function _onlyValidName(string calldata _name) internal view {
         if (bytes(_name).length == 0) revert EmptyNameString();
-        if (bytes(_name).length > OPERATOR_MAX_NAME_LENGTH) revert NameCrossedMaxLength();
+        if (bytes(_name).length > staderConfig.getOperatorMaxNameLength()) revert NameCrossedMaxLength();
     }
 
     // checks if validator status enum is not withdrawn ,front run and invalid signature
