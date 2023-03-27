@@ -13,30 +13,36 @@ import { ethers, upgrades } from 'hardhat'
 import { deployNonUpgradeableContract, deployUpgradeableContract } from '../utils'
 
 async function main() {
-  const twapContractAddr = await deployNonUpgradeableContract('TWAPGetter')
-
-  const _sdERC20Addr = '0xD311878a010a94e4500eb5B056DfeaEcAc349AD2'
-  const _usdcERC20Addr = '0x65aFADD39029741B3b8f0756952C74678c9cEC93'
-  const _wethERC20Addr = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
-  const _sdUSDCPool = '0x09a29d678e9c7e150c43045e24a6ef974381a4f9' // wethUSDC for now // required
-  const _wethUSDCPool = '0x09a29d678e9c7e150c43045e24a6ef974381a4f9'
-  const priceFetcherAddr = await deployUpgradeableContract(
-    'PriceFetcher',
-    _sdERC20Addr,
-    _usdcERC20Addr,
-    _wethERC20Addr,
-    _sdUSDCPool,
-    _wethUSDCPool,
-    twapContractAddr
-  )
-
   const [owner] = await ethers.getSigners()
-  const sdCollateralAddr = await deployUpgradeableContract(
-    'SDCollateral',
-    owner.address,
-    _sdERC20Addr,
-    priceFetcherAddr
-  )
+  const _router = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
+  // const twapContractAddr = await deployNonUpgradeableContract('TWAPGetter')
+
+  // const _sdERC20Addr = '0xD311878a010a94e4500eb5B056DfeaEcAc349AD2'
+  // const _usdcERC20Addr = '0x65aFADD39029741B3b8f0756952C74678c9cEC93'
+  const _wethERC20Addr = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6'
+  // const _sdUSDCPool = '0x09a29d678e9c7e150c43045e24a6ef974381a4f9' // wethUSDC for now // required
+  // const _wethUSDCPool = '0x09a29d678e9c7e150c43045e24a6ef974381a4f9'
+
+  const singleSwapAddr = await deployNonUpgradeableContract('SingleSwap', owner.address, _router, _wethERC20Addr)
+
+  // const poolFactory = '0x04E83743ba2430275600e751A2a5b95E0E14a8D5'
+  // const priceFetcherAddr = await deployUpgradeableContract(
+  //   'PriceFetcher',
+  //   _sdERC20Addr,
+  //   _usdcERC20Addr,
+  //   _wethERC20Addr,
+  //   _sdUSDCPool,
+  //   _wethUSDCPool,
+  //   twapContractAddr
+  // )
+
+  // const sdCollateralAddr = await deployUpgradeableContract(
+  //   'SDCollateral',
+  //   owner.address,
+  //   _sdERC20Addr,
+  //   priceFetcherAddr,
+  //   poolFactory
+  // )
 }
 
 main()

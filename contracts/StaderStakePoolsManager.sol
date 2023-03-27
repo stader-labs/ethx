@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 
 import './ETHx.sol';
+import './interfaces/IStaderConfig.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IStaderStakePoolManager.sol';
@@ -31,56 +32,19 @@ contract StaderStakePoolsManager is
     ReentrancyGuardUpgradeable
 {
     using Math for uint256;
-
-    address public ethX;
-    address public staderOracle;
-    address public userWithdrawalManager;
-    address public poolSelector;
-    address public poolFactory;
-    uint256 public constant DECIMALS = 10**18;
-    uint256 public minDepositAmount;
-    uint256 public maxDepositAmount;
+    IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
 
     /**
      * @dev Stader initialized with following variables
-     * @param _ethX ethX contract
-     * @param _staderOracle stader oracle contract
-     * @param _userWithdrawManager user withdraw manager
-     * @param _minDelay initial minimum delay for operations
-     * @param _proposers accounts to be granted proposer and canceller roles
-     * @param _executors  accounts to be granted executor role
-     * @param _timeLockOwner multi sig owner of the contract
-
+     * @param _staderConfig config contract
      */
-    function initialize(
-        address _ethX,
-        address _poolFactory,
-        address _poolSelector,
-        address _staderOracle,
-        address _userWithdrawManager,
-        address[] memory _proposers,
-        address[] memory _executors,
-        address _timeLockOwner,
-        uint256 _minDelay
-    ) external initializer {
-        Address.checkNonZeroAddress(_ethX);
-        Address.checkNonZeroAddress(_poolFactory);
-        Address.checkNonZeroAddress(_poolSelector);
-        Address.checkNonZeroAddress(_staderOracle);
-        Address.checkNonZeroAddress(_userWithdrawManager);
-
-        __TimelockController_init_unchained(_minDelay, _proposers, _executors, _timeLockOwner);
+    function initialize(address _staderConfig) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
         __Pausable_init();
         __ReentrancyGuard_init();
-        ethX = _ethX;
-        poolFactory = _poolFactory;
-        poolSelector = _poolSelector;
-        staderOracle = _staderOracle;
-        userWithdrawalManager = _userWithdrawManager;
-        minDepositAmount = 100;
-        maxDepositAmount = 32 ether;
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        staderConfig = IStaderConfig(_staderConfig);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     // protection against accidental submissions by calling non-existent function
@@ -115,94 +79,28 @@ contract StaderStakePoolsManager is
      * @param _amount amount of ETH to transfer
      */
     function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
-        if (msg.sender != userWithdrawalManager) revert CallerNotUserWithdrawManager();
+        address userWithdrawManager = staderConfig.getUserWithdrawManager();
+        if (msg.sender != userWithdrawManager) revert CallerNotUserWithdrawManager();
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(userWithdrawalManager).call{value: _amount}('');
+        (bool success, ) = payable(userWithdrawManager).call{value: _amount}('');
         if (!success) revert TransferFailed();
         emit TransferredETHToUserWithdrawManager(_amount);
     }
 
-    /**
-     * @dev update the minimum stake amount
-     * @param _minDepositAmount minimum deposit value
-     */
-    function updateMinDepositAmount(uint256 _minDepositAmount) external override onlyRole(EXECUTOR_ROLE) {
-        if (_minDepositAmount == 0) revert InvalidMinDepositValue();
-        minDepositAmount = _minDepositAmount;
-        emit UpdatedMinDepositAmount(minDepositAmount);
-    }
-
-    /**
-     * @dev update the maximum stake amount
-     * @param _maxDepositAmount maximum deposit value
-     */
-    function updateMaxDepositAmount(uint256 _maxDepositAmount) external override onlyRole(EXECUTOR_ROLE) {
-        if (_maxDepositAmount <= minDepositAmount) revert InvalidMaxDepositValue();
-        maxDepositAmount = _maxDepositAmount;
-        emit UpdatedMaxDepositAmount(maxDepositAmount);
-    }
-
-    /**
-     * @dev update ethX address
-     * @param _ethX ethX contract
-     */
-    function updateEthXAddress(address _ethX) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_ethX);
-        ethX = _ethX;
-        emit UpdatedEthXAddress(ethX);
-    }
-
-    /**
-     * @dev update stader oracle address
-     * @param _staderOracle stader oracle contract
-     */
-    function updateStaderOracle(address _staderOracle) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderOracle);
-        staderOracle = _staderOracle;
-        emit UpdatedStaderOracle(staderOracle);
-    }
-
-    /**
-     * @dev update stader user withdrawal manager address
-     * @param _userWithdrawalManager stader user withdrawal Manager contract
-     */
-    function updateUserWithdrawalManager(address _userWithdrawalManager)
-        external
-        override
-        onlyRole(TIMELOCK_ADMIN_ROLE)
-    {
-        Address.checkNonZeroAddress(_userWithdrawalManager);
-        userWithdrawalManager = _userWithdrawalManager;
-        emit UpdatedUserWithdrawalManager(userWithdrawalManager);
-    }
-
-    /**
-     * @dev update pool factory address
-     * @param _poolFactoryAddress pool factory address
-     */
-    function updatePoolFactoryAddress(address _poolFactoryAddress) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_poolFactoryAddress);
-        poolFactory = _poolFactoryAddress;
-        emit UpdatedPoolFactoryAddress(_poolFactoryAddress);
-    }
-
-    /**
-     * @dev update stader pool selector contract address
-     * @param _poolSelector stader pool selector contract
-     */
-    function updatePoolSelectorAddress(address _poolSelector) external override onlyRole(TIMELOCK_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_poolSelector);
-        poolSelector = _poolSelector;
-        emit UpdatedPoolSelectorAddress(_poolSelector);
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
     }
 
     /**
      * @notice Returns the amount of ETHER equivalent 1 ETHX (with 18 decimals)
      */
     function getExchangeRate() public view override returns (uint256) {
+        uint256 DECIMALS = staderConfig.getDecimals();
         uint256 totalETH = totalAssets();
-        uint256 totalETHx = IStaderOracle(staderOracle).totalETHXSupply();
+        uint256 totalETHx = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
 
         if (totalETH == 0 || totalETHx == 0) {
             return 1 * DECIMALS;
@@ -212,7 +110,7 @@ contract StaderStakePoolsManager is
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view override returns (uint256) {
-        return IStaderOracle(staderOracle).totalETHBalance();
+        return IStaderOracle(staderConfig.getStaderOracle()).totalETHBalance();
     }
 
     /** @dev See {IERC4626-convertToShares}. */
@@ -227,12 +125,7 @@ contract StaderStakePoolsManager is
 
     /** @dev See {IERC4626-maxDeposit}. */
     function maxDeposit() public view override returns (uint256) {
-        return _isVaultHealthy() ? maxDepositAmount : 0;
-    }
-
-    /** @dev See {IERC4626-maxWithdraw}. */
-    function maxWithdraw(address owner) public view override returns (uint256) {
-        return _convertToAssets(ETHx(ethX).balanceOf(owner), Math.Rounding.Down);
+        return _isVaultHealthy() ? staderConfig.getMaxDepositAmount() : 0;
     }
 
     /** @dev See {IERC4626-previewDeposit}. */
@@ -248,7 +141,7 @@ contract StaderStakePoolsManager is
     /** @dev See {IERC4626-deposit}. */
     function deposit(address receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
-        if (assets > maxDeposit() || assets < minDepositAmount) revert InvalidDepositAmount();
+        if (assets > maxDeposit() || assets < staderConfig.getMinDepositAmount()) revert InvalidDepositAmount();
         uint256 shares = previewDeposit(assets);
         _deposit(msg.sender, receiver, assets, shares);
         return shares;
@@ -259,19 +152,20 @@ contract StaderStakePoolsManager is
      * @dev get pool wise validator to deposit from pool helper and
      * transfer that much eth to individual pool to register on beacon chain
      */
+    //TODO sanjay put a check if slashing mode do not do batch deposit
     function validatorBatchDeposit() external override nonReentrant whenNotPaused {
         uint256 availableETHForNewDeposit = depositedPooledETH -
-            IUserWithdrawalManager(userWithdrawalManager).ethRequestedForWithdraw();
-        uint256 DEPOSIT_SIZE = IPoolFactory(poolFactory).getBeaconChainDepositSize();
-        if (availableETHForNewDeposit < DEPOSIT_SIZE) revert insufficientBalance();
-        uint256[] memory selectedPoolCapacity = IPoolSelector(poolSelector).computePoolAllocationForDeposit(
-            availableETHForNewDeposit
-        );
+            IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
+        address poolFactory = staderConfig.getPoolFactory();
+        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
+        if (availableETHForNewDeposit < ETH_PER_NODE) revert insufficientBalance();
+        uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
+            .computePoolAllocationForDeposit(availableETHForNewDeposit);
         for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) continue;
             (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
-            uint256 poolDepositSize = DEPOSIT_SIZE - IPoolFactory(poolFactory).getCollateralETH(i);
+            uint256 poolDepositSize = ETH_PER_NODE - IPoolFactory(poolFactory).getCollateralETH(i);
 
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();
@@ -303,7 +197,7 @@ contract StaderStakePoolsManager is
      * would represent an infinite amount of shares.
      */
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = IStaderOracle(staderOracle).totalETHXSupply();
+        uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
         return
             (assets == 0 || supply == 0)
                 ? _initialConvertToShares(assets, rounding)
@@ -326,7 +220,7 @@ contract StaderStakePoolsManager is
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = IStaderOracle(staderOracle).totalETHXSupply();
+        uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
         return
             (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
     }
@@ -352,7 +246,7 @@ contract StaderStakePoolsManager is
         uint256 assets,
         uint256 shares
     ) internal {
-        ETHx(ethX).mint(receiver, shares);
+        ETHx(staderConfig.getETHxToken()).mint(receiver, shares);
         depositedPooledETH += assets;
         emit Deposited(caller, receiver, assets, shares);
     }
@@ -361,6 +255,6 @@ contract StaderStakePoolsManager is
      * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
      */
     function _isVaultHealthy() private view returns (bool) {
-        return totalAssets() > 0 || IStaderOracle(staderOracle).totalETHXSupply() == 0;
+        return totalAssets() > 0 || IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply() == 0;
     }
 }

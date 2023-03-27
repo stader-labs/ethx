@@ -12,10 +12,11 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     mapping(uint8 => Pool) public override pools;
     uint8 public override poolCount;
 
-    function initialize() external initializer {
+    function initialize(address _admin) external initializer {
+        Address.checkNonZeroAddress(_admin);
         __AccessControl_init_unchained();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -24,6 +25,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
      * @param _poolName The name of the new pool.
      * @param _poolAddress The address of the new pool contract.
      */
+    //TODO sanjay make sure pools are added in same order of poolId
     function addNewPool(string calldata _poolName, address _poolAddress)
         external
         override
@@ -188,11 +190,6 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     function getCollateralETH(uint8 _poolId) external view override returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
-    }
-
-    // return validator full deposit amount on beacon chain
-    function getBeaconChainDepositSize() external pure override returns (uint256) {
-        return 32 ether;
     }
 
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
