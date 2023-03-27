@@ -81,7 +81,7 @@ contract SocializingPool is
     }
 
     function distributeProtocolRewards(uint256 _protocolRewardsAmt) external onlyRole(STADER_ORACLE) {
-        (bool success, ) = payable(staderConfig.getTreasury()).call{value: _protocolRewardsAmt}('');
+        (bool success, ) = payable(staderConfig.getStaderTreasury()).call{value: _protocolRewardsAmt}('');
         require(success, 'Protocol ETH rewards transfer failed');
     }
 
