@@ -226,7 +226,7 @@ contract PermissionlessNodeRegistry is
      * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
-    function withdrawnValidators(bytes[] calldata _pubkeys) external onlyRole(STADER_ORACLE) {
+    function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyRole(STADER_ORACLE) {
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];

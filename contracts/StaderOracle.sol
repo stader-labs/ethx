@@ -4,24 +4,31 @@ pragma solidity ^0.8.16;
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 import './interfaces/IStaderOracle.sol';
+import './interfaces/INodeRegistry.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
     uint256 public override updateFrequency;
+    uint256 public override lastUpdatedBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
 
-    function initialize() external initializer {
+    address public nodeRegistry;
+
+    function initialize(address _nodeRegistry) external initializer {
+        require(_nodeRegistry != address(0), 'nodeRegistry is zero');
+
         __AccessControl_init_unchained();
 
         updateFrequency = 7200; // 24 hours
         isTrustedNode[msg.sender] = true;
         trustedNodesCount = 1;
+        nodeRegistry = _nodeRegistry;
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
@@ -56,15 +63,18 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit UpdateFrequencyUpdated(_updateFrequency);
     }
 
+    function setNodeRegistry(address _nodeRegistry) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_nodeRegistry != address(0), 'nodeRegistry is zero');
+        require(_nodeRegistry != nodeRegistry, 'nodeRegistry is unchanged');
+        nodeRegistry = _nodeRegistry;
+    }
+
     /// @inheritdoc IStaderOracle
     function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
-        require(
-            _exchangeRate.lastUpdatedBlockNumber < block.number,
-            'Balances can not be submitted for a future block'
-        );
+        require(_exchangeRate.lastUpdatedBlockNumber < block.number, 'Data can not be submitted for a future block');
         require(
             _exchangeRate.lastUpdatedBlockNumber > exchangeRate.lastUpdatedBlockNumber,
-            'Network balances for an equal or higher block are set'
+            'Data for an equal or higher block are set'
         );
         require(_exchangeRate.totalStakingETHBalance <= _exchangeRate.totalETHBalance, 'Invalid network balances');
 
@@ -101,10 +111,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             block.timestamp
         );
 
-        if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
-            _exchangeRate.lastUpdatedBlockNumber > exchangeRate.lastUpdatedBlockNumber
-        ) {
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
             exchangeRate = _exchangeRate;
 
             // Emit balances updated event
@@ -126,13 +133,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
-        require(
-            _validatorStats.lastUpdatedBlockNumber < block.number,
-            'Balances can not be submitted for a future block'
-        );
+        require(_validatorStats.lastUpdatedBlockNumber < block.number, 'Data can not be submitted for a future block');
         require(
             _validatorStats.lastUpdatedBlockNumber > validatorStats.lastUpdatedBlockNumber,
-            'Network balances for an equal or higher block are set'
+            'Data for an equal or higher block are set'
         );
 
         // Get submission keys
@@ -177,10 +181,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             block.timestamp
         );
 
-        if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
-            _validatorStats.lastUpdatedBlockNumber > validatorStats.lastUpdatedBlockNumber
-        ) {
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
             validatorStats = _validatorStats;
 
             // Emit stats updated event
@@ -197,6 +198,60 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
+    /// @inheritdoc IStaderOracle
+    function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators)
+        external
+        override
+        trustedNodeOnly
+    {
+        require(
+            _withdrawnValidators.lastUpdatedBlockNumber < block.number,
+            'Data can not be submitted for a future block'
+        );
+        require(
+            _withdrawnValidators.lastUpdatedBlockNumber > lastUpdatedBlockNumberForWithdrawnValidators,
+            'Data for an equal or higher block are set'
+        );
+
+        // Ensure the pubkeys array is sorted
+        require(isSorted(_withdrawnValidators.sortedPubkeys), 'Pubkeys must be sorted');
+
+        bytes memory encodedPubkeys = abi.encode(_withdrawnValidators.sortedPubkeys);
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(msg.sender, _withdrawnValidators.lastUpdatedBlockNumber, encodedPubkeys)
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(_withdrawnValidators.lastUpdatedBlockNumber, encodedPubkeys)
+        );
+
+        // Check & update node submission status
+        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[nodeSubmissionKey] = true;
+        submissionCountKeys[submissionCountKey]++;
+        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+
+        // Emit withdrawn validators submitted event
+        emit WithdrawnValidatorsSubmitted(
+            msg.sender,
+            _withdrawnValidators.lastUpdatedBlockNumber,
+            _withdrawnValidators.sortedPubkeys,
+            block.timestamp
+        );
+
+        if (submissionCount >= trustedNodesCount / 2 + 1) {
+            lastUpdatedBlockNumberForWithdrawnValidators = _withdrawnValidators.lastUpdatedBlockNumber;
+            INodeRegistry(nodeRegistry).withdrawnValidators(_withdrawnValidators.sortedPubkeys);
+
+            // Emit withdrawn validators updated event
+            emit WithdrawnValidatorsUpdated(
+                _withdrawnValidators.lastUpdatedBlockNumber,
+                _withdrawnValidators.sortedPubkeys,
+                block.timestamp
+            );
+        }
+    }
+
     function getValidatorStats() external view override returns (ValidatorStats memory) {
         return (validatorStats);
     }
@@ -208,5 +263,17 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     modifier trustedNodeOnly() {
         require(isTrustedNode[msg.sender], 'Not a trusted node');
         _;
+    }
+
+    /// @notice Check if the array of pubkeys is sorted.
+    /// @param pubkeys The array of pubkeys to check.
+    /// @return True if the array is sorted, false otherwise.
+    function isSorted(bytes[] memory pubkeys) internal pure returns (bool) {
+        for (uint256 i = 0; i < pubkeys.length - 1; i++) {
+            if (keccak256(pubkeys[i]) > keccak256(pubkeys[i + 1])) {
+                return false;
+            }
+        }
+        return true;
     }
 }
