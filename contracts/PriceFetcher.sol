@@ -42,7 +42,7 @@ contract PriceFetcher is Initializable, AccessControlUpgradeable {
         sdUSDCPool = _sdUSDCPool;
         twapGetter = ITWAPGetter(_twapGetterAddr);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     function setTwapInterval(uint32 _twapInterval) external onlyRole(DEFAULT_ADMIN_ROLE) {

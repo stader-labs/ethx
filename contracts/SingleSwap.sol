@@ -31,7 +31,7 @@ contract SingleSwap {
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == staderConfig.getMultiSigAdmin(), 'Accessible only by StakeManager Contract');
+        require(msg.sender == staderConfig.getAdmin(), 'Accessible only by StakeManager Contract');
         _;
     }
 

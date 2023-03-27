@@ -62,7 +62,7 @@ contract SDCollateral is
         priceFetcher = IPriceFetcher(_priceFetcherAddr);
         swapUtil = ISingleSwap(_swapUtil);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**

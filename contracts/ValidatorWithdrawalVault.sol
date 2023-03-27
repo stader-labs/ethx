@@ -37,7 +37,7 @@ contract ValidatorWithdrawalVault is
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getMultiSigAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -76,7 +76,7 @@ contract ValidatorWithdrawalVault is
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = staderConfig.getFullDepositOnBeaconChain();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 protocolFeeBps = getProtocolFeeBps();
@@ -111,7 +111,7 @@ contract ValidatorWithdrawalVault is
             uint256 _protocolShare
         )
     {
-        uint256 TOTAL_STAKED_ETH = staderConfig.getFullDepositOnBeaconChain();
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(); // 0, incase of permissioned NOs
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 contractBalance = address(this).balance;
