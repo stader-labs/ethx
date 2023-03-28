@@ -7,7 +7,6 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IStaderOracle.sol';
 import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -33,6 +32,7 @@ contract SocializingPool is
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
+    mapping(uint256 => bool) public handledRewards;
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -59,40 +59,43 @@ contract SocializingPool is
         external
         view
         returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
+            uint256 currentIndex,
+            uint256 currentStartTime,
+            uint256 currentEndTime,
+            uint256 nextIndex,
+            uint256 nextStartTime,
+            uint256 nextEndTime
         )
     {
-        uint256 currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
-        uint256 currentStartTime = initialTimestamp + (currentIndex * CYCLE_DURATION);
-        uint256 currentEndTime = currentStartTime + CYCLE_DURATION;
-        uint256 nextIndex = currentIndex + 1;
-        uint256 nextStartTime = currentEndTime + 1;
-        uint256 nextEndTime = nextStartTime + CYCLE_DURATION;
-
-        return (currentIndex, currentStartTime, currentEndTime, nextIndex, nextStartTime, nextEndTime);
+        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex(); // 1
+        currentStartTime = initialTimestamp + (currentIndex * CYCLE_DURATION); // 0 + 1 * 100 = 100
+        currentEndTime = currentStartTime + CYCLE_DURATION - 1; // 100 + 100 - 1 = 199
+        nextIndex = currentIndex + 1; // 2
+        nextStartTime = currentEndTime + 1; // 200
+        nextEndTime = nextStartTime + CYCLE_DURATION - 1; // 200 + 100 - 1 = 299
     }
 
-    function distributeUserRewards(uint256 _userETHRewards) external onlyRole(STADER_ORACLE) {
-        (bool success, ) = payable(staderConfig.getStakePoolManager()).call{value: _userETHRewards}('');
+    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
+        require(!handledRewards[_rewardsData.index], 'Rewards already handled for this cycle');
+        require(
+            _rewardsData.operatorETHRewards + _rewardsData.userETHRewards + _rewardsData.protocolETHRewards <=
+                address(this).balance - totalOperatorETHRewardsRemaining
+        );
+        require(
+            _rewardsData.operatorSDRewards <=
+                IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining
+        );
+
+        handledRewards[_rewardsData.index] = true;
+        totalOperatorETHRewardsRemaining += _rewardsData.operatorETHRewards;
+        totalOperatorSDRewardsRemaining += _rewardsData.operatorSDRewards;
+
+        bool success;
+        (success, ) = payable(staderConfig.getStakePoolManager()).call{value: _rewardsData.userETHRewards}('');
         require(success, 'User ETH rewards transfer failed');
-    }
 
-    function distributeProtocolRewards(uint256 _protocolETHRewards) external onlyRole(STADER_ORACLE) {
-        (bool success, ) = payable(staderConfig.getTreasury()).call{value: _protocolETHRewards}('');
+        (success, ) = payable(staderConfig.getTreasury()).call{value: _rewardsData.protocolETHRewards}('');
         require(success, 'Protocol ETH rewards transfer failed');
-    }
-
-    function updateOperatorRewards(uint256 _operatorETHRewards, uint256 _operatorSDRewards)
-        external
-        onlyRole(STADER_ORACLE)
-    {
-        totalOperatorETHRewardsRemaining += _operatorETHRewards;
-        totalOperatorSDRewardsRemaining += _operatorSDRewards;
     }
 
     function claim(
@@ -100,7 +103,7 @@ contract SocializingPool is
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof,
-        address operatorRewardsAddr
+        address _operatorRewardsAddr
     ) external override nonReentrant whenNotPaused {
         _claim(_index, msg.sender, _amountSD, _amountETH, _merkleProof);
         // Calculate totals
@@ -114,14 +117,16 @@ contract SocializingPool is
         bool success;
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
-            (success, ) = payable(operatorRewardsAddr).call{value: totalAmountETH}('');
+            (success, ) = payable(_operatorRewardsAddr).call{value: totalAmountETH}('');
             require(success, 'Operator ETH rewards transfer failed');
         }
 
         if (totalAmountSD > 0) {
             totalOperatorSDRewardsRemaining -= totalAmountSD;
-            success = IERC20(staderConfig.getStaderToken()).transfer(operatorRewardsAddr, totalAmountSD);
-            require(success, 'Operator SD rewards transfer failed');
+            // TODO: cannot use safeTransfer as safeERC20 uses a library named Address and which conflicts with our library 'Address'
+            // we should rename our library 'Address'
+            success = IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD);
+            require(success, 'Protocol ETH rewards transfer failed');
         }
     }
 

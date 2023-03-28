@@ -2,16 +2,14 @@
 
 pragma solidity ^0.8.16;
 
+import './IStaderOracle.sol';
+
 interface ISocializingPool {
     event ETHReceived(address indexed sender, uint256 amount);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
 
-    function distributeUserRewards(uint256 _userRewardsAmt) external;
-
-    function distributeProtocolRewards(uint256 _protocolRewardsAmt) external;
-
-    function updateOperatorRewards(uint256 _operatorETHRewards, uint256 _operatorSDRewards) external;
+    function handleRewards(RewardsData calldata _rewardsData) external;
 
     function claimedRewards(address _user, uint256 _index) external view returns (bool);
 
