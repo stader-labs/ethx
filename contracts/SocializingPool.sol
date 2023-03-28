@@ -94,7 +94,7 @@ contract SocializingPool is
         (success, ) = payable(staderConfig.getStakePoolManager()).call{value: _rewardsData.userETHRewards}('');
         require(success, 'User ETH rewards transfer failed');
 
-        (success, ) = payable(staderConfig.getTreasury()).call{value: _rewardsData.protocolETHRewards}('');
+        (success, ) = payable(staderConfig.getStaderTreasury()).call{value: _rewardsData.protocolETHRewards}('');
         require(success, 'Protocol ETH rewards transfer failed');
     }
 

@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 import './interfaces/IStaderConfig.sol';
+import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './library/Address.sol';
@@ -163,7 +164,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             // Update merkle root
             socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
             rewardsData = _rewardsData;
-            ISocializingPool(staderConfig.getSocializingPool()).handleRewards(_rewardsData);
+
+            address socializingPool = IPoolFactory(staderConfig.getPoolFactory()).getSocializingPoolAddress(
+                _rewardsData.poolId
+            );
+            ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
             emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.timestamp);
         }
