@@ -111,9 +111,6 @@ contract SocializingPool is
             totalAmountETH += _amountETH[i];
         }
 
-        // TODO: Discuss where to send these rewards? operator_addr or operator_rewards_addr
-        // CL and Node EL rewards were sent to operator_rewards_addr
-
         bool success;
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
