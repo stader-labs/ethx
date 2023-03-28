@@ -139,6 +139,7 @@ contract PermissionlessNodeRegistry is
                 poolId,
                 operatorId,
                 operatorTotalKeys + i, //operator totalKeys
+                nextValidatorId,
                 operatorRewardAddress
             );
             validatorRegistry[nextValidatorId] = Validator(

@@ -64,21 +64,6 @@ interface IPermissionedNodeRegistry {
 
     function PERMISSIONED_POOL() external view returns (bytes32);
 
-    function validatorRegistry(uint256)
-        external
-        view
-        returns (
-            ValidatorStatus status,
-            bytes calldata pubkey,
-            bytes calldata preDepositSignature,
-            bytes calldata depositSignature,
-            address withdrawVaultAddress,
-            uint256 operatorId,
-            uint256 initialBondEth,
-            uint256 depositTime,
-            uint256 withdrawnTime
-        );
-
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
     function operatorStructById(uint16)

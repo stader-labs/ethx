@@ -192,6 +192,10 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
     }
 
+    function getNodeRegistry(uint8 _poolId) external view override returns (address) {
+        return IStaderPoolBase(pools[_poolId].poolAddress).getNodeRegistry();
+    }
+
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) return true;

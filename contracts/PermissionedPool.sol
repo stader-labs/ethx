@@ -122,7 +122,7 @@ contract PermissionedPool is
         for (uint256 i = 0; i < _pubkey.length; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
-            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = IPermissionedNodeRegistry(
+            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = INodeRegistry(
                 nodeRegistryAddress
             ).validatorRegistry(validatorId);
             bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(
@@ -195,12 +195,16 @@ contract PermissionedPool is
         return staderConfig.getPermissionedSocializingPool();
     }
 
-    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).isExistingPubkey(_pubkey);
-    }
-
     function getCollateralETH() external view override returns (uint256) {
         return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getCollateralETH();
+    }
+
+    function getNodeRegistry() external view override returns (address) {
+        return staderConfig.getPermissionedNodeRegistry();
+    }
+
+    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
+        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).isExistingPubkey(_pubkey);
     }
 
     //TODO sanjay merge setProtocolFee and setOperatorFee function
@@ -272,7 +276,7 @@ contract PermissionedPool is
             ,
             ,
 
-        ) = IPermissionedNodeRegistry(_nodeRegistryAddress).validatorRegistry(_validatorId);
+        ) = INodeRegistry(_nodeRegistryAddress).validatorRegistry(_validatorId);
 
         bytes memory withdrawCredential = IVaultFactory(_vaultFactory).getValidatorWithdrawCredential(
             withdrawVaultAddress

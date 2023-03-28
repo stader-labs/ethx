@@ -57,5 +57,7 @@ interface IStaderPoolBase {
 
     function getCollateralETH() external view returns (uint256);
 
+    function getNodeRegistry() external view returns (address);
+
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

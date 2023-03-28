@@ -10,6 +10,8 @@ import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderConfig.sol';
+import './interfaces/IPenalty.sol';
+import './interfaces/INodeRegistry.sol';
 
 contract ValidatorWithdrawalVault is
     IValidatorWithdrawalVault,
@@ -17,15 +19,16 @@ contract ValidatorWithdrawalVault is
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
-    IStaderConfig public staderConfig;
     uint8 public poolId;
+    IStaderConfig public staderConfig;
     address payable public nodeRecipient;
+    uint256 public validatorId;
 
     function initialize(
+        uint8 _poolId,
         address _staderConfig,
         address payable _nodeRecipient,
-        uint8 _poolId
+        uint256 _validatorId
     ) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_nodeRecipient);
@@ -36,14 +39,11 @@ contract ValidatorWithdrawalVault is
         staderConfig = IStaderConfig(_staderConfig);
         nodeRecipient = _nodeRecipient;
         poolId = _poolId;
-
+        validatorId = _validatorId;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
-    /**
-     * @notice Allows the contract to receive ETH
-     * @dev skimmed rewards may be sent as plain ETH transfers
-     */
+    // Allows the contract to receive ETH
     receive() external payable {
         emit ETHReceived(msg.sender, msg.value);
     }
@@ -65,8 +65,6 @@ contract ValidatorWithdrawalVault is
         _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
     }
 
-    // TODO: add penalty changes
-    // TODO: change percent to fee and 100 to 10_000
     function _calculateRewardShare(uint256 _totalRewards)
         internal
         view
@@ -92,9 +90,14 @@ contract ValidatorWithdrawalVault is
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function settleFunds() external nonReentrant onlyRole(STADER_ORACLE) {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
+    function settleFunds() external nonReentrant {
+        if (msg.sender != IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId))
+            revert CallerNotNodeRegistry();
+        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
+        uint256 penaltyAmount = getPenaltyAmount();
+        operatorShare = operatorShare > penaltyAmount ? operatorShare - penaltyAmount : 0;
+        uint256 userShare = userShare_prelim + penaltyAmount;
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
@@ -138,12 +141,12 @@ contract ValidatorWithdrawalVault is
     }
 
     function _sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, 'Address: insufficient balance');
+        if (address(this).balance < amount) revert InsufficientBalance();
 
         //slither-disable-next-line arbitrary-send-eth
         if (amount > 0) {
-            (bool success, ) = recipient.call{value: amount}(''); // TODO: Manoj check if call is best ??
-            require(success, 'Address: unable to send value, recipient may have reverted');
+            (bool success, ) = recipient.call{value: amount}('');
+            if (!success) revert TransferFailed();
         }
     }
 
@@ -160,6 +163,12 @@ contract ValidatorWithdrawalVault is
 
     function getCollateralETH() private view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
+    }
+
+    function getPenaltyAmount() private returns (uint256) {
+        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        (, bytes memory pubkey, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
+        return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
     }
 
     //update the address of staderConfig

@@ -3,6 +3,11 @@ pragma solidity ^0.8.16;
 
 // Interface for the Penalty contract
 interface IPenalty {
+    //Errors
+    error PenaltyAmountUnchanged();
+    error OnePenaltyUnchanged();
+    error MaxPenaltyUnchanged();
+    error InvalidPubkeyLength();
     // Events
     event AdditionalPenaltyAmountUpdated(bytes indexed pubkey, uint256 amount);
     event PenaltyReversalAmountUpdated(bytes indexed pubkey, uint256 amount);

@@ -207,6 +207,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getCollateralETH();
     }
 
+    function getNodeRegistry() external view override returns (address) {
+        return staderConfig.getPermissionlessNodeRegistry();
+    }
+
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).isExistingPubkey(_pubkey);
     }
@@ -249,17 +253,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 _validatorId,
         uint256 _DEPOSIT_SIZE
     ) internal {
-        (
-            ,
-            bytes memory pubkey,
-            ,
-            bytes memory depositSignature,
-            address withdrawVaultAddress,
-            ,
-            ,
-            ,
-
-        ) = IPermissionlessNodeRegistry(_nodeRegistryAddress).validatorRegistry(_validatorId);
+        (, bytes memory pubkey, , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = INodeRegistry(
+            _nodeRegistryAddress
+        ).validatorRegistry(_validatorId);
 
         bytes memory withdrawCredential = IVaultFactory(_vaultFactoryAddress).getValidatorWithdrawCredential(
             withdrawVaultAddress
