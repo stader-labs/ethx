@@ -3,6 +3,25 @@ pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
+/// @title RewardsData
+/// @notice This struct holds rewards merkleRoot and rewards split
+struct RewardsData {
+    /// @notice The block number when the rewards data was last updated
+    uint256 lastUpdatedBlockNumber;
+    /// @notice The index of merkle tree or rewards cycle
+    uint256 index;
+    /// @notice The merkle root hash
+    bytes32 merkleRoot;
+    /// @notice operator ETH rewards for index cycle
+    uint256 operatorETHRewards;
+    /// @notice user ETH rewards for index cycle
+    uint256 userETHRewards;
+    /// @notice protocol ETH rewards for index cycle
+    uint256 protocolETHRewards;
+    /// @notice operator SD rewards for index cycle
+    uint256 operatorSDRewards;
+}
+
 interface IStaderOracle {
     // Events
     event BalancesSubmitted(
@@ -35,7 +54,7 @@ interface IStaderOracle {
     // The root of the merkle tree containing the socializing rewards
     function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
 
-    function socializingRewardsIndex() external view returns (uint256);
+    function getCurrentRewardsIndex() external view returns (uint256);
 
     // The frequency in blocks at which network balances should be submitted by trusted nodes
     function balanceUpdateFrequency() external view returns (uint256);
@@ -66,14 +85,11 @@ interface IStaderOracle {
 
     /**
     @notice Submits the root of the merkle tree containing the socializing rewards.
-    @param _merkleRoot The new root of the merkle tree.
+    sends user ETH Rewrds to SSPM
+    sends protocol ETH Rewards to stader treasury
+    @param _rewardsData contains rewards merkleRoot and rewards split
     */
-    function submitSocializingRewardsMerkleRoot(
-        uint256 _index,
-        bytes32 _merkleRoot,
-        uint256 _userRewardsAmt,
-        uint256 _protocolRewardsAmt
-    ) external;
+    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }

@@ -9,6 +9,8 @@ import './interfaces/ISocializingPool.sol';
 import './library/Address.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
+    RewardsData public rewardsData;
+
     IStaderConfig public staderConfig;
     /// @inheritdoc IStaderOracle
     uint256 public override lastBlockNumberBalancesUpdated;
@@ -22,8 +24,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override balanceUpdateFrequency;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
-    /// @inheritdoc IStaderOracle
-    uint256 public override socializingRewardsIndex;
+
     /// @inheritdoc IStaderOracle
     mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
     mapping(address => bool) public override isTrustedNode;
@@ -115,33 +116,64 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
 
-    function submitSocializingRewardsMerkleRoot(
-        uint256 _index,
-        bytes32 _merkleRoot,
-        uint256 _userRewardsAmt,
-        uint256 _protocolRewardsAmt
-    ) external override trustedNodeOnly {
-        require(_index > socializingRewardsIndex, 'Merkle root index is not higher than the current one');
+    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
+        require(
+            _rewardsData.lastUpdatedBlockNumber < block.number,
+            'Rewards data can not be submitted for a future block'
+        );
+        // TODO: update the error string
+        require(
+            _rewardsData.lastUpdatedBlockNumber > rewardsData.lastUpdatedBlockNumber,
+            'Network balances for an equal or higher block are set'
+        );
+        // TODO: check with DUlguun if index could be 0 ? handle initial case
+        require(_rewardsData.index > rewardsData.index, 'Merkle root index is not higher than the current one');
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _merkleRoot, _userRewardsAmt, _protocolRewardsAmt)
+            abi.encodePacked(
+                msg.sender,
+                _rewardsData.merkleRoot,
+                _rewardsData.operatorETHRewards,
+                _rewardsData.userETHRewards,
+                _rewardsData.protocolETHRewards,
+                _rewardsData.operatorSDRewards
+            )
         );
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_merkleRoot, _userRewardsAmt, _protocolRewardsAmt));
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _rewardsData.merkleRoot,
+                _rewardsData.operatorETHRewards,
+                _rewardsData.userETHRewards,
+                _rewardsData.protocolETHRewards,
+                _rewardsData.operatorSDRewards
+            )
+        );
 
         uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
         // Emit merkle root submitted event
-        emit SocializingRewardsMerkleRootSubmitted(msg.sender, _index, _merkleRoot, block.timestamp);
+        emit SocializingRewardsMerkleRootSubmitted(
+            msg.sender,
+            _rewardsData.index,
+            _rewardsData.merkleRoot,
+            block.timestamp
+        );
 
         if (submissionCount == trustedNodesCount / 2 + 1) {
             // Update merkle root
-            socializingRewardsMerkleRoot[_index] = _merkleRoot;
-            socializingRewardsIndex = _index;
+            socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
+            rewardsData = _rewardsData;
 
-            ISocializingPool(staderConfig.getSocializingPool()).distributeUserRewards(_userRewardsAmt);
-            ISocializingPool(staderConfig.getSocializingPool()).distributeProtocolRewards(_protocolRewardsAmt);
+            ISocializingPool(staderConfig.getSocializingPool()).updateOperatorRewards(
+                _rewardsData.operatorETHRewards,
+                _rewardsData.operatorSDRewards
+            );
+            ISocializingPool(staderConfig.getSocializingPool()).distributeUserRewards(_rewardsData.userETHRewards);
+            ISocializingPool(staderConfig.getSocializingPool()).distributeProtocolRewards(
+                _rewardsData.protocolETHRewards
+            );
 
-            emit SocializingRewardsMerkleRootUpdated(_index, _merkleRoot, block.timestamp);
+            emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.timestamp);
         }
     }
 
@@ -154,6 +186,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         nodeSubmissionKeys[_nodeSubmissionKey] = true;
         submissionCountKeys[_submissionCountKey]++;
         _submissionCount = submissionCountKeys[_submissionCountKey];
+    }
+
+    function getCurrentRewardsIndex() external view returns (uint256) {
+        return rewardsData.index;
     }
 
     modifier trustedNodeOnly() {
