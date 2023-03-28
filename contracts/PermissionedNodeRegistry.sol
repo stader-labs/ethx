@@ -149,23 +149,21 @@ contract PermissionedNodeRegistry is
                 nextValidatorId,
                 operatorRewardAddress
             );
-            {
-                validatorRegistry[nextValidatorId] = Validator(
-                    ValidatorStatus.INITIALIZED,
-                    _pubkey[i],
-                    _preDepositSignature[i],
-                    _depositSignature[i],
-                    withdrawVault,
-                    operatorId,
-                    0,
-                    0,
-                    0
-                );
-                validatorIdByPubkey[_pubkey[i]] = nextValidatorId;
-                validatorIdsByOperatorId[operatorId].push(nextValidatorId);
-                emit AddedKeys(msg.sender, _pubkey[i], nextValidatorId);
-                nextValidatorId++;
-            }
+            validatorRegistry[nextValidatorId] = Validator(
+                ValidatorStatus.INITIALIZED,
+                _pubkey[i],
+                _preDepositSignature[i],
+                _depositSignature[i],
+                withdrawVault,
+                operatorId,
+                0,
+                0,
+                0
+            );
+            validatorIdByPubkey[_pubkey[i]] = nextValidatorId;
+            validatorIdsByOperatorId[operatorId].push(nextValidatorId);
+            emit AddedKeys(msg.sender, _pubkey[i], nextValidatorId);
+            nextValidatorId++;
         }
     }
 
