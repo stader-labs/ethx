@@ -79,11 +79,13 @@ contract SocializingPool is
         require(!handledRewards[_rewardsData.index], 'Rewards already handled for this cycle');
         require(
             _rewardsData.operatorETHRewards + _rewardsData.userETHRewards + _rewardsData.protocolETHRewards <=
-                address(this).balance - totalOperatorETHRewardsRemaining
+                address(this).balance - totalOperatorETHRewardsRemaining,
+            'insufficient eth rewards'
         );
         require(
             _rewardsData.operatorSDRewards <=
-                IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining
+                IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining,
+            'insufficient sd rewards'
         );
 
         handledRewards[_rewardsData.index] = true;
@@ -147,7 +149,6 @@ contract SocializingPool is
         }
     }
 
-    // Verifies that the
     function _verifyProof(
         uint256 _index,
         address _operator,

@@ -37,12 +37,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         __AccessControl_init();
 
-        // TODO: Manoj: how 7200 is 24 hrs??
         balanceUpdateFrequency = 7200; // 24 hours
         isTrustedNode[staderConfig.getAdmin()] = true;
         trustedNodesCount = 1;
         staderConfig = IStaderConfig(_staderConfig);
-        // TODO: admin role be give to staderAdmin or creator?
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
         emit TrustedNodeAdded(staderConfig.getAdmin());
@@ -117,6 +115,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
 
+    /// @notice submits merkle root and handles reward
+    /// sends user rewards to SSP
+    /// sends protocol rewards to stader treasury
+    /// updates operator reward balances on socializing pool
+    /// @param _rewardsData contains rewards merkleRoot and rewards split info
+    /// @dev _rewardsData.index should not be zero
     function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
         require(
             _rewardsData.lastUpdatedBlockNumber < block.number,
@@ -127,7 +131,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             _rewardsData.lastUpdatedBlockNumber > rewardsData.lastUpdatedBlockNumber,
             'Network balances for an equal or higher block are set'
         );
-        // TODO: check with DUlguun if index could be 0 ? handle initial case
+        // TODO: check with Dulguun if index could start with 1, else will have to handle 0 case
         require(_rewardsData.index > rewardsData.index, 'Merkle root index is not higher than the current one');
 
         // Get submission keys

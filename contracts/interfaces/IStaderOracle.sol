@@ -53,9 +53,10 @@ interface IStaderOracle {
     // The current network total ETHX supply
     function totalETHXSupply() external view returns (uint256);
 
-    // The root of the merkle tree containing the socializing rewards
+    // The root of the merkle tree containing the socializing rewards of operator
     function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
 
+    // The last updated merkle tree index
     function getCurrentRewardsIndex() external view returns (uint256);
 
     // The frequency in blocks at which network balances should be submitted by trusted nodes
