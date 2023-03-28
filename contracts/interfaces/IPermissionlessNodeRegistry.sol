@@ -35,12 +35,6 @@ interface IPermissionlessNodeRegistry {
     event ValidatorMarkedAsFrontRunned(bytes indexed _frontRunnedPubkey, uint256 _validatorId);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed invalidSignaturePubkey, uint256 _validatorId);
 
-    event UpdatedPoolFactoryAddress(address _poolFactoryAddress);
-    event UpdatedSDCollateralAddress(address _sdCollateral);
-    event UpdatedVaultFactoryAddress(address _vaultFactoryAddress);
-    event UpdatedELRewardSocializePool(address _elRewardSocializePool);
-    event UpdatedStaderPenaltyFund(address _staderPenaltyFund);
-    event UpdatedPermissionlessPoolAddress(address _permissionlessPool);
     event UpdatedInputKeyCountLimit(uint16 _inputKeyCountLimit);
     event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
     event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
@@ -59,18 +53,6 @@ interface IPermissionlessNodeRegistry {
     function PERMISSIONLESS_POOL() external returns (bytes32);
 
     function poolId() external view returns (uint8);
-
-    function poolFactoryAddress() external view returns (address);
-
-    function vaultFactoryAddress() external view returns (address);
-
-    function sdCollateral() external view returns (address);
-
-    function elRewardSocializePool() external view returns (address);
-
-    function permissionlessPool() external view returns (address);
-
-    function staderPenaltyFund() external view returns (address);
 
     function nextOperatorId() external view returns (uint256);
 
@@ -91,8 +73,6 @@ interface IPermissionlessNodeRegistry {
     function FRONT_RUN_PENALTY() external view returns (uint256);
 
     function collateralETH() external view returns (uint256);
-
-    function OPERATOR_MAX_NAME_LENGTH() external view returns (uint256);
 
     function socializePoolRewardDistributionCycle() external view returns (uint256);
 
@@ -164,21 +144,9 @@ interface IPermissionlessNodeRegistry {
 
     function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
 
-    function updatePoolFactoryAddress(address _staderPoolSelector) external;
-
-    function updateSDCollateralAddress(address _sdCollateral) external;
-
-    function updateVaultFactoryAddress(address _vaultFactoryAddress) external;
-
-    function updateELRewardSocializePool(address _elRewardSocializePool) external;
-
-    function updateStaderPenaltyFundAddress(address _staderPenaltyFund) external;
-
     function updateInputKeyCountLimit(uint16 _batchKeyDepositLimit) external;
 
     function updateMaxKeyPerOperator(uint64 _keyDepositLimit) external;
-
-    function updatePermissionlessPoolAddress(address _permissionlessPool) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 

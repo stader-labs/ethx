@@ -41,21 +41,11 @@ interface IUserWithdrawalManager {
 
     function slashingMode() external view returns (bool);
 
-    function ethX() external view returns (address);
-
-    function poolManager() external view returns (address);
-
-    function minWithdrawAmount() external view returns (uint256);
-
-    function maxWithdrawAmount() external view returns (uint256);
-
     function finalizationBatchLimit() external view returns (uint256);
 
     function nextRequestIdToFinalize() external view returns (uint256);
 
     function nextRequestId() external view returns (uint256);
-
-    function DECIMALS() external view returns (uint256);
 
     function ethRequestedForWithdraw() external view returns (uint256);
 
@@ -72,10 +62,6 @@ interface IUserWithdrawalManager {
         );
 
     function requestIdsByUserAddress(address, uint256) external view returns (uint256);
-
-    function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external;
-
-    function updateMaxWithdrawAmount(uint256 _minWithdrawAmount) external;
 
     function updateFinalizationBatchLimit(uint256 _paginationLimit) external;
 
