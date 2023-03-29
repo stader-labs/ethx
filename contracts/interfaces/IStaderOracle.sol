@@ -38,8 +38,8 @@ interface IStaderOracle {
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
     event BalanceUpdateFrequencyUpdated(uint256 balanceUpdateFrequency);
-    event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 time);
-    event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 time);
+    event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 block);
+    event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 block);
 
     // The block number which balances are current for
     function lastBlockNumberBalancesUpdated() external view returns (uint256);

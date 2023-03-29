@@ -26,8 +26,8 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
-    // Returns the timestamp of the last time the operator changed the opt-in status for socializing pool
-    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256);
+    // Returns the block of the last time the operator changed the opt-in status for socializing pool
+    function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
     function getAllActiveValidators() external view returns (Validator[] memory);
 

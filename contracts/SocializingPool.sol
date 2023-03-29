@@ -26,8 +26,7 @@ contract SocializingPool is
     uint256 public override totalELRewardsCollected;
     uint256 public override totalOperatorETHRewardsRemaining;
     uint256 public override totalOperatorSDRewardsRemaining;
-    uint256 public constant CYCLE_DURATION = 28 days;
-    uint256 public initialTimestamp;
+    uint256 public initialBlock;
 
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
@@ -42,7 +41,7 @@ contract SocializingPool is
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        initialTimestamp = block.timestamp;
+        initialBlock = block.number;
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
@@ -60,19 +59,20 @@ contract SocializingPool is
         view
         returns (
             uint256 currentIndex,
-            uint256 currentStartTime,
-            uint256 currentEndTime,
+            uint256 currentStartBlock,
+            uint256 currentEndBlock,
             uint256 nextIndex,
-            uint256 nextStartTime,
-            uint256 nextEndTime
+            uint256 nextStartBlock,
+            uint256 nextEndBlock
         )
     {
-        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex(); // 1
-        currentStartTime = initialTimestamp + (currentIndex * CYCLE_DURATION); // 0 + 1 * 100 = 100
-        currentEndTime = currentStartTime + CYCLE_DURATION - 1; // 100 + 100 - 1 = 199
-        nextIndex = currentIndex + 1; // 2
-        nextStartTime = currentEndTime + 1; // 200
-        nextEndTime = nextStartTime + CYCLE_DURATION - 1; // 200 + 100 - 1 = 299
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
+        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
+        currentEndBlock = currentStartBlock + cycleDuration - 1;
+        nextIndex = currentIndex + 1;
+        nextStartBlock = currentEndBlock + 1;
+        nextEndBlock = nextStartBlock + cycleDuration - 1;
     }
 
     function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {

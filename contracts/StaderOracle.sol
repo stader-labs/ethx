@@ -38,12 +38,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         __AccessControl_init();
 
         balanceUpdateFrequency = 7200; // 24 hours
-        isTrustedNode[staderConfig.getAdmin()] = true;
-        trustedNodesCount = 1;
+
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
-
-        emit TrustedNodeAdded(staderConfig.getAdmin());
     }
 
     /// @inheritdoc IStaderOracle
@@ -126,12 +123,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             _rewardsData.lastUpdatedBlockNumber < block.number,
             'Rewards data can not be submitted for a future block'
         );
-        // TODO: update the error string
-        require(
-            _rewardsData.lastUpdatedBlockNumber > rewardsData.lastUpdatedBlockNumber,
-            'Network balances for an equal or higher block are set'
-        );
-        // TODO: check with Dulguun if index could start with 1, else will have to handle 0 case
+
         require(_rewardsData.index > rewardsData.index, 'Merkle root index is not higher than the current one');
 
         // Get submission keys
@@ -161,10 +153,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             msg.sender,
             _rewardsData.index,
             _rewardsData.merkleRoot,
-            block.timestamp
+            block.number
         );
 
-        if (submissionCount == trustedNodesCount / 2 + 1) {
+        if (
+            (submissionCount == trustedNodesCount / 2 + 1) &&
+            _rewardsData.lastUpdatedBlockNumber > rewardsData.lastUpdatedBlockNumber
+        ) {
             // Update merkle root
             socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
             rewardsData = _rewardsData;
@@ -174,7 +169,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             );
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
-            emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.timestamp);
+            emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);
         }
     }
 
@@ -190,7 +185,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function getCurrentRewardsIndex() external view returns (uint256) {
-        return rewardsData.index;
+        return rewardsData.index + 1; // rewardsData.index is the last updated index
     }
 
     modifier trustedNodeOnly() {

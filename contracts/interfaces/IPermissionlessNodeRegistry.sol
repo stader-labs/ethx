@@ -40,7 +40,7 @@ interface IPermissionlessNodeRegistry {
     event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
-    event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 timestamp);
+    event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 block);
 
     //Getters
 
@@ -73,8 +73,6 @@ interface IPermissionlessNodeRegistry {
     function FRONT_RUN_PENALTY() external view returns (uint256);
 
     function collateralETH() external view returns (uint256);
-
-    function socializePoolRewardDistributionCycle() external view returns (uint256);
 
     function validatorRegistry(uint256)
         external
