@@ -29,7 +29,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         isTrustedNode[msg.sender] = true;
         trustedNodesCount = 1;
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         emit TrustedNodeAdded(msg.sender);
     }

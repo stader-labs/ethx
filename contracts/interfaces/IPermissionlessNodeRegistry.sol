@@ -48,8 +48,6 @@ interface IPermissionlessNodeRegistry {
 
     function STADER_ORACLE() external view returns (bytes32);
 
-    function VALIDATOR_STATUS_ROLE() external returns (bytes32);
-
     function PERMISSIONLESS_POOL() external returns (bytes32);
 
     function poolId() external view returns (uint8);
@@ -126,8 +124,6 @@ interface IPermissionlessNodeRegistry {
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 
     function transferCollateralToPool(uint256 _amount) external;
-
-    function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
 
     function updateInputKeyCountLimit(uint16 _batchKeyDepositLimit) external;
 

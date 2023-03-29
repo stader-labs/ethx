@@ -11,6 +11,9 @@ struct Pool {
 
 // Interface for the PoolFactory contract
 interface IPoolFactory {
+    //Errors
+    error EmptyString();
+    error InvalidPoolID();
     // Events
     event PoolAdded(string poolName, address poolAddress);
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);

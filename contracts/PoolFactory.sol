@@ -31,7 +31,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        require(bytes(_poolName).length > 0, 'Pool name cannot be empty');
+        if (bytes(_poolName).length == 0) revert EmptyString();
         Address.checkNonZeroAddress(_poolAddress);
 
         pools[poolCount + 1] = Pool({poolName: _poolName, poolAddress: _poolAddress});
@@ -147,7 +147,13 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) public view override returns (Validator memory) {
+    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey)
+        public
+        view
+        override
+        validPoolId(_poolId)
+        returns (Validator memory)
+    {
         return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
@@ -164,12 +170,18 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getOperator(uint8 _poolId, bytes calldata _pubkey) public view override returns (Operator memory) {
+    function getOperator(uint8 _poolId, bytes calldata _pubkey)
+        public
+        view
+        override
+        validPoolId(_poolId)
+        returns (Operator memory)
+    {
         return IStaderPoolBase(pools[_poolId].poolAddress).getOperator(_pubkey);
     }
 
     /// @inheritdoc IPoolFactory
-    function getSocializingPoolAddress(uint8 _poolId) public view override returns (address) {
+    function getSocializingPoolAddress(uint8 _poolId) public view override validPoolId(_poolId) returns (address) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getSocializingPoolAddress();
     }
 
@@ -179,7 +191,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
-    ) public view override returns (uint256) {
+    ) public view override validPoolId(_poolId) returns (uint256) {
         return
             IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonTerminalKeys(
                 _nodeOperator,
@@ -188,11 +200,11 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
             );
     }
 
-    function getCollateralETH(uint8 _poolId) external view override returns (uint256) {
+    function getCollateralETH(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
     }
 
-    function getNodeRegistry(uint8 _poolId) external view override returns (address) {
+    function getNodeRegistry(uint8 _poolId) external view override validPoolId(_poolId) returns (address) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getNodeRegistry();
     }
 
@@ -205,7 +217,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
-        require(_poolId > 0 && _poolId <= poolCount, 'Invalid pool ID');
+        if (_poolId == 0 && _poolId > poolCount) revert InvalidPoolID();
         _;
     }
 }

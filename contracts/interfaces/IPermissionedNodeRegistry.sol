@@ -56,8 +56,6 @@ interface IPermissionedNodeRegistry {
 
     function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
 
-    function VALIDATOR_STATUS_ROLE() external view returns (bytes32);
-
     function STADER_MANAGER_BOT() external view returns (bytes32);
 
     function STADER_ORACLE() external view returns (bytes32);
@@ -125,7 +123,7 @@ interface IPermissionedNodeRegistry {
 
     function updateDepositStatusAndTime(uint256 _validatorId) external;
 
-    function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
+    function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external;
 
     function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator) external;
 

@@ -8,6 +8,8 @@ import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionlessPool.sol';
+import './interfaces/INodeELRewardVault.sol';
+import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
@@ -43,7 +45,6 @@ contract PermissionlessNodeRegistry is
 
     bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
-    bytes32 public constant override VALIDATOR_STATUS_ROLE = keccak256('VALIDATOR_STATUS_ROLE');
 
     bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY_OWNER =
         keccak256('PERMISSIONLESS_NODE_REGISTRY_OWNER');
@@ -202,6 +203,7 @@ contract PermissionlessNodeRegistry is
             _handleInvalidSignature(validatorId);
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
         }
+        _decreaseTotalActiveValidatorCount(_frontRunnedPubkey.length + _invalidSignaturePubkey.length);
     }
 
     /**
@@ -214,13 +216,19 @@ contract PermissionlessNodeRegistry is
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
-            validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
-            validatorRegistry[validatorId].withdrawnTime = block.timestamp;
-            //TODO sanjay take out money from withdraw vault --need interface of withdrawVault
-            //TODO sanjay if optout, clear nodeELVault --need interfaces of NodeELVault
+            Validator memory validator = validatorRegistry[validatorId];
+            validator.status = ValidatorStatus.WITHDRAWN;
+            validator.withdrawnTime = block.timestamp;
+            IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
+            uint256 operatorId = validator.operatorId;
+            if (!operatorStructById[operatorId].optedForSocializingPool) {
+                address nodeELRewardVault = IVaultFactory(staderConfig.getVaultFactory())
+                    .computeNodeELRewardVaultAddress(poolId, operatorId);
+                INodeELRewardVault(nodeELRewardVault).withdraw();
+            }
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
-        totalActiveValidatorCount -= withdrawnValidatorCount;
+        _decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
     }
 
     /**
@@ -261,7 +269,7 @@ contract PermissionlessNodeRegistry is
             operatorId
         );
         if (_optInForSocializingPool) {
-            //TODO sanjay empty NodeELRewardVault --need to integrate function signature
+            INodeELRewardVault(feeRecipientAddress).withdraw();
             feeRecipientAddress = staderConfig.getPermissionlessSocializingPool();
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
@@ -285,21 +293,6 @@ contract PermissionlessNodeRegistry is
 
         uint256 operatorId = validatorRegistry[validatorId].operatorId;
         return operatorStructById[operatorId];
-    }
-
-    /**
-     * @notice update the status of a validator
-     * @dev only oracle can call
-     * @param _pubkey public key of the validator
-     * @param _status updated status of validator
-     */
-    function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status)
-        external
-        override
-        onlyRole(VALIDATOR_STATUS_ROLE)
-    {
-        uint256 validatorId = validatorIdByPubkey[_pubkey];
-        validatorRegistry[validatorId].status = _status;
     }
 
     /**
@@ -602,6 +595,11 @@ contract PermissionlessNodeRegistry is
                 validator.status == ValidatorStatus.FRONT_RUN ||
                 validator.status == ValidatorStatus.PRE_DEPOSIT ||
                 validator.status == ValidatorStatus.WITHDRAWN);
+    }
+
+    // decreases the pool total active validator count
+    function _decreaseTotalActiveValidatorCount(uint256 _count) internal {
+        totalActiveValidatorCount -= _count;
     }
 
     function _onlyInitializedValidator(uint256 _validatorId) internal view {

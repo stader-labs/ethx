@@ -8,6 +8,8 @@ import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionedPool.sol';
+import './interfaces/INodeELRewardVault.sol';
+import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
@@ -35,7 +37,6 @@ contract PermissionedNodeRegistry is
     uint64 private constant SIGNATURE_LENGTH = 96;
     uint64 public override maxKeyPerOperator;
 
-    //TODO sanjay check if this address gets a getter on etherscan
     IStaderConfig public staderConfig;
 
     uint256 public override nextValidatorId;
@@ -43,7 +44,6 @@ contract PermissionedNodeRegistry is
     uint256 public VERIFIED_KEYS_BATCH_SIZE;
 
     bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
-    bytes32 public constant override VALIDATOR_STATUS_ROLE = keccak256('VALIDATOR_STATUS_ROLE');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
     bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
@@ -256,7 +256,6 @@ contract PermissionedNodeRegistry is
         IPermissionedPool(permissionedPool).transferETHOfDefectiveKeysToSSPM(totalDefectedKeys);
 
         // TODO sanjay update 31ETH limbo
-        //TODO sanjay check of only PRE_DEPOSIT key is moved to pool contract, discuss with dheeraj
         IPermissionedPool(permissionedPool).fullDepositOnBeaconChain(_readyToDepositPubkeys);
     }
 
@@ -270,10 +269,16 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
-            validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
-            validatorRegistry[validatorId].withdrawnTime = block.timestamp;
-            //TODO sanjay take out money from withdraw vault --need interface of withdrawVault
-            //TODO sanjay if optout, clear nodeELVault --need interfaces of NodeELVault
+            Validator memory validator = validatorRegistry[validatorId];
+            validator.status = ValidatorStatus.WITHDRAWN;
+            validator.withdrawnTime = block.timestamp;
+            IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
+            uint16 operatorId = uint16(validator.operatorId);
+            if (!operatorStructById[operatorId].optedForSocializingPool) {
+                address nodeELRewardVault = IVaultFactory(staderConfig.getVaultFactory())
+                    .computeNodeELRewardVaultAddress(poolId, operatorId);
+                INodeELRewardVault(nodeELRewardVault).withdraw();
+            }
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         _decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
@@ -326,20 +331,14 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice update the status of a validator
-     * @dev only `VALIDATOR_STATUS_ROLE` role can call
+     * @notice update the status of a validator to `PRE_DEPOSIT`
+     * @dev only `PERMISSIONED_POOL` role can call
      * @param _pubkey public key of the validator
-     * @param _status updated status of validator
      */
-
-    function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status)
-        external
-        override
-        onlyRole(VALIDATOR_STATUS_ROLE)
-    {
+    function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external override onlyRole(PERMISSIONED_POOL) {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
-        validatorRegistry[validatorId].status = _status;
-        emit UpdatedValidatorStatus(_pubkey, _status);
+        validatorRegistry[validatorId].status = ValidatorStatus.PRE_DEPOSIT;
+        emit UpdatedValidatorStatus(_pubkey, ValidatorStatus.PRE_DEPOSIT);
     }
 
     /**

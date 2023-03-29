@@ -295,7 +295,7 @@ contract PermissionedPool is
             preDepositSignature,
             depositDataRoot
         );
-        IPermissionedNodeRegistry(_nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.PRE_DEPOSIT);
+        IPermissionedNodeRegistry(_nodeRegistryAddress).markValidatorStatusAsPreDeposit(pubkey);
         emit ValidatorPreDepositedOnBeaconChain(pubkey);
     }
 

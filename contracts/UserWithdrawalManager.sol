@@ -34,8 +34,6 @@ contract UserWithdrawalManager is
     /// @notice user withdrawal requests
     mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
 
-    //TODO sanjay cap the size of array
-    //TODO sanjay delete entry once redeemed
     mapping(address => uint256[]) public override requestIdsByUserAddress;
 
     /// @notice structure representing a user request for withdrawal.
@@ -147,7 +145,6 @@ contract UserWithdrawalManager is
      * @notice transfer the eth of finalized request to recipient and delete the request
      * @param _requestId request id to redeem
      */
-    //TODO only allow owner/recipient to redeem
     function redeem(uint256 _requestId) external override {
         if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
         UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
