@@ -25,12 +25,6 @@ interface IPoolFactory {
 
     /**
      * @notice Returns an array of active validators from all the pools.
-     * @return An array of `Validator` objects representing the active validators.
-     */
-    function getAllActiveValidators() external view returns (Validator[] memory);
-
-    /**
-     * @notice Returns an array of active validators from all the pools.
      *
      * @param pageNumber The page number of the results to fetch (starting from 1).
      * @param pageSize The maximum number of items per page.
@@ -47,7 +41,7 @@ interface IPoolFactory {
 
     function getOperator(uint8 _poolId, bytes calldata _pubkey) external view returns (Operator memory);
 
-    function getOperatorTotalNonWithdrawnKeys(
+    function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
         address _nodeOperator,
         uint256 _startIndex,
@@ -57,9 +51,9 @@ interface IPoolFactory {
     function getSocializingPoolAddress(uint8 _poolId) external view returns (address);
 
     // Pool getters
-    function getProtocolFeePercent(uint8 _poolId) external view returns (uint256); // returns the protocol fee percent (0-100)
+    function getProtocolFee(uint8 _poolId) external view returns (uint256); // returns the protocol fee (0-10000)
 
-    function getOperatorFeePercent(uint8 _poolId) external view returns (uint256); // returns the operator fee percent (0-100)
+    function getOperatorFee(uint8 _poolId) external view returns (uint256); // returns the operator fee (0-10000)
 
     function poolCount() external view returns (uint8); // returns the number of pools in the factory
 
@@ -68,4 +62,8 @@ interface IPoolFactory {
     function getActiveValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of active validators in a specific pool
 
     function getQueuedValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of queued validators in a specific pool
+
+    function getCollateralETH(uint8 _poolId) external view returns (uint256);
+
+    function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

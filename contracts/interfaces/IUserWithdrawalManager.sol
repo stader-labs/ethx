@@ -3,9 +3,28 @@
 pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
+    error TransferFailed();
+    error TokenTransferFailed();
+    error ProtocolInSlashingMode();
+    error InSufficientBalance();
+    error ProtocolNotHealthy();
+    error InvalidWithdrawAmount();
+    error InvalidMinWithdrawValue();
+    error InvalidMaxWithdrawValue();
+    error requestIdNotFinalized(uint256 _requestId);
+    error RequestAlreadyRedeemed(uint256 _requestId);
+    error MaxLimitOnWithdrawRequestCountReached();
+    error CannotFindRequestId();
+    error CallerNotAuthorizedToRedeem();
+    error ZeroAddressReceived();
+
+    event UpdatedMaxWithdrawAmount(uint256 amount);
+    event UpdatedMinWithdrawAmount(uint256 amount);
+    event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
     event WithdrawRequestReceived(
-        address indexed _sender,
+        address indexed _msgSender,
         address _recipient,
+        uint256 _requestId,
         uint256 _sharesAmount,
         uint256 _etherAmount
     );
@@ -16,53 +35,39 @@ interface IUserWithdrawalManager {
         address _oldRecipient,
         address _newRecipient
     );
+    event ReceivedETH(uint256 _amount);
 
-    error ZeroAddress();
-    error TransferFailed();
-    error InSufficientBalance();
-    error InvalidRequestId(uint256 _requestId);
-    error RequestNotFinalized(uint256 _requestId);
-    error InvalidLastFinalizationBatch(uint256 _requestId);
-    error BatchNotFinalized(uint256 _batchNumber, uint256 _requestId);
-    error IdenticalRecipientAddressProvided(address _sender, address _recipient, uint256 _requestId);
+    function USER_WITHDRAWAL_MANAGER_ADMIN() external view returns (bytes32);
 
-    function POOL_MANAGER() external view returns (bytes32);
+    function slashingMode() external view returns (bool);
 
-    function staderOwner() external view returns (address);
+    function finalizationBatchLimit() external view returns (uint256);
 
-    function lockedEtherAmount() external view returns (uint256);
+    function nextRequestIdToFinalize() external view returns (uint256);
 
-    function nextBatchIdToFinalize() external view returns (uint256);
+    function nextRequestId() external view returns (uint256);
 
-    function latestBatchId() external view returns (uint256);
+    function ethRequestedForWithdraw() external view returns (uint256);
 
-    function DECIMAL() external view returns (uint256);
+    function maxNonRedeemedUserRequestCount() external view returns (uint256);
 
-    function lastIncrementBatchTime() external view returns (uint256);
-
-    function batchRequest(uint256)
+    function userWithdrawRequests(uint256)
         external
         view
         returns (
-            bool finalized,
-            uint256 startTime,
-            uint256 finalizedExchangeRate,
-            uint256 requiredEth,
-            uint256 lockedEthX
+            address payable owner,
+            uint256 ethXAmount,
+            uint256 ethExpected,
+            uint256 ethFinalized
         );
 
-    function withdraw(
-        address msgSender,
-        address payable _recipient,
-        uint256 _ethAmount,
-        uint256 _ethXAmount
-    ) external;
+    function requestIdsByUserAddress(address, uint256) external view returns (uint256);
 
-    function finalize(
-        uint256 _finalizeBatchId,
-        uint256 _ethToLock,
-        uint256 _finalizedExchangeRate
-    ) external payable;
+    function updateFinalizationBatchLimit(uint256 _paginationLimit) external;
+
+    function withdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
+
+    function finalizeUserWithdrawalRequest() external;
 
     function redeem(uint256 _requestId) external;
 }

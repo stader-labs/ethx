@@ -1,155 +1,204 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import './library/Address.sol';
+
+import './ETHx.sol';
+import './interfaces/IStaderConfig.sol';
+import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract UserWithdrawalManager is IUserWithdrawalManager, Initializable, AccessControlUpgradeable {
-    bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
+contract UserWithdrawalManager is
+    IUserWithdrawalManager,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
+    bool public override slashingMode; //TODO sanjay read this from stader oracle contract
 
-    address public override staderOwner;
+    IStaderConfig public staderConfig;
+    uint256 public override nextRequestIdToFinalize;
+    uint256 public override nextRequestId;
+    uint256 public override finalizationBatchLimit;
+    uint256 public override ethRequestedForWithdraw;
+    //upper cap on user non redeemed withdraw request count
+    uint256 public override maxNonRedeemedUserRequestCount;
 
-    uint256 public constant override DECIMAL = 10**18;
-
-    uint256 public override lockedEtherAmount;
-
-    uint256 public override nextBatchIdToFinalize;
-
-    uint256 public override latestBatchId;
-
-    uint256 public override lastIncrementBatchTime;
+    bytes32 public constant override USER_WITHDRAWAL_MANAGER_ADMIN = keccak256('USER_WITHDRAWAL_MANAGER_ADMIN');
 
     /// @notice user withdrawal requests
-    mapping(address => UserWithdrawInfo[]) public userWithdrawRequests;
+    mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
 
-    mapping(uint256 => BatchInfo) public override batchRequest;
+    //TODO sanjay cap the size of array
+    //TODO sanjay delete entry once redeemed
+    mapping(address => uint256[]) public override requestIdsByUserAddress;
 
     /// @notice structure representing a user request for withdrawal.
     struct UserWithdrawInfo {
-        address payable recipient; //payable address of the recipient to transfer withdrawal
-        uint256 batchNumber; // batch to which user request belong
-        uint256 ethAmount; //eth requested according to given share and exchangeRate
+        address payable owner; // address that can claim eth on behalf of this request
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
+        uint256 ethExpected; //eth requested according to given share and exchangeRate
+        uint256 ethFinalized; // final eth for claiming according to finalize exchange rate
     }
 
-    struct BatchInfo {
-        bool finalized;
-        uint256 startTime;
-        uint256 finalizedExchangeRate;
-        uint256 requiredEth;
-        uint256 lockedEthX;
-    }
-
-    function initialize(address _staderOwner) external initializer {
-        if (_staderOwner == address(0)) revert ZeroAddress();
+    function initialize(address _staderConfig) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
-        staderOwner = _staderOwner;
-        batchRequest[0] = BatchInfo(true, block.timestamp, 0, 0, 0);
-        batchRequest[1] = BatchInfo(false, block.timestamp, 0, 0, 0);
-        nextBatchIdToFinalize = 1;
-        latestBatchId = 1;
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        __Pausable_init();
+        __ReentrancyGuard_init();
+        staderConfig = IStaderConfig(_staderConfig);
+        nextRequestIdToFinalize = 1;
+        nextRequestId = 1;
+        finalizationBatchLimit = 50;
+        maxNonRedeemedUserRequestCount = 1000;
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+    }
+
+    receive() external payable {
+        emit ReceivedETH(msg.value);
     }
 
     /**
-     * @notice put a withdrawal request and assign it to a batch
-     * @param _recipient withdraw address for user to get back eth
-     * @param _ethAmount eth amount to be send at the withdraw exchange rate
-     * @param _ethXAmount amount of ethX shares that will be burned upon withdrawal
+     * @notice update the finalizationBatchLimit value
+     * @dev only admin of this contract can call
+     * @param _finalizationBatchLimit value of finalizationBatchLimit
      */
-    function withdraw(
-        address msgSender,
-        address payable _recipient,
-        uint256 _ethAmount,
-        uint256 _ethXAmount
-    ) external override onlyRole(POOL_MANAGER) {
-        BatchInfo memory latestBatch = batchRequest[latestBatchId];
-        latestBatch.requiredEth += _ethAmount;
-        latestBatch.lockedEthX += _ethXAmount;
-        userWithdrawRequests[msgSender].push(
-            UserWithdrawInfo(payable(_recipient), latestBatchId, _ethAmount, _ethXAmount)
-        );
+    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit)
+        external
+        override
+        onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
+    {
+        finalizationBatchLimit = _finalizationBatchLimit;
+        emit UpdatedFinalizationBatchLimit(_finalizationBatchLimit);
+    }
 
-        emit WithdrawRequestReceived(msgSender, _recipient, _ethXAmount, _ethAmount);
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
     }
 
     /**
-     * @notice Finalize the batch from `lastFinalizedBatch` to _finalizedBatchNumber at `_finalizedExchangeRate`
-     * @param _finalizeBatchId batch ID to finalize up to from latestFinalizedBatchId
-     * @param _ethToLock ether that should be locked for these requests
-     * @param _finalizedExchangeRate finalized exchangeRate
+     * @notice put a withdrawal request
+     * @param _ethXAmount amount of ethX shares to withdraw
+     * @param _owner owner of withdraw request to redeem
      */
-    function finalize(
-        uint256 _finalizeBatchId,
-        uint256 _ethToLock,
-        uint256 _finalizedExchangeRate
-    ) external payable override onlyRole(POOL_MANAGER) {
-        if (_finalizeBatchId < nextBatchIdToFinalize || _finalizeBatchId >= latestBatchId)
-            revert InvalidLastFinalizationBatch(_finalizeBatchId);
-        if (lockedEtherAmount + _ethToLock > address(this).balance) revert InSufficientBalance();
+    function withdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
+        if (_owner == address(0)) revert ZeroAddressReceived();
+        uint256 assets = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
+        if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount())
+            revert InvalidWithdrawAmount();
+        if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
+            revert MaxLimitOnWithdrawRequestCountReached();
+        //TODO sanjay user safeTransfer
+        if (!ETHx(staderConfig.getETHxToken()).transferFrom(msg.sender, (address(this)), _ethXAmount))
+            revert TokenTransferFailed();
+        ethRequestedForWithdraw += assets;
+        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(payable(_owner), _ethXAmount, assets, 0);
+        requestIdsByUserAddress[_owner].push(nextRequestId);
+        emit WithdrawRequestReceived(msg.sender, _owner, nextRequestId, _ethXAmount, assets);
+        nextRequestId++;
+        return nextRequestId - 1;
+    }
 
-        for (uint256 i = nextBatchIdToFinalize; i <= _finalizeBatchId; i++) {
-            BatchInfo memory batchAtIndexI = batchRequest[i];
-            batchAtIndexI.finalizedExchangeRate = _finalizedExchangeRate;
-            batchAtIndexI.finalized = true;
+    /**
+     * @notice finalize user requests
+     * @dev when slashing mode, only process and don't finalize
+     */
+    function finalizeUserWithdrawalRequest() external override whenNotPaused {
+        //TODO sanjay read from index file
+        if (slashingMode) revert ProtocolInSlashingMode();
+        address poolManager = staderConfig.getStakePoolManager();
+        uint256 DECIMALS = staderConfig.getDecimals();
+        uint256 exchangeRate = IStaderStakePoolManager(poolManager).getExchangeRate();
+        if (exchangeRate == 0) revert ProtocolNotHealthy();
+
+        uint256 maxRequestIdToFinalize = _min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit) - 1;
+        uint256 lockedEthXToBurn;
+        uint256 ethToSendToFinalizeRequest;
+        uint256 requestId;
+        uint256 pooledETH = IStaderStakePoolManager(poolManager).depositedPooledETH();
+        for (requestId = nextRequestIdToFinalize; requestId <= maxRequestIdToFinalize; requestId++) {
+            uint256 requiredEth = userWithdrawRequests[requestId].ethExpected;
+            uint256 lockedEthX = userWithdrawRequests[requestId].ethXAmount;
+            uint256 minEThRequiredToFinalizeRequest = _min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
+            if (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) {
+                requestId -= 1;
+                break;
+            }
+            userWithdrawRequests[requestId].ethFinalized = minEThRequiredToFinalizeRequest;
+            ethRequestedForWithdraw -= requiredEth;
+            lockedEthXToBurn += lockedEthX;
+            ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
         }
-        lockedEtherAmount += _ethToLock;
-        nextBatchIdToFinalize = _finalizeBatchId + 1;
+        if (requestId >= nextRequestIdToFinalize) {
+            ETHx(staderConfig.getETHxToken()).burnFrom(address(this), lockedEthXToBurn);
+            nextRequestIdToFinalize = requestId + 1;
+            IStaderStakePoolManager(poolManager).transferETHToUserWithdrawManager(ethToSendToFinalizeRequest);
+        }
     }
 
     /**
-     * @notice transfer the eth of finalized request and delete the request
+     * @notice transfer the eth of finalized request to recipient and delete the request
      * @param _requestId request id to redeem
      */
+    //TODO only allow owner/recipient to redeem
     function redeem(uint256 _requestId) external override {
-        UserWithdrawInfo[] storage userRequests = userWithdrawRequests[msg.sender];
-
-        if (_requestId >= userRequests.length) revert InvalidRequestId(_requestId);
-
-        UserWithdrawInfo storage userWithdrawRequest = userRequests[_requestId];
-        uint256 batchNumber = userWithdrawRequest.batchNumber;
-        uint256 ethXAmount = userWithdrawRequest.ethXAmount;
-        uint256 ethAmount = userWithdrawRequest.ethAmount;
-
-        BatchInfo storage userBatchRequest = batchRequest[batchNumber];
-        if (!userBatchRequest.finalized) revert BatchNotFinalized(batchNumber, _requestId);
-        uint256 etherToTransfer = _min((ethXAmount * userBatchRequest.finalizedExchangeRate) / DECIMAL, ethAmount);
-        lockedEtherAmount -= etherToTransfer;
-        _sendValue(userWithdrawRequest.recipient, etherToTransfer);
-
-        userRequests[_requestId] = userRequests[userRequests.length - 1];
-        userRequests.pop();
-
-        emit RequestRedeemed(msg.sender, userWithdrawRequest.recipient, etherToTransfer);
+        if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
+        UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
+        if (msg.sender != userRequest.owner) revert CallerNotAuthorizedToRedeem();
+        // below is a default entry as no userRequest will be found for a redeemed request.
+        if (userRequest.ethExpected == 0) revert RequestAlreadyRedeemed(_requestId);
+        uint256 etherToTransfer = userRequest.ethFinalized;
+        _deleteRequestId(_requestId, userRequest.owner);
+        _sendValue(userRequest.owner, etherToTransfer);
+        emit RequestRedeemed(msg.sender, userRequest.owner, etherToTransfer);
     }
 
     /**
-     * @notice creates a new batch
-     * @dev anyone can call after 24 hours from last incrementBatch,
-     *  staderOwner can bypass the time check
+     * @dev Triggers stopped state.
+     * should not be paused
      */
-    function incrementBatch() external {
-        address sender = msg.sender;
-        if (batchRequest[latestBatchId].requiredEth == 0) {
-            return;
-        }
-        if (sender != staderOwner && lastIncrementBatchTime + 24 hours > block.timestamp) {
-            return;
-        }
-        latestBatchId = latestBatchId + 1;
-        lastIncrementBatchTime = block.timestamp;
-        batchRequest[latestBatchId] = BatchInfo(false, block.timestamp, 0, 0, 0);
+    function pause() external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * should not be paused
+     */
+    function unpause() external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
+        _unpause();
     }
 
     function _min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
     }
 
+    // delete entry from userWithdrawRequests mapping and in requestIdsByUserAddress mapping
+    function _deleteRequestId(uint256 _requestId, address _owner) internal {
+        delete (userWithdrawRequests[_requestId]);
+        uint256 userRequestCount = requestIdsByUserAddress[_owner].length;
+        for (uint256 i = 0; i < userRequestCount; i++) {
+            //TODO check if we can define `requestIdsByUserAddress[_owner]` as a variable
+            if (_requestId == requestIdsByUserAddress[_owner][i]) {
+                requestIdsByUserAddress[_owner][i] = requestIdsByUserAddress[_owner][userRequestCount - 1];
+                requestIdsByUserAddress[_owner].pop();
+                return;
+            }
+        }
+        revert CannotFindRequestId();
+    }
+
     function _sendValue(address payable recipient, uint256 amount) internal {
         if (address(this).balance < amount) revert InSufficientBalance();
 
-        // solhint-disable-next-line
+        //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = recipient.call{value: amount}('');
         if (!success) revert TransferFailed();
     }
