@@ -10,6 +10,7 @@ import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/ISingleSwap.sol';
+import '../contracts/interfaces//IStaderOracle.sol';
 
 import './library/Address.sol';
 
@@ -187,18 +188,13 @@ contract SDCollateral is
         return ethAmount / poolThresholdbyPoolId[_poolId].minThreshold;
     }
 
-    // TODO: fetch price from oracle
-    function convertSDToETH(uint256 _sdAmount) public pure returns (uint256) {
-        uint256 sdPriceInUSD = 1;
-        uint256 ethPriceInUSD = 1;
-
-        return (_sdAmount * sdPriceInUSD) / ethPriceInUSD;
+    function convertSDToETH(uint256 _sdAmount) public view returns (uint256) {
+        uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+        return (_sdAmount * sdPriceInETH);
     }
 
-    // TODO: fetch price from oracle
-    function convertETHToSD(uint256 _ethAmount) public pure returns (uint256) {
-        uint256 sdPriceInUSD = 1;
-        uint256 ethPriceInUSD = 1;
-        return (_ethAmount * ethPriceInUSD) / sdPriceInUSD;
+    function convertETHToSD(uint256 _ethAmount) public view returns (uint256) {
+        uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+        return (_ethAmount / sdPriceInETH);
     }
 }
