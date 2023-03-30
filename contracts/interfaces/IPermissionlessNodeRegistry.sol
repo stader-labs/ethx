@@ -37,7 +37,7 @@ interface IPermissionlessNodeRegistry {
 
     event UpdatedInputKeyCountLimit(uint16 _inputKeyCountLimit);
     event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
-    event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
+    event ValidatorDepositBlockSet(uint256 _validatorId, uint256 _depositBlock);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
     event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 block);

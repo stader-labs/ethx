@@ -130,7 +130,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(
                 msg.sender,
-                _rewardsData.lastUpdatedBlockNumber,
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
                 _rewardsData.operatorETHRewards,
@@ -141,7 +140,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         );
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(
-                _rewardsData.lastUpdatedBlockNumber,
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
                 _rewardsData.operatorETHRewards,
@@ -172,6 +170,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
             emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);
         }
+    }
+
+    /// @inheritdoc IStaderOracle
+    function getLatestReportableBlockForMerkleSubmission(uint8 _poolId) external view override returns (uint256) {
+        address socializingPool = IPoolFactory(staderConfig.getPoolFactory()).getSocializingPoolAddress(_poolId);
+        (, , uint256 currentEndBlock, , , ) = ISocializingPool(socializingPool).getRewardDetails();
+
+        return currentEndBlock;
     }
 
     function _getSubmissionCount(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)

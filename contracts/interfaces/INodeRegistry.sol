@@ -12,8 +12,8 @@ struct Validator {
     uint256 operatorId; // stader network assigned Id
     //TODO do we need this if we are not changing it, we already have collateralETH parameter
     uint256 initialBondEth; // amount of bond eth in gwei
-    uint256 depositTime; // time of the 31ETH deposit
-    uint256 withdrawnTime; //time when oracle report validator as withdrawn
+    uint256 depositBlock; // block number of the 31ETH deposit
+    uint256 withdrawnBlock; //block number when oracle report validator as withdrawn
 }
 
 struct Operator {

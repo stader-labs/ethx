@@ -56,6 +56,10 @@ interface IStaderOracle {
     // The root of the merkle tree containing the socializing rewards of operator
     function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
 
+    /// @notice The block for which oracle clients needs to submit rewards data for current cycle
+    /// @param _poolId type of pool
+    function getLatestReportableBlockForMerkleSubmission(uint8 _poolId) external view returns (uint256);
+
     // The last updated merkle tree index
     function getCurrentRewardsIndex() external view returns (uint256);
 

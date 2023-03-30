@@ -9,6 +9,18 @@ interface ISocializingPool {
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
 
+    function getRewardDetails()
+        external
+        view
+        returns (
+            uint256 currentIndex,
+            uint256 currentStartBlock,
+            uint256 currentEndBlock,
+            uint256 nextIndex,
+            uint256 nextStartBlock,
+            uint256 nextEndBlock
+        );
+
     function handleRewards(RewardsData calldata _rewardsData) external;
 
     function claimedRewards(address _user, uint256 _index) external view returns (bool);
