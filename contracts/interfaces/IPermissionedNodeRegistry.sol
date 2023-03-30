@@ -29,7 +29,7 @@ interface IPermissionedNodeRegistry {
     event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
+    event ValidatorDepositBlockSet(uint256 _validatorId, uint256 _depositBlock);
     event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
     event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
     event UpdatedValidatorStatus(bytes indexed _pubkey, ValidatorStatus _status);
