@@ -107,14 +107,13 @@ contract SocializingPool is
         bytes32[][] calldata _merkleProof,
         address _operatorRewardsAddr
     ) external override nonReentrant whenNotPaused {
-        _claim(_index, msg.sender, _amountSD, _amountETH, _merkleProof);
-        // Calculate totals
-        uint256 totalAmountSD;
-        uint256 totalAmountETH;
-        for (uint256 i = 0; i < _index.length; i++) {
-            totalAmountSD += _amountSD[i];
-            totalAmountETH += _amountETH[i];
-        }
+        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
+            _index,
+            msg.sender,
+            _amountSD,
+            _amountETH,
+            _merkleProof
+        );
 
         bool success;
         if (totalAmountETH > 0) {
@@ -138,11 +137,13 @@ contract SocializingPool is
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
-    ) internal {
+    ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
         for (uint256 i = 0; i < _index.length; i++) {
             require(_amountSD[i] > 0 || _amountETH[i] > 0, 'Invalid amount');
             require(!claimedRewards[_operator][_index[i]], 'Already claimed');
 
+            _totalAmountSD += _amountSD[i];
+            _totalAmountETH += _amountETH[i];
             claimedRewards[_operator][_index[i]] = true;
 
             require(_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i]), 'Invalid proof');
