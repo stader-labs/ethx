@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.7.6;
+pragma solidity ^0.8.16;
 pragma abicoder v2;
 
 import './interfaces/SDCollateral/ISwapRouter.sol';
@@ -31,7 +31,7 @@ contract SingleSwap {
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == staderConfig.admin(), 'Accessible only by StakeManager Contract');
+        require(msg.sender == staderConfig.getAdmin(), 'Accessible only by StakeManager Contract');
         _;
     }
 
@@ -57,7 +57,7 @@ contract SingleSwap {
 
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: tokenIn,
-            tokenOut: staderConfig.wethToken(),
+            tokenOut: staderConfig.getWethToken(),
             fee: poolFee,
             recipient: address(this),
             deadline: block.timestamp,

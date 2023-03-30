@@ -8,7 +8,6 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
-import '../contracts/interfaces/SDCollateral/IPriceFetcher.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/ISingleSwap.sol';
 
@@ -29,29 +28,22 @@ contract SDCollateral is
     bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
 
     IStaderConfig public staderConfig;
-    IPriceFetcher public priceFetcher;
     ISingleSwap public swapUtil;
 
-    uint256 public totalShares;
     uint256 public totalSDCollateral;
     // TODO: Manoj we can instead use sdBalnce(address(this))
 
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint8) public poolIdByOperator;
-    mapping(address => uint256) public operatorShares;
+    mapping(address => uint256) public operatorSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(
-        address _staderConfig,
-        address _priceFetcherAddr,
-        address _swapUtil
-    ) external initializer {
+    function initialize(address _staderConfig, address _swapUtil) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_priceFetcherAddr);
         Address.checkNonZeroAddress(_swapUtil);
 
         __AccessControl_init();
@@ -59,10 +51,9 @@ contract SDCollateral is
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        priceFetcher = IPriceFetcher(_priceFetcherAddr);
         swapUtil = ISingleSwap(_swapUtil);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.admin());
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -71,41 +62,40 @@ contract SDCollateral is
      */
     function depositSDAsCollateral(uint256 _sdAmount) external {
         address operator = msg.sender;
-        uint256 numShares = convertSDToShares(_sdAmount);
 
         totalSDCollateral += _sdAmount;
-        totalShares += numShares;
-        operatorShares[operator] += numShares;
+        operatorSDBalance[operator] += _sdAmount;
 
         // TODO: Manoj check if the below line could be moved to start of this method
-        bool success = IERC20(staderConfig.staderToken()).transferFrom(operator, address(this), _sdAmount);
+        bool success = IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount);
         require(success, 'sd transfer failed');
     }
 
     function withdraw(uint256 _requestedSD) external {
         address operator = msg.sender;
-        uint256 numShares = operatorShares[operator];
-        uint256 sdBalance = convertSharesToSD(numShares);
+        uint256 sdBalance = operatorSDBalance[operator];
 
         uint8 poolId = poolIdByOperator[operator];
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
         // TODO: Manoj update startIndex, endIndex
-        uint256 validatorCount = IPoolFactory(staderConfig.poolFactory()).getOperatorTotalNonWithdrawnKeys(
+        uint256 validatorCount = IPoolFactory(staderConfig.getPoolFactory()).getOperatorTotalNonTerminalKeys(
             poolId,
             operator,
             0,
             1000
         );
+        if (sdBalance <= convertETHToSD(poolThreshold.withdrawThreshold * validatorCount)) {
+            revert InsufficientSDToWithdraw();
+        }
         uint256 withdrawableSD = sdBalance - convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
 
         require(_requestedSD <= withdrawableSD, 'withdraw less SD');
 
         totalSDCollateral -= _requestedSD;
-        operatorShares[operator] -= numShares;
-        totalShares -= numShares;
+        operatorSDBalance[operator] -= _requestedSD;
 
-        bool success = IERC20(staderConfig.staderToken()).transfer(payable(operator), _requestedSD);
+        bool success = IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD);
         require(success, 'sd transfer failed');
     }
 
@@ -113,7 +103,7 @@ contract SDCollateral is
     // TODO: discuss if we need to send weth (instead of eth), sending weth is easier.
     function swapSDToETH(uint256 _sdAmount) external {
         uint256 ethOutMinimum = convertSDToETH(_sdAmount);
-        swapUtil.swapExactInputForETH(staderConfig.staderToken(), _sdAmount, ethOutMinimum, msg.sender);
+        swapUtil.swapExactInputForETH(staderConfig.getStaderToken(), _sdAmount, ethOutMinimum, msg.sender);
     }
 
     // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -143,6 +133,7 @@ contract SDCollateral is
         });
     }
 
+    // TODO: Manoj Some Contract should execute it, when operator is onboarded to a pool
     function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(WHITELISTED_CONTRACT) {
         Address.checkNonZeroAddress(_operator);
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
@@ -151,35 +142,42 @@ contract SDCollateral is
 
     // GETTERS
 
+    /// @notice checks if operator has enough SD collateral to onboard validators in a specific pool
+    /// @param _operator node operator addr who want to onboard validators
+    /// @param _poolId pool id, where operator wants to onboard validators
+    /// @param _numValidator number of validators to onBoard
     function hasEnoughSDCollateral(
         address _operator,
         uint8 _poolId,
-        uint256 _numValidators
+        uint256 _numValidator
     ) external view returns (bool) {
-        uint256 numShares = operatorShares[_operator];
-        uint256 sdBalance = convertSharesToSD(numShares);
-        return _checkPoolThreshold(_poolId, sdBalance, _numValidators);
+        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 eqEthBalance = convertSDToETH(sdBalance);
+
+        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
+
+        return (eqEthBalance >= (poolThresholdInfo.minThreshold * _numValidator));
     }
 
-    function getOperatorSDBalance(address _operator) public view returns (uint256) {
-        uint256 numShares = operatorShares[_operator];
-        return convertSharesToSD(numShares);
-    }
-
-    function getMinimumAmountToDeposit(
+    /// @notice returns minimum amount of SD required to onboard _numValidators
+    /// @param _operator node operator addr who want to onboard validators
+    /// @param _poolId pool id, where operator wants to onboard validators
+    /// @param _numValidator number of validators to onBoard (including already onboarded, if any)
+    function getMinimumSDToBond(
         address _operator,
         uint8 _poolId,
-        uint32 _numValidators
+        uint32 _numValidator
     ) public view returns (uint256) {
-        uint256 sdBalance = getOperatorSDBalance(_operator);
+        uint256 sdBalance = operatorSDBalance[_operator];
 
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
         PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
 
         uint256 minThresholdInSD = convertETHToSD(poolThresholdInfo.minThreshold);
-        minThresholdInSD *= _numValidators;
+        minThresholdInSD *= _numValidator;
 
-        return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD);
+        return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD - sdBalance);
     }
 
     function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) public view returns (uint256) {
@@ -189,42 +187,18 @@ contract SDCollateral is
         return ethAmount / poolThresholdbyPoolId[_poolId].minThreshold;
     }
 
-    // HELPER FUNCTIONS
-
-    function _checkPoolThreshold(
-        uint8 _poolId,
-        uint256 _sdBalance,
-        uint256 _numValidators
-    ) internal view returns (bool) {
-        uint256 eqEthBalance = convertSDToETH(_sdBalance);
-
-        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
-        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
-        return (eqEthBalance >= (poolThresholdInfo.minThreshold * _numValidators));
-    }
-
-    function convertSDToETH(uint256 _sdAmount) public view returns (uint256) {
-        uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
-        uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
+    // TODO: fetch price from oracle
+    function convertSDToETH(uint256 _sdAmount) public pure returns (uint256) {
+        uint256 sdPriceInUSD = 1;
+        uint256 ethPriceInUSD = 1;
 
         return (_sdAmount * sdPriceInUSD) / ethPriceInUSD;
     }
 
-    function convertETHToSD(uint256 _ethAmount) public view returns (uint256) {
-        uint256 sdPriceInUSD = priceFetcher.getSDPriceInUSD();
-        uint256 ethPriceInUSD = priceFetcher.getEthPriceInUSD();
+    // TODO: fetch price from oracle
+    function convertETHToSD(uint256 _ethAmount) public pure returns (uint256) {
+        uint256 sdPriceInUSD = 1;
+        uint256 ethPriceInUSD = 1;
         return (_ethAmount * ethPriceInUSD) / sdPriceInUSD;
-    }
-
-    function convertSDToShares(uint256 _sdAmount) public view returns (uint256) {
-        uint256 totalShares_ = totalShares == 0 ? 1 : totalShares;
-        uint256 totalSDCollateral_ = totalSDCollateral == 0 ? 1 : totalSDCollateral;
-        return (_sdAmount * totalShares_) / totalSDCollateral_;
-    }
-
-    function convertSharesToSD(uint256 _numShares) public view returns (uint256) {
-        uint256 totalShares_ = totalShares == 0 ? 1 : totalShares;
-        uint256 totalSDCollateral_ = totalSDCollateral == 0 ? 1 : totalSDCollateral;
-        return (_numShares * totalSDCollateral_) / totalShares_;
     }
 }
