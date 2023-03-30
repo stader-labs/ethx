@@ -130,6 +130,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(
                 msg.sender,
+                _rewardsData.lastUpdatedBlockNumber,
+                _rewardsData.index,
                 _rewardsData.merkleRoot,
                 _rewardsData.operatorETHRewards,
                 _rewardsData.userETHRewards,
@@ -139,6 +141,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         );
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(
+                _rewardsData.lastUpdatedBlockNumber,
+                _rewardsData.index,
                 _rewardsData.merkleRoot,
                 _rewardsData.operatorETHRewards,
                 _rewardsData.userETHRewards,
@@ -156,10 +160,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             block.number
         );
 
-        if (
-            (submissionCount == trustedNodesCount / 2 + 1) &&
-            _rewardsData.lastUpdatedBlockNumber > rewardsData.lastUpdatedBlockNumber
-        ) {
+        if ((submissionCount == trustedNodesCount / 2 + 1)) {
             // Update merkle root
             socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
             rewardsData = _rewardsData;
