@@ -23,6 +23,10 @@ interface IStaderConfig {
     function getOperatorMaxNameLength() external view returns (uint256);
 
     // Variables
+    function getSocializingPoolCycleDuration() external view returns (uint256);
+
+    function getSocializingPoolCoolingPeriod() external view returns (uint256);
+
     function getRewardsThreshold() external view returns (uint256);
 
     function getMinDepositAmount() external view returns (uint256);

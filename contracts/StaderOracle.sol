@@ -3,9 +3,16 @@ pragma solidity ^0.8.16;
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
+import './interfaces/IStaderConfig.sol';
+import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
+import './interfaces/ISocializingPool.sol';
+import './library/Address.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
+    RewardsData public rewardsData;
+
+    IStaderConfig public staderConfig;
     /// @inheritdoc IStaderOracle
     uint256 public override lastBlockNumberBalancesUpdated;
     /// @inheritdoc IStaderOracle
@@ -18,25 +25,27 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override balanceUpdateFrequency;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
+
+    /// @inheritdoc IStaderOracle
+    mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
 
-    function initialize() external initializer {
-        __AccessControl_init_unchained();
+    function initialize(address _staderConfig) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
+
+        __AccessControl_init();
 
         balanceUpdateFrequency = 7200; // 24 hours
-        isTrustedNode[msg.sender] = true;
-        trustedNodesCount = 1;
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-
-        emit TrustedNodeAdded(msg.sender);
+        staderConfig = IStaderConfig(_staderConfig);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /// @inheritdoc IStaderOracle
     function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_nodeAddress != address(0), 'nodeAddress is zero');
+        Address.checkNonZeroAddress(_nodeAddress);
         require(!isTrustedNode[_nodeAddress], 'Node is already trusted');
         isTrustedNode[_nodeAddress] = true;
         trustedNodesCount++;
@@ -46,7 +55,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_nodeAddress != address(0), 'nodeAddress is zero');
+        Address.checkNonZeroAddress(_nodeAddress);
         require(isTrustedNode[_nodeAddress], 'Node is not trusted');
         isTrustedNode[_nodeAddress] = false;
         trustedNodesCount--;
@@ -103,40 +112,79 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
     }
 
-    /// @inheritdoc IStaderOracle
-    function submitStatus(bytes calldata _pubkey, ValidatorStatus _status) external override trustedNodeOnly {
-        // TODO: complete implementation
+    /// @notice submits merkle root and handles reward
+    /// sends user rewards to SSP
+    /// sends protocol rewards to stader treasury
+    /// updates operator reward balances on socializing pool
+    /// @param _rewardsData contains rewards merkleRoot and rewards split info
+    /// @dev _rewardsData.index should not be zero
+    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
+        require(
+            _rewardsData.lastUpdatedBlockNumber < block.number,
+            'Rewards data can not be submitted for a future block'
+        );
+
+        require(_rewardsData.index > rewardsData.index, 'Merkle root index is not higher than the current one');
+
         // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _pubkey, _status));
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_pubkey, _status));
-        // Check & update node submission status
-        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
-        nodeSubmissionKeys[nodeSubmissionKey] = true;
-        submissionCountKeys[submissionCountKey]++;
-        uint8 submissionCount = submissionCountKeys[submissionCountKey];
-        if (submissionCount >= trustedNodesCount / 2 + 1) {
-            // Update statuses
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _rewardsData.index,
+                _rewardsData.merkleRoot,
+                _rewardsData.operatorETHRewards,
+                _rewardsData.userETHRewards,
+                _rewardsData.protocolETHRewards,
+                _rewardsData.operatorSDRewards
+            )
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _rewardsData.index,
+                _rewardsData.merkleRoot,
+                _rewardsData.operatorETHRewards,
+                _rewardsData.userETHRewards,
+                _rewardsData.protocolETHRewards,
+                _rewardsData.operatorSDRewards
+            )
+        );
+
+        uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
+        // Emit merkle root submitted event
+        emit SocializingRewardsMerkleRootSubmitted(
+            msg.sender,
+            _rewardsData.index,
+            _rewardsData.merkleRoot,
+            block.number
+        );
+
+        if ((submissionCount == trustedNodesCount / 2 + 1)) {
+            // Update merkle root
+            socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
+            rewardsData = _rewardsData;
+
+            address socializingPool = IPoolFactory(staderConfig.getPoolFactory()).getSocializingPoolAddress(
+                _rewardsData.poolId
+            );
+            ISocializingPool(socializingPool).handleRewards(_rewardsData);
+
+            emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);
         }
     }
 
-    /// @inheritdoc IStaderOracle
-    function submitValidatorWithdrawalValidity(bytes calldata _pubkey, bool _isBadWithdrawal)
-        external
-        override
-        trustedNodeOnly
+    function _getSubmissionCount(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
+        internal
+        returns (uint8 _submissionCount)
     {
-        // TODO: complete implementation
-        // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _pubkey, _isBadWithdrawal));
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_pubkey, _isBadWithdrawal));
         // Check & update node submission status
-        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
-        nodeSubmissionKeys[nodeSubmissionKey] = true;
-        submissionCountKeys[submissionCountKey]++;
-        uint8 submissionCount = submissionCountKeys[submissionCountKey];
-        if (submissionCount >= trustedNodesCount / 2 + 1) {
-            // Update bad validator
-        }
+        require(!nodeSubmissionKeys[_nodeSubmissionKey], 'Duplicate submission from node');
+        nodeSubmissionKeys[_nodeSubmissionKey] = true;
+        submissionCountKeys[_submissionCountKey]++;
+        _submissionCount = submissionCountKeys[_submissionCountKey];
+    }
+
+    function getCurrentRewardsIndex() external view returns (uint256) {
+        return rewardsData.index + 1; // rewardsData.index is the last updated index
     }
 
     modifier trustedNodeOnly() {

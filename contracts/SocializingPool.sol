@@ -3,36 +3,47 @@
 pragma solidity ^0.8.16;
 
 import './library/Address.sol';
+import './interfaces/IStaderConfig.sol';
 import './interfaces/ISocializingPool.sol';
-import './interfaces/IPoolSelector.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
+import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgradeable {
-    IPoolSelector public poolHelper;
-    IStaderStakePoolManager public staderStakePoolManager;
-    address public staderTreasury;
-    uint256 public feePercentage;
-    uint256 public totalELRewardsCollected;
+contract SocializingPool is
+    ISocializingPool,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
+    IStaderConfig public staderConfig;
+    uint256 public override totalELRewardsCollected;
+    uint256 public override totalOperatorETHRewardsRemaining;
+    uint256 public override totalOperatorSDRewardsRemaining;
+    uint256 public initialBlock;
 
-    bytes32 public constant SOCIALIZE_POOL_OWNER = keccak256('SOCIALIZE_POOL_OWNER');
-    bytes32 public constant REWARD_DISTRIBUTOR = keccak256('REWARD_DISTRIBUTOR');
+    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
-    function initialize(
-        address _adminOwner,
-        address _staderStakePoolManager,
-        address _staderTreasury
-    ) external initializer {
-        Address.checkNonZeroAddress(_adminOwner);
-        Address.checkNonZeroAddress(_staderStakePoolManager);
-        Address.checkNonZeroAddress(_staderTreasury);
-        __AccessControl_init_unchained();
-        staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
-        staderTreasury = _staderTreasury;
-        feePercentage = 10;
-        _grantRole(DEFAULT_ADMIN_ROLE, _adminOwner);
+    mapping(address => mapping(uint256 => bool)) public override claimedRewards;
+    mapping(uint256 => bool) public handledRewards;
+
+    function initialize(address _staderConfig) external initializer {
+        Address.checkNonZeroAddress(_staderConfig);
+
+        __AccessControl_init();
+        __Pausable_init();
+        __ReentrancyGuard_init();
+
+        staderConfig = IStaderConfig(_staderConfig);
+        initialBlock = block.number;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -40,75 +51,114 @@ contract SocializingPool is ISocializingPool, Initializable, AccessControlUpgrad
      * @dev execution layer rewards may be sent as plain ETH transfers
      */
     receive() external payable {
-        emit ETHReceived(msg.value);
+        emit ETHReceived(msg.sender, msg.value);
     }
 
-    /**
-     * @notice fee distribution logic on execution layer rewards
-     * @dev run once in 24 hour
-     */
-    // function distributeELRewardFee() external onlyRole(REWARD_DISTRIBUTOR) {
-    //     uint256 ELRewards = address(this).balance;
-    //     require(ELRewards > 0, 'not enough execution layer rewards');
-    //     totalELRewardsCollected += ELRewards;
-    //     uint256 totalELFee = (ELRewards * feePercentage) / 100;
-    //     uint256 staderELFee = totalELFee / 2;
-    //     uint256 totalOperatorELFee;
-    //     uint256 totalValidatorRegistered = staderValidatorRegistry.registeredValidatorCount();
-    //     require(totalValidatorRegistered > 0, 'No active validator on beacon chain');
-    //     uint256 operatorCount = staderOperatorRegistry.getOperatorCount();
-    //     for (uint256 index = 0; index < operatorCount; ++index) {
-    //         address nodeOperator = staderOperatorRegistry.operatorByOperatorId(index);
-    //         (, , address operatorRewardAddress, , , , uint256 activeValidatorCount, ) = staderOperatorRegistry
-    //             .operatorRegistry(nodeOperator);
-    //         if (activeValidatorCount > 0) {
-    //             uint256 operatorELFee = ((totalELFee - staderELFee) * activeValidatorCount) / totalValidatorRegistered;
-    //             totalOperatorELFee += operatorELFee;
-
-    //             //slither-disable-next-line arbitrary-send-eth
-    //             staderStakePoolManager.deposit{value: operatorELFee}(operatorRewardAddress);
-    //         }
-    //     }
-    //     staderELFee = totalELFee - totalOperatorELFee;
-
-    //     //slither-disable-next-line arbitrary-send-eth
-    //     staderStakePoolManager.deposit{value: staderELFee}(staderTreasury);
-
-    //     //slither-disable-next-line arbitrary-send-eth
-    //     staderStakePoolManager.receiveExecutionLayerRewards{value: address(this).balance}();
-    // }
-
-    function updatePoolSelector(address _poolSelector) external onlyRole(SOCIALIZE_POOL_OWNER) {
-        Address.checkNonZeroAddress(_poolSelector);
-        poolHelper = IPoolSelector(_poolSelector);
+    function getRewardDetails()
+        external
+        view
+        returns (
+            uint256 currentIndex,
+            uint256 currentStartBlock,
+            uint256 currentEndBlock,
+            uint256 nextIndex,
+            uint256 nextStartBlock,
+            uint256 nextEndBlock
+        )
+    {
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
+        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
+        currentEndBlock = currentStartBlock + cycleDuration - 1;
+        nextIndex = currentIndex + 1;
+        nextStartBlock = currentEndBlock + 1;
+        nextEndBlock = nextStartBlock + cycleDuration - 1;
     }
 
-    /**
-     * @dev update stader pool manager address
-     * @param _staderStakePoolManager staderPoolManager address
-     */
-    function updateStaderStakePoolManager(address _staderStakePoolManager) external onlyRole(SOCIALIZE_POOL_OWNER) {
-        Address.checkNonZeroAddress(_staderStakePoolManager);
-        staderStakePoolManager = IStaderStakePoolManager(_staderStakePoolManager);
-        emit UpdatedStaderPoolManager(_staderStakePoolManager);
+    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
+        require(!handledRewards[_rewardsData.index], 'Rewards already handled for this cycle');
+        require(
+            _rewardsData.operatorETHRewards + _rewardsData.userETHRewards + _rewardsData.protocolETHRewards <=
+                address(this).balance - totalOperatorETHRewardsRemaining,
+            'insufficient eth rewards'
+        );
+        require(
+            _rewardsData.operatorSDRewards <=
+                IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining,
+            'insufficient sd rewards'
+        );
+
+        handledRewards[_rewardsData.index] = true;
+        totalOperatorETHRewardsRemaining += _rewardsData.operatorETHRewards;
+        totalOperatorSDRewardsRemaining += _rewardsData.operatorSDRewards;
+
+        bool success;
+        (success, ) = payable(staderConfig.getStakePoolManager()).call{value: _rewardsData.userETHRewards}('');
+        require(success, 'User ETH rewards transfer failed');
+
+        (success, ) = payable(staderConfig.getStaderTreasury()).call{value: _rewardsData.protocolETHRewards}('');
+        require(success, 'Protocol ETH rewards transfer failed');
     }
 
-    /**
-     * @dev update stader treasury address
-     * @param _staderTreasury staderTreasury address
-     */
-    function updateStaderTreasury(address _staderTreasury) external onlyRole(SOCIALIZE_POOL_OWNER) {
-        Address.checkNonZeroAddress(_staderTreasury);
-        staderTreasury = _staderTreasury;
-        emit UpdatedStaderTreasury(staderTreasury);
+    function claim(
+        uint256[] calldata _index,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof,
+        address _operatorRewardsAddr
+    ) external override nonReentrant whenNotPaused {
+        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
+            _index,
+            msg.sender,
+            _amountSD,
+            _amountETH,
+            _merkleProof
+        );
+
+        bool success;
+        if (totalAmountETH > 0) {
+            totalOperatorETHRewardsRemaining -= totalAmountETH;
+            (success, ) = payable(_operatorRewardsAddr).call{value: totalAmountETH}('');
+            require(success, 'Operator ETH rewards transfer failed');
+        }
+
+        if (totalAmountSD > 0) {
+            totalOperatorSDRewardsRemaining -= totalAmountSD;
+            // TODO: cannot use safeTransfer as safeERC20 uses a library named Address and which conflicts with our library 'Address'
+            // we should rename our library 'Address'
+            success = IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD);
+            require(success, 'Protocol ETH rewards transfer failed');
+        }
     }
 
-    /**
-     * @dev update stader EL reward fee percentage
-     * @param _feePercentage new fee percentage
-     */
-    function updateFeePercentage(uint256 _feePercentage) external onlyRole(SOCIALIZE_POOL_OWNER) {
-        feePercentage = _feePercentage;
-        emit UpdatedFeePercentage(feePercentage);
+    function _claim(
+        uint256[] calldata _index,
+        address _operator,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof
+    ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
+        for (uint256 i = 0; i < _index.length; i++) {
+            require(_amountSD[i] > 0 || _amountETH[i] > 0, 'Invalid amount');
+            require(!claimedRewards[_operator][_index[i]], 'Already claimed');
+
+            _totalAmountSD += _amountSD[i];
+            _totalAmountETH += _amountETH[i];
+            claimedRewards[_operator][_index[i]] = true;
+
+            require(_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i]), 'Invalid proof');
+        }
+    }
+
+    function _verifyProof(
+        uint256 _index,
+        address _operator,
+        uint256 _amountSD,
+        uint256 _amountETH,
+        bytes32[] calldata _merkleProof
+    ) internal view returns (bool) {
+        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
+        bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
+        return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
 }

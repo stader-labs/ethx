@@ -12,8 +12,8 @@ struct Validator {
     uint256 operatorId; // stader network assigned Id
     //TODO do we need this if we are not changing it, we already have collateralETH parameter
     uint256 initialBondEth; // amount of bond eth in gwei
-    uint256 depositTime; // time of the 31ETH deposit
-    uint256 withdrawnTime; //time when oracle report validator as withdrawn
+    uint256 depositBlock; // block number of the 31ETH deposit
+    uint256 withdrawnBlock; //block number when oracle report validator as withdrawn
 }
 
 struct Operator {
@@ -26,8 +26,8 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
-    // Returns the timestamp of the last time the operator changed the opt-in status for socializing pool
-    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256);
+    // Returns the block of the last time the operator changed the opt-in status for socializing pool
+    function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
     function getAllActiveValidators() external view returns (Validator[] memory);
 
