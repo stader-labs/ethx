@@ -52,6 +52,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
         bool success;
 
+        // TODO: Manoj check how RPL is sending rewrds to operator addr
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
