@@ -21,6 +21,7 @@ contract SDCollateral is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    // TODO: Manoj refactor move to Interface
     struct PoolThresholdInfo {
         uint256 minThreshold;
         uint256 withdrawThreshold;

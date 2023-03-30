@@ -13,6 +13,7 @@ interface IStaderStakePoolManager {
     // Events
     event Deposited(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event ExecutionLayerRewardsReceived(uint256 amount);
+    event AuctionedEthReceived(uint256 amount);
     event ReceivedExcessEthFromPool(uint8 indexed _poolId);
     event TransferredETHToUserWithdrawManager(uint256 _amount);
     event TransferredToPool(string indexed poolName, address poolAddress, uint256 validatorCount);
@@ -39,6 +40,8 @@ interface IStaderStakePoolManager {
     function receiveExecutionLayerRewards() external payable;
 
     function receiveWithdrawVaultUserShare() external payable;
+
+    function receiveEthFromAuction() external payable;
 
     function receiveExcessEthFromPool(uint8 _poolId) external payable;
 
