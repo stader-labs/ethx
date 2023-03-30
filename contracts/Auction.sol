@@ -7,10 +7,11 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 import './library/Address.sol';
+import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderStakePoolManager.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
 
-contract Auction is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     bytes32 public constant MANAGER = keccak256('MANAGER');
 
     IStaderConfig public staderConfig;
@@ -24,20 +25,31 @@ contract Auction is Initializable, AccessControlUpgradeable, PausableUpgradeable
     address[] public highestBidder;
     mapping(uint256 => mapping(address => uint256)) public fundsByBidder; // lotId => (bidder => funds)
 
-    // TODO: Manoj move events to interface
-    error InSufficientETH();
-    error ETHWithdrawFailed();
-    error AuctionNotStarted();
-    error AuctionEnded();
-    error AuctionCancelled();
-    error AuctionNotEnded();
+    // modifiers
+    modifier onlyAfterStart(uint256 lotId) {
+        if (block.number < startBlock[lotId]) revert AuctionNotStarted();
+        _;
+    }
 
-    event LotCreated(uint256 lotId, uint256 sdAmount, uint256 startBlock, uint256 endBlock, uint256 bidIncrement);
-    event BidPlaced(uint256 lotId, address indexed bidder, uint256 bid);
-    event BidWithdrawn(uint256 lotId, address indexed withdrawalAccount, uint256 amount);
-    event BidCancelled(uint256 lotId);
-    event SDClaimed(uint256 lotId, address indexed highestBidder, uint256 sdAmount);
-    event ETHClaimed(uint256 lotId, address indexed sspm, uint256 ethAmount);
+    modifier onlyBeforeEnd(uint256 lotId) {
+        if (block.number > endBlock[lotId]) revert AuctionEnded();
+        _;
+    }
+
+    modifier onlyNotCancelled(uint256 lotId) {
+        if (cancelled[lotId]) revert AuctionCancelled();
+        _;
+    }
+
+    modifier onlyEnded(uint256 lotId) {
+        if (block.number <= endBlock[lotId]) revert AuctionNotEnded();
+        _;
+    }
+
+    modifier onlyEndedOrCancelled(uint256 lotId) {
+        require(block.number > endBlock[lotId] || cancelled[lotId], 'Auction not ended and not cancelled');
+        _;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -67,6 +79,7 @@ contract Auction is Initializable, AccessControlUpgradeable, PausableUpgradeable
         require(_startBlock >= block.number, 'past startBlock');
         require(_startBlock < _endBlock, 'startBlock gt eq to endBlock');
 
+        IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount);
         sdAmount.push(_sdAmount);
         bidIncrement.push(_bidIncrement);
         startBlock.push(_startBlock);
@@ -124,7 +137,7 @@ contract Auction is Initializable, AccessControlUpgradeable, PausableUpgradeable
         emit ETHClaimed(lotId, staderConfig.getStakePoolManager(), _ethAmount);
     }
 
-    function claim(uint256 lotId) external onlyEndedOrCancelled(lotId) {
+    function withdraw(uint256 lotId) external onlyEndedOrCancelled(lotId) {
         address withdrawalAccount = msg.sender;
         uint256 withdrawalAmount = fundsByBidder[lotId][withdrawalAccount];
 
@@ -137,31 +150,5 @@ contract Auction is Initializable, AccessControlUpgradeable, PausableUpgradeable
         if (!success) revert ETHWithdrawFailed();
 
         emit BidWithdrawn(lotId, withdrawalAccount, withdrawalAmount);
-    }
-
-    // TODO: Manoj move to interface
-    modifier onlyAfterStart(uint256 lotId) {
-        if (block.number < startBlock[lotId]) revert AuctionNotStarted();
-        _;
-    }
-
-    modifier onlyBeforeEnd(uint256 lotId) {
-        if (block.number > endBlock[lotId]) revert AuctionEnded();
-        _;
-    }
-
-    modifier onlyNotCancelled(uint256 lotId) {
-        if (cancelled[lotId]) revert AuctionCancelled();
-        _;
-    }
-
-    modifier onlyEnded(uint256 lotId) {
-        if (block.number <= endBlock[lotId]) revert AuctionNotEnded();
-        _;
-    }
-
-    modifier onlyEndedOrCancelled(uint256 lotId) {
-        require(block.number > endBlock[lotId] || cancelled[lotId], 'Auction not ended and not cancelled');
-        _;
     }
 }

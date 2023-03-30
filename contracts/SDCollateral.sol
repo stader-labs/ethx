@@ -9,8 +9,9 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
+import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/SDCollateral/ISingleSwap.sol';
-import '../contracts/interfaces//IStaderOracle.sol';
+import '../contracts/interfaces/IStaderOracle.sol';
 
 import './library/Address.sol';
 
@@ -101,17 +102,31 @@ contract SDCollateral is
         require(success, 'sd transfer failed');
     }
 
-    // sends eth (not weth) to msg.sender
-    // TODO: discuss if we need to send weth (instead of eth), sending weth is easier.
-    function swapSDToETH(uint256 _sdAmount) external {
-        uint256 ethOutMinimum = convertSDToETH(_sdAmount);
-        swapUtil.swapExactInputForETH(staderConfig.getStaderToken(), _sdAmount, ethOutMinimum, msg.sender);
-    }
+    function slashSD(
+        address _operatorId,
+        uint256 _sdToSlash,
+        uint256 _durationInBlocks,
+        uint256 _bidIncrement
+    ) external returns (uint256 _sdSlashed) {
+        uint256 sdBalance = operatorSDBalance[_operatorId];
+        _sdSlashed = _sdToSlash;
+        if (_sdToSlash > sdBalance) {
+            _sdSlashed = sdBalance;
+        }
+        operatorSDBalance[_operatorId] -= _sdSlashed;
 
-    // function addRewards(uint256 _xsdAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    //     totalXSDCollateral += _xsdAmount;
-    //     xsdERC20.safeTransferFrom(msg.sender, address(this), _xsdAmount);
-    // }
+        // TODO: Manoj research and check if below is a correct solution
+        // reduced approval to zero first, to avoid race condition
+        IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), 0);
+        IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), _sdSlashed);
+
+        IAuction(staderConfig.getAuctionContract()).createLot(
+            _sdSlashed,
+            block.number,
+            block.number + _durationInBlocks - 1,
+            _bidIncrement
+        );
+    }
 
     // SETTERS
 
