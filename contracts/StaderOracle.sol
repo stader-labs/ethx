@@ -172,14 +172,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
-    /// @inheritdoc IStaderOracle
-    function getLatestReportableBlockForMerkleSubmission(uint8 _poolId) external view override returns (uint256) {
-        address socializingPool = IPoolFactory(staderConfig.getPoolFactory()).getSocializingPoolAddress(_poolId);
-        (, , uint256 currentEndBlock, , , ) = ISocializingPool(socializingPool).getRewardDetails();
-
-        return currentEndBlock;
-    }
-
     function _getSubmissionCount(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
         internal
         returns (uint8 _submissionCount)
