@@ -5,21 +5,7 @@ import '../library/ValidatorStatus.sol';
 import './INodeRegistry.sol';
 
 interface IPermissionedNodeRegistry {
-    // Error events
-    error EmptyNameString();
-    error InvalidKeyCount();
-    error maxKeyLimitReached();
-    error OperatorNotOnBoarded();
-    error NameCrossedMaxLength();
-    error PubkeyAlreadyExist();
-    error PubkeyDoesNotExist();
-    error UNEXPECTED_STATUS();
-    error OperatorIsDeactivate();
-    error InvalidLengthOfPubkey();
-    error InvalidStartAndEndIndex();
-    error InvalidLengthOfSignature();
-    error MisMatchingInputKeysSize();
-    error OperatorAlreadyOnBoarded();
+    // Error
     error NotAPermissionedNodeOperator();
     error TooManyVerifiedKeysToDeposit();
 

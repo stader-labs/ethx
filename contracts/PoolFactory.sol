@@ -103,6 +103,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         override
         returns (Validator[] memory)
     {
+        // pageNumber 0 fails
         uint256 startIndex = (pageNumber - 1) * pageSize;
         uint256 endIndex = startIndex + pageSize - 1;
         Validator[] memory allValidators = new Validator[](pageSize);

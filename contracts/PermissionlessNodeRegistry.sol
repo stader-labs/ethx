@@ -548,11 +548,12 @@ contract PermissionlessNodeRegistry is
         // check for collateral ETH for adding keys
         if (msg.value != keyCount * collateralETH) revert InvalidBondEthValue();
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
+        bool isEnoughCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
             msg.sender,
             _poolId,
             totalNonTerminalKeys + keyCount
         );
+        if (!isEnoughCollateral) revert NotEnoughSDCollateral();
     }
 
     function _sendValue(address receiver, uint256 _amount) internal {

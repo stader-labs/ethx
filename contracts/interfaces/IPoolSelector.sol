@@ -2,7 +2,7 @@
 pragma solidity ^0.8.16;
 
 interface IPoolSelector {
-    // Error events
+    // Error
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
     error InvalidSumOfPoolTargets();

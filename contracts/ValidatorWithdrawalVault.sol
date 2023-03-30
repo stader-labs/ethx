@@ -96,7 +96,7 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        //TODO sanjay liquidate locked SD if operatorShare becomes 0
+        //TODO sanjay liquidate locked SD if operatorShare < penaltyAmount
         operatorShare = operatorShare > penaltyAmount ? operatorShare - penaltyAmount : 0;
         uint256 userShare = userShare_prelim + penaltyAmount;
         // Final settlement

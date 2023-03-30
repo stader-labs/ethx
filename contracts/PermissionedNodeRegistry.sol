@@ -603,11 +603,12 @@ contract PermissionedNodeRegistry is
 
         //check if operator has enough SD collateral for adding `keyCount` keys
         //TODO sanjay put a comment saying phase1 limit will be 0 for permissioned NOs?
-        ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
+        bool isEnoughCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
             msg.sender,
             _poolId,
             totalNonTerminalKeys + keyCount
         );
+        if (!isEnoughCollateral) revert NotEnoughSDCollateral();
     }
 
     // operator in active state

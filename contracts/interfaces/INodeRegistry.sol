@@ -26,6 +26,23 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
+    //ERROR
+    error EmptyNameString();
+    error NameCrossedMaxLength();
+    error maxKeyLimitReached();
+    error OperatorNotOnBoarded();
+    error OperatorAlreadyOnBoarded();
+    error InvalidKeyCount();
+    error InvalidStartAndEndIndex();
+    error OperatorIsDeactivate();
+    error InvalidLengthOfPubkey();
+    error InvalidLengthOfSignature();
+    error MisMatchingInputKeysSize();
+    error UNEXPECTED_STATUS();
+    error PubkeyAlreadyExist();
+    error PubkeyDoesNotExist();
+    error NotEnoughSDCollateral();
+
     // return validator struct for a validator Id
     function validatorRegistry(uint256)
         external

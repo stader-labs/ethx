@@ -5,24 +5,10 @@ import '../library/ValidatorStatus.sol';
 import './INodeRegistry.sol';
 
 interface IPermissionlessNodeRegistry {
-    // Error events
+    // Error
     error TransferFailed();
-    error EmptyNameString();
-    error UNEXPECTED_STATUS();
-    error NameCrossedMaxLength();
-    error OperatorNotOnBoarded();
     error InvalidBondEthValue();
     error InSufficientBalance();
-    error OperatorAlreadyOnBoarded();
-    error InvalidKeyCount();
-    error PubkeyAlreadyExist();
-    error PubkeyDoesNotExist();
-    error InvalidStartAndEndIndex();
-    error OperatorIsDeactivate();
-    error InvalidLengthOfPubkey();
-    error InvalidLengthOfSignature();
-    error MisMatchingInputKeysSize();
-    error maxKeyLimitReached();
     error PubkeyNotFoundOrDuplicateInput();
     error CooldownNotComplete();
     error NoChangeInState();
