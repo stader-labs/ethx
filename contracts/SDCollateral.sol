@@ -10,7 +10,6 @@ import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
-import '../contracts/interfaces/SDCollateral/ISingleSwap.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
 
 import './library/Address.sol';
@@ -31,7 +30,6 @@ contract SDCollateral is
     bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
 
     IStaderConfig public staderConfig;
-    ISingleSwap public swapUtil;
 
     uint256 public totalSDCollateral;
     // TODO: Manoj we can instead use sdBalnce(address(this))
@@ -45,16 +43,14 @@ contract SDCollateral is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig, address _swapUtil) external initializer {
+    function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_swapUtil);
 
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        swapUtil = ISingleSwap(_swapUtil);
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
@@ -129,11 +125,6 @@ contract SDCollateral is
     }
 
     // SETTERS
-
-    function updateSwapUtil(address _swapUtil) external {
-        Address.checkNonZeroAddress(_swapUtil);
-        swapUtil = ISingleSwap(_swapUtil);
-    }
 
     function updatePoolThreshold(
         uint8 _poolId,
