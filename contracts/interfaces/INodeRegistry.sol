@@ -93,5 +93,7 @@ interface INodeRegistry {
 
     function getCollateralETH() external view returns (uint256);
 
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
+
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

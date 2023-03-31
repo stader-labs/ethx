@@ -37,9 +37,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
-        if (additionalPenaltyAmount[pubkeyRoot] == _amount) revert PenaltyAmountUnchanged();
 
-        additionalPenaltyAmount[pubkeyRoot] = _amount;
+        additionalPenaltyAmount[pubkeyRoot] += _amount;
 
         emit AdditionalPenaltyAmountUpdated(_pubkey, _amount);
     }

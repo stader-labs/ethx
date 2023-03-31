@@ -59,7 +59,7 @@ contract PermissionedNodeRegistry is
     // mapping of whitelisted permissioned node operator
     mapping(address => bool) public override permissionList;
     //mapping of operator wise queued validator IDs arrays
-    mapping(uint16 => uint256[]) public override validatorIdsByOperatorId;
+    mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     //mapping of operator ID and nextQueuedValidatorIndex
     mapping(uint16 => uint256) public override nextQueuedValidatorIndexByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
@@ -90,6 +90,7 @@ contract PermissionedNodeRegistry is
     {
         for (uint256 i = 0; i < _permissionedNOs.length; i++) {
             permissionList[_permissionedNOs[i]] = true;
+            emit OperatorWhitelisted(_permissionedNOs[i]);
         }
     }
 
@@ -162,7 +163,7 @@ contract PermissionedNodeRegistry is
             );
             validatorIdByPubkey[_pubkey[i]] = nextValidatorId;
             validatorIdsByOperatorId[operatorId].push(nextValidatorId);
-            emit AddedKeys(msg.sender, _pubkey[i], nextValidatorId);
+            emit AddedValidatorKey(msg.sender, _pubkey[i], nextValidatorId);
             nextValidatorId++;
         }
     }
@@ -286,12 +287,13 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice deactivate a node operator from running new validator clients
-     * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
+     * @dev only accept call from address having `STADER_MANAGER_BOT` role
      * @param _operatorID ID of the operator to deactivate
      */
     function deactivateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
+        emit OperatorDeactivated(_operatorID);
     }
 
     /**
@@ -302,6 +304,7 @@ contract PermissionedNodeRegistry is
     function activateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
+        emit OperatorActivated(_operatorID);
     }
 
     /**
@@ -327,7 +330,7 @@ contract PermissionedNodeRegistry is
     function updateDepositStatusAndTime(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
         validatorRegistry[_validatorId].depositTime = block.timestamp;
         _markValidatorDeposited(_validatorId);
-        emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
+        emit UpdatedValidatorDepositTime(_validatorId, block.timestamp);
     }
 
     /**
@@ -338,7 +341,7 @@ contract PermissionedNodeRegistry is
     function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external override onlyRole(PERMISSIONED_POOL) {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         validatorRegistry[validatorId].status = ValidatorStatus.PRE_DEPOSIT;
-        emit UpdatedValidatorStatus(_pubkey, ValidatorStatus.PRE_DEPOSIT);
+        emit MarkedValidatorStatusAsPreDeposit(_pubkey);
     }
 
     /**
@@ -358,7 +361,7 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice update the maximum non withdrawn key limit per operator
+     * @notice update the maximum non terminal key limit per operator
      * @dev only admin can call
      * @param _maxKeyPerOperator updated maximum non withdrawn key per operator limit
      */
@@ -368,7 +371,7 @@ contract PermissionedNodeRegistry is
         onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
     {
         maxKeyPerOperator = _maxKeyPerOperator;
-        emit UpdatedMaxKeyPerOperator(maxKeyPerOperator);
+        emit UpdatedMaxNonTerminalKeyPerOperator(maxKeyPerOperator);
     }
 
     /**
@@ -385,17 +388,24 @@ contract PermissionedNodeRegistry is
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
 
+    /**
+     * @notice update the max number of verified validator keys reported by oracle
+     * @dev only admin can call
+     * @param _verifiedKeysBatchSize updated maximum verified key limit in the oracle input
+     */
     function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize)
         external
         onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
     {
         VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
+        emit UpdatedVerifiedKeyBatchSize(_verifiedKeysBatchSize);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     // @inheritdoc INodeRegistry
@@ -422,6 +432,7 @@ contract PermissionedNodeRegistry is
      */
     function increaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(PERMISSIONED_POOL) {
         totalActiveValidatorCount += _count;
+        emit IncreasedTotalActiveValidatorCount(totalActiveValidatorCount);
     }
 
     /**
@@ -453,7 +464,7 @@ contract PermissionedNodeRegistry is
      * @dev length of the validatorIds array for an operator
      * @param _operatorId ID of node operator
      */
-    function getOperatorTotalKeys(uint16 _operatorId) public view override returns (uint256 _totalKeys) {
+    function getOperatorTotalKeys(uint256 _operatorId) public view override returns (uint256 _totalKeys) {
         _totalKeys = validatorIdsByOperatorId[_operatorId].length;
     }
 

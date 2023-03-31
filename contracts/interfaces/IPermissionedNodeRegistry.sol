@@ -10,17 +10,24 @@ interface IPermissionedNodeRegistry {
     error TooManyVerifiedKeysToDeposit();
 
     //Events
+    event OperatorWhitelisted(address _permissionedNO);
+
     event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
-    event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
+    event AddedValidatorKey(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
     event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
     event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
+    event OperatorDeactivated(uint16 _operatorID);
+    event OperatorActivated(uint16 _operatorID);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorDepositTimeSet(uint256 _validatorId, uint256 _depositTime);
-    event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
+    event UpdatedValidatorDepositTime(uint256 _validatorId, uint256 _depositTime);
+    event MarkedValidatorStatusAsPreDeposit(bytes indexed _pubkey);
+    event UpdatedMaxNonTerminalKeyPerOperator(uint64 _keyDepositLimit);
     event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
-    event UpdatedValidatorStatus(bytes indexed _pubkey, ValidatorStatus _status);
+    event UpdatedVerifiedKeyBatchSize(uint256 _verifiedKeysBatchSize);
+    event UpdatedStaderConfig(address _staderConfig);
     event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+    event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
 
     // Getters
 
@@ -67,9 +74,7 @@ interface IPermissionedNodeRegistry {
 
     function permissionList(address) external view returns (bool);
 
-    function validatorIdsByOperatorId(uint16, uint256) external view returns (uint256);
-
-    function getOperatorTotalKeys(uint16 _operatorId) external view returns (uint256 _totalKeys);
+    function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
     function getOperatorRewardAddress(uint16 _operatorId) external view returns (address payable);
 
