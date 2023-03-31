@@ -4,38 +4,46 @@ pragma solidity ^0.8.16;
 // Interface for the Penalty contract
 interface IPenalty {
     //Errors
-    error PenaltyAmountUnchanged();
-    error OnePenaltyUnchanged();
-    error MaxPenaltyUnchanged();
+    error MEVTheftPenaltyPerStrikeUnchanged();
     error InvalidPubkeyLength();
+    error MissedAttestationPenaltyPerStrikeUnchanged();
+    error TotalPenaltyThresholdUnchanged();
     // Events
-    event AdditionalPenaltyAmountUpdated(bytes indexed pubkey, uint256 amount);
-    event PenaltyReversalAmountUpdated(bytes indexed pubkey, uint256 amount);
-    event OnePenaltyUpdated(uint256 onePenalty);
-    event MaxPenaltyUpdated(uint256 maxPenalty);
-    event PenaltyOracleAddressUpdated(address penaltyOracleAddress);
+    event UpdatedAdditionalPenaltyAmount(bytes indexed pubkey, uint256 amount);
+    event UpdatedMEVTheftPenaltyPerStrike(uint256 mevTheftPenalty);
+    event UpdatedPenaltyOracleAddress(address penaltyOracleAddress);
+    event UpdatedMissedAttestationPenaltyPerStrike(uint256 missedAttestationPenalty);
+    event UpdatedTotalPenaltyThreshold(uint256 totalPenaltyThreshold);
+    event ExitValidator(bytes pubkey);
 
     // returns the address of the Rated.network penalty oracle
-    function penaltyOracleAddress() external view returns (address);
-
-    // returns the maximum penalty amount
-    function maxPenalty() external view returns (uint256);
+    function ratedOracleAddress() external view returns (address);
 
     // returns the penalty amount for a single violation
-    function onePenalty() external view returns (uint256);
+    function mevTheftPenaltyPerStrike() external view returns (uint256);
+
+    //returns the penalty amount for missing attestation below a certain threshold
+    function missedAttestationPenaltyPerStrike() external view returns (uint256);
+
+    // returns the totalPenalty threshold after which validator is force exited
+    function totalPenaltyThreshold() external view returns (uint256);
 
     function STADER_DAO() external view returns (bytes32);
 
     // Setters
 
     // Sets the address of the Rated.network penalty oracle.
-    function setPenaltyOracleAddress(address _penaltyOracleAddress) external;
+    function updateRatedOracleAddress(address _penaltyOracleAddress) external;
 
-    // Sets the maximum penalty amount. This is the highest possible penalty that can be imposed.
-    function setMaxPenalty(uint256 _maxPenalty) external;
+    // Sets the penalty amount for a single violation.
+    //This is the amount that will be imposed for each violation after first violation
+    function updateMEVTheftPenaltyPerStrike(uint256 _mevTheftPenaltyPerStrike) external;
 
-    // Sets the penalty amount for a single violation. This is the amount that will be imposed for each violation of the contract.
-    function setOnePenalty(uint256 _onePenalty) external;
+    // sets the penalty amount for missing attestation below a threshold for a cycle
+    function updateMissedAttestationPenaltyPerStrike(uint256 _missedAttestationPenaltyPerStrike) external;
+
+    // update the value of totalPenaltyThreshold
+    function updateTotalPenaltyThreshold(uint256 _totalPenaltyThreshold) external;
 
     /**
      * @notice Sets the additional penalty amount given by the DAO for a given validator public key.
@@ -44,20 +52,10 @@ interface IPenalty {
      */
     function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount) external;
 
-    /**
-     * @notice Sets the penalty reversal amount given by the DAO for a given validator public key.
-     * @param _pubkey The validator public key for which to set the penalty reversal amount.
-     * @param _amount The penalty reversal amount to set for the given validator public key.
-     */
-    function setPenaltyReversalAmount(bytes calldata _pubkey, uint256 _amount) external;
-
     // Getters
 
     // Returns the additional penalty amount given by the DAO for a given public key.
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view returns (uint256);
-
-    // Returns the penalty reversal amount given by the DAO for a given public key.
-    function getPenaltyReversalAmount(bytes calldata _pubkey) external view returns (uint256);
 
     /**
      * @notice Computes the public key root.
@@ -76,8 +74,15 @@ interface IPenalty {
     /**
      * @notice Calculates the penalty for changing the fee recipient address for a given public key
      *         based on data from the Rated.network penalty oracle.
-     * @param _pubkey The public key for which to calculate the penalty.
+     * @param _pubkeyRoot The public key root for which to calculate the penalty.
      * @return The penalty for changing the fee recipient address.
      */
-    function calculateFeeRecipientChangePenalty(bytes calldata _pubkey) external returns (uint256);
+    function calculateMEVTheftPenalty(bytes32 _pubkeyRoot) external returns (uint256);
+
+    /**
+     * @notice calculate penalty for missing attestation below a certain threshold
+     * @param _pubkeyRoot The public key root for which to calculate the penalty.
+     * @return penalty for missing attestation
+     */
+    function calculateMissedAttestationPenalty(bytes32 _pubkeyRoot) external returns (uint256);
 }

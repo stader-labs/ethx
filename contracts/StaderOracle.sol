@@ -12,6 +12,10 @@ import './library/Address.sol';
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
 
+    MissedAttestationPenaltyData public missedAttestationPenaltyData;
+
+    uint64 private constant PUBKEY_LENGTH = 48;
+
     IStaderConfig public staderConfig;
     /// @inheritdoc IStaderOracle
     uint256 public override lastBlockNumberBalancesUpdated;
@@ -26,11 +30,15 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
 
+    uint256 public lastMissedAttestationIndex;
+
     /// @inheritdoc IStaderOracle
     mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
+    mapping(bytes32 => uint16) public override missedAttestationPenalty;
+    mapping(address => mapping(uint256 => uint256)) MissedAttestationDataByTrustedNode;
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -113,7 +121,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @notice submits merkle root and handles reward
-    /// sends user rewards to SSP
+    /// sends user rewards to Stader Stake Pool Manager
     /// sends protocol rewards to stader treasury
     /// updates operator reward balances on socializing pool
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
@@ -172,6 +180,71 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
+    /**
+     * @notice store the missed attestation penalty strike on validator
+     * @dev _missedAttestationPenaltyData.index should not be zero
+     * @param _missedAttestationPenaltyData missed attestation penalty data
+     */
+    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _missedAttestationPenaltyData)
+        external
+        trustedNodeOnly
+    {
+        require(
+            _missedAttestationPenaltyData.lastUpdatedBlockNumber < block.number,
+            'missed attestation penalty data can not be submitted for a future block'
+        );
+
+        //TODO sanjay we will not store the `missedAttestationPenaltyData`
+        require(
+            _missedAttestationPenaltyData.index >= lastMissedAttestationIndex,
+            'missed attestation penalty data index is not higher than the current one'
+        );
+
+        require(
+            _missedAttestationPenaltyData.keyCount * PUBKEY_LENGTH == _missedAttestationPenaltyData.pubkeys.length,
+            'invalid data'
+        );
+
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _missedAttestationPenaltyData.index,
+                _missedAttestationPenaltyData.pageNumber,
+                _missedAttestationPenaltyData.pubkeys
+            )
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _missedAttestationPenaltyData.index,
+                _missedAttestationPenaltyData.pageNumber,
+                _missedAttestationPenaltyData.pubkeys
+            )
+        );
+
+        uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
+        // Emit missed attestation penalty submitted event
+        emit MissedAttestationPenaltySubmitted(
+            msg.sender,
+            _missedAttestationPenaltyData.index,
+            _missedAttestationPenaltyData.pageNumber,
+            block.number
+        );
+
+        if ((submissionCount == trustedNodesCount / 2 + 1)) {
+            lastMissedAttestationIndex = _missedAttestationPenaltyData.index;
+            uint16 keyCount = _missedAttestationPenaltyData.keyCount;
+            // missedAttestationPenaltyData = _missedAttestationPenaltyData;
+            for (uint256 i = 0; i < keyCount; i++) {
+                bytes32 pubkeyRoot = getPubkeyRoot(
+                    _missedAttestationPenaltyData.pubkeys[i * PUBKEY_LENGTH:(i + 1) * PUBKEY_LENGTH]
+                );
+                missedAttestationPenalty[pubkeyRoot]++;
+            }
+            emit MissedAttestationPenaltyUpdated(_missedAttestationPenaltyData.index, block.number);
+        }
+    }
+
     function _getSubmissionCount(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
         internal
         returns (uint8 _submissionCount)
@@ -185,6 +258,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     function getCurrentRewardsIndex() external view returns (uint256) {
         return rewardsData.index + 1; // rewardsData.index is the last updated index
+    }
+
+    function getPubkeyRoot(bytes calldata _pubkey) public pure returns (bytes32) {
+        if (_pubkey.length != 48) revert InvalidPubkeyLength();
+
+        // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
+        return sha256(abi.encodePacked(_pubkey, bytes16(0)));
     }
 
     modifier trustedNodeOnly() {
