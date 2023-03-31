@@ -13,6 +13,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     address public override penaltyOracleAddress;
     uint256 public override maxPenalty;
     uint256 public override onePenalty;
+    bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
+
     mapping(bytes32 => uint256) public penaltyReversalAmount;
     mapping(bytes32 => uint256) public additionalPenaltyAmount;
 
@@ -34,26 +36,18 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount)
         external
         override
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(STADER_DAO)
     {
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
-        if (additionalPenaltyAmount[pubkeyRoot] == _amount) revert PenaltyAmountUnchanged();
-
-        additionalPenaltyAmount[pubkeyRoot] = _amount;
+        additionalPenaltyAmount[pubkeyRoot] += _amount;
 
         emit AdditionalPenaltyAmountUpdated(_pubkey, _amount);
     }
 
     /// @inheritdoc IPenalty
-    function setPenaltyReversalAmount(bytes calldata _pubkey, uint256 _amount)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setPenaltyReversalAmount(bytes calldata _pubkey, uint256 _amount) external override onlyRole(STADER_DAO) {
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
-        if (penaltyReversalAmount[pubkeyRoot] == _amount) revert PenaltyAmountUnchanged();
-
-        penaltyReversalAmount[pubkeyRoot] = _amount;
+        penaltyReversalAmount[pubkeyRoot] += _amount;
 
         emit PenaltyReversalAmountUpdated(_pubkey, _amount);
     }
@@ -112,7 +106,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
             getPubkeyRoot(_pubkey)
         );
 
-        return violatedEpochs.length * onePenalty;
+        return violatedEpochs.length > 1 ? (violatedEpochs.length - 1) * onePenalty : 0;
     }
 
     /// @inheritdoc IPenalty

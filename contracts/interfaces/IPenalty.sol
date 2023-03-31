@@ -24,6 +24,8 @@ interface IPenalty {
     // returns the penalty amount for a single violation
     function onePenalty() external view returns (uint256);
 
+    function STADER_DAO() external view returns (bytes32);
+
     // Setters
 
     // Sets the address of the Rated.network penalty oracle.

@@ -39,7 +39,6 @@ contract PermissionlessNodeRegistry is
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
     // uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
-    uint256 public override socializePoolRewardDistributionCycle; //TODO sanjay move all DOA related values to index contract
 
     bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
@@ -60,7 +59,7 @@ contract PermissionlessNodeRegistry is
     mapping(address => uint256) public override operatorIDByAddress;
     //mapping of operator wise validator IDs arrays
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
-    mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
+    mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -215,7 +214,7 @@ contract PermissionlessNodeRegistry is
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
-            validatorRegistry[validatorId].withdrawnTime = block.timestamp;
+            validatorRegistry[validatorId].withdrawnBlock = block.number;
             //TODO sanjay take out money from withdraw vault --need interface of withdrawVault
             //TODO sanjay if optout, clear nodeELVault --need interfaces of NodeELVault
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
@@ -239,9 +238,9 @@ contract PermissionlessNodeRegistry is
      * @param _validatorId ID of the validator
      */
     function updateDepositStatusAndTime(uint256 _validatorId) external override onlyRole(PERMISSIONLESS_POOL) {
-        validatorRegistry[_validatorId].depositTime = block.timestamp;
+        validatorRegistry[_validatorId].depositBlock = block.number;
         _markValidatorDeposited(_validatorId);
-        emit ValidatorDepositTimeSet(_validatorId, block.timestamp);
+        emit ValidatorDepositBlockSet(_validatorId, block.number);
     }
 
     // allow NOs to opt in/out of socialize pool after coolDownPeriod i.e `socializePoolRewardDistributionCycle`
@@ -254,7 +253,8 @@ contract PermissionlessNodeRegistry is
         //TODO sanjay configure formatter to put braces in single if/else statements
         if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool)
             revert NoChangeInState();
-        if (block.timestamp < socializingPoolStateChangeTimestamp[operatorId] + socializePoolRewardDistributionCycle)
+
+        if (block.number < socializingPoolStateChangeBlock[operatorId] + staderConfig.getSocializingPoolCoolingPeriod())
             revert CooldownNotComplete();
         feeRecipientAddress = IVaultFactory(staderConfig.getVaultFactory()).computeNodeELRewardVaultAddress(
             poolId,
@@ -265,13 +265,13 @@ contract PermissionlessNodeRegistry is
             feeRecipientAddress = staderConfig.getPermissionlessSocializingPool();
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
-        socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
-        emit UpdatedSocializingPoolState(operatorId, _optInForSocializingPool, block.timestamp);
+        socializingPoolStateChangeBlock[operatorId] = block.number;
+        emit UpdatedSocializingPoolState(operatorId, _optInForSocializingPool, block.number);
     }
 
     // @inheritdoc INodeRegistry
-    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256) {
-        return socializingPoolStateChangeTimestamp[_operatorId];
+    function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256) {
+        return socializingPoolStateChangeBlock[_operatorId];
     }
 
     // @inheritdoc INodeRegistry
@@ -493,7 +493,7 @@ contract PermissionlessNodeRegistry is
             msg.sender
         );
         operatorIDByAddress[msg.sender] = nextOperatorId;
-        socializingPoolStateChangeTimestamp[nextOperatorId] = block.timestamp;
+        socializingPoolStateChangeBlock[nextOperatorId] = block.number;
         nextOperatorId++;
 
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);
