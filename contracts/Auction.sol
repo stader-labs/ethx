@@ -77,7 +77,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         uint256 _bidIncrement
     ) external whenNotPaused onlyRole(MANAGER) {
         require(_startBlock >= block.number, 'past startBlock');
-        require(_startBlock < _endBlock, 'startBlock gt eq to endBlock');
+        require(_startBlock <= _endBlock, 'startBlock > endBlock');
 
         IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount);
         sdAmount.push(_sdAmount);
