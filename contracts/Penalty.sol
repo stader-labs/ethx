@@ -26,7 +26,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         staderConfig = IStaderConfig(_staderConfig);
         penaltyOracleAddress = _penaltyOracleAddress;
         maxPenalty = 4 ether;
-        onePenalty = 0.5 ether;
+        onePenalty = 1 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
         emit PenaltyOracleAddressUpdated(_penaltyOracleAddress);
