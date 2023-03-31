@@ -106,7 +106,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
         uint256 newBid = fundsByBidder[lotId][msg.sender] + msg.value;
         uint256 _highestBid = getHighestBid(lotId);
-        if (newBid <= _highestBid) revert InSufficientETH();
+        if (newBid <= _highestBid + bidIncrement[lotId]) revert InSufficientETH();
 
         fundsByBidder[lotId][msg.sender] = newBid;
         highestBidder[lotId] = msg.sender;
