@@ -4,124 +4,137 @@ pragma solidity ^0.8.16;
 import './library/Address.sol';
 import './interfaces/IPenalty.sol';
 import './interfaces/IRatedV1.sol';
+import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
-    address public override penaltyOracleAddress;
-    uint256 public override maxPenalty;
-    uint256 public override onePenalty;
-    mapping(bytes32 => uint256) public penaltyReversalAmount;
-    mapping(bytes32 => uint256) public additionalPenaltyAmount;
+    address public override ratedOracleAddress;
+    uint256 public override mevTheftPenaltyPerStrike;
+    uint256 public override missedAttestationPenaltyPerStrike;
+    uint256 public override validatorExitPenaltyThreshold;
+    bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
 
-    function initialize(address _staderConfig, address _penaltyOracleAddress) external initializer {
+    /// @inheritdoc IPenalty
+    mapping(bytes32 => uint256) public override additionalPenaltyAmount;
+    /// @inheritdoc IPenalty
+    mapping(bytes => uint256) public override totalPenaltyAmount;
+
+    function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_penaltyOracleAddress);
+        Address.checkNonZeroAddress(_ratedOracleAddress);
         __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
-        penaltyOracleAddress = _penaltyOracleAddress;
-        maxPenalty = 4 ether;
-        onePenalty = 0.5 ether;
+        ratedOracleAddress = _ratedOracleAddress;
+        mevTheftPenaltyPerStrike = 1 ether;
+        missedAttestationPenaltyPerStrike = 0.2 ether;
+        validatorExitPenaltyThreshold = 2.5 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
-        emit PenaltyOracleAddressUpdated(_penaltyOracleAddress);
+        emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }
 
     /// @inheritdoc IPenalty
     function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount)
         external
         override
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(STADER_DAO)
     {
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
-
         additionalPenaltyAmount[pubkeyRoot] += _amount;
 
-        emit AdditionalPenaltyAmountUpdated(_pubkey, _amount);
+        emit UpdatedAdditionalPenaltyAmount(_pubkey, _amount);
     }
 
     /// @inheritdoc IPenalty
-    function setPenaltyReversalAmount(bytes calldata _pubkey, uint256 _amount)
+    function updateMEVTheftPenaltyPerStrike(uint256 _mevTheftPenaltyPerStrike)
         external
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
-        if (penaltyReversalAmount[pubkeyRoot] == _amount) revert PenaltyAmountUnchanged();
+        if (mevTheftPenaltyPerStrike == _mevTheftPenaltyPerStrike) revert MEVTheftPenaltyPerStrikeUnchanged();
 
-        penaltyReversalAmount[pubkeyRoot] = _amount;
+        mevTheftPenaltyPerStrike = _mevTheftPenaltyPerStrike;
 
-        emit PenaltyReversalAmountUpdated(_pubkey, _amount);
+        emit UpdatedMEVTheftPenaltyPerStrike(_mevTheftPenaltyPerStrike);
     }
 
     /// @inheritdoc IPenalty
-    function setOnePenalty(uint256 _onePenalty) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (onePenalty == _onePenalty) revert OnePenaltyUnchanged();
+    function updateMissedAttestationPenaltyPerStrike(uint256 _missedAttestationPenaltyPerStrike)
+        external
+        override
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (missedAttestationPenaltyPerStrike == _missedAttestationPenaltyPerStrike)
+            revert MissedAttestationPenaltyPerStrikeUnchanged();
 
-        onePenalty = _onePenalty;
+        missedAttestationPenaltyPerStrike = _missedAttestationPenaltyPerStrike;
 
-        emit OnePenaltyUpdated(_onePenalty);
+        emit UpdatedMissedAttestationPenaltyPerStrike(_missedAttestationPenaltyPerStrike);
     }
 
     /// @inheritdoc IPenalty
-    function setMaxPenalty(uint256 _maxPenalty) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (maxPenalty == _maxPenalty) revert MaxPenaltyUnchanged();
+    function updateValidatorExitPenaltyThreshold(uint256 _validatorExitPenaltyThreshold)
+        external
+        override
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (validatorExitPenaltyThreshold == _validatorExitPenaltyThreshold)
+            revert ValidatorExitPenaltyThresholdUnchanged();
 
-        maxPenalty = _maxPenalty;
+        validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
 
-        emit MaxPenaltyUpdated(_maxPenalty);
+        emit UpdatedValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
     }
 
     /// @inheritdoc IPenalty
-    function setPenaltyOracleAddress(address _penaltyOracleAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_penaltyOracleAddress);
+    function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_ratedOracleAddress);
 
-        penaltyOracleAddress = _penaltyOracleAddress;
+        ratedOracleAddress = _ratedOracleAddress;
 
-        emit PenaltyOracleAddressUpdated(_penaltyOracleAddress);
+        emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }
 
     /// @inheritdoc IPenalty
     function calculatePenalty(bytes calldata _pubkey) external override returns (uint256) {
-        // Retrieve the penalty for changing the fee recipient address based on Rated.network data.
-        uint256 feeRecipientChangePenalty = calculateFeeRecipientChangePenalty(_pubkey);
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
+        // Retrieve the penalty for changing the fee recipient address based on Rated.network data.
+        uint256 _mevTheftPenalty = calculateMEVTheftPenalty(pubkeyRoot);
+        uint256 _missedAttestationPenalty = calculateMissedAttestationPenalty(pubkeyRoot);
 
         // Compute the total penalty for the given validator public key,
         // taking into account additional penalties and penalty reversals from the DAO.
-        uint256 totalPenalty = feeRecipientChangePenalty +
-            additionalPenaltyAmount[pubkeyRoot] -
-            penaltyReversalAmount[pubkeyRoot];
-
-        // Ensure the total penalty does not exceed the maximum penalty.
-        if (totalPenalty > maxPenalty) {
-            totalPenalty = maxPenalty;
+        uint256 totalPenalty = _mevTheftPenalty + _missedAttestationPenalty + additionalPenaltyAmount[pubkeyRoot];
+        totalPenaltyAmount[_pubkey] = totalPenalty;
+        if (totalPenalty > validatorExitPenaltyThreshold) {
+            emit ExitValidator(_pubkey);
         }
-
         return totalPenalty;
     }
 
     /// @inheritdoc IPenalty
-    function calculateFeeRecipientChangePenalty(bytes calldata _pubkey) public override returns (uint256) {
+    function calculateMEVTheftPenalty(bytes32 _pubkeyRoot) public override returns (uint256) {
         // Retrieve the epochs in which the validator violated the fee recipient change rule.
-        uint256[] memory violatedEpochs = IRatedV1(penaltyOracleAddress).getViolatedEpochForValidator(
-            getPubkeyRoot(_pubkey)
-        );
+        uint256[] memory violatedEpochs = IRatedV1(ratedOracleAddress).getViolatedEpochForValidator(_pubkeyRoot);
 
-        return violatedEpochs.length * onePenalty;
+        // first strike is not penalized, after that each strike will attract `mevTheftPenaltyPerStrike` penalty
+        return violatedEpochs.length > 1 ? (violatedEpochs.length - 1) * mevTheftPenaltyPerStrike : 0;
+    }
+
+    /// @inheritdoc IPenalty
+    function calculateMissedAttestationPenalty(bytes32 _pubkeyRoot) public view override returns (uint256) {
+        return
+            IStaderOracle(staderConfig.getStaderOracle()).missedAttestationPenalty(_pubkeyRoot) *
+            missedAttestationPenaltyPerStrike;
     }
 
     /// @inheritdoc IPenalty
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view override returns (uint256) {
         return additionalPenaltyAmount[getPubkeyRoot(_pubkey)];
-    }
-
-    /// @inheritdoc IPenalty
-    function getPenaltyReversalAmount(bytes calldata _pubkey) external view override returns (uint256) {
-        return penaltyReversalAmount[getPubkeyRoot(_pubkey)];
     }
 
     /// @inheritdoc IPenalty

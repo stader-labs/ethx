@@ -27,6 +27,7 @@ contract ValidatorWithdrawalVault is
     function initialize(
         uint8 _poolId,
         address _staderConfig,
+        //TODO sanjay as we _validatorId, _nodeRecipient becomes semi-redundant here
         address payable _nodeRecipient,
         uint256 _validatorId
     ) external initializer {
@@ -96,9 +97,10 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        //TODO sanjay liquidate locked SD if operatorShare < penaltyAmount
+        uint256 userShare = userShare_prelim + _min(penaltyAmount, operatorShare);
+
+        //TODO liquidate SD if operatorShare < penaltyAmount
         operatorShare = operatorShare > penaltyAmount ? operatorShare - penaltyAmount : 0;
-        uint256 userShare = userShare_prelim + penaltyAmount;
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
@@ -151,6 +153,12 @@ contract ValidatorWithdrawalVault is
         }
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+    }
+
     // getters
 
     function getProtocolFeeBps() internal view returns (uint256) {
@@ -172,9 +180,7 @@ contract ValidatorWithdrawalVault is
         return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
     }
 
-    //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
-        staderConfig = IStaderConfig(_staderConfig);
+    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
     }
 }

@@ -39,6 +39,7 @@ contract PermissionedNodeRegistry is
 
     IStaderConfig public staderConfig;
 
+    //TODO sanjay avoid using uint256 if possible
     uint256 public override nextValidatorId;
     uint256 public override totalActiveValidatorCount;
     uint256 public VERIFIED_KEYS_BATCH_SIZE;

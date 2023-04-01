@@ -12,6 +12,10 @@ import './library/Address.sol';
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
 
+    MissedAttestationPenaltyData public missedAttestationPenaltyData;
+
+    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
+
     IStaderConfig public staderConfig;
     /// @inheritdoc IStaderOracle
     uint256 public override lastBlockNumberBalancesUpdated;
@@ -31,6 +35,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
+    mapping(bytes32 => uint16) public override missedAttestationPenalty;
+    // mapping of report index, report pageNumber with trusted node address
+    mapping(uint256 => mapping(uint256 => address)) private MissedAttestationDataByTrustedNode;
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -46,7 +53,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_nodeAddress);
-        require(!isTrustedNode[_nodeAddress], 'Node is already trusted');
+        if (isTrustedNode[_nodeAddress]) revert NodeAlreadyTrusted();
         isTrustedNode[_nodeAddress] = true;
         trustedNodesCount++;
 
@@ -56,7 +63,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_nodeAddress);
-        require(isTrustedNode[_nodeAddress], 'Node is not trusted');
+        if (!isTrustedNode[_nodeAddress]) revert NodeNotTrusted();
         isTrustedNode[_nodeAddress] = false;
         trustedNodesCount--;
 
@@ -64,8 +71,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function setUpdateFrequency(uint256 _balanceUpdateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_balanceUpdateFrequency > 0, 'Frequency is zero');
-        require(_balanceUpdateFrequency != balanceUpdateFrequency, 'Frequency is unchanged');
+        if (_balanceUpdateFrequency == 0) revert ZeroFrequency();
+        if (_balanceUpdateFrequency == balanceUpdateFrequency) revert FrequencyUnchanged();
         balanceUpdateFrequency = _balanceUpdateFrequency;
 
         emit BalanceUpdateFrequencyUpdated(_balanceUpdateFrequency);
@@ -79,17 +86,17 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         uint256 _ethxSupply
     ) external override trustedNodeOnly {
         // Check block
-        require(_block < block.number, 'Balances can not be submitted for a future block');
-        require(_block > lastBlockNumberBalancesUpdated, 'Network balances for an equal or higher block are set');
+        if (_block >= block.number) revert BalancesSubmittedForFutureBlock();
+        if (_block <= lastBlockNumberBalancesUpdated) revert NetworkBalancesSetForEqualOrHigherBlock();
         // Check balances
-        require(_stakingEth <= _totalEth, 'Invalid network balances');
+        if (_stakingEth > _totalEth) revert InvalidNetworkBalances();
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply)
         );
         bytes32 submissionCountKey = keccak256(abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply));
         // Check & update node submission status
-        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
+        if (nodeSubmissionKeys[nodeSubmissionKey]) revert DuplicateSubmissionFromNode();
         nodeSubmissionKeys[nodeSubmissionKey] = true;
         submissionCountKeys[submissionCountKey]++;
         uint8 submissionCount = submissionCountKeys[submissionCountKey];
@@ -113,18 +120,15 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @notice submits merkle root and handles reward
-    /// sends user rewards to SSP
+    /// sends user rewards to Stader Stake Pool Manager
     /// sends protocol rewards to stader treasury
     /// updates operator reward balances on socializing pool
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
     /// @dev _rewardsData.index should not be zero
     function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
-        require(
-            _rewardsData.lastUpdatedBlockNumber < block.number,
-            'Rewards data can not be submitted for a future block'
-        );
+        if (_rewardsData.lastUpdatedBlockNumber < block.number) revert DataSubmittedForFutureBlock();
 
-        require(_rewardsData.index > rewardsData.index, 'Merkle root index is not higher than the current one');
+        if (_rewardsData.index <= rewardsData.index) revert InvalidMerkleRootIndex();
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
@@ -172,12 +176,76 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
+    /**
+     * @notice store the missed attestation penalty strike on validator
+     * @dev _missedAttestationPenaltyData.index should not be zero
+     * @param _missedAttestationPenaltyData missed attestation penalty data
+     */
+    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _missedAttestationPenaltyData)
+        external
+        trustedNodeOnly
+    {
+        if (_missedAttestationPenaltyData.lastUpdatedBlockNumber >= block.number) revert DataSubmittedForFutureBlock();
+
+        if (
+            _missedAttestationPenaltyData.keyCount * VALIDATOR_PUBKEY_LENGTH ==
+            _missedAttestationPenaltyData.pubkeys.length
+        ) revert InvalidData();
+
+        if (
+            MissedAttestationDataByTrustedNode[_missedAttestationPenaltyData.index][
+                _missedAttestationPenaltyData.pageNumber
+            ] != address(0)
+        ) revert DataAlreadyReported();
+
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _missedAttestationPenaltyData.index,
+                _missedAttestationPenaltyData.pageNumber,
+                _missedAttestationPenaltyData.pubkeys
+            )
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _missedAttestationPenaltyData.index,
+                _missedAttestationPenaltyData.pageNumber,
+                _missedAttestationPenaltyData.pubkeys
+            )
+        );
+
+        MissedAttestationDataByTrustedNode[_missedAttestationPenaltyData.index][
+            _missedAttestationPenaltyData.pageNumber
+        ] = msg.sender;
+        uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
+
+        // Emit missed attestation penalty submitted event
+        emit MissedAttestationPenaltySubmitted(
+            msg.sender,
+            _missedAttestationPenaltyData.index,
+            _missedAttestationPenaltyData.pageNumber,
+            block.number
+        );
+
+        if ((submissionCount == trustedNodesCount / 2 + 1)) {
+            uint16 keyCount = _missedAttestationPenaltyData.keyCount;
+            for (uint256 i = 0; i < keyCount; i++) {
+                bytes32 pubkeyRoot = getPubkeyRoot(
+                    _missedAttestationPenaltyData.pubkeys[i * VALIDATOR_PUBKEY_LENGTH:(i + 1) * VALIDATOR_PUBKEY_LENGTH]
+                );
+                missedAttestationPenalty[pubkeyRoot]++;
+            }
+            emit MissedAttestationPenaltyUpdated(_missedAttestationPenaltyData.index, block.number);
+        }
+    }
+
     function _getSubmissionCount(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
         internal
         returns (uint8 _submissionCount)
     {
         // Check & update node submission status
-        require(!nodeSubmissionKeys[_nodeSubmissionKey], 'Duplicate submission from node');
+        if (nodeSubmissionKeys[_nodeSubmissionKey]) revert DuplicateSubmissionFromNode();
         nodeSubmissionKeys[_nodeSubmissionKey] = true;
         submissionCountKeys[_submissionCountKey]++;
         _submissionCount = submissionCountKeys[_submissionCountKey];
@@ -187,8 +255,15 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return rewardsData.index + 1; // rewardsData.index is the last updated index
     }
 
+    function getPubkeyRoot(bytes calldata _pubkey) public pure returns (bytes32) {
+        if (_pubkey.length != 48) revert InvalidPubkeyLength();
+
+        // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
+        return sha256(abi.encodePacked(_pubkey, bytes16(0)));
+    }
+
     modifier trustedNodeOnly() {
-        require(isTrustedNode[msg.sender], 'Not a trusted node');
+        if (!isTrustedNode[msg.sender]) revert NotATrustedNode();
         _;
     }
 }

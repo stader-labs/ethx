@@ -24,7 +24,36 @@ struct RewardsData {
     uint256 operatorSDRewards;
 }
 
+struct MissedAttestationPenaltyData {
+    /// @notice count of validator missing attestation penalty
+    uint16 keyCount;
+    /// @notice The block number when the missed attestation penalty data was last updated
+    uint256 lastUpdatedBlockNumber;
+    /// @notice The index of missed attestation penalty data
+    uint256 index;
+    /// @notice page number of the the data
+    uint256 pageNumber;
+    /// @bytes missed attestation validator's concatenated pubkey
+    bytes pubkeys;
+}
+
 interface IStaderOracle {
+    //Error
+    error NodeAlreadyTrusted();
+    error NodeNotTrusted();
+    error ZeroFrequency();
+    error FrequencyUnchanged();
+    error BalancesSubmittedForFutureBlock();
+    error NetworkBalancesSetForEqualOrHigherBlock();
+    error InvalidNetworkBalances();
+    error DuplicateSubmissionFromNode();
+    error DataSubmittedForFutureBlock();
+    error InvalidMerkleRootIndex();
+    error InvalidData();
+    error DataAlreadyReported();
+    error InvalidPubkeyLength();
+    error NotATrustedNode();
+
     // Events
     event BalancesSubmitted(
         address indexed from,
@@ -40,6 +69,8 @@ interface IStaderOracle {
     event BalanceUpdateFrequencyUpdated(uint256 balanceUpdateFrequency);
     event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 block);
     event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 block);
+    event MissedAttestationPenaltySubmitted(address indexed node, uint256 index, uint256 pageNumber, uint256 block);
+    event MissedAttestationPenaltyUpdated(uint256 index, uint256 block);
 
     // The block number which balances are current for
     function lastBlockNumberBalancesUpdated() external view returns (uint256);
@@ -65,6 +96,8 @@ interface IStaderOracle {
     function trustedNodesCount() external view returns (uint256);
 
     function isTrustedNode(address) external view returns (bool);
+
+    function missedAttestationPenalty(bytes32 pubkey) external view returns (uint16);
 
     function addTrustedNode(address _nodeAddress) external;
 
