@@ -14,19 +14,11 @@ interface IPermissionlessNodeRegistry {
     error NoChangeInState();
 
     //Events
-    event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
-    event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
-    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorMarkedReadyToDeposit(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorMarkedAsFrontRunned(bytes indexed _frontRunnedPubkey, uint256 _validatorId);
-    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed invalidSignaturePubkey, uint256 _validatorId);
 
-    event UpdatedInputKeyCountLimit(uint16 _inputKeyCountLimit);
-    event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
-    event ValidatorDepositBlockSet(uint256 _validatorId, uint256 _depositBlock);
+    event ValidatorMarkedReadyToDeposit(bytes indexed _pubkey, uint256 _validatorId);
     event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
-    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
     event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 block);
+    event TransferredCollateralToPool(uint256 _amount);
 
     //Getters
 
@@ -50,7 +42,7 @@ interface IPermissionlessNodeRegistry {
 
     function inputKeyCountLimit() external view returns (uint16);
 
-    function maxKeyPerOperator() external view returns (uint64);
+    function maxNonTerminalKeyPerOperator() external view returns (uint64);
 
     function PRE_DEPOSIT() external view returns (uint256);
 
@@ -109,7 +101,7 @@ interface IPermissionlessNodeRegistry {
 
     function updateInputKeyCountLimit(uint16 _batchKeyDepositLimit) external;
 
-    function updateMaxKeyPerOperator(uint64 _keyDepositLimit) external;
+    function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external;
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 

@@ -96,46 +96,6 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    // TODO sanjay implement this pagination at pool level
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
-        public
-        view
-        override
-        returns (Validator[] memory)
-    {
-        // pageNumber 0 fails
-        uint256 startIndex = (pageNumber - 1) * pageSize;
-        uint256 endIndex = startIndex + pageSize - 1;
-        Validator[] memory allValidators = new Validator[](pageSize);
-
-        uint256 index;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            Validator[] memory validators = IStaderPoolBase(pools[i].poolAddress).getAllActiveValidators();
-            uint256 validatorsCount = validators.length;
-            uint256 fromIndex = startIndex > index ? startIndex - index : 0;
-            uint256 toIndex = endIndex < index + validatorsCount - 1 ? endIndex - index + 1 : validatorsCount;
-
-            if (startIndex <= index + validatorsCount - 1 && endIndex >= index) {
-                for (uint256 j = fromIndex; j < toIndex; j++) {
-                    if (startIndex + j < allValidators.length) {
-                        allValidators[startIndex + j] = validators[j];
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            index += validatorsCount;
-
-            if (index > endIndex) {
-                break;
-            }
-        }
-
-        return allValidators;
-    }
-
-    /// @inheritdoc IPoolFactory
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;

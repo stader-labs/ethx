@@ -38,10 +38,24 @@ interface INodeRegistry {
     error InvalidLengthOfPubkey();
     error InvalidLengthOfSignature();
     error MisMatchingInputKeysSize();
+    error PageNumberIsZero();
     error UNEXPECTED_STATUS();
     error PubkeyAlreadyExist();
     error PubkeyDoesNotExist();
     error NotEnoughSDCollateral();
+
+    //Events
+    event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
+    event AddedValidatorKey(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
+    event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
+    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
+    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
+    event UpdatedValidatorDepositBlock(uint256 _validatorId, uint256 _depositBlock);
+    event UpdatedMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator);
+    event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
+    event UpdatedStaderConfig(address _staderConfig);
+    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+    event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
 
     // return validator struct for a validator Id
     function validatorRegistry(uint256)
@@ -62,7 +76,7 @@ interface INodeRegistry {
     // Returns the block of the last time the operator changed the opt-in status for socializing pool
     function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
-    function getAllActiveValidators() external view returns (Validator[] memory);
+    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
 

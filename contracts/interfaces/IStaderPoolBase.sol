@@ -17,6 +17,8 @@ interface IStaderPoolBase {
     event OperatorFeeUpdated(uint256 _operatorFee);
     event ProtocolFeeUpdated(uint256 _protocolFee);
     event ReceivedCollateralETH(uint256 _amount);
+    event UpdatedStaderConfig(address _staderConfig);
+    event TransferredETHToSSPMForDefectiveKeys(uint256 _amount);
 
     // Setters
 
@@ -34,7 +36,7 @@ interface IStaderPoolBase {
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
 
-    function getAllActiveValidators() external view returns (Validator[] memory);
+    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);
 
     function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,

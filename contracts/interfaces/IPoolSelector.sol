@@ -5,9 +5,15 @@ interface IPoolSelector {
     // Error
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
-    error InvalidSumOfPoolTargets();
+    error InvalidSumOfPoolWeights();
     error NotEnoughInitializedValidators();
     error InputBatchLimitIsIdenticalToCurrent();
+
+    //Events
+
+    event UpdatedPoolWeight(uint8 indexed poolId, uint256 poolWeight);
+    event UpdatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize);
+    event UpdatedStaderConfig(address _staderConfig);
 
     // Getters
     function poolIdForExcessDeposit() external view returns (uint8); // returns the ID of the pool with excess supply

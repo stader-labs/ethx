@@ -11,23 +11,11 @@ interface IPermissionedNodeRegistry {
 
     //Events
     event OperatorWhitelisted(address _permissionedNO);
-
-    event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
-    event AddedValidatorKey(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
-    event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
     event OperatorDeactivated(uint16 _operatorID);
     event OperatorActivated(uint16 _operatorID);
-    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
-    event UpdatedValidatorDepositBlock(uint256 _validatorId, uint256 _depositBlock);
     event MarkedValidatorStatusAsPreDeposit(bytes indexed _pubkey);
-    event UpdatedMaxNonTerminalKeyPerOperator(uint64 _keyDepositLimit);
-    event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
     event UpdatedVerifiedKeyBatchSize(uint256 _verifiedKeysBatchSize);
-    event UpdatedStaderConfig(address _staderConfig);
-    event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
-    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
-    event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
+    event UpdatedQueuedValidatorIndex(uint16 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
 
     // Getters
 
@@ -37,7 +25,7 @@ interface IPermissionedNodeRegistry {
 
     function nextValidatorId() external view returns (uint256);
 
-    function maxKeyPerOperator() external view returns (uint64);
+    function maxNonTerminalKeyPerOperator() external view returns (uint64);
 
     function inputKeyCountLimit() external view returns (uint16);
 
@@ -116,7 +104,7 @@ interface IPermissionedNodeRegistry {
 
     function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external;
 
-    function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator) external;
+    function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external;
 
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external;
 

@@ -35,7 +35,7 @@ contract PermissionedNodeRegistry is
 
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
-    uint64 public override maxKeyPerOperator;
+    uint64 public override maxNonTerminalKeyPerOperator;
 
     IStaderConfig public staderConfig;
 
@@ -74,7 +74,7 @@ contract PermissionedNodeRegistry is
         nextValidatorId = 1;
         operatorIdForExcessDeposit = 1;
         inputKeyCountLimit = 100;
-        maxKeyPerOperator = 1000;
+        maxNonTerminalKeyPerOperator = 1000;
         VERIFIED_KEYS_BATCH_SIZE = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
@@ -364,15 +364,15 @@ contract PermissionedNodeRegistry is
     /**
      * @notice update the maximum non terminal key limit per operator
      * @dev only admin can call
-     * @param _maxKeyPerOperator updated maximum non withdrawn key per operator limit
+     * @param _maxNonTerminalKeyPerOperator updated maximum non terminal key per operator limit
      */
-    function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator)
+    function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator)
         external
         override
         onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
     {
-        maxKeyPerOperator = _maxKeyPerOperator;
-        emit UpdatedMaxNonTerminalKeyPerOperator(maxKeyPerOperator);
+        maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
+        emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
     }
 
     /**
@@ -526,18 +526,36 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice returns the validator for which protocol don't have money on execution layer
-     * @dev loop over all validator to filter out the initialized, front run and withdrawn and return the rest
+     * @notice Returns an array of active validators
+     *
+     * @param pageNumber The page number of the results to fetch (starting from 1).
+     * @param pageSize The maximum number of items per page.
+     *
+     * @return An array of `Validator` objects representing the active validators.
      */
-    function getAllActiveValidators() public view override returns (Validator[] memory) {
-        Validator[] memory validators = new Validator[](totalActiveValidatorCount);
+    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+        public
+        view
+        override
+        returns (Validator[] memory)
+    {
+        if (pageNumber == 0) revert PageNumberIsZero();
+        uint256 startIndex = (pageNumber - 1) * pageSize + 1;
+        uint256 endIndex = startIndex + pageSize;
+        endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
+        Validator[] memory validators = new Validator[](pageSize);
         uint256 validatorCount = 0;
-        for (uint256 i = 1; i < nextValidatorId; i++) {
+        for (uint256 i = startIndex; i < endIndex; i++) {
             if (_isActiveValidator(i)) {
                 validators[validatorCount] = validatorRegistry[i];
                 validatorCount++;
             }
         }
+        // If the result array isn't full, resize it to remove the unused elements
+        assembly {
+            mstore(validators, validatorCount)
+        }
+
         return validators;
     }
 
@@ -611,7 +629,7 @@ contract PermissionedNodeRegistry is
 
         totalKeys = getOperatorTotalKeys(_operatorId);
         uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
-        if ((totalNonTerminalKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
+        if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) revert maxKeyLimitReached();
 
         //check if operator has enough SD collateral for adding `keyCount` keys
         //TODO sanjay put a comment saying phase1 limit will be 0 for permissioned NOs?

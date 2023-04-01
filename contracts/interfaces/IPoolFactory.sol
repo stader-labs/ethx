@@ -26,16 +26,6 @@ interface IPoolFactory {
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
 
-    /**
-     * @notice Returns an array of active validators from all the pools.
-     *
-     * @param pageNumber The page number of the results to fetch (starting from 1).
-     * @param pageSize The maximum number of items per page.
-     *
-     * @return An array of `Validator` objects representing the active validators.
-     */
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);
-
     function retrieveValidator(bytes calldata _pubkey) external view returns (Validator memory);
 
     function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) external view returns (Validator memory);
