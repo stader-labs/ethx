@@ -7,13 +7,13 @@ interface IPenalty {
     error MEVTheftPenaltyPerStrikeUnchanged();
     error InvalidPubkeyLength();
     error MissedAttestationPenaltyPerStrikeUnchanged();
-    error TotalPenaltyThresholdUnchanged();
+    error ValidatorExitPenaltyThresholdUnchanged();
     // Events
     event UpdatedAdditionalPenaltyAmount(bytes indexed pubkey, uint256 amount);
     event UpdatedMEVTheftPenaltyPerStrike(uint256 mevTheftPenalty);
     event UpdatedPenaltyOracleAddress(address penaltyOracleAddress);
     event UpdatedMissedAttestationPenaltyPerStrike(uint256 missedAttestationPenalty);
-    event UpdatedTotalPenaltyThreshold(uint256 totalPenaltyThreshold);
+    event UpdatedValidatorExitPenaltyThreshold(uint256 totalPenaltyThreshold);
     event ExitValidator(bytes pubkey);
 
     // returns the address of the Rated.network penalty oracle
@@ -26,9 +26,15 @@ interface IPenalty {
     function missedAttestationPenaltyPerStrike() external view returns (uint256);
 
     // returns the totalPenalty threshold after which validator is force exited
-    function totalPenaltyThreshold() external view returns (uint256);
+    function validatorExitPenaltyThreshold() external view returns (uint256);
 
     function STADER_DAO() external view returns (bytes32);
+
+    // returns the additional penalty amount of a validator given its pubkey root
+    function additionalPenaltyAmount(bytes32 _pubkeyRoot) external view returns (uint256);
+
+    // returns the total penalty amount of a validator given its pubkey
+    function totalPenaltyAmount(bytes calldata _pubkey) external view returns (uint256);
 
     // Setters
 
@@ -43,7 +49,7 @@ interface IPenalty {
     function updateMissedAttestationPenaltyPerStrike(uint256 _missedAttestationPenaltyPerStrike) external;
 
     // update the value of totalPenaltyThreshold
-    function updateTotalPenaltyThreshold(uint256 _totalPenaltyThreshold) external;
+    function updateValidatorExitPenaltyThreshold(uint256 _validatorExitPenaltyThreshold) external;
 
     /**
      * @notice Sets the additional penalty amount given by the DAO for a given validator public key.

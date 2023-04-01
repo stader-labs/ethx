@@ -14,10 +14,13 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     address public override ratedOracleAddress;
     uint256 public override mevTheftPenaltyPerStrike;
     uint256 public override missedAttestationPenaltyPerStrike;
-    uint256 public override totalPenaltyThreshold;
+    uint256 public override validatorExitPenaltyThreshold;
     bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
 
-    mapping(bytes32 => uint256) public additionalPenaltyAmount;
+    /// @inheritdoc IPenalty
+    mapping(bytes32 => uint256) public override additionalPenaltyAmount;
+    /// @inheritdoc IPenalty
+    mapping(bytes => uint256) public override totalPenaltyAmount;
 
     function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -28,7 +31,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         ratedOracleAddress = _ratedOracleAddress;
         mevTheftPenaltyPerStrike = 1 ether;
         missedAttestationPenaltyPerStrike = 0.2 ether;
-        totalPenaltyThreshold = 2.5 ether;
+        validatorExitPenaltyThreshold = 2.5 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
@@ -74,16 +77,17 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPenalty
-    function updateTotalPenaltyThreshold(uint256 _totalPenaltyThreshold)
+    function updateValidatorExitPenaltyThreshold(uint256 _validatorExitPenaltyThreshold)
         external
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (totalPenaltyThreshold == _totalPenaltyThreshold) revert TotalPenaltyThresholdUnchanged();
+        if (validatorExitPenaltyThreshold == _validatorExitPenaltyThreshold)
+            revert ValidatorExitPenaltyThresholdUnchanged();
 
-        totalPenaltyThreshold = _totalPenaltyThreshold;
+        validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
 
-        emit UpdatedTotalPenaltyThreshold(_totalPenaltyThreshold);
+        emit UpdatedValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
     }
 
     /// @inheritdoc IPenalty
@@ -105,8 +109,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         // Compute the total penalty for the given validator public key,
         // taking into account additional penalties and penalty reversals from the DAO.
         uint256 totalPenalty = _mevTheftPenalty + _missedAttestationPenalty + additionalPenaltyAmount[pubkeyRoot];
-
-        if (totalPenalty > totalPenaltyThreshold) {
+        totalPenaltyAmount[_pubkey] = totalPenalty;
+        if (totalPenalty > validatorExitPenaltyThreshold) {
             emit ExitValidator(_pubkey);
         }
         return totalPenalty;
@@ -117,6 +121,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         // Retrieve the epochs in which the validator violated the fee recipient change rule.
         uint256[] memory violatedEpochs = IRatedV1(ratedOracleAddress).getViolatedEpochForValidator(_pubkeyRoot);
 
+        // first strike is not penalized, after that each strike will attract `mevTheftPenaltyPerStrike` penalty
         return violatedEpochs.length > 1 ? (violatedEpochs.length - 1) * mevTheftPenaltyPerStrike : 0;
     }
 

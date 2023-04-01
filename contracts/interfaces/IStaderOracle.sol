@@ -39,7 +39,20 @@ struct MissedAttestationPenaltyData {
 
 interface IStaderOracle {
     //Error
+    error NodeAlreadyTrusted();
+    error NodeNotTrusted();
+    error ZeroFrequency();
+    error FrequencyUnchanged();
+    error BalancesSubmittedForFutureBlock();
+    error NetworkBalancesSetForEqualOrHigherBlock();
+    error InvalidNetworkBalances();
+    error DuplicateSubmissionFromNode();
+    error DataSubmittedForFutureBlock();
+    error InvalidMerkleRootIndex();
+    error InvalidData();
+    error DataAlreadyReported();
     error InvalidPubkeyLength();
+    error NotATrustedNode();
 
     // Events
     event BalancesSubmitted(
