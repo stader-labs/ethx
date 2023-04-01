@@ -273,7 +273,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             depositSignature,
             depositDataRoot
         );
-        IPermissionlessNodeRegistry(_nodeRegistryAddress).updateDepositStatusAndTime(_validatorId);
+        IPermissionlessNodeRegistry(_nodeRegistryAddress).updateDepositStatusAndBlock(_validatorId);
         emit ValidatorDepositedOnBeaconChain(_validatorId, pubkey);
     }
 

@@ -3,6 +3,27 @@ pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
+/// @title RewardsData
+/// @notice This struct holds rewards merkleRoot and rewards split
+struct RewardsData {
+    /// @notice The block number when the rewards data was last updated
+    uint256 lastUpdatedBlockNumber;
+    /// @notice The index of merkle tree or rewards cycle
+    uint256 index;
+    /// @notice The merkle root hash
+    bytes32 merkleRoot;
+    /// @notice pool id of operators
+    uint8 poolId;
+    /// @notice operator ETH rewards for index cycle
+    uint256 operatorETHRewards;
+    /// @notice user ETH rewards for index cycle
+    uint256 userETHRewards;
+    /// @notice protocol ETH rewards for index cycle
+    uint256 protocolETHRewards;
+    /// @notice operator SD rewards for index cycle
+    uint256 operatorSDRewards;
+}
+
 interface IStaderOracle {
     // Events
     event BalancesSubmitted(
@@ -17,6 +38,8 @@ interface IStaderOracle {
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
     event BalanceUpdateFrequencyUpdated(uint256 balanceUpdateFrequency);
+    event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 block);
+    event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 block);
 
     // The block number which balances are current for
     function lastBlockNumberBalancesUpdated() external view returns (uint256);
@@ -29,6 +52,12 @@ interface IStaderOracle {
 
     // The current network total ETHX supply
     function totalETHXSupply() external view returns (uint256);
+
+    // The root of the merkle tree containing the socializing rewards of operator
+    function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
+
+    // The last updated merkle tree index
+    function getCurrentRewardsIndex() external view returns (uint256);
 
     // The frequency in blocks at which network balances should be submitted by trusted nodes
     function balanceUpdateFrequency() external view returns (uint256);
@@ -58,18 +87,12 @@ interface IStaderOracle {
     ) external;
 
     /**
-    @notice Submits the given ValidatorStatus for the public key at a specified block number.
-    @param _pubkey The public key of the validator the status belong.
-    @param _status The ValidatorStatus corresponding to the public key.
+    @notice Submits the root of the merkle tree containing the socializing rewards.
+    sends user ETH Rewrds to SSPM
+    sends protocol ETH Rewards to stader treasury
+    @param _rewardsData contains rewards merkleRoot and rewards split
     */
-    function submitStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
-
-    /**
-    @notice Submits the whether the validator has a bad withdrawal.
-    @param _pubkey The public key of the validator
-    @param _isBadWithdrawal Whether the validator has a bad withdrawal
-    */
-    function submitValidatorWithdrawalValidity(bytes calldata _pubkey, bool _isBadWithdrawal) external;
+    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }

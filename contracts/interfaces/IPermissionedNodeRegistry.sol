@@ -19,7 +19,7 @@ interface IPermissionedNodeRegistry {
     event OperatorDeactivated(uint16 _operatorID);
     event OperatorActivated(uint16 _operatorID);
     event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
-    event UpdatedValidatorDepositTime(uint256 _validatorId, uint256 _depositTime);
+    event UpdatedValidatorDepositBlock(uint256 _validatorId, uint256 _depositBlock);
     event MarkedValidatorStatusAsPreDeposit(bytes indexed _pubkey);
     event UpdatedMaxNonTerminalKeyPerOperator(uint64 _keyDepositLimit);
     event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
@@ -112,7 +112,7 @@ interface IPermissionedNodeRegistry {
 
     function updateQueuedValidatorIndex(uint16 _operatorId, uint256 _nextQueuedValidatorIndex) external;
 
-    function updateDepositStatusAndTime(uint256 _validatorId) external;
+    function updateDepositStatusAndBlock(uint256 _validatorId) external;
 
     function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external;
 

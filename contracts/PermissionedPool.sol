@@ -142,7 +142,7 @@ contract PermissionedPool is
                 depositSignature,
                 depositDataRoot
             );
-            IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndTime(validatorId);
+            IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
             emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey[i]);
         }
     }

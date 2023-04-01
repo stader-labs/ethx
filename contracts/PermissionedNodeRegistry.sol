@@ -62,7 +62,7 @@ contract PermissionedNodeRegistry is
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     //mapping of operator ID and nextQueuedValidatorIndex
     mapping(uint16 => uint256) public override nextQueuedValidatorIndexByOperatorId;
-    mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
+    mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -272,7 +272,7 @@ contract PermissionedNodeRegistry is
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
             Validator memory validator = validatorRegistry[validatorId];
             validator.status = ValidatorStatus.WITHDRAWN;
-            validator.withdrawnTime = block.timestamp;
+            validator.withdrawnBlock = block.number;
             IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
             uint16 operatorId = uint16(validator.operatorId);
             if (!operatorStructById[operatorId].optedForSocializingPool) {
@@ -327,10 +327,10 @@ contract PermissionedNodeRegistry is
      * @dev only permissioned pool can call
      * @param _validatorId ID of the validator
      */
-    function updateDepositStatusAndTime(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
-        validatorRegistry[_validatorId].depositTime = block.timestamp;
+    function updateDepositStatusAndBlock(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
+        validatorRegistry[_validatorId].depositBlock = block.number;
         _markValidatorDeposited(_validatorId);
-        emit UpdatedValidatorDepositTime(_validatorId, block.timestamp);
+        emit UpdatedValidatorDepositBlock(_validatorId, block.number);
     }
 
     /**
@@ -409,8 +409,8 @@ contract PermissionedNodeRegistry is
     }
 
     // @inheritdoc INodeRegistry
-    function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256) {
-        return socializingPoolStateChangeTimestamp[_operatorId];
+    function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256) {
+        return socializingPoolStateChangeBlock[_operatorId];
     }
 
     // @inheritdoc INodeRegistry
@@ -562,7 +562,7 @@ contract PermissionedNodeRegistry is
     function _onboardOperator(string calldata _operatorName, address payable _operatorRewardAddress) internal {
         operatorStructById[nextOperatorId] = Operator(true, true, _operatorName, _operatorRewardAddress, msg.sender);
         operatorIDByAddress[msg.sender] = nextOperatorId;
-        socializingPoolStateChangeTimestamp[nextOperatorId] = block.timestamp;
+        socializingPoolStateChangeBlock[nextOperatorId] = block.number;
         nextOperatorId++;
         totalActiveOperatorCount++;
         emit OnboardedOperator(msg.sender, nextOperatorId - 1);

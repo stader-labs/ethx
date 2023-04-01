@@ -15,6 +15,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     //maximum length of operator name string
     bytes32 public constant OPERATOR_MAX_NAME_LENGTH = keccak256('OPERATOR_MAX_NAME_LENGTH');
 
+    bytes32 public constant SocializingPoolCycleDuration = keccak256('SocializingPoolCycleDuration'); // set it to 28 * 7200
     bytes32 public constant RewardsThreshold = keccak256('RewardsThreshold');
     bytes32 public constant MinDepositAmount = keccak256('MinDepositAmount');
     bytes32 public constant MaxDepositAmount = keccak256('MaxDepositAmount');
@@ -76,6 +77,13 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     //Variables Setters
+
+    function updateSocializingPoolCycleDuration(uint256 _socializingPoolCycleDuration)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setVariable(SocializingPoolCycleDuration, _socializingPoolCycleDuration);
+    }
 
     function updateRewardsThreshold(uint256 _rewardsThreshold) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setVariable(RewardsThreshold, _rewardsThreshold);
@@ -239,6 +247,14 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     //Variables Getters
+
+    function getSocializingPoolCycleDuration() public view override returns (uint256) {
+        return variablesMap[SocializingPoolCycleDuration];
+    }
+
+    function getSocializingPoolCoolingPeriod() external view override returns (uint256) {
+        return 2 * getSocializingPoolCycleDuration();
+    }
 
     function getRewardsThreshold() external view override returns (uint256) {
         return variablesMap[RewardsThreshold];
