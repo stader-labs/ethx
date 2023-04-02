@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolSelector.sol';
 import './interfaces/IPoolFactory.sol';
@@ -42,7 +43,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256 _permissionlessTarget,
         uint256 _permissionedTarget
     ) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) revert InvalidTargetWeight();
 
         __AccessControl_init_unchained();
@@ -147,7 +148,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

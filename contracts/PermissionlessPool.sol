@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IStaderConfig.sol';
@@ -42,7 +42,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
@@ -64,25 +64,19 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit ReceivedCollateralETH(msg.value);
     }
 
-    //TODO sanjay merge setProtocolFee and setOperatorFee function
     /// @inheritdoc IStaderPoolBase
-    function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        if (_protocolFee > TOTAL_FEE) revert ProtocolFeeMoreThanTOTAL_FEE();
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee)
+        external
+        onlyRole(PERMISSIONLESS_POOL_ADMIN)
+    {
+        if (_protocolFee + _operatorFee > TOTAL_FEE) revert CommissionFeesMoreThanTOTAL_FEE();
         if (protocolFee == _protocolFee) revert ProtocolFeeUnchanged();
-
-        protocolFee = _protocolFee;
-
-        emit ProtocolFeeUpdated(_protocolFee);
-    }
-
-    /// @inheritdoc IStaderPoolBase
-    function setOperatorFee(uint256 _operatorFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        if (_operatorFee > TOTAL_FEE) revert OperatorFeeMoreThanTOTAL_FEE();
         if (operatorFee == _operatorFee) revert OperatorFeeUnchanged();
 
+        protocolFee = _protocolFee;
         operatorFee = _operatorFee;
 
-        emit OperatorFeeUpdated(_operatorFee);
+        emit UpdatedCommissionFees(_protocolFee, _operatorFee);
     }
 
     /**
@@ -228,7 +222,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

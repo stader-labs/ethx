@@ -7,7 +7,7 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
@@ -49,7 +49,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
 
@@ -61,7 +61,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_nodeAddress);
+        AddressLib.checkNonZeroAddress(_nodeAddress);
         if (isTrustedNode[_nodeAddress]) revert NodeAlreadyTrusted();
         isTrustedNode[_nodeAddress] = true;
         trustedNodesCount++;
@@ -71,7 +71,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_nodeAddress);
+        AddressLib.checkNonZeroAddress(_nodeAddress);
         if (!isTrustedNode[_nodeAddress]) revert NodeNotTrusted();
         isTrustedNode[_nodeAddress] = false;
         trustedNodesCount--;

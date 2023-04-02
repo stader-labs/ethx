@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './library/ValidatorStatus.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IVaultFactory.sol';
@@ -71,7 +72,7 @@ contract PermissionlessNodeRegistry is
      * @dev Stader Staking Pool validator registry is initialized with following variables
      */
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -97,7 +98,7 @@ contract PermissionlessNodeRegistry is
         address payable _operatorRewardAddress
     ) external override whenNotPaused returns (address feeRecipientAddress) {
         _onlyValidName(_operatorName);
-        Address.checkNonZeroAddress(_operatorRewardAddress);
+        AddressLib.checkNonZeroAddress(_operatorRewardAddress);
         //TODO sanjay check for operator, should not be in other pool
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
@@ -335,7 +336,7 @@ contract PermissionlessNodeRegistry is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -348,7 +349,7 @@ contract PermissionlessNodeRegistry is
      */
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
         _onlyValidName(_operatorName);
-        Address.checkNonZeroAddress(_rewardAddress);
+        AddressLib.checkNonZeroAddress(_rewardAddress);
         _onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
         operatorStructById[operatorId].operatorName = _operatorName;

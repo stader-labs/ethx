@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './interfaces/IPenalty.sol';
 import './interfaces/IRatedV1.sol';
 import './interfaces/IStaderOracle.sol';
@@ -28,8 +29,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_ratedOracleAddress);
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_ratedOracleAddress);
         __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
@@ -97,7 +98,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_ratedOracleAddress);
+        AddressLib.checkNonZeroAddress(_ratedOracleAddress);
 
         ratedOracleAddress = _ratedOracleAddress;
 

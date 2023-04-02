@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './library/ValidatorStatus.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IVaultFactory.sol';
@@ -70,7 +71,7 @@ contract PermissionedNodeRegistry is
     }
 
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
@@ -109,7 +110,7 @@ contract PermissionedNodeRegistry is
         returns (address feeRecipientAddress)
     {
         _onlyValidName(_operatorName);
-        Address.checkNonZeroAddress(_operatorRewardAddress);
+        AddressLib.checkNonZeroAddress(_operatorRewardAddress);
         if (!permissionList[msg.sender]) revert NotAPermissionedNodeOperator();
 
         //TODO sanjay check for operator, should not be in other pool
@@ -357,7 +358,7 @@ contract PermissionedNodeRegistry is
      */
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
         _onlyValidName(_operatorName);
-        Address.checkNonZeroAddress(_rewardAddress);
+        AddressLib.checkNonZeroAddress(_rewardAddress);
         _onlyActiveOperator(msg.sender);
         uint16 operatorId = operatorIDByAddress[msg.sender];
         operatorStructById[operatorId].operatorName = _operatorName;
@@ -408,7 +409,7 @@ contract PermissionedNodeRegistry is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/INodeRegistry.sol';
@@ -18,7 +19,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     function initialize(address _admin) external initializer {
-        Address.checkNonZeroAddress(_admin);
+        AddressLib.checkNonZeroAddress(_admin);
         __AccessControl_init_unchained();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -37,7 +38,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         if (bytes(_poolName).length == 0) revert EmptyString();
-        Address.checkNonZeroAddress(_poolAddress);
+        AddressLib.checkNonZeroAddress(_poolAddress);
 
         pools[poolCount + 1] = Pool({poolName: _poolName, poolAddress: _poolAddress});
         poolCount++;
@@ -57,7 +58,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         validPoolId(_poolId)
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        Address.checkNonZeroAddress(_newPoolAddress);
+        AddressLib.checkNonZeroAddress(_newPoolAddress);
 
         pools[_poolId].poolAddress = _newPoolAddress;
 

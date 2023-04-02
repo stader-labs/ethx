@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -36,8 +36,8 @@ contract ValidatorWithdrawalVault is
         address payable _nodeRecipient,
         uint256 _validatorId
     ) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_nodeRecipient);
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_nodeRecipient);
 
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
@@ -116,7 +116,7 @@ contract ValidatorWithdrawalVault is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

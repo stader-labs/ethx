@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './interfaces/IStaderConfig.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
@@ -29,8 +30,8 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         address payable _nodeRecipient,
         uint8 _poolId
     ) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_nodeRecipient);
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_nodeRecipient);
 
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -113,7 +114,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

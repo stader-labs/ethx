@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 import './ETHx.sol';
 import './interfaces/IStaderConfig.sol';
@@ -45,7 +45,7 @@ contract StaderStakePoolsManager is
      * @param _staderConfig config contract
      */
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -101,7 +101,7 @@ contract StaderStakePoolsManager is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

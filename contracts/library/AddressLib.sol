@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-library Address {
+library AddressLib {
     error ZeroAddress();
+    error InvalidPubkeyLength();
 
     /// @notice zero address check modifier
     function checkNonZeroAddress(address _address) internal pure {
