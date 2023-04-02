@@ -3,9 +3,6 @@ pragma solidity ^0.8.16;
 
 import './library/Address.sol';
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-
 import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPoolFactory.sol';
@@ -13,12 +10,17 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/IPenalty.sol';
 import './interfaces/INodeRegistry.sol';
 
+import '@openzeppelin/contracts/utils/math/Math.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+
 contract ValidatorWithdrawalVault is
     IValidatorWithdrawalVault,
     Initializable,
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    using Math for uint256;
     uint8 public poolId;
     IStaderConfig public staderConfig;
     address payable public nodeRecipient;
@@ -97,10 +99,10 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        uint256 userShare = userShare_prelim + _min(penaltyAmount, operatorShare);
+        uint256 userShare = userShare_prelim + Math.min(penaltyAmount, operatorShare);
 
         //TODO liquidate SD if operatorShare < penaltyAmount
-        operatorShare = operatorShare > penaltyAmount ? operatorShare - penaltyAmount : 0;
+        operatorShare = operatorShare - Math.min(penaltyAmount, operatorShare);
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
@@ -178,9 +180,5 @@ contract ValidatorWithdrawalVault is
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (, bytes memory pubkey, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
-    }
-
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
     }
 }

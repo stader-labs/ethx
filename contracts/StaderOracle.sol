@@ -12,8 +12,6 @@ import './library/Address.sol';
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
 
-    MissedAttestationPenaltyData public missedAttestationPenaltyData;
-
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
     IStaderConfig public staderConfig;
@@ -29,6 +27,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override balanceUpdateFrequency;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
+    /// @inheritdoc IStaderOracle
+    uint256 public override latestConsensusIndex;
 
     /// @inheritdoc IStaderOracle
     mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
@@ -36,8 +36,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
     mapping(bytes32 => uint16) public override missedAttestationPenalty;
-    // mapping of report index, report pageNumber with trusted node address
-    mapping(uint256 => mapping(uint256 => address)) private MissedAttestationDataByTrustedNode;
+    // mapping of trusted node address with report index and report pageNumber
+    mapping(address => mapping(uint256 => uint256)) public override missedAttestationDataByTrustedNode;
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -126,7 +126,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
     /// @dev _rewardsData.index should not be zero
     function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
-        if (_rewardsData.lastUpdatedBlockNumber < block.number) revert DataSubmittedForFutureBlock();
+        if (_rewardsData.lastUpdatedBlockNumber >= block.number) revert ReportingFutureBlockData();
 
         if (_rewardsData.index <= rewardsData.index) revert InvalidMerkleRootIndex();
 
@@ -153,7 +153,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             )
         );
 
-        uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit merkle root submitted event
         emit SocializingRewardsMerkleRootSubmitted(
             msg.sender,
@@ -179,68 +179,48 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /**
      * @notice store the missed attestation penalty strike on validator
      * @dev _missedAttestationPenaltyData.index should not be zero
-     * @param _missedAttestationPenaltyData missed attestation penalty data
+     * @param _mapd missed attestation penalty data
      */
-    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _missedAttestationPenaltyData)
-        external
-        trustedNodeOnly
-    {
-        if (_missedAttestationPenaltyData.lastUpdatedBlockNumber >= block.number) revert DataSubmittedForFutureBlock();
-
-        if (
-            _missedAttestationPenaltyData.keyCount * VALIDATOR_PUBKEY_LENGTH ==
-            _missedAttestationPenaltyData.pubkeys.length
-        ) revert InvalidData();
-
-        if (
-            MissedAttestationDataByTrustedNode[_missedAttestationPenaltyData.index][
-                _missedAttestationPenaltyData.pageNumber
-            ] != address(0)
-        ) revert DataAlreadyReported();
+    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd) external trustedNodeOnly {
+        if (_mapd.reportingBlockNumber >= block.number) revert ReportingFutureBlockData();
+        if (_mapd.index <= latestConsensusIndex) revert StaleData();
+        if (_mapd.index < missedAttestationDataByTrustedNode[msg.sender][0]) revert ReportingPreviousCycleData();
+        if (_mapd.pageNumber <= missedAttestationDataByTrustedNode[msg.sender][1])
+            revert ReportingAlreadyReportedPageNumber();
+        if (_mapd.keyCount * VALIDATOR_PUBKEY_LENGTH == _mapd.pubkeys.length) revert InvalidData();
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(
-                msg.sender,
-                _missedAttestationPenaltyData.index,
-                _missedAttestationPenaltyData.pageNumber,
-                _missedAttestationPenaltyData.pubkeys
-            )
+            abi.encodePacked(msg.sender, _mapd.index, _mapd.pageNumber, _mapd.pubkeys)
         );
-        bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(
-                _missedAttestationPenaltyData.index,
-                _missedAttestationPenaltyData.pageNumber,
-                _missedAttestationPenaltyData.pubkeys
-            )
-        );
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, _mapd.pageNumber, _mapd.pubkeys));
 
-        MissedAttestationDataByTrustedNode[_missedAttestationPenaltyData.index][
-            _missedAttestationPenaltyData.pageNumber
-        ] = msg.sender;
-        uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
+        missedAttestationDataByTrustedNode[msg.sender][_mapd.index] = _mapd.pageNumber;
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         // Emit missed attestation penalty submitted event
         emit MissedAttestationPenaltySubmitted(
             msg.sender,
-            _missedAttestationPenaltyData.index,
-            _missedAttestationPenaltyData.pageNumber,
-            block.number
+            _mapd.index,
+            _mapd.pageNumber,
+            block.number,
+            _mapd.reportingBlockNumber
         );
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
-            uint16 keyCount = _missedAttestationPenaltyData.keyCount;
+            latestConsensusIndex = _mapd.index;
+            uint16 keyCount = _mapd.keyCount;
             for (uint256 i = 0; i < keyCount; i++) {
                 bytes32 pubkeyRoot = getPubkeyRoot(
-                    _missedAttestationPenaltyData.pubkeys[i * VALIDATOR_PUBKEY_LENGTH:(i + 1) * VALIDATOR_PUBKEY_LENGTH]
+                    _mapd.pubkeys[i * VALIDATOR_PUBKEY_LENGTH:(i + 1) * VALIDATOR_PUBKEY_LENGTH]
                 );
                 missedAttestationPenalty[pubkeyRoot]++;
             }
-            emit MissedAttestationPenaltyUpdated(_missedAttestationPenaltyData.index, block.number);
+            emit MissedAttestationPenaltyUpdated(_mapd.index, block.number);
         }
     }
 
-    function _getSubmissionCount(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
+    function _attestSubmission(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
         internal
         returns (uint8 _submissionCount)
     {

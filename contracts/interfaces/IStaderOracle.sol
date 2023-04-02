@@ -27,8 +27,8 @@ struct RewardsData {
 struct MissedAttestationPenaltyData {
     /// @notice count of validator missing attestation penalty
     uint16 keyCount;
-    /// @notice The block number when the missed attestation penalty data was last updated
-    uint256 lastUpdatedBlockNumber;
+    /// @notice The block number when the missed attestation penalty data is reported
+    uint256 reportingBlockNumber;
     /// @notice The index of missed attestation penalty data
     uint256 index;
     /// @notice page number of the the data
@@ -47,10 +47,12 @@ interface IStaderOracle {
     error NetworkBalancesSetForEqualOrHigherBlock();
     error InvalidNetworkBalances();
     error DuplicateSubmissionFromNode();
-    error DataSubmittedForFutureBlock();
+    error ReportingFutureBlockData();
     error InvalidMerkleRootIndex();
+    error ReportingPreviousCycleData();
+    error StaleData();
+    error ReportingAlreadyReportedPageNumber();
     error InvalidData();
-    error DataAlreadyReported();
     error InvalidPubkeyLength();
     error NotATrustedNode();
 
@@ -69,7 +71,13 @@ interface IStaderOracle {
     event BalanceUpdateFrequencyUpdated(uint256 balanceUpdateFrequency);
     event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 block);
     event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 block);
-    event MissedAttestationPenaltySubmitted(address indexed node, uint256 index, uint256 pageNumber, uint256 block);
+    event MissedAttestationPenaltySubmitted(
+        address indexed node,
+        uint256 index,
+        uint256 pageNumber,
+        uint256 block,
+        uint256 reportingBlockNumber
+    );
     event MissedAttestationPenaltyUpdated(uint256 index, uint256 block);
 
     // The block number which balances are current for
@@ -93,11 +101,17 @@ interface IStaderOracle {
     // The frequency in blocks at which network balances should be submitted by trusted nodes
     function balanceUpdateFrequency() external view returns (uint256);
 
+    // returns the count of trusted nodes
     function trustedNodesCount() external view returns (uint256);
+
+    //returns the latest consensus index for missed attestation penalty data report
+    function latestConsensusIndex() external view returns (uint256);
 
     function isTrustedNode(address) external view returns (bool);
 
     function missedAttestationPenalty(bytes32 pubkey) external view returns (uint16);
+
+    function missedAttestationDataByTrustedNode(address, uint256) external view returns (uint256);
 
     function addTrustedNode(address _nodeAddress) external;
 
