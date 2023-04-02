@@ -28,7 +28,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     /// @inheritdoc IStaderOracle
-    uint256 public override latestConsensusIndex;
+    uint256 public override latestMissedAttestationConsensusIndex;
 
     /// @inheritdoc IStaderOracle
     mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
@@ -37,7 +37,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(bytes32 => uint8) private submissionCountKeys;
     mapping(bytes32 => uint16) public override missedAttestationPenalty;
     // mapping of trusted node address with report index and report pageNumber
-    mapping(address => mapping(uint256 => uint256)) public override missedAttestationDataByTrustedNode;
+    mapping(address => MissedAttestationReportInfo) public missedAttestationDataByTrustedNode;
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -183,11 +183,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
      */
     function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd) external trustedNodeOnly {
         if (_mapd.reportingBlockNumber >= block.number) revert ReportingFutureBlockData();
-        if (_mapd.index <= latestConsensusIndex) revert StaleData();
-        if (_mapd.index < missedAttestationDataByTrustedNode[msg.sender][0]) revert ReportingPreviousCycleData();
-        if (_mapd.pageNumber <= missedAttestationDataByTrustedNode[msg.sender][1])
-            revert ReportingAlreadyReportedPageNumber();
-        if (_mapd.keyCount * VALIDATOR_PUBKEY_LENGTH == _mapd.pubkeys.length) revert InvalidData();
+        if (_mapd.index <= latestMissedAttestationConsensusIndex) revert StaleData();
+
+        MissedAttestationReportInfo memory reportInfo = missedAttestationDataByTrustedNode[msg.sender];
+        if (_mapd.index < reportInfo.index) revert ReportingPreviousCycleData();
+        if (_mapd.pageNumber <= reportInfo.pageNumber) revert ReportingAlreadyReportedPageNumber();
+        if (_mapd.keyCount * VALIDATOR_PUBKEY_LENGTH != _mapd.pubkeys.length) revert InvalidData();
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
@@ -195,7 +196,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         );
         bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, _mapd.pageNumber, _mapd.pubkeys));
 
-        missedAttestationDataByTrustedNode[msg.sender][_mapd.index] = _mapd.pageNumber;
+        missedAttestationDataByTrustedNode[msg.sender] = MissedAttestationReportInfo(_mapd.index, _mapd.pageNumber);
         uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         // Emit missed attestation penalty submitted event
@@ -208,7 +209,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         );
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
-            latestConsensusIndex = _mapd.index;
+            latestMissedAttestationConsensusIndex = _mapd.index;
             uint16 keyCount = _mapd.keyCount;
             for (uint256 i = 0; i < keyCount; i++) {
                 bytes32 pubkeyRoot = getPubkeyRoot(

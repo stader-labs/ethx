@@ -37,6 +37,11 @@ struct MissedAttestationPenaltyData {
     bytes pubkeys;
 }
 
+struct MissedAttestationReportInfo {
+    uint256 index;
+    uint256 pageNumber;
+}
+
 interface IStaderOracle {
     //Error
     error NodeAlreadyTrusted();
@@ -105,13 +110,11 @@ interface IStaderOracle {
     function trustedNodesCount() external view returns (uint256);
 
     //returns the latest consensus index for missed attestation penalty data report
-    function latestConsensusIndex() external view returns (uint256);
+    function latestMissedAttestationConsensusIndex() external view returns (uint256);
 
     function isTrustedNode(address) external view returns (bool);
 
     function missedAttestationPenalty(bytes32 pubkey) external view returns (uint16);
-
-    function missedAttestationDataByTrustedNode(address, uint256) external view returns (uint256);
 
     function addTrustedNode(address _nodeAddress) external;
 

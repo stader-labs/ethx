@@ -99,10 +99,11 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        uint256 userShare = userShare_prelim + Math.min(penaltyAmount, operatorShare);
-
         //TODO liquidate SD if operatorShare < penaltyAmount
-        operatorShare = operatorShare - Math.min(penaltyAmount, operatorShare);
+
+        penaltyAmount = Math.min(penaltyAmount, operatorShare);
+        uint256 userShare = userShare_prelim + penaltyAmount;
+        operatorShare = operatorShare - penaltyAmount;
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
