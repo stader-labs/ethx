@@ -7,6 +7,7 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
+import './interfaces/INodeRegistry.sol';
 import './library/Address.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
@@ -15,16 +16,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
     IStaderConfig public staderConfig;
+    ExchangeRate public exchangeRate;
+    ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
-    uint256 public override lastBlockNumberBalancesUpdated;
-    /// @inheritdoc IStaderOracle
-    uint256 public override totalETHBalance;
-    /// @inheritdoc IStaderOracle
-    uint256 public override totalStakingETHBalance;
-    /// @inheritdoc IStaderOracle
-    uint256 public override totalETHXSupply;
-    /// @inheritdoc IStaderOracle
-    uint256 public override balanceUpdateFrequency;
+    uint256 public override updateFrequency;
+    uint256 public override lastUpdatedBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     /// @inheritdoc IStaderOracle
@@ -44,7 +40,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         __AccessControl_init();
 
-        balanceUpdateFrequency = 7200; // 24 hours
+        updateFrequency = 7200; // 24 hours
 
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
@@ -70,53 +66,69 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit TrustedNodeRemoved(_nodeAddress);
     }
 
-    function setUpdateFrequency(uint256 _balanceUpdateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_balanceUpdateFrequency == 0) revert ZeroFrequency();
-        if (_balanceUpdateFrequency == balanceUpdateFrequency) revert FrequencyUnchanged();
-        balanceUpdateFrequency = _balanceUpdateFrequency;
+    function setUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_updateFrequency == 0) revert ZeroFrequency();
+        if (_updateFrequency == updateFrequency) revert FrequencyUnchanged();
+        updateFrequency = _updateFrequency;
 
-        emit BalanceUpdateFrequencyUpdated(_balanceUpdateFrequency);
+        emit UpdateFrequencyUpdated(_updateFrequency);
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(
-        uint256 _block,
-        uint256 _totalEth,
-        uint256 _stakingEth,
-        uint256 _ethxSupply
-    ) external override trustedNodeOnly {
-        // Check block
-        if (_block >= block.number) revert BalancesSubmittedForFutureBlock();
-        if (_block <= lastBlockNumberBalancesUpdated) revert NetworkBalancesSetForEqualOrHigherBlock();
-        // Check balances
-        if (_stakingEth > _totalEth) revert InvalidNetworkBalances();
+    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
+        if (_exchangeRate.lastUpdatedBlockNumber >= block.number) revert ReportingFutureBlockData();
+        if (_exchangeRate.totalStakingETHBalance > _exchangeRate.totalETHBalance) revert InvalidNetworkBalances();
+
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply)
+            abi.encodePacked(
+                msg.sender,
+                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.totalETHBalance,
+                _exchangeRate.totalStakingETHBalance,
+                _exchangeRate.totalETHXSupply
+            )
         );
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_block, _totalEth, _stakingEth, _ethxSupply));
-        // Check & update node submission status
-        if (nodeSubmissionKeys[nodeSubmissionKey]) revert DuplicateSubmissionFromNode();
-        nodeSubmissionKeys[nodeSubmissionKey] = true;
-        submissionCountKeys[submissionCountKey]++;
-        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.totalETHBalance,
+                _exchangeRate.totalStakingETHBalance,
+                _exchangeRate.totalETHXSupply
+            )
+        );
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit balances submitted event
-        emit BalancesSubmitted(msg.sender, _block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
-        if (submissionCount >= trustedNodesCount / 2 + 1) {
-            // Update balances
-            lastBlockNumberBalancesUpdated = _block;
-            totalETHBalance = _totalEth;
-            totalStakingETHBalance = _stakingEth;
-            totalETHXSupply = _ethxSupply;
+        emit BalancesSubmitted(
+            msg.sender,
+            _exchangeRate.lastUpdatedBlockNumber,
+            _exchangeRate.totalETHBalance,
+            _exchangeRate.totalStakingETHBalance,
+            _exchangeRate.totalETHXSupply,
+            block.timestamp
+        );
+
+        if (
+            submissionCount >= trustedNodesCount / 2 + 1 &&
+            _exchangeRate.lastUpdatedBlockNumber > exchangeRate.lastUpdatedBlockNumber
+        ) {
+            exchangeRate = _exchangeRate;
+
             // Emit balances updated event
-            emit BalancesUpdated(_block, _totalEth, _stakingEth, _ethxSupply, block.timestamp);
+            emit BalancesUpdated(
+                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.totalETHBalance,
+                _exchangeRate.totalStakingETHBalance,
+                _exchangeRate.totalETHXSupply,
+                block.timestamp
+            );
         }
     }
 
     // Returns the latest block number that oracles should be reporting balances for
     function getLatestReportableBlock() external view override returns (uint256) {
         // Calculate the last reportable block based on update frequency
-        return (block.number * balanceUpdateFrequency) / balanceUpdateFrequency;
+        return (block.number / updateFrequency) * updateFrequency;
     }
 
     /// @notice submits merkle root and handles reward
@@ -153,7 +165,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             )
         );
 
-        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit merkle root submitted event
         emit SocializingRewardsMerkleRootSubmitted(
             msg.sender,
@@ -161,6 +172,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             _rewardsData.merkleRoot,
             block.number
         );
+
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
             // Update merkle root
@@ -173,6 +186,125 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
             emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);
+        }
+    }
+
+    /// @inheritdoc IStaderOracle
+    function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
+        if (_validatorStats.lastUpdatedBlockNumber >= block.number) revert ReportingFutureBlockData();
+
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitedValidatorsBalance,
+                _validatorStats.slashedValidatorsBalance,
+                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitedValidatorsCount,
+                _validatorStats.slashedValidatorsCount
+            )
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitedValidatorsBalance,
+                _validatorStats.slashedValidatorsBalance,
+                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitedValidatorsCount,
+                _validatorStats.slashedValidatorsCount
+            )
+        );
+
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        // Emit validator stats submitted event
+        emit ValidatorStatsSubmitted(
+            msg.sender,
+            _validatorStats.lastUpdatedBlockNumber,
+            _validatorStats.activeValidatorsBalance,
+            _validatorStats.exitedValidatorsBalance,
+            _validatorStats.slashedValidatorsBalance,
+            _validatorStats.activeValidatorsCount,
+            _validatorStats.exitedValidatorsCount,
+            _validatorStats.slashedValidatorsCount,
+            block.timestamp
+        );
+
+        if (
+            submissionCount >= trustedNodesCount / 2 + 1 &&
+            _validatorStats.lastUpdatedBlockNumber > validatorStats.lastUpdatedBlockNumber
+        ) {
+            validatorStats = _validatorStats;
+
+            // Emit stats updated event
+            emit ValidatorStatsUpdated(
+                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitedValidatorsBalance,
+                _validatorStats.slashedValidatorsBalance,
+                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitedValidatorsCount,
+                _validatorStats.slashedValidatorsCount,
+                block.timestamp
+            );
+        }
+    }
+
+    /// @inheritdoc IStaderOracle
+    function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators)
+        external
+        override
+        trustedNodeOnly
+    {
+        if (_withdrawnValidators.lastUpdatedBlockNumber >= block.number) revert ReportingFutureBlockData();
+
+        // Ensure the pubkeys array is sorted
+        if (!isSorted(_withdrawnValidators.sortedPubkeys)) revert PubkeysNotSorted();
+
+        bytes memory encodedPubkeys = abi.encode(_withdrawnValidators.sortedPubkeys);
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(
+                msg.sender,
+                _withdrawnValidators.lastUpdatedBlockNumber,
+                _withdrawnValidators.nodeRegistry,
+                encodedPubkeys
+            )
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(
+                _withdrawnValidators.lastUpdatedBlockNumber,
+                _withdrawnValidators.nodeRegistry,
+                encodedPubkeys
+            )
+        );
+
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        // Emit withdrawn validators submitted event
+        emit WithdrawnValidatorsSubmitted(
+            msg.sender,
+            _withdrawnValidators.lastUpdatedBlockNumber,
+            _withdrawnValidators.nodeRegistry,
+            _withdrawnValidators.sortedPubkeys,
+            block.timestamp
+        );
+
+        if (
+            submissionCount >= trustedNodesCount / 2 + 1 &&
+            _withdrawnValidators.lastUpdatedBlockNumber > lastUpdatedBlockNumberForWithdrawnValidators
+        ) {
+            lastUpdatedBlockNumberForWithdrawnValidators = _withdrawnValidators.lastUpdatedBlockNumber;
+            INodeRegistry(_withdrawnValidators.nodeRegistry).withdrawnValidators(_withdrawnValidators.sortedPubkeys);
+
+            // Emit withdrawn validators updated event
+            emit WithdrawnValidatorsUpdated(
+                _withdrawnValidators.lastUpdatedBlockNumber,
+                _withdrawnValidators.nodeRegistry,
+                _withdrawnValidators.sortedPubkeys,
+                block.timestamp
+            );
         }
     }
 
@@ -243,8 +375,28 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return sha256(abi.encodePacked(_pubkey, bytes16(0)));
     }
 
+    function getValidatorStats() external view override returns (ValidatorStats memory) {
+        return (validatorStats);
+    }
+
+    function getExchangeRate() external view override returns (ExchangeRate memory) {
+        return (exchangeRate);
+    }
+
     modifier trustedNodeOnly() {
         if (!isTrustedNode[msg.sender]) revert NotATrustedNode();
         _;
+    }
+
+    /// @notice Check if the array of pubkeys is sorted.
+    /// @param pubkeys The array of pubkeys to check.
+    /// @return True if the array is sorted, false otherwise.
+    function isSorted(bytes[] memory pubkeys) internal pure returns (bool) {
+        for (uint256 i = 0; i < pubkeys.length - 1; i++) {
+            if (keccak256(pubkeys[i]) > keccak256(pubkeys[i + 1])) {
+                return false;
+            }
+        }
+        return true;
     }
 }

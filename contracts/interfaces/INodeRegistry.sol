@@ -26,6 +26,8 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
+    function withdrawnValidators(bytes[] calldata _pubkeys) external;
+
     // return validator struct for a validator Id
     function validatorRegistry(uint256)
         external
