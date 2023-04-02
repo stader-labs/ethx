@@ -12,7 +12,7 @@ interface IPoolSelector {
     //Events
 
     event UpdatedPoolWeight(uint8 indexed poolId, uint256 poolWeight);
-    event UpdatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize);
+    event UpdatedPoolAllocationMaxSize(uint16 _poolAllocationMaxSize);
     event UpdatedStaderConfig(address _staderConfig);
 
     // Getters

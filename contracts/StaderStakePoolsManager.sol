@@ -92,6 +92,7 @@ contract StaderStakePoolsManager is
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /**
@@ -170,7 +171,7 @@ contract StaderStakePoolsManager is
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
-            emit TransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
+            emit ETHTransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
         }
     }
 

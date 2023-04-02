@@ -137,7 +137,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
     function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(POOL_SELECTOR_ADMIN) {
         POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
-        emit UpdatePoolAllocationMaxSize(_poolAllocationMaxSize);
+        emit UpdatedPoolAllocationMaxSize(_poolAllocationMaxSize);
     }
 
     //update the address of staderConfig

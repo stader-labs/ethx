@@ -79,6 +79,7 @@ contract UserWithdrawalManager is
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /**
@@ -138,6 +139,7 @@ contract UserWithdrawalManager is
             ETHx(staderConfig.getETHxToken()).burnFrom(address(this), lockedEthXToBurn);
             nextRequestIdToFinalize = requestId + 1;
             IStaderStakePoolManager(poolManager).transferETHToUserWithdrawManager(ethToSendToFinalizeRequest);
+            emit FinalizedWithdrawRequest(requestId);
         }
     }
 
