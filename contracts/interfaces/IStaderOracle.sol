@@ -95,9 +95,11 @@ interface IStaderOracle {
 
     function trustedNodesCount() external view returns (uint256);
 
+    function safeMode() external view returns (bool);
+
     function isTrustedNode(address) external view returns (bool);
 
-    function missedAttestationPenalty(bytes32 pubkey) external view returns (uint16);
+    function missedAttestationPenalty(bytes32 _pubkey) external view returns (uint16);
 
     function addTrustedNode(address _nodeAddress) external;
 

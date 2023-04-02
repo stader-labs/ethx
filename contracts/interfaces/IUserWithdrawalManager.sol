@@ -5,12 +5,10 @@ pragma solidity ^0.8.16;
 interface IUserWithdrawalManager {
     error TransferFailed();
     error TokenTransferFailed();
-    error ProtocolInSlashingMode();
+    error ProtocolNotInSafeMode();
     error InSufficientBalance();
     error ProtocolNotHealthy();
     error InvalidWithdrawAmount();
-    error InvalidMinWithdrawValue();
-    error InvalidMaxWithdrawValue();
     error requestIdNotFinalized(uint256 _requestId);
     error RequestAlreadyRedeemed(uint256 _requestId);
     error MaxLimitOnWithdrawRequestCountReached();
@@ -18,10 +16,9 @@ interface IUserWithdrawalManager {
     error CallerNotAuthorizedToRedeem();
     error ZeroAddressReceived();
 
-    event UpdatedMaxWithdrawAmount(uint256 amount);
-    event UpdatedMinWithdrawAmount(uint256 amount);
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
     event UpdatedStaderConfig(address staderConfig);
+    event UpdatedMinimumDelayToFinalizeRequest(uint256 _minimumDelayToFinalizeRequest);
     event WithdrawRequestReceived(
         address indexed _msgSender,
         address _recipient,
@@ -42,8 +39,6 @@ interface IUserWithdrawalManager {
 
     function USER_WITHDRAWAL_MANAGER_ADMIN() external view returns (bytes32);
 
-    function slashingMode() external view returns (bool);
-
     function finalizationBatchLimit() external view returns (uint256);
 
     function nextRequestIdToFinalize() external view returns (uint256);
@@ -54,6 +49,8 @@ interface IUserWithdrawalManager {
 
     function maxNonRedeemedUserRequestCount() external view returns (uint256);
 
+    function minimumDelayToFinalizeRequest() external view returns (uint256);
+
     function userWithdrawRequests(uint256)
         external
         view
@@ -61,7 +58,8 @@ interface IUserWithdrawalManager {
             address payable owner,
             uint256 ethXAmount,
             uint256 ethExpected,
-            uint256 ethFinalized
+            uint256 ethFinalized,
+            uint256 requestTime
         );
 
     function requestIdsByUserAddress(address, uint256) external view returns (uint256);

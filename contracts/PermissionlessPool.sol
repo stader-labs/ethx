@@ -21,8 +21,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint8 public constant poolId = 1;
     IStaderConfig public staderConfig;
 
-    bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
     bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
+    bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
     bytes32 public constant PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
@@ -35,6 +35,11 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     /// @inheritdoc IStaderPoolBase
     uint256 public override operatorFee;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
@@ -179,13 +184,14 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /**
      * @notice get all validator which has user balance on beacon chain
      */
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
         public
         view
         override
         returns (Validator[] memory)
     {
-        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(pageNumber, pageSize);
+        return
+            INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {

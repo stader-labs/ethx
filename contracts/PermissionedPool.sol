@@ -43,6 +43,11 @@ contract PermissionedPool is
     // @inheritdoc IStaderPoolBase
     uint256 public override operatorFee;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
@@ -177,13 +182,13 @@ contract PermissionedPool is
             );
     }
 
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
         public
         view
         override
         returns (Validator[] memory)
     {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getAllActiveValidators(pageNumber, pageSize);
+        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {

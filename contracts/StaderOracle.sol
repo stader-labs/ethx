@@ -30,6 +30,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
 
+    // indicate the health of protocol on beacon chain
+    // set to true by oracle if heavy slashing on protocol on beacon chain
+    bool public override safeMode;
+
     /// @inheritdoc IStaderOracle
     mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
     mapping(address => bool) public override isTrustedNode;
@@ -38,6 +42,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(bytes32 => uint16) public override missedAttestationPenalty;
     // mapping of report index, report pageNumber with trusted node address
     mapping(uint256 => mapping(uint256 => address)) private MissedAttestationDataByTrustedNode;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);

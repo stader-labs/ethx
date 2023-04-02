@@ -22,6 +22,11 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPenalty
     mapping(bytes => uint256) public override totalPenaltyAmount;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_ratedOracleAddress);

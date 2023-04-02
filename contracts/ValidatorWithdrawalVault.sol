@@ -24,6 +24,11 @@ contract ValidatorWithdrawalVault is
     address payable public nodeRecipient;
     uint256 public validatorId;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         uint8 _poolId,
         address _staderConfig,
@@ -71,9 +76,9 @@ contract ValidatorWithdrawalVault is
         internal
         view
         returns (
-            uint256 _userShare,
-            uint256 _operatorShare,
-            uint256 _protocolShare
+            uint256 userShare,
+            uint256 operatorShare,
+            uint256 protocolShare
         )
     {
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
@@ -84,12 +89,12 @@ contract ValidatorWithdrawalVault is
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        _protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 10000;
+        protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 10000;
 
-        _operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        _operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
+        operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
+        operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
 
-        _userShare = _totalRewards - _protocolShare - _operatorShare;
+        userShare = _totalRewards - protocolShare - operatorShare;
     }
 
     function settleFunds() external nonReentrant {
@@ -151,12 +156,12 @@ contract ValidatorWithdrawalVault is
         _protocolShare += protocolReward;
     }
 
-    function _sendValue(address payable recipient, uint256 amount) internal {
-        if (address(this).balance < amount) revert InsufficientBalance();
+    function _sendValue(address payable _recipient, uint256 _amount) internal {
+        if (address(this).balance < _amount) revert InsufficientBalance();
 
         //slither-disable-next-line arbitrary-send-eth
-        if (amount > 0) {
-            (bool success, ) = recipient.call{value: amount}('');
+        if (_amount > 0) {
+            (bool success, ) = _recipient.call{value: _amount}('');
             if (!success) revert TransferFailed();
         }
     }

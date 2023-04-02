@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-
+import './library/Address.sol';
 import './interfaces/IStaderConfig.sol';
 
-import './library/Address.sol';
+import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
 
-contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
-    // full deposit value on beacon chain i.e. 32 ETH
+contract StaderConfig is IStaderConfig, Initializable, TimelockControllerUpgradeable {
+    // skated ETH per node on beacon chain i.e. 32 ETH
     bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
     // ETH to WEI ratio i.e 10**18
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
@@ -60,10 +59,16 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     //TODO sanjay implement Timelock controller
-    function initialize(address _admin, address _ethDepositContract) external initializer {
+    function initialize(
+        uint256 minDelay,
+        address[] memory proposers,
+        address[] memory executors,
+        address _admin,
+        address _ethDepositContract
+    ) external initializer {
         Address.checkNonZeroAddress(_admin);
         Address.checkNonZeroAddress(_ethDepositContract);
-        __AccessControl_init();
+        __TimelockController_init(minDelay, proposers, executors, _admin);
         _setConstant(ETH_PER_NODE, 32 ether);
         _setConstant(DECIMALS, 10**18);
         _setConstant(OPERATOR_MAX_NAME_LENGTH, 255);

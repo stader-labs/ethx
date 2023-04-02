@@ -12,6 +12,11 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     mapping(uint8 => Pool) public override pools;
     uint8 public override poolCount;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _admin) external initializer {
         Address.checkNonZeroAddress(_admin);
         __AccessControl_init_unchained();

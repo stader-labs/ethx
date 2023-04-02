@@ -89,7 +89,6 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     }
 
     //update the address of staderConfig
-    //TODO sanjay double check on this role
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);

@@ -22,8 +22,13 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
     mapping(uint8 => uint256) public poolWeights;
 
+    bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
     bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
-    bytes32 public constant override STADER_STAKE_POOL_MANAGER = keccak256('STADER_STAKE_POOL_MANAGER');
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
      * @notice initialize with permissioned and permissionless Pool
@@ -62,7 +67,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     function computePoolAllocationForDeposit(uint256 _pooledEth)
         external
         override
-        onlyRole(STADER_STAKE_POOL_MANAGER)
+        onlyRole(POOL_MANAGER)
         returns (uint256[] memory selectedPoolCapacity)
     {
         address poolFactoryAddress = staderConfig.getPoolFactory();

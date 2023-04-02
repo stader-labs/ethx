@@ -14,7 +14,7 @@ import './interfaces/IPoolFactory.sol';
 import './interfaces/IUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
@@ -27,7 +27,7 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
  */
 contract StaderStakePoolsManager is
     IStaderStakePoolManager,
-    TimelockControllerUpgradeable,
+    AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
@@ -35,20 +35,31 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Stader initialized with following variables
      * @param _staderConfig config contract
      */
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
+        __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
-    // protection against accidental submissions by calling non-existent function
+    // contract does not support receiving ETH by an EOA
     fallback() external payable {
+        revert UnsupportedOperation();
+    }
+
+    // contract does not support receiving ETH by an EOA
+    receive() external payable {
         revert UnsupportedOperation();
     }
 
@@ -115,13 +126,13 @@ contract StaderStakePoolsManager is
     }
 
     /** @dev See {IERC4626-convertToShares}. */
-    function convertToShares(uint256 assets) public view override returns (uint256) {
-        return _convertToShares(assets, Math.Rounding.Down);
+    function convertToShares(uint256 _assets) public view override returns (uint256) {
+        return _convertToShares(_assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-convertToAssets}. */
-    function convertToAssets(uint256 shares) public view override returns (uint256) {
-        return _convertToAssets(shares, Math.Rounding.Down);
+    function convertToAssets(uint256 _shares) public view override returns (uint256) {
+        return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-maxDeposit}. */
@@ -130,21 +141,21 @@ contract StaderStakePoolsManager is
     }
 
     /** @dev See {IERC4626-previewDeposit}. */
-    function previewDeposit(uint256 assets) public view override returns (uint256) {
-        return _convertToShares(assets, Math.Rounding.Down);
+    function previewDeposit(uint256 _assets) public view override returns (uint256) {
+        return _convertToShares(_assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-previewWithdraw}. */
-    function previewWithdraw(uint256 shares) public view override returns (uint256) {
-        return _convertToAssets(shares, Math.Rounding.Down);
+    function previewWithdraw(uint256 _shares) public view override returns (uint256) {
+        return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-deposit}. */
-    function deposit(address receiver) public payable override whenNotPaused returns (uint256) {
+    function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < staderConfig.getMinDepositAmount()) revert InvalidDepositAmount();
         uint256 shares = previewDeposit(assets);
-        _deposit(msg.sender, receiver, assets, shares);
+        _deposit(msg.sender, _receiver, assets, shares);
         return shares;
     }
 
@@ -153,8 +164,8 @@ contract StaderStakePoolsManager is
      * @dev get pool wise validator to deposit from pool helper and
      * transfer that much eth to individual pool to register on beacon chain
      */
-    //TODO sanjay put a check if slashing mode do not do batch deposit
     function validatorBatchDeposit() external override nonReentrant whenNotPaused {
+        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) revert ProtocolNotInSafeMode();
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
         address poolFactory = staderConfig.getPoolFactory();
@@ -179,7 +190,7 @@ contract StaderStakePoolsManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(EXECUTOR_ROLE) {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
 
@@ -187,7 +198,7 @@ contract StaderStakePoolsManager is
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external onlyRole(EXECUTOR_ROLE) {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -197,12 +208,12 @@ contract StaderStakePoolsManager is
      * Will revert if assets > 0, totalSupply > 0 and totalAssets = 0. That corresponds to a case where any asset
      * would represent an infinite amount of shares.
      */
-    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view returns (uint256) {
+    function _convertToShares(uint256 _assets, Math.Rounding rounding) internal view returns (uint256) {
         uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
         return
-            (assets == 0 || supply == 0)
-                ? _initialConvertToShares(assets, rounding)
-                : assets.mulDiv(supply, totalAssets(), rounding);
+            (_assets == 0 || supply == 0)
+                ? _initialConvertToShares(_assets, rounding)
+                : _assets.mulDiv(supply, totalAssets(), rounding);
     }
 
     /**
@@ -211,19 +222,21 @@ contract StaderStakePoolsManager is
      * NOTE: Make sure to keep this function consistent with {_initialConvertToAssets} when overriding it.
      */
     function _initialConvertToShares(
-        uint256 assets,
+        uint256 _assets,
         Math.Rounding /*rounding*/
     ) internal pure returns (uint256 shares) {
-        return assets;
+        return _assets;
     }
 
     /**
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
-    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
+    function _convertToAssets(uint256 _shares, Math.Rounding rounding) internal view returns (uint256) {
         uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
         return
-            (supply == 0) ? _initialConvertToAssets(shares, rounding) : shares.mulDiv(totalAssets(), supply, rounding);
+            (supply == 0)
+                ? _initialConvertToAssets(_shares, rounding)
+                : _shares.mulDiv(totalAssets(), supply, rounding);
     }
 
     /**
@@ -232,24 +245,24 @@ contract StaderStakePoolsManager is
      * NOTE: Make sure to keep this function consistent with {_initialConvertToShares} when overriding it.
      */
     function _initialConvertToAssets(
-        uint256 shares,
+        uint256 _shares,
         Math.Rounding /*rounding*/
     ) internal pure returns (uint256) {
-        return shares;
+        return _shares;
     }
 
     /**
      * @dev Deposit/mint common workflow.
      */
     function _deposit(
-        address caller,
-        address receiver,
-        uint256 assets,
-        uint256 shares
+        address _caller,
+        address _receiver,
+        uint256 _assets,
+        uint256 _shares
     ) internal {
-        ETHx(staderConfig.getETHxToken()).mint(receiver, shares);
-        depositedPooledETH += assets;
-        emit Deposited(caller, receiver, assets, shares);
+        ETHx(staderConfig.getETHxToken()).mint(_receiver, _shares);
+        depositedPooledETH += _assets;
+        emit Deposited(_caller, _receiver, _assets, _shares);
     }
 
     /**

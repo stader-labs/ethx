@@ -41,9 +41,8 @@ contract PermissionlessNodeRegistry is
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
 
-    bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
-
+    bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY_OWNER =
         keccak256('PERMISSIONLESS_NODE_REGISTRY_OWNER');
 
@@ -60,6 +59,13 @@ contract PermissionlessNodeRegistry is
     //mapping of operator wise validator IDs arrays
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
+    //mapping of nodeELReward vault address with operator address
+    mapping(address => address) public override nodeELRewardVaultByOperator;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -92,7 +98,7 @@ contract PermissionlessNodeRegistry is
     ) external override whenNotPaused returns (address feeRecipientAddress) {
         _onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_operatorRewardAddress);
-
+        //TODO sanjay check for operator, should not be in other pool
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
 
@@ -102,10 +108,13 @@ contract PermissionlessNodeRegistry is
             nextOperatorId,
             payable(_operatorRewardAddress)
         );
+        nodeELRewardVaultByOperator[msg.sender] = nodeELRewardVault;
         feeRecipientAddress = _optInForSocializingPool
             ? staderConfig.getPermissionlessSocializingPool()
             : nodeELRewardVault;
         _onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
+        //TODO sanjay, function signature only in interface, ask Manoj for full function
+        ISDCollateral(staderConfig.getSDCollateral()).updatePoolIdForOperator(poolId, msg.sender);
         return feeRecipientAddress;
     }
 
@@ -214,7 +223,7 @@ contract PermissionlessNodeRegistry is
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
-            Validator memory validator = validatorRegistry[validatorId];
+            Validator storage validator = validatorRegistry[validatorId];
             validator.status = ValidatorStatus.WITHDRAWN;
             validator.withdrawnBlock = block.number;
             IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
@@ -261,9 +270,10 @@ contract PermissionlessNodeRegistry is
         if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool)
             revert NoChangeInState();
 
-        //TODO sanjay it should be twice of coolDown period
-        if (block.number < socializingPoolStateChangeBlock[operatorId] + staderConfig.getSocializingPoolCoolingPeriod())
-            revert CooldownNotComplete();
+        if (
+            block.number <
+            socializingPoolStateChangeBlock[operatorId] + 2 * staderConfig.getSocializingPoolCoolingPeriod()
+        ) revert CooldownNotComplete();
         feeRecipientAddress = IVaultFactory(staderConfig.getVaultFactory()).computeNodeELRewardVaultAddress(
             poolId,
             operatorId
@@ -367,25 +377,23 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice get the total non terminal keys for an operator
-     * //non terminal keys are front run, invalid signature and withdrawn
-     * @dev loop over all keys of an operator from start index till
-     *  end index (exclusive) to get the count excluding the terminal keys
-     * @param _nodeOperator address of node operator
+     * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
+     * @param _startIndex start index in validator queue to start with
+     * @param _endIndex  up to end index of validator queue to to count
      */
     function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
-        uint256 startIndex,
-        uint256 endIndex
+        uint256 _startIndex,
+        uint256 _endIndex
     ) public view override returns (uint64) {
-        if (startIndex > endIndex) {
+        if (_startIndex > _endIndex) {
             revert InvalidStartAndEndIndex();
         }
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
-        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
+        _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
         uint64 totalNonWithdrawnKeyCount;
-        for (uint256 i = startIndex; i < endIndex; i++) {
+        for (uint256 i = _startIndex; i < _endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (_isNonTerminalValidator(validatorId)) {
                 totalNonWithdrawnKeyCount++;
@@ -450,22 +458,22 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice Returns an array of active validators
      *
-     * @param pageNumber The page number of the results to fetch (starting from 1).
-     * @param pageSize The maximum number of items per page.
+     * @param _pageNumber The page number of the results to fetch (starting from 1).
+     * @param _pageSize The maximum number of items per page.
      *
      * @return An array of `Validator` objects representing the active validators.
      */
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
         public
         view
         override
         returns (Validator[] memory)
     {
-        if (pageNumber == 0) revert PageNumberIsZero();
-        uint256 startIndex = (pageNumber - 1) * pageSize + 1;
-        uint256 endIndex = startIndex + pageSize;
+        if (_pageNumber == 0) revert PageNumberIsZero();
+        uint256 startIndex = (_pageNumber - 1) * _pageSize + 1;
+        uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
-        Validator[] memory validators = new Validator[](pageSize);
+        Validator[] memory validators = new Validator[](_pageSize);
         uint256 validatorCount = 0;
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (_isActiveValidator(i)) {
@@ -577,17 +585,17 @@ contract PermissionlessNodeRegistry is
         if (!isEnoughCollateral) revert NotEnoughSDCollateral();
     }
 
-    function _sendValue(address receiver, uint256 _amount) internal {
+    function _sendValue(address _receiver, uint256 _amount) internal {
         if (address(this).balance < _amount) revert InSufficientBalance();
 
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(receiver).call{value: _amount}('');
+        (bool success, ) = payable(_receiver).call{value: _amount}('');
         if (!success) revert TransferFailed();
     }
 
     // operator in active state
-    function _onlyActiveOperator(address operAddr) internal view returns (uint256 _operatorId) {
-        _operatorId = operatorIDByAddress[operAddr];
+    function _onlyActiveOperator(address _operAddr) internal view returns (uint256 _operatorId) {
+        _operatorId = operatorIDByAddress[_operAddr];
         if (_operatorId == 0) revert OperatorNotOnBoarded();
         if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();
     }

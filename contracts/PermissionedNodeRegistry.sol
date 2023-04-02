@@ -39,12 +39,11 @@ contract PermissionedNodeRegistry is
 
     IStaderConfig public staderConfig;
 
-    //TODO sanjay avoid using uint256 if possible
     uint256 public override nextValidatorId;
     uint256 public override totalActiveValidatorCount;
     uint256 public VERIFIED_KEYS_BATCH_SIZE;
 
-    bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
+    bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
     bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
@@ -65,6 +64,11 @@ contract PermissionedNodeRegistry is
     mapping(uint16 => uint256) public override nextQueuedValidatorIndexByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
@@ -84,11 +88,7 @@ contract PermissionedNodeRegistry is
      * @dev only admin can call, whitelisting a one way change there is no blacklisting
      * @param _permissionedNOs array of permissioned NOs address
      */
-    function whitelistPermissionedNOs(address[] calldata _permissionedNOs)
-        external
-        override
-        onlyRole(STADER_MANAGER_BOT)
-    {
+    function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external override onlyRole(STADER_DAO) {
         for (uint256 i = 0; i < _permissionedNOs.length; i++) {
             permissionList[_permissionedNOs[i]] = true;
             emit OperatorWhitelisted(_permissionedNOs[i]);
@@ -111,10 +111,14 @@ contract PermissionedNodeRegistry is
         _onlyValidName(_operatorName);
         Address.checkNonZeroAddress(_operatorRewardAddress);
         if (!permissionList[msg.sender]) revert NotAPermissionedNodeOperator();
+
+        //TODO sanjay check for operator, should not be in other pool
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
         feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
         _onboardOperator(_operatorName, _operatorRewardAddress);
+        //TODO sanjay, function signature only in interface, ask Manoj for full function
+        ISDCollateral(staderConfig.getSDCollateral()).updatePoolIdForOperator(poolId, msg.sender);
         return feeRecipientAddress;
     }
 
@@ -175,10 +179,10 @@ contract PermissionedNodeRegistry is
      * second iteration exhaust the capacity in sequential manner and
      * update the operatorId to pick operator for next sequence in next cycle
      * all array start with index 1
-     * @param numValidators validator to deposit with permissioned pool
+     * @param _numValidators validator to deposit with permissioned pool
      * @return selectedOperatorCapacity operator wise count of validator to deposit
      */
-    function computeOperatorAllocationForDeposit(uint256 numValidators)
+    function computeOperatorAllocationForDeposit(uint256 _numValidators)
         external
         override
         onlyRole(PERMISSIONED_POOL)
@@ -187,7 +191,7 @@ contract PermissionedNodeRegistry is
         // nextOperatorId is total operator count plus 1
         selectedOperatorCapacity = new uint256[](nextOperatorId);
 
-        uint256 validatorPerOperator = numValidators / totalActiveOperatorCount;
+        uint256 validatorPerOperator = _numValidators / totalActiveOperatorCount;
         uint256[] memory remainingOperatorCapacity = new uint256[](nextOperatorId);
         uint256 totalValidatorToDeposit;
 
@@ -203,9 +207,9 @@ contract PermissionedNodeRegistry is
 
         // check for more validators to deposit and select operators with excess supply in a sequential order
         // and update the starting index of operator for next sequence after every iteration
-        if (numValidators > totalValidatorToDeposit) {
+        if (_numValidators > totalValidatorToDeposit) {
             uint16 totalOperators = nextOperatorId - 1;
-            uint256 remainingValidatorsToDeposit = numValidators - totalValidatorToDeposit;
+            uint256 remainingValidatorsToDeposit = _numValidators - totalValidatorToDeposit;
             uint16 i = operatorIdForExcessDeposit;
             do {
                 if (!operatorStructById[i].active) continue;
@@ -271,7 +275,7 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
-            Validator memory validator = validatorRegistry[validatorId];
+            Validator storage validator = validatorRegistry[validatorId];
             validator.status = ValidatorStatus.WITHDRAWN;
             validator.withdrawnBlock = block.number;
             IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
@@ -291,7 +295,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `STADER_MANAGER_BOT` role
      * @param _operatorID ID of the operator to deactivate
      */
-    function deactivateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
+    function deactivateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_DAO) {
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
         emit OperatorDeactivated(_operatorID);
@@ -302,7 +306,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
      * @param _operatorID ID of the operator to activate
      */
-    function activateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_MANAGER_BOT) {
+    function activateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_DAO) {
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
         emit OperatorActivated(_operatorID);
@@ -470,25 +474,23 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice get the total non terminal keys for an operator
-     * //non terminal keys are front run, invalid signature and withdrawn
-     * @dev loop over all keys of an operator from start index till
-     *  end index (exclusive) to get the count excluding the terminal keys
-     * @param _nodeOperator address of node operator
+     * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
+     * @param _startIndex start index in validator queue to start with
+     * @param _endIndex  up to end index of validator queue to to count
      */
     function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
-        uint256 startIndex,
-        uint256 endIndex
+        uint256 _startIndex,
+        uint256 _endIndex
     ) public view override returns (uint64) {
-        if (startIndex > endIndex) {
+        if (_startIndex > _endIndex) {
             revert InvalidStartAndEndIndex();
         }
         uint16 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
-        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
+        _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
         uint64 totalNonWithdrawnKeyCount;
-        for (uint256 i = startIndex; i < endIndex; i++) {
+        for (uint256 i = _startIndex; i < _endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (_isNonTerminalValidator(validatorId)) {
                 totalNonWithdrawnKeyCount++;
@@ -528,22 +530,22 @@ contract PermissionedNodeRegistry is
     /**
      * @notice Returns an array of active validators
      *
-     * @param pageNumber The page number of the results to fetch (starting from 1).
-     * @param pageSize The maximum number of items per page.
+     * @param _pageNumber The page number of the results to fetch (starting from 1).
+     * @param _pageSize The maximum number of items per page.
      *
      * @return An array of `Validator` objects representing the active validators.
      */
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
         public
         view
         override
         returns (Validator[] memory)
     {
-        if (pageNumber == 0) revert PageNumberIsZero();
-        uint256 startIndex = (pageNumber - 1) * pageSize + 1;
-        uint256 endIndex = startIndex + pageSize;
+        if (_pageNumber == 0) revert PageNumberIsZero();
+        uint256 startIndex = (_pageNumber - 1) * _pageSize + 1;
+        uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
-        Validator[] memory validators = new Validator[](pageSize);
+        Validator[] memory validators = new Validator[](_pageSize);
         uint256 validatorCount = 0;
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (_isActiveValidator(i)) {
@@ -632,7 +634,7 @@ contract PermissionedNodeRegistry is
         if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) revert maxKeyLimitReached();
 
         //check if operator has enough SD collateral for adding `keyCount` keys
-        //TODO sanjay put a comment saying phase1 limit will be 0 for permissioned NOs?
+        //SD threshold for permissioned NOs is 0 for phase1
         bool isEnoughCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
             msg.sender,
             _poolId,

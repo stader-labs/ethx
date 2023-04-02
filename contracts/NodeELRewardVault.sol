@@ -19,6 +19,11 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     // Recipients
     address payable public nodeRecipient;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address _staderConfig,
         address payable _nodeRecipient,

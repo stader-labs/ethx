@@ -10,12 +10,12 @@ interface IPermissionedNodeRegistry {
     error TooManyVerifiedKeysToDeposit();
 
     //Events
-    event OperatorWhitelisted(address _permissionedNO);
-    event OperatorDeactivated(uint16 _operatorID);
-    event OperatorActivated(uint16 _operatorID);
-    event MarkedValidatorStatusAsPreDeposit(bytes indexed _pubkey);
-    event UpdatedVerifiedKeyBatchSize(uint256 _verifiedKeysBatchSize);
-    event UpdatedQueuedValidatorIndex(uint16 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
+    event OperatorWhitelisted(address permissionedNO);
+    event OperatorDeactivated(uint16 operatorID);
+    event OperatorActivated(uint16 operatorID);
+    event MarkedValidatorStatusAsPreDeposit(bytes indexed pubkey);
+    event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
+    event UpdatedQueuedValidatorIndex(uint16 indexed operatorId, uint256 nextQueuedValidatorIndex);
 
     // Getters
 
@@ -35,13 +35,13 @@ interface IPermissionedNodeRegistry {
 
     function totalActiveOperatorCount() external view returns (uint16);
 
-    function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
-
-    function STADER_MANAGER_BOT() external view returns (bytes32);
+    function STADER_DAO() external view returns (bytes32);
 
     function STADER_ORACLE() external view returns (bytes32);
 
     function PERMISSIONED_POOL() external view returns (bytes32);
+
+    function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
@@ -82,7 +82,7 @@ interface IPermissionedNodeRegistry {
         bytes[] calldata _depositSignature
     ) external;
 
-    function computeOperatorAllocationForDeposit(uint256 numValidators)
+    function computeOperatorAllocationForDeposit(uint256 _numValidators)
         external
         returns (uint256[] memory selectedOperatorCapacity);
 

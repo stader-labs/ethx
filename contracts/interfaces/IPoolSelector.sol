@@ -12,15 +12,15 @@ interface IPoolSelector {
     //Events
 
     event UpdatedPoolWeight(uint8 indexed poolId, uint256 poolWeight);
-    event UpdatedPoolAllocationMaxSize(uint16 _poolAllocationMaxSize);
-    event UpdatedStaderConfig(address _staderConfig);
+    event UpdatedPoolAllocationMaxSize(uint16 poolAllocationMaxSize);
+    event UpdatedStaderConfig(address staderConfig);
 
     // Getters
     function poolIdForExcessDeposit() external view returns (uint8); // returns the ID of the pool with excess supply
 
     function POOL_SELECTOR_ADMIN() external view returns (bytes32);
 
-    function STADER_STAKE_POOL_MANAGER() external view returns (bytes32);
+    function POOL_MANAGER() external view returns (bytes32);
 
     function computePoolAllocationForDeposit(uint256 _pooledEth)
         external

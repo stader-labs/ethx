@@ -45,16 +45,16 @@ interface INodeRegistry {
     error NotEnoughSDCollateral();
 
     //Events
-    event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
-    event AddedValidatorKey(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
-    event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
-    event UpdatedValidatorDepositBlock(uint256 _validatorId, uint256 _depositBlock);
-    event UpdatedMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator);
-    event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
-    event UpdatedStaderConfig(address _staderConfig);
-    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+    event OnboardedOperator(address indexed nodeOperator, uint256 operatorId);
+    event AddedValidatorKey(address indexed nodeOperator, bytes pubkey, uint256 validatorId);
+    event ValidatorMarkedAsFrontRunned(bytes indexed pubkey, uint256 validatorId);
+    event ValidatorWithdrawn(bytes indexed pubkey, uint256 validatorId);
+    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed pubkey, uint256 validatorId);
+    event UpdatedValidatorDepositBlock(uint256 validatorId, uint256 depositBlock);
+    event UpdatedMaxNonTerminalKeyPerOperator(uint64 maxNonTerminalKeyPerOperator);
+    event UpdatedInputKeyCountLimit(uint256 batchKeyDepositLimit);
+    event UpdatedStaderConfig(address staderConfig);
+    event UpdatedOperatorDetails(address indexed nodeOperator, string operatorName, address rewardAddress);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
 
     // return validator struct for a validator Id
@@ -76,7 +76,7 @@ interface INodeRegistry {
     // Returns the block of the last time the operator changed the opt-in status for socializing pool
     function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
 
@@ -89,16 +89,10 @@ interface INodeRegistry {
     */
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
 
-    /**
-     *
-     * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
-     * @param startIndex start index in validator queue to start with
-     * @param endIndex  up to end index of validator queue to to count
-     */
     function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
-        uint256 startIndex,
-        uint256 endIndex
+        uint256 _startIndex,
+        uint256 _endIndex
     ) external view returns (uint64);
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
@@ -107,7 +101,7 @@ interface INodeRegistry {
 
     function getCollateralETH() external view returns (uint256);
 
-    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 totalKeys);
 
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

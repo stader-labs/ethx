@@ -33,6 +33,11 @@ contract SocializingPool is
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
 

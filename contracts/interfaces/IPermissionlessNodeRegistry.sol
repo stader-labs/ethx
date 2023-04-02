@@ -15,10 +15,10 @@ interface IPermissionlessNodeRegistry {
 
     //Events
 
-    event ValidatorMarkedReadyToDeposit(bytes indexed _pubkey, uint256 _validatorId);
-    event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
-    event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 block);
-    event TransferredCollateralToPool(uint256 _amount);
+    event ValidatorMarkedReadyToDeposit(bytes indexed pubkey, uint256 validatorId);
+    event UpdatedNextQueuedValidatorIndex(uint256 nextQueuedValidatorIndex);
+    event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);
+    event TransferredCollateralToPool(uint256 amount);
 
     //Getters
 
@@ -68,6 +68,8 @@ interface IPermissionlessNodeRegistry {
     function operatorIDByAddress(address) external view returns (uint256);
 
     function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
+
+    function nodeELRewardVaultByOperator(address) external view returns (address);
 
     function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
 
