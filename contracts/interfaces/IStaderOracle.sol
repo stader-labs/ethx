@@ -56,7 +56,7 @@ interface IStaderOracle {
     error InvalidMerkleRootIndex();
     error ReportingPreviousCycleData();
     error StaleData();
-    error ReportingAlreadyReportedPageNumber();
+    error PageNumberAlreadyReported();
     error InvalidData();
     error InvalidPubkeyLength();
     error NotATrustedNode();

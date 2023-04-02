@@ -187,7 +187,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         MissedAttestationReportInfo memory reportInfo = missedAttestationDataByTrustedNode[msg.sender];
         if (_mapd.index < reportInfo.index) revert ReportingPreviousCycleData();
-        if (_mapd.pageNumber <= reportInfo.pageNumber) revert ReportingAlreadyReportedPageNumber();
+        if (_mapd.pageNumber <= reportInfo.pageNumber) revert PageNumberAlreadyReported();
         if (_mapd.keyCount * VALIDATOR_PUBKEY_LENGTH != _mapd.pubkeys.length) revert InvalidData();
 
         // Get submission keys
