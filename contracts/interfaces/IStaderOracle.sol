@@ -56,6 +56,12 @@ struct ValidatorStats {
     uint32 slashedValidatorsCount;
 }
 
+struct WithdrawnValidators {
+    uint256 lastUpdatedBlockNumber;
+    address nodeRegistry;
+    bytes[] sortedPubkeys;
+}
+
 interface IStaderOracle {
     // Events
     event BalancesSubmitted(
@@ -93,6 +99,14 @@ interface IStaderOracle {
         uint256 slashedValidatorsCount,
         uint256 time
     );
+    event WithdrawnValidatorsSubmitted(
+        address indexed from,
+        uint256 block,
+        address nodeRegistry,
+        bytes[] pubkeys,
+        uint256 time
+    );
+    event WithdrawnValidatorsUpdated(uint256 block, address nodeRegistry, bytes[] pubkeys, uint256 time);
 
     // The root of the merkle tree containing the socializing rewards of operator
     function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
@@ -106,6 +120,8 @@ interface IStaderOracle {
 
     // The frequency in blocks at which network updates should be submitted by trusted nodes
     function updateFrequency() external view returns (uint256);
+
+    function lastUpdatedBlockNumberForWithdrawnValidators() external view returns (uint256);
 
     function trustedNodesCount() external view returns (uint256);
 
@@ -147,6 +163,12 @@ interface IStaderOracle {
      *    then updates the validator counts, and emits a CountsUpdated event.
      */
     function submitValidatorStats(ValidatorStats calldata _validatorStats) external;
+
+    /// @notice Submit the withdrawn validators list to the oracle.
+    /// @dev The function checks if the submitted data is for a valid and newer block,
+    ///      and if the submission count reaches the required threshold, it updates the withdrawn validators list (NodeRegistry).
+    /// @param _withdrawnValidators The withdrawn validators data, including lastUpdatedBlockNumber and sorted pubkeys.
+    function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators) external;
 
     function getLatestReportableBlock() external view returns (uint256);
 }
