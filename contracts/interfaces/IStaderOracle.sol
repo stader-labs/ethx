@@ -94,6 +94,12 @@ interface IStaderOracle {
         uint256 time
     );
 
+    // The root of the merkle tree containing the socializing rewards of operator
+    function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
+
+    // The last updated merkle tree index
+    function getCurrentRewardsIndex() external view returns (uint256);
+
     function getExchangeRate() external view returns (ExchangeRate memory);
 
     function getValidatorStats() external view returns (ValidatorStats memory);

@@ -94,11 +94,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
                 _exchangeRate.totalETHXSupply
             )
         );
-        // Check & update node submission status
-        require(!nodeSubmissionKeys[nodeSubmissionKey], 'Duplicate submission from node');
-        nodeSubmissionKeys[nodeSubmissionKey] = true;
-        submissionCountKeys[submissionCountKey]++;
-        uint8 submissionCount = submissionCountKeys[submissionCountKey];
+        uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
         // Emit balances submitted event
         emit BalancesSubmitted(
             msg.sender,
