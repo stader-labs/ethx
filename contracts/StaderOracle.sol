@@ -69,10 +69,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
         require(_exchangeRate.lastUpdatedBlockNumber < block.number, 'Data can not be submitted for a future block');
-        require(
-            _exchangeRate.lastUpdatedBlockNumber > exchangeRate.lastUpdatedBlockNumber,
-            'Data for an equal or higher block are set'
-        );
         require(_exchangeRate.totalStakingETHBalance <= _exchangeRate.totalETHBalance, 'Invalid network balances');
 
         // Get submission keys
@@ -191,10 +187,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @inheritdoc IStaderOracle
     function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
         require(_validatorStats.lastUpdatedBlockNumber < block.number, 'Data can not be submitted for a future block');
-        require(
-            _validatorStats.lastUpdatedBlockNumber > validatorStats.lastUpdatedBlockNumber,
-            'Data for an equal or higher block are set'
-        );
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
@@ -265,10 +257,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             _withdrawnValidators.lastUpdatedBlockNumber < block.number,
             'Data can not be submitted for a future block'
         );
-        require(
-            _withdrawnValidators.lastUpdatedBlockNumber > lastUpdatedBlockNumberForWithdrawnValidators,
-            'Data for an equal or higher block are set'
-        );
 
         // Ensure the pubkeys array is sorted
         require(isSorted(_withdrawnValidators.sortedPubkeys), 'Pubkeys must be sorted');
@@ -301,7 +289,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             block.timestamp
         );
 
-        if (submissionCount >= trustedNodesCount / 2 + 1) {
+        if (
+            submissionCount >= trustedNodesCount / 2 + 1 &&
+            _withdrawnValidators.lastUpdatedBlockNumber > lastUpdatedBlockNumberForWithdrawnValidators
+        ) {
             lastUpdatedBlockNumberForWithdrawnValidators = _withdrawnValidators.lastUpdatedBlockNumber;
             INodeRegistry(_withdrawnValidators.nodeRegistry).withdrawnValidators(_withdrawnValidators.sortedPubkeys);
 
