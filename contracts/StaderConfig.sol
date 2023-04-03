@@ -90,37 +90,45 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     /**
      * @dev update the minimum stake amount
-     * @param _minDepositAmount minimum deposit value
+     * @param _minDepositAmount minimum deposit amount
      */
     function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_minDepositAmount == 0 || _minDepositAmount > getMaxDepositAmount()) revert InvalidMinDepositValue();
+        if (_minDepositAmount == 0 || _minDepositAmount > getMaxDepositAmount()) {
+            revert InvalidMinDepositValue();
+        }
         _setVariable(MinDepositAmount, _minDepositAmount);
     }
 
     /**
      * @dev update the maximum stake amount
-     * @param _maxDepositAmount maximum deposit value
+     * @param _maxDepositAmount maximum deposit amount
      */
     function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_maxDepositAmount <= getMinDepositAmount()) revert InvalidMaxDepositValue();
+        if (_maxDepositAmount <= getMinDepositAmount()) {
+            revert InvalidMaxDepositValue();
+        }
         _setVariable(MaxDepositAmount, _maxDepositAmount);
     }
 
     /**
      * @dev update the minimum withdraw amount
-     * @param _minWithdrawAmount minimum withdraw value
+     * @param _minWithdrawAmount minimum withdraw amount
      */
     function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_minWithdrawAmount == 0 || _minWithdrawAmount > getMaxWithdrawAmount()) revert InvalidMinWithdrawValue();
+        if (_minWithdrawAmount == 0 || _minWithdrawAmount > getMaxWithdrawAmount()) {
+            revert InvalidMinWithdrawValue();
+        }
         _setVariable(MinWithdrawAmount, _minWithdrawAmount);
     }
 
     /**
      * @dev update the maximum withdraw amount
-     * @param _maxWithdrawAmount maximum withdraw value
+     * @param _maxWithdrawAmount maximum withdraw amount
      */
     function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_maxWithdrawAmount < getMinWithdrawAmount()) revert InvalidMaxWithdrawValue();
+        if (_maxWithdrawAmount < getMinWithdrawAmount()) {
+            revert InvalidMaxWithdrawValue();
+        }
         _setVariable(MaxWithdrawAmount, _maxWithdrawAmount);
     }
 

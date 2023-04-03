@@ -24,6 +24,8 @@ struct RewardsData {
     uint256 operatorSDRewards;
 }
 
+/// @title RewardsData
+/// @notice This struct holds missed attestation penalty data
 struct MissedAttestationPenaltyData {
     /// @notice count of validator missing attestation penalty
     uint16 keyCount;
@@ -81,7 +83,7 @@ struct WithdrawnValidators {
 }
 
 interface IStaderOracle {
-    //Error
+    // Error
     error NodeAlreadyTrusted();
     error NodeNotTrusted();
     error ZeroFrequency();

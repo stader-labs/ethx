@@ -5,7 +5,7 @@ import '../library/ValidatorStatus.sol';
 import './INodeRegistry.sol';
 
 interface IPermissionlessNodeRegistry {
-    // Error
+    // Errors
     error TransferFailed();
     error InvalidBondEthValue();
     error InSufficientBalance();
@@ -13,8 +13,7 @@ interface IPermissionlessNodeRegistry {
     error CooldownNotComplete();
     error NoChangeInState();
 
-    //Events
-
+    // Events
     event ValidatorMarkedReadyToDeposit(bytes indexed pubkey, uint256 validatorId);
     event UpdatedNextQueuedValidatorIndex(uint256 nextQueuedValidatorIndex);
     event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);

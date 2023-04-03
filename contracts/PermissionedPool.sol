@@ -97,10 +97,12 @@ contract PermissionedPool is
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
 
-        // i is the operator ID
+        // i is the operator Id
         for (uint16 i = 1; i < selectedOperatorCapacity.length; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
-            if (validatorToDeposit == 0) continue;
+            if (validatorToDeposit == 0) {
+                continue;
+            }
             uint256 nextQueuedValidatorIndex = IPermissionedNodeRegistry(nodeRegistryAddress)
                 .nextQueuedValidatorIndexByOperatorId(i);
 
@@ -220,9 +222,15 @@ contract PermissionedPool is
 
     // @inheritdoc IStaderPoolBase
     function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(PERMISSIONED_POOL_ADMIN) {
-        if (_protocolFee + _operatorFee > TOTAL_FEE) revert CommissionFeesMoreThanTOTAL_FEE();
-        if (protocolFee == _protocolFee) revert ProtocolFeeUnchanged();
-        if (operatorFee == _operatorFee) revert OperatorFeeUnchanged();
+        if (_protocolFee + _operatorFee > TOTAL_FEE) {
+            revert CommissionFeesMoreThanTOTAL_FEE();
+        }
+        if (protocolFee == _protocolFee) {
+            revert ProtocolFeeUnchanged();
+        }
+        if (operatorFee == _operatorFee) {
+            revert OperatorFeeUnchanged();
+        }
 
         protocolFee = _protocolFee;
         operatorFee = _operatorFee;

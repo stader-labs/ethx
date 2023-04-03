@@ -96,7 +96,9 @@ contract ValidatorWithdrawalVault is
     }
 
     function settleFunds() external nonReentrant {
-        if (!isWithdrawnValidator()) revert ValidatorNotWithdrawn();
+        if (!isWithdrawnValidator()) {
+            revert ValidatorNotWithdrawn();
+        }
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
@@ -155,12 +157,16 @@ contract ValidatorWithdrawalVault is
     }
 
     function _sendValue(address payable _recipient, uint256 _amount) internal {
-        if (address(this).balance < _amount) revert InsufficientBalance();
+        if (address(this).balance < _amount) {
+            revert InsufficientBalance();
+        }
 
         //slither-disable-next-line arbitrary-send-eth
         if (_amount > 0) {
             (bool success, ) = _recipient.call{value: _amount}('');
-            if (!success) revert TransferFailed();
+            if (!success) {
+                revert TransferFailed();
+            }
         }
     }
 

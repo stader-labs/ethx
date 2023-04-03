@@ -4,11 +4,11 @@ pragma solidity ^0.8.16;
 import '../library/ValidatorStatus.sol';
 
 struct Validator {
-    ValidatorStatus status; // state of validator
-    bytes pubkey; //public Key of the validator
+    ValidatorStatus status; // status of validator
+    bytes pubkey; //pubkey of the validator
     bytes preDepositSignature; //signature for 1 ETH deposit on beacon chain
     bytes depositSignature; //signature for 31 ETH deposit on beacon chain
-    address withdrawVaultAddress; //eth1 withdrawal address for validator
+    address withdrawVaultAddress; //withdrawal vault address of validator
     uint256 operatorId; // stader network assigned Id
     uint256 depositBlock; // block number of the 31ETH deposit
     uint256 withdrawnBlock; //block number when oracle report validator as withdrawn
@@ -24,7 +24,7 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
-    //ERROR
+    // Errors
     error EmptyNameString();
     error NameCrossedMaxLength();
     error maxKeyLimitReached();
@@ -42,7 +42,7 @@ interface INodeRegistry {
     error PubkeyDoesNotExist();
     error NotEnoughSDCollateral();
 
-    //Events
+    // Events
     event OnboardedOperator(address indexed nodeOperator, uint256 operatorId);
     event AddedValidatorKey(address indexed nodeOperator, bytes pubkey, uint256 validatorId);
     event ValidatorMarkedAsFrontRunned(bytes indexed pubkey, uint256 validatorId);
@@ -112,9 +112,11 @@ interface INodeRegistry {
         uint256 _endIndex
     ) external view returns (uint64);
 
-    function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
+    // returns the total number of queued validators across all operators
+    function getTotalQueuedValidatorCount() external view returns (uint256);
 
-    function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
+    // returns the total number of active validators across all operators
+    function getTotalActiveValidatorCount() external view returns (uint256);
 
     function getCollateralETH() external view returns (uint256);
 

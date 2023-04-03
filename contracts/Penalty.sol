@@ -61,7 +61,9 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (mevTheftPenaltyPerStrike == _mevTheftPenaltyPerStrike) revert MEVTheftPenaltyPerStrikeUnchanged();
+        if (mevTheftPenaltyPerStrike == _mevTheftPenaltyPerStrike) {
+            revert MEVTheftPenaltyPerStrikeUnchanged();
+        }
 
         mevTheftPenaltyPerStrike = _mevTheftPenaltyPerStrike;
 
@@ -74,8 +76,9 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (missedAttestationPenaltyPerStrike == _missedAttestationPenaltyPerStrike)
+        if (missedAttestationPenaltyPerStrike == _missedAttestationPenaltyPerStrike) {
             revert MissedAttestationPenaltyPerStrikeUnchanged();
+        }
 
         missedAttestationPenaltyPerStrike = _missedAttestationPenaltyPerStrike;
 
@@ -88,8 +91,9 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (validatorExitPenaltyThreshold == _validatorExitPenaltyThreshold)
+        if (validatorExitPenaltyThreshold == _validatorExitPenaltyThreshold) {
             revert ValidatorExitPenaltyThresholdUnchanged();
+        }
 
         validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
 
@@ -145,7 +149,9 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function getPubkeyRoot(bytes calldata _pubkey) public pure override returns (bytes32) {
-        if (_pubkey.length != 48) revert InvalidPubkeyLength();
+        if (_pubkey.length != 48) {
+            revert InvalidPubkeyLength();
+        }
 
         // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
         return sha256(abi.encodePacked(_pubkey, bytes16(0)));

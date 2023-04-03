@@ -53,24 +53,23 @@ contract StaderStakePoolsManager is
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
-    // contract does not support receiving ETH by an EOA
+    // protection against accidental submissions by calling non-existent function
     fallback() external payable {
         revert UnsupportedOperation();
     }
 
-    // contract does not support receiving ETH by an EOA
+    // protection against accidental submissions by calling non-existent function
     receive() external payable {
         revert UnsupportedOperation();
     }
 
-    /**
-     * @notice A payable function for execution layer rewards.
-     */
+    // payable function for receiving execution layer rewards.
     function receiveExecutionLayerRewards() external payable override {
         depositedPooledETH += msg.value;
         emit ExecutionLayerRewardsReceived(msg.value);
     }
 
+    // payable function for receiving user share from validator withdraw vault
     function receiveWithdrawVaultUserShare() external payable override {
         depositedPooledETH += msg.value;
         emit WithdrawVaultUserShareReceived(msg.value);
@@ -87,15 +86,20 @@ contract StaderStakePoolsManager is
 
     /**
      * @notice transfer the ETH to user withdraw manager to finalize requests
+     * @dev only user withdraw manager allowed to call
      * @param _amount amount of ETH to transfer
      */
     function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
         address userWithdrawManager = staderConfig.getUserWithdrawManager();
-        if (msg.sender != userWithdrawManager) revert CallerNotUserWithdrawManager();
+        if (msg.sender != userWithdrawManager) {
+            revert CallerNotUserWithdrawManager();
+        }
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = payable(userWithdrawManager).call{value: _amount}('');
-        if (!success) revert TransferFailed();
+        if (!success) {
+            revert TransferFailed();
+        }
         emit TransferredETHToUserWithdrawManager(_amount);
     }
 
@@ -107,7 +111,7 @@ contract StaderStakePoolsManager is
     }
 
     /**
-     * @notice Returns the amount of ETHER equivalent 1 ETHX (with 18 decimals)
+     * @notice returns the amount of ETH equivalent 1 ETHX (with 18 decimals)
      */
     function getExchangeRate() public view override returns (uint256) {
         uint256 DECIMALS = staderConfig.getDecimals();
@@ -153,7 +157,9 @@ contract StaderStakePoolsManager is
     /** @dev See {IERC4626-deposit}. */
     function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
-        if (assets > maxDeposit() || assets < staderConfig.getMinDepositAmount()) revert InvalidDepositAmount();
+        if (assets > maxDeposit() || assets < staderConfig.getMinDepositAmount()) {
+            revert InvalidDepositAmount();
+        }
         uint256 shares = previewDeposit(assets);
         _deposit(msg.sender, _receiver, assets, shares);
         return shares;
@@ -165,17 +171,23 @@ contract StaderStakePoolsManager is
      * transfer that much eth to individual pool to register on beacon chain
      */
     function validatorBatchDeposit() external override nonReentrant whenNotPaused {
-        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) revert ProtocolNotInSafeMode();
+        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
+            revert ProtocolNotInSafeMode();
+        }
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
         address poolFactory = staderConfig.getPoolFactory();
         uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
-        if (availableETHForNewDeposit < ETH_PER_NODE) revert insufficientBalance();
+        if (availableETHForNewDeposit < ETH_PER_NODE) {
+            revert insufficientBalance();
+        }
         uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
             .computePoolAllocationForDeposit(availableETHForNewDeposit);
         for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
-            if (validatorToDeposit == 0) continue;
+            if (validatorToDeposit == 0) {
+                continue;
+            }
             (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
             uint256 poolDepositSize = ETH_PER_NODE - IPoolFactory(poolFactory).getCollateralETH(i);
 

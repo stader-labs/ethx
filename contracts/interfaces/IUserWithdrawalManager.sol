@@ -3,6 +3,7 @@
 pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
+    // Errors
     error TransferFailed();
     error TokenTransferFailed();
     error ProtocolNotInSafeMode();
@@ -16,6 +17,7 @@ interface IUserWithdrawalManager {
     error CallerNotAuthorizedToRedeem();
     error ZeroAddressReceived();
 
+    // Events
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
     event UpdatedStaderConfig(address staderConfig);
     event UpdatedMinimumDelayToFinalizeRequest(uint256 _minimumDelayToFinalizeRequest);

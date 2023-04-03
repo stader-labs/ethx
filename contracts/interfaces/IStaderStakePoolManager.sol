@@ -3,7 +3,7 @@
 pragma solidity ^0.8.16;
 
 interface IStaderStakePoolManager {
-    //Error events
+    // Errors
     error InvalidDepositAmount();
     error UnsupportedOperation();
     error insufficientBalance();

@@ -69,9 +69,15 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         external
         onlyRole(PERMISSIONLESS_POOL_ADMIN)
     {
-        if (_protocolFee + _operatorFee > TOTAL_FEE) revert CommissionFeesMoreThanTOTAL_FEE();
-        if (protocolFee == _protocolFee) revert ProtocolFeeUnchanged();
-        if (operatorFee == _operatorFee) revert OperatorFeeUnchanged();
+        if (_protocolFee + _operatorFee > TOTAL_FEE) {
+            revert CommissionFeesMoreThanTOTAL_FEE();
+        }
+        if (protocolFee == _protocolFee) {
+            revert ProtocolFeeUnchanged();
+        }
+        if (operatorFee == _operatorFee) {
+            revert OperatorFeeUnchanged();
+        }
 
         protocolFee = _protocolFee;
         operatorFee = _operatorFee;
@@ -82,7 +88,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /**
      * @notice pre deposit for permission less validator to avoid front running
      * @dev only permissionless node registry can call
-     * @param _pubkey public key array of validators
+     * @param _pubkey pubkey array of validators
      * @param _preDepositSignature signature array of validators for 1ETH deposit
      * @param _operatorId operator Id of the NO
      * @param _operatorTotalKeys total keys of operator at the starting of adding new keys

@@ -37,7 +37,9 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (bytes(_poolName).length == 0) revert EmptyString();
+        if (bytes(_poolName).length == 0) {
+            revert EmptyString();
+        }
         AddressLib.checkNonZeroAddress(_poolAddress);
 
         pools[poolCount + 1] = Pool({poolName: _poolName, poolAddress: _poolAddress});
@@ -104,8 +106,9 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPoolFactory
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
-            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;
-
+            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
+                continue;
+            }
             return getValidatorByPool(i, _pubkey);
         }
         Validator memory emptyValidator;
@@ -127,8 +130,9 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPoolFactory
     function retrieveOperator(bytes calldata _pubkey) public view override returns (Operator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
-            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;
-
+            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
+                continue;
+            }
             return getOperator(i, _pubkey);
         }
 
@@ -177,14 +181,18 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         for (uint8 i = 1; i <= poolCount; i++) {
-            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) return true;
+            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) {
+                return true;
+            }
         }
         return false;
     }
 
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
-        if (_poolId == 0 && _poolId > poolCount) revert InvalidPoolID();
+        if (_poolId == 0 && _poolId > poolCount) {
+            revert InvalidPoolID();
+        }
         _;
     }
 }

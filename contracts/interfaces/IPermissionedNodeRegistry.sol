@@ -5,11 +5,11 @@ import '../library/ValidatorStatus.sol';
 import './INodeRegistry.sol';
 
 interface IPermissionedNodeRegistry {
-    // Error
+    // Errors
     error NotAPermissionedNodeOperator();
     error TooManyVerifiedKeysToDeposit();
 
-    //Events
+    // Events
     event OperatorWhitelisted(address permissionedNO);
     event OperatorDeactivated(uint256 operatorID);
     event OperatorActivated(uint256 operatorID);

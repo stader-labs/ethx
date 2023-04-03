@@ -21,6 +21,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     IStaderConfig public staderConfig;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
 
+    //TODO make sure weight are in order of pool Id
     mapping(uint8 => uint256) public poolWeights;
 
     bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
@@ -32,7 +33,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     }
 
     /**
-     * @notice initialize with permissioned and permissionless Pool
+     * @notice initialize with permissionless and permissioned Pool weights
      * @dev pool index start from 1 with permission less pool
      * @param _staderConfig config contract address
      * @param _permissionlessTarget target weight of permissionless pool
@@ -44,7 +45,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256 _permissionedTarget
     ) external initializer {
         AddressLib.checkNonZeroAddress(_staderConfig);
-        if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) revert InvalidTargetWeight();
+        if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) {
+            revert InvalidTargetWeight();
+        }
 
         __AccessControl_init_unchained();
 
@@ -128,8 +131,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @param _poolTargets new target weights of pools
      */
     function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(POOL_SELECTOR_ADMIN) {
-        if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length)
+        if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length) {
             revert InvalidNewTargetInput();
+        }
 
         uint8 totalWeight;
         for (uint8 i = 0; i < _poolTargets.length; i++) {
@@ -137,7 +141,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
             poolWeights[i + 1] = _poolTargets[i];
             emit UpdatedPoolWeight(i + 1, _poolTargets[i]);
         }
-        if (totalWeight != POOL_WEIGHTS_SUM) revert InvalidSumOfPoolWeights();
+        if (totalWeight != POOL_WEIGHTS_SUM) {
+            revert InvalidSumOfPoolWeights();
+        }
     }
 
     function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(POOL_SELECTOR_ADMIN) {

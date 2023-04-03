@@ -110,10 +110,12 @@ contract UserWithdrawalManager is
     function withdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
         if (_owner == address(0)) revert ZeroAddressReceived();
         uint256 assets = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
-        if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount())
+        if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount()) {
             revert InvalidWithdrawAmount();
-        if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
+        }
+        if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
+        }
         IERC20(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
@@ -134,11 +136,15 @@ contract UserWithdrawalManager is
      * @dev check for safeMode to finalizeRequest
      */
     function finalizeUserWithdrawalRequest() external override whenNotPaused {
-        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) revert ProtocolNotInSafeMode();
+        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
+            revert ProtocolNotInSafeMode();
+        }
         address poolManager = staderConfig.getStakePoolManager();
         uint256 DECIMALS = staderConfig.getDecimals();
         uint256 exchangeRate = IStaderStakePoolManager(poolManager).getExchangeRate();
-        if (exchangeRate == 0) revert ProtocolNotHealthy();
+        if (exchangeRate == 0) {
+            revert ProtocolNotHealthy();
+        }
 
         uint256 maxRequestIdToFinalize = Math.min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit) - 1;
         uint256 lockedEthXToBurn;
@@ -175,11 +181,17 @@ contract UserWithdrawalManager is
      * @param _requestId request id to redeem
      */
     function redeem(uint256 _requestId) external override {
-        if (_requestId >= nextRequestIdToFinalize) revert requestIdNotFinalized(_requestId);
+        if (_requestId >= nextRequestIdToFinalize) {
+            revert requestIdNotFinalized(_requestId);
+        }
         UserWithdrawInfo memory userRequest = userWithdrawRequests[_requestId];
-        if (msg.sender != userRequest.owner) revert CallerNotAuthorizedToRedeem();
+        if (msg.sender != userRequest.owner) {
+            revert CallerNotAuthorizedToRedeem();
+        }
         // below is a default entry as no userRequest will be found for a redeemed request.
-        if (userRequest.ethExpected == 0) revert RequestAlreadyRedeemed(_requestId);
+        if (userRequest.ethExpected == 0) {
+            revert RequestAlreadyRedeemed(_requestId);
+        }
         uint256 etherToTransfer = userRequest.ethFinalized;
         _deleteRequestId(_requestId, userRequest.owner);
         _sendValue(userRequest.owner, etherToTransfer);
@@ -218,10 +230,14 @@ contract UserWithdrawalManager is
     }
 
     function _sendValue(address payable _recipient, uint256 _amount) internal {
-        if (address(this).balance < _amount) revert InSufficientBalance();
+        if (address(this).balance < _amount) {
+            revert InSufficientBalance();
+        }
 
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = _recipient.call{value: _amount}('');
-        if (!success) revert TransferFailed();
+        if (!success) {
+            revert TransferFailed();
+        }
     }
 }

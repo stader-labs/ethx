@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 import './INodeRegistry.sol';
 
 interface IStaderPoolBase {
-    //Error events
+    // Errors
     error CommissionFeesMoreThanTOTAL_FEE();
     error ProtocolFeeUnchanged();
     error OperatorFeeUnchanged();
@@ -24,9 +24,9 @@ interface IStaderPoolBase {
 
     //Getters
 
-    function protocolFee() external view returns (uint256); // returns the protocol fee percent
+    function protocolFee() external view returns (uint256); // returns the protocol fee
 
-    function operatorFee() external view returns (uint256); // returns the operator fee percent
+    function operatorFee() external view returns (uint256); // returns the operator fee
 
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 

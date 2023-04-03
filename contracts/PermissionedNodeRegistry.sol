@@ -9,8 +9,6 @@ import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionedPool.sol';
-import './interfaces/INodeELRewardVault.sol';
-import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
@@ -49,19 +47,19 @@ contract PermissionedNodeRegistry is
     bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
 
-    // mapping of validator ID and Validator struct
+    // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
     // mapping of bytes public key and validator Id
     mapping(bytes => uint256) public override validatorIdByPubkey;
-    // mapping of operaot ID and Operator struct
+    // mapping of operaot Id and Operator struct
     mapping(uint256 => Operator) public override operatorStructById;
     // mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
     // mapping of whitelisted permissioned node operator
     mapping(address => bool) public override permissionList;
-    //mapping of operator wise queued validator IDs arrays
+    //mapping of operator wise queued validator Ids arrays
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
-    //mapping of operator ID and nextQueuedValidatorIndex
+    //mapping of operator Id and nextQueuedValidatorIndex
     mapping(uint256 => uint256) public override nextQueuedValidatorIndexByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
 
@@ -111,11 +109,15 @@ contract PermissionedNodeRegistry is
     {
         _onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_operatorRewardAddress);
-        if (!permissionList[msg.sender]) revert NotAPermissionedNodeOperator();
+        if (!permissionList[msg.sender]) {
+            revert NotAPermissionedNodeOperator();
+        }
 
         //TODO sanjay check for operator, should not be in other pool
         uint256 operatorId = operatorIDByAddress[msg.sender];
-        if (operatorId != 0) revert OperatorAlreadyOnBoarded();
+        if (operatorId != 0) {
+            revert OperatorAlreadyOnBoarded();
+        }
         feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
         _onboardOperator(_operatorName, _operatorRewardAddress);
         //TODO sanjay, function signature only in interface, ask Manoj for full function
@@ -195,7 +197,9 @@ contract PermissionedNodeRegistry is
 
         if (validatorPerOperator != 0) {
             for (uint256 i = 1; i < nextOperatorId; i++) {
-                if (!operatorStructById[i].active) continue;
+                if (!operatorStructById[i].active) {
+                    continue;
+                }
                 remainingOperatorCapacity[i] = _getOperatorQueuedValidatorCount(i);
                 selectedOperatorCapacity[i] = Math.min(remainingOperatorCapacity[i], validatorPerOperator);
                 totalValidatorToDeposit += selectedOperatorCapacity[i];
@@ -210,7 +214,9 @@ contract PermissionedNodeRegistry is
             uint256 remainingValidatorsToDeposit = _numValidators - totalValidatorToDeposit;
             uint256 i = operatorIdForExcessDeposit;
             do {
-                if (!operatorStructById[i].active) continue;
+                if (!operatorStructById[i].active) {
+                    continue;
+                }
                 uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
                 selectedOperatorCapacity[i] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
@@ -230,7 +236,9 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _invalidSignaturePubkeys
     ) external onlyRole(STADER_ORACLE) {
         uint256 verifiedValidatorsLength = _readyToDepositPubkeys.length;
-        if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) revert TooManyVerifiedKeysToDeposit();
+        if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) {
+            revert TooManyVerifiedKeysToDeposit();
+        }
 
         uint256 frontRunValidatorsLength = _frontRunPubkeys.length;
         uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkeys.length;
@@ -271,7 +279,9 @@ contract PermissionedNodeRegistry is
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
-            if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
+            if (!_isNonTerminalValidator(validatorId)) {
+                revert UNEXPECTED_STATUS();
+            }
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnBlock = block.number;
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
@@ -281,7 +291,7 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice deactivate a node operator from running new validator clients
-     * @dev only accept call from address having `STADER_MANAGER_BOT` role
+     * @dev only accept call from address having `STADER_DAO` role
      * @param _operatorID ID of the operator to deactivate
      */
     function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_DAO) {
@@ -292,7 +302,7 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice activate a node operator for running new validator clients
-     * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
+     * @dev only accept call from address having `STADER_DAO` role
      * @param _operatorID ID of the operator to activate
      */
     function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_DAO) {
@@ -317,7 +327,7 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice sets the depositTime for a validator and update status to DEPOSITED
+     * @notice sets the deposit block for a validator and update status to DEPOSITED
      * @dev only permissioned pool can call
      * @param _validatorId ID of the validator
      */
@@ -330,7 +340,7 @@ contract PermissionedNodeRegistry is
     /**
      * @notice update the status of a validator to `PRE_DEPOSIT`
      * @dev only `PERMISSIONED_POOL` role can call
-     * @param _pubkey public key of the validator
+     * @param _pubkey pubkey of the validator
      */
     function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external override onlyRole(PERMISSIONED_POOL) {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
@@ -412,7 +422,6 @@ contract PermissionedNodeRegistry is
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         if (validatorId == 0) {
             Operator memory emptyOperator;
-
             return emptyOperator;
         }
         uint256 operatorId = validatorRegistry[validatorId].operatorId;
@@ -454,7 +463,7 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice get the total deposited keys for an operator
+     * @notice get the total added keys for an operator
      * @dev length of the validatorIds array for an operator
      * @param _operatorId ID of node operator
      */
@@ -463,7 +472,7 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
+     * @param _nodeOperator @notice operator total non terminal keys within a specified validator list
      * @param _startIndex start index in validator queue to start with
      * @param _endIndex  up to end index of validator queue to to count
      */
@@ -522,7 +531,9 @@ contract PermissionedNodeRegistry is
         override
         returns (Validator[] memory)
     {
-        if (_pageNumber == 0) revert PageNumberIsZero();
+        if (_pageNumber == 0) {
+            revert PageNumberIsZero();
+        }
         uint256 startIndex = (_pageNumber - 1) * _pageSize + 1;
         uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
@@ -584,17 +595,25 @@ contract PermissionedNodeRegistry is
             nextQueuedValidatorIndexByOperatorId[_operatorId];
     }
 
-    // checks for keys lengths, and if pubkey is already present in stader protocol(not just permissioned pool)
+    // checks for keys lengths, and if pubkey is already present in stader protocol
     function _validateKeys(
         bytes calldata _pubkey,
         bytes calldata _preDepositSignature,
         bytes calldata _depositSignature,
         address _poolFactory
     ) private view {
-        if (_pubkey.length != PUBKEY_LENGTH) revert InvalidLengthOfPubkey();
-        if (_preDepositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
-        if (_depositSignature.length != SIGNATURE_LENGTH) revert InvalidLengthOfSignature();
-        if (IPoolFactory(_poolFactory).isExistingPubkey(_pubkey)) revert PubkeyAlreadyExist();
+        if (_pubkey.length != PUBKEY_LENGTH) {
+            revert InvalidLengthOfPubkey();
+        }
+        if (_preDepositSignature.length != SIGNATURE_LENGTH) {
+            revert InvalidLengthOfSignature();
+        }
+        if (_depositSignature.length != SIGNATURE_LENGTH) {
+            revert InvalidLengthOfSignature();
+        }
+        if (IPoolFactory(_poolFactory).isExistingPubkey(_pubkey)) {
+            revert PubkeyAlreadyExist();
+        }
     }
 
     // validate the input of `addValidatorKeys` function
@@ -605,14 +624,18 @@ contract PermissionedNodeRegistry is
         uint256 _depositSignatureLength,
         uint256 _operatorId
     ) internal view returns (uint256 keyCount, uint256 totalKeys) {
-        if (_pubkeyLength != _preDepositSignatureLength || _pubkeyLength != _depositSignatureLength)
+        if (_pubkeyLength != _preDepositSignatureLength || _pubkeyLength != _depositSignatureLength) {
             revert MisMatchingInputKeysSize();
+        }
         keyCount = _pubkeyLength;
-        if (keyCount == 0 || keyCount > inputKeyCountLimit) revert InvalidKeyCount();
-
+        if (keyCount == 0 || keyCount > inputKeyCountLimit) {
+            revert InvalidKeyCount();
+        }
         totalKeys = getOperatorTotalKeys(_operatorId);
         uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
-        if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) revert maxKeyLimitReached();
+        if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) {
+            revert maxKeyLimitReached();
+        }
 
         //check if operator has enough SD collateral for adding `keyCount` keys
         //SD threshold for permissioned NOs is 0 for phase1
@@ -621,14 +644,20 @@ contract PermissionedNodeRegistry is
             _poolId,
             totalNonTerminalKeys + keyCount
         );
-        if (!isEnoughCollateral) revert NotEnoughSDCollateral();
+        if (!isEnoughCollateral) {
+            revert NotEnoughSDCollateral();
+        }
     }
 
     // operator in active state
     function _onlyActiveOperator(address _operAddr) internal view returns (uint256 _operatorId) {
         _operatorId = operatorIDByAddress[_operAddr];
-        if (_operatorId == 0) revert OperatorNotOnBoarded();
-        if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();
+        if (_operatorId == 0) {
+            revert OperatorNotOnBoarded();
+        }
+        if (!operatorStructById[_operatorId].active) {
+            revert OperatorIsDeactivate();
+        }
     }
 
     // checks if validator is active,
@@ -653,8 +682,12 @@ contract PermissionedNodeRegistry is
 
     // only valid name with string length limit
     function _onlyValidName(string calldata _name) internal view {
-        if (bytes(_name).length == 0) revert EmptyNameString();
-        if (bytes(_name).length > staderConfig.getOperatorMaxNameLength()) revert NameCrossedMaxLength();
+        if (bytes(_name).length == 0) {
+            revert EmptyNameString();
+        }
+        if (bytes(_name).length > staderConfig.getOperatorMaxNameLength()) {
+            revert NameCrossedMaxLength();
+        }
     }
 
     // decreases the pool total active validator count
@@ -663,7 +696,9 @@ contract PermissionedNodeRegistry is
     }
 
     function _onlyPreDepositValidator(uint256 _validatorId) internal view {
-        if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT) revert UNEXPECTED_STATUS();
+        if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT) {
+            revert UNEXPECTED_STATUS();
+        }
     }
 
     function _markValidatorDeposited(uint256 _validatorId) internal {
