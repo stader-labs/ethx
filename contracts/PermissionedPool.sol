@@ -75,6 +75,7 @@ contract PermissionedPool is
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: amountToSendToPoolManager
         }(poolId);
+        emit TransferredETHToSSPMForDefectiveKeys(amountToSendToPoolManager);
     }
 
     /**
@@ -103,7 +104,6 @@ contract PermissionedPool is
                 index++
             ) {
                 uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
-                // TODO sanjay update 1ETH limbo
                 _preDepositOnBeaconChain(nodeRegistryAddress, vaultFactory, ethDepositContract, validatorId);
             }
             IPermissionedNodeRegistry(nodeRegistryAddress).updateQueuedValidatorIndex(
@@ -122,7 +122,7 @@ contract PermissionedPool is
         for (uint256 i = 0; i < _pubkey.length; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
-            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = IPermissionedNodeRegistry(
+            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = INodeRegistry(
                 nodeRegistryAddress
             ).validatorRegistry(validatorId);
             bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(
@@ -142,7 +142,7 @@ contract PermissionedPool is
                 depositSignature,
                 depositDataRoot
             );
-            IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndTime(validatorId);
+            IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
             emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey[i]);
         }
     }
@@ -177,8 +177,13 @@ contract PermissionedPool is
             );
     }
 
-    function getAllActiveValidators() public view override returns (Validator[] memory) {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getAllActiveValidators();
+    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+        public
+        view
+        override
+        returns (Validator[] memory)
+    {
+        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getAllActiveValidators(pageNumber, pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
@@ -195,12 +200,16 @@ contract PermissionedPool is
         return staderConfig.getPermissionedSocializingPool();
     }
 
-    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).isExistingPubkey(_pubkey);
-    }
-
     function getCollateralETH() external view override returns (uint256) {
         return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getCollateralETH();
+    }
+
+    function getNodeRegistry() external view override returns (address) {
+        return staderConfig.getPermissionedNodeRegistry();
+    }
+
+    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
+        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).isExistingPubkey(_pubkey);
     }
 
     //TODO sanjay merge setProtocolFee and setOperatorFee function
@@ -228,6 +237,7 @@ contract PermissionedPool is
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     // @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
@@ -272,7 +282,7 @@ contract PermissionedPool is
             ,
             ,
 
-        ) = IPermissionedNodeRegistry(_nodeRegistryAddress).validatorRegistry(_validatorId);
+        ) = INodeRegistry(_nodeRegistryAddress).validatorRegistry(_validatorId);
 
         bytes memory withdrawCredential = IVaultFactory(_vaultFactory).getValidatorWithdrawCredential(
             withdrawVaultAddress
@@ -291,7 +301,7 @@ contract PermissionedPool is
             preDepositSignature,
             depositDataRoot
         );
-        IPermissionedNodeRegistry(_nodeRegistryAddress).updateValidatorStatus(pubkey, ValidatorStatus.PRE_DEPOSIT);
+        IPermissionedNodeRegistry(_nodeRegistryAddress).markValidatorStatusAsPreDeposit(pubkey);
         emit ValidatorPreDepositedOnBeaconChain(pubkey);
     }
 

@@ -11,6 +11,9 @@ struct Pool {
 
 // Interface for the PoolFactory contract
 interface IPoolFactory {
+    //Errors
+    error EmptyString();
+    error InvalidPoolID();
     // Events
     event PoolAdded(string poolName, address poolAddress);
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);
@@ -22,16 +25,6 @@ interface IPoolFactory {
     function addNewPool(string calldata _poolName, address _poolAddress) external;
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
-
-    /**
-     * @notice Returns an array of active validators from all the pools.
-     *
-     * @param pageNumber The page number of the results to fetch (starting from 1).
-     * @param pageSize The maximum number of items per page.
-     *
-     * @return An array of `Validator` objects representing the active validators.
-     */
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);
 
     function retrieveValidator(bytes calldata _pubkey) external view returns (Validator memory);
 
@@ -64,6 +57,8 @@ interface IPoolFactory {
     function getQueuedValidatorCountByPool(uint8 _poolId) external view returns (uint256); // returns the total number of queued validators in a specific pool
 
     function getCollateralETH(uint8 _poolId) external view returns (uint256);
+
+    function getNodeRegistry(uint8 _poolId) external view returns (address);
 
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

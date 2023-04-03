@@ -5,36 +5,17 @@ import '../library/ValidatorStatus.sol';
 import './INodeRegistry.sol';
 
 interface IPermissionedNodeRegistry {
-    // Error events
-    error EmptyNameString();
-    error InvalidKeyCount();
-    error maxKeyLimitReached();
-    error OperatorNotOnBoarded();
-    error NameCrossedMaxLength();
-    error PubkeyAlreadyExist();
-    error PubkeyDoesNotExist();
-    error UNEXPECTED_STATUS();
-    error OperatorIsDeactivate();
-    error InvalidLengthOfPubkey();
-    error InvalidStartAndEndIndex();
-    error InvalidLengthOfSignature();
-    error MisMatchingInputKeysSize();
-    error OperatorAlreadyOnBoarded();
+    // Error
     error NotAPermissionedNodeOperator();
     error TooManyVerifiedKeysToDeposit();
 
     //Events
-    event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
-    event AddedKeys(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
-    event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
-    event ValidatorDepositBlockSet(uint256 _validatorId, uint256 _depositBlock);
-    event UpdatedMaxKeyPerOperator(uint64 _keyDepositLimit);
-    event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
-    event UpdatedValidatorStatus(bytes indexed _pubkey, ValidatorStatus _status);
-    event UpdatedQueuedValidatorIndex(uint256 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
-    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+    event OperatorWhitelisted(address _permissionedNO);
+    event OperatorDeactivated(uint16 _operatorID);
+    event OperatorActivated(uint16 _operatorID);
+    event MarkedValidatorStatusAsPreDeposit(bytes indexed _pubkey);
+    event UpdatedVerifiedKeyBatchSize(uint256 _verifiedKeysBatchSize);
+    event UpdatedQueuedValidatorIndex(uint16 indexed _operatorId, uint256 _nextQueuedValidatorIndex);
 
     // Getters
 
@@ -44,7 +25,7 @@ interface IPermissionedNodeRegistry {
 
     function nextValidatorId() external view returns (uint256);
 
-    function maxKeyPerOperator() external view returns (uint64);
+    function maxNonTerminalKeyPerOperator() external view returns (uint64);
 
     function inputKeyCountLimit() external view returns (uint16);
 
@@ -56,28 +37,11 @@ interface IPermissionedNodeRegistry {
 
     function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
 
-    function VALIDATOR_STATUS_ROLE() external view returns (bytes32);
-
     function STADER_MANAGER_BOT() external view returns (bytes32);
 
     function STADER_ORACLE() external view returns (bytes32);
 
     function PERMISSIONED_POOL() external view returns (bytes32);
-
-    function validatorRegistry(uint256)
-        external
-        view
-        returns (
-            ValidatorStatus status,
-            bytes calldata pubkey,
-            bytes calldata preDepositSignature,
-            bytes calldata depositSignature,
-            address withdrawVaultAddress,
-            uint256 operatorId,
-            uint256 initialBondEth,
-            uint256 depositTime,
-            uint256 withdrawnTime
-        );
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
@@ -98,9 +62,7 @@ interface IPermissionedNodeRegistry {
 
     function permissionList(address) external view returns (bool);
 
-    function validatorIdsByOperatorId(uint16, uint256) external view returns (uint256);
-
-    function getOperatorTotalKeys(uint16 _operatorId) external view returns (uint256 _totalKeys);
+    function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
     function getOperatorRewardAddress(uint16 _operatorId) external view returns (address payable);
 
@@ -138,11 +100,11 @@ interface IPermissionedNodeRegistry {
 
     function updateQueuedValidatorIndex(uint16 _operatorId, uint256 _nextQueuedValidatorIndex) external;
 
-    function updateDepositStatusAndTime(uint256 _validatorId) external;
+    function updateDepositStatusAndBlock(uint256 _validatorId) external;
 
-    function updateValidatorStatus(bytes calldata _pubkey, ValidatorStatus _status) external;
+    function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external;
 
-    function updateMaxKeyPerOperator(uint64 _maxKeyPerOperator) external;
+    function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external;
 
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external;
 

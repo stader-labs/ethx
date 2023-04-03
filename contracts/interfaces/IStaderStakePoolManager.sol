@@ -11,12 +11,13 @@ interface IStaderStakePoolManager {
     error CallerNotUserWithdrawManager();
 
     // Events
+    event UpdatedStaderConfig(address _staderConfig);
     event Deposited(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event ExecutionLayerRewardsReceived(uint256 amount);
     event AuctionedEthReceived(uint256 amount);
     event ReceivedExcessEthFromPool(uint8 indexed _poolId);
     event TransferredETHToUserWithdrawManager(uint256 _amount);
-    event TransferredToPool(string indexed poolName, address poolAddress, uint256 validatorCount);
+    event ETHTransferredToPool(string indexed poolName, address poolAddress, uint256 validatorCount);
     event WithdrawVaultUserShareReceived(uint256 amount);
 
     function depositedPooledETH() external view returns (uint256);
