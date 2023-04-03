@@ -15,140 +15,159 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
     bytes32 public constant MANAGER = keccak256('MANAGER');
 
     IStaderConfig public staderConfig;
-    uint256 public numLots;
+    uint256 public nextLot;
+    uint256 public bidIncrement;
+    uint256 public duration;
 
-    uint256[] public startBlock;
-    uint256[] public endBlock;
-    uint256[] public sdAmount;
-    uint256[] public bidIncrement;
-    bool[] public cancelled;
-    address[] public highestBidder;
-    mapping(uint256 => mapping(address => uint256)) public fundsByBidder; // lotId => (bidder => funds)
+    mapping(uint256 => LotItem) public lots;
 
     // modifiers
-    modifier onlyAfterStart(uint256 lotId) {
-        if (block.number < startBlock[lotId]) revert AuctionNotStarted();
-        _;
-    }
+    // modifier onlyAfterStart(uint256 lotId) {
+    //     if (block.number < startBlock[lotId]) revert AuctionNotStarted();
+    //     _;
+    // }
 
-    modifier onlyBeforeEnd(uint256 lotId) {
-        if (block.number > endBlock[lotId]) revert AuctionEnded();
-        _;
-    }
+    // modifier onlyBeforeEnd(uint256 lotId) {
+    //     if (block.number > endBlock[lotId]) revert AuctionEnded();
+    //     _;
+    // }
 
-    modifier onlyNotCancelled(uint256 lotId) {
-        if (cancelled[lotId]) revert AuctionCancelled();
-        _;
-    }
+    // modifier onlyNotCancelled(uint256 lotId) {
+    //     if (cancelled[lotId]) revert AuctionCancelled();
+    //     _;
+    // }
 
-    modifier onlyEnded(uint256 lotId) {
-        if (block.number <= endBlock[lotId]) revert AuctionNotEnded();
-        _;
-    }
+    // modifier onlyEnded(uint256 lotId) {
+    //     if (block.number <= endBlock[lotId]) revert AuctionNotEnded();
+    //     _;
+    // }
 
-    modifier onlyEndedOrCancelled(uint256 lotId) {
-        require(block.number > endBlock[lotId] || cancelled[lotId], 'Auction not ended and not cancelled');
-        _;
-    }
+    // modifier onlyEndedOrCancelled(uint256 lotId) {
+    //     require(block.number > endBlock[lotId] || cancelled[lotId], 'Auction not ended and not cancelled');
+    //     _;
+    // }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig, address _manager) external initializer {
+    function initialize(
+        address _staderConfig,
+        address _manager,
+        uint256 _duration,
+        uint256 _bidIncrement
+    ) external initializer {
         Address.checkNonZeroAddress(_staderConfig);
         Address.checkNonZeroAddress(_manager);
+        if (_duration < 24 hours) revert ShortDuration();
 
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
+        duration = _duration;
+        bidIncrement = _bidIncrement;
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
         _grantRole(MANAGER, _manager);
+
+        emit AuctionDurationUpdated(duration);
+        emit BidInrementUpdated(bidIncrement);
     }
 
-    function createLot(
-        uint256 _sdAmount,
-        uint256 _startBlock,
-        uint256 _endBlock,
-        uint256 _bidIncrement
-    ) external whenNotPaused onlyRole(MANAGER) {
-        require(_startBlock >= block.number, 'past startBlock');
-        require(_startBlock <= _endBlock, 'startBlock > endBlock');
+    function createLot(uint256 _sdAmount) external whenNotPaused onlyRole(MANAGER) {
+        lots[nextLot].startBlock = block.number;
+        lots[nextLot].endBlock = block.number + duration;
+        lots[nextLot].sdAmount = _sdAmount;
+
+        LotItem storage lotItem = lots[nextLot];
 
         IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount);
-        sdAmount.push(_sdAmount);
-        bidIncrement.push(_bidIncrement);
-        startBlock.push(_startBlock);
-        endBlock.push(_endBlock);
-        numLots++;
-
-        emit LotCreated(numLots - 1, _sdAmount, _startBlock, _endBlock, _bidIncrement);
+        emit LotCreated(nextLot, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
     }
 
-    function getHighestBid(uint256 lotId) public view returns (uint256) {
-        return fundsByBidder[lotId][highestBidder[lotId]];
-    }
-
-    function placeBid(uint256 lotId)
-        external
-        payable
-        onlyAfterStart(lotId)
-        onlyBeforeEnd(lotId)
-        onlyNotCancelled(lotId)
-        whenNotPaused
-    {
+    function addBid(uint256 lotId) external payable whenNotPaused {
         // reject payments of 0 ETH
         if (msg.value == 0) revert InSufficientETH();
 
-        uint256 newBid = fundsByBidder[lotId][msg.sender] + msg.value;
-        uint256 _highestBid = getHighestBid(lotId);
-        if (newBid <= _highestBid + bidIncrement[lotId]) revert InSufficientETH();
+        LotItem storage lotItem = lots[lotId];
+        if (block.number > lotItem.endBlock) revert AuctionEnded();
 
-        fundsByBidder[lotId][msg.sender] = newBid;
-        highestBidder[lotId] = msg.sender;
+        uint256 totalUserBid = lotItem.bids[msg.sender] + msg.value;
+        uint256 _highestBid = lotItem.highestBidAmount;
 
-        emit BidPlaced(lotId, msg.sender, newBid);
+        if (totalUserBid < _highestBid + bidIncrement) revert InSufficientETH();
+
+        lotItem.highestBidder = msg.sender;
+        lotItem.highestBidAmount = totalUserBid;
+        lotItem.bids[msg.sender] = totalUserBid;
+
+        emit BidPlaced(lotId, msg.sender, totalUserBid);
     }
 
-    function cancelAuction(uint256 lotId) external onlyBeforeEnd(lotId) onlyNotCancelled(lotId) onlyRole(MANAGER) {
-        cancelled[lotId] = true;
-        emit BidCancelled(lotId);
+    function claimSD(uint256 lotId) external {
+        LotItem storage lotItem = lots[lotId];
+        if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
+        if (msg.sender != lotItem.highestBidder) revert notQualified();
+        if (lotItem.sdClaimed) revert AlreadyClaimed();
+
+        lotItem.sdClaimed = true;
+        IERC20(staderConfig.getStaderToken()).transfer(lotItem.highestBidder, lotItem.sdAmount);
+        emit SDClaimed(lotId, lotItem.highestBidder, lotItem.sdAmount);
     }
 
-    function claimSD(uint256 lotId) external onlyEnded(lotId) {
-        uint256 _sdAmount = sdAmount[lotId];
-        require(_sdAmount > 0, 'Already Claimed');
-        sdAmount[lotId] = 0;
+    function transferHighestBidToSSPM(uint256 lotId) external {
+        LotItem storage lotItem = lots[lotId];
+        uint256 ethAmount = lotItem.highestBidAmount;
 
-        IERC20(staderConfig.getStaderToken()).transfer(highestBidder[lotId], _sdAmount);
-        emit SDClaimed(lotId, highestBidder[lotId], sdAmount[lotId]);
+        if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
+        if (ethAmount == 0) revert NoBidPlaced();
+        if (lotItem.ethExtracted) revert AlreadyClaimed();
+
+        lotItem.ethExtracted = true;
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveEthFromAuction{value: ethAmount}();
+        emit ETHClaimed(lotId, staderConfig.getStakePoolManager(), ethAmount);
     }
 
-    function claimETH(uint256 lotId) external onlyEnded(lotId) {
-        uint256 _ethAmount = getHighestBid(lotId);
-        require(_ethAmount > 0, 'Already Claimed');
-        fundsByBidder[lotId][highestBidder[lotId]] = 0;
+    function extractNonBidSD(uint256 lotId) external {
+        LotItem storage lotItem = lots[lotId];
+        if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
+        if (lotItem.highestBidAmount > 0) revert BidWasSuccessful();
+        if (lotItem.sdAmount == 0) revert AlreadyClaimed();
 
-        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveEthFromAuction{value: _ethAmount}();
-        emit ETHClaimed(lotId, staderConfig.getStakePoolManager(), _ethAmount);
+        uint256 _sdAmount = lotItem.sdAmount;
+        lotItem.sdAmount = 0;
+        IERC20(staderConfig.getStaderToken()).transfer(staderConfig.getStaderTreasury(), _sdAmount);
+        emit UnsuccessfulSDAuctionExtracted(lotId, _sdAmount, staderConfig.getStaderTreasury());
     }
 
-    function withdraw(uint256 lotId) external onlyEndedOrCancelled(lotId) {
-        address withdrawalAccount = msg.sender;
-        uint256 withdrawalAmount = fundsByBidder[lotId][withdrawalAccount];
+    function withdrawUnselectedBid(uint256 lotId) external {
+        LotItem storage lotItem = lots[lotId];
+        if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
+        if (msg.sender == lotItem.highestBidder) revert BidWasSuccessful();
 
+        uint256 withdrawalAmount = lotItem.bids[msg.sender];
         if (withdrawalAmount == 0) revert InSufficientETH();
 
-        fundsByBidder[lotId][withdrawalAccount] -= withdrawalAmount;
+        lotItem.bids[msg.sender] -= withdrawalAmount;
 
         // send the funds
-        (bool success, ) = payable(withdrawalAccount).call{value: withdrawalAmount}('');
+        (bool success, ) = payable(msg.sender).call{value: withdrawalAmount}('');
         if (!success) revert ETHWithdrawFailed();
 
-        emit BidWithdrawn(lotId, withdrawalAccount, withdrawalAmount);
+        emit BidWithdrawn(lotId, msg.sender, withdrawalAmount);
+    }
+
+    function updateDuration(uint256 _duration) external onlyRole(MANAGER) {
+        if (_duration < 24 hours) revert ShortDuration();
+        duration = _duration;
+        emit AuctionDurationUpdated(duration);
+    }
+
+    function updateBidIncrement(uint256 _bidIncrement) external onlyRole(MANAGER) {
+        bidIncrement = _bidIncrement;
+        emit BidInrementUpdated(_bidIncrement);
     }
 }

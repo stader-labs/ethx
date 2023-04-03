@@ -5,10 +5,13 @@ interface IAuction {
     // errors
     error InSufficientETH();
     error ETHWithdrawFailed();
-    error AuctionNotStarted();
     error AuctionEnded();
-    error AuctionCancelled();
     error AuctionNotEnded();
+    error ShortDuration();
+    error notQualified();
+    error AlreadyClaimed();
+    error NoBidPlaced();
+    error BidWasSuccessful();
 
     // events
     event LotCreated(uint256 lotId, uint256 sdAmount, uint256 startBlock, uint256 endBlock, uint256 bidIncrement);
@@ -17,24 +20,32 @@ interface IAuction {
     event BidCancelled(uint256 lotId);
     event SDClaimed(uint256 lotId, address indexed highestBidder, uint256 sdAmount);
     event ETHClaimed(uint256 lotId, address indexed sspm, uint256 ethAmount);
+    event AuctionDurationUpdated(uint256 duration);
+    event BidInrementUpdated(uint256 _bidIncrement);
+    event UnsuccessfulSDAuctionExtracted(uint256 lotId, uint256 sdAmount, address indexed recipient);
+
+    // struct
+    struct LotItem {
+        uint256 startBlock;
+        uint256 endBlock;
+        uint256 sdAmount;
+        mapping(address => uint256) bids;
+        address highestBidder;
+        uint256 highestBidAmount;
+        bool sdClaimed;
+        bool ethExtracted;
+    }
 
     // methods
-    function createLot(
-        uint256 _sdAmount,
-        uint256 _startBlock,
-        uint256 _endBlock,
-        uint256 _bidIncrement
-    ) external;
+    function createLot(uint256 _sdAmount) external;
 
-    function getHighestBid(uint256 lotId) external view returns (uint256);
-
-    function placeBid(uint256 lotId) external payable;
-
-    function cancelAuction(uint256 lotId) external;
+    function addBid(uint256 lotId) external payable;
 
     function claimSD(uint256 lotId) external;
 
-    function claimETH(uint256 lotId) external;
+    function transferHighestBidToSSPM(uint256 lotId) external;
 
-    function withdraw(uint256 lotId) external;
+    function extractNonBidSD(uint256 lotId) external;
+
+    function withdrawUnselectedBid(uint256 lotId) external;
 }

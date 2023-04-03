@@ -22,11 +22,7 @@ contract SDCollateral is
     ReentrancyGuardUpgradeable
 {
     // TODO: Manoj refactor move to Interface
-    struct PoolThresholdInfo {
-        uint256 minThreshold;
-        uint256 withdrawThreshold;
-        string units;
-    }
+
     bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
 
     IStaderConfig public staderConfig;
@@ -35,7 +31,7 @@ contract SDCollateral is
     // TODO: Manoj we can instead use sdBalnce(address(this))
 
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
-    mapping(address => uint8) public poolIdByOperator;
+    mapping(address => uint8) private poolIdByOperator;
     mapping(address => uint256) public operatorSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -74,7 +70,7 @@ contract SDCollateral is
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator];
 
-        uint8 poolId = poolIdByOperator[operator];
+        uint8 poolId = getOperatorPoolId(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
         // TODO: Manoj update startIndex, endIndex
@@ -84,10 +80,12 @@ contract SDCollateral is
             0,
             1000
         );
-        if (sdBalance <= convertETHToSD(poolThreshold.withdrawThreshold * validatorCount)) {
+
+        uint256 sdCummulativeThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+        if (sdBalance <= sdCummulativeThreshold) {
             revert InsufficientSDToWithdraw();
         }
-        uint256 withdrawableSD = sdBalance - convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+        uint256 withdrawableSD = sdBalance - sdCummulativeThreshold;
 
         require(_requestedSD <= withdrawableSD, 'withdraw less SD');
 
@@ -98,12 +96,12 @@ contract SDCollateral is
         require(success, 'sd transfer failed');
     }
 
-    function slashSD(
-        address _operatorId,
-        uint256 _sdToSlash,
-        uint256 _durationInBlocks,
-        uint256 _bidIncrement
-    ) external returns (uint256 _sdSlashed) {
+    // TODO: proper access control
+    function slashSD(address _operatorId, uint256 _sdToSlash)
+        external
+        onlyRole(WHITELISTED_CONTRACT)
+        returns (uint256 _sdSlashed)
+    {
         uint256 sdBalance = operatorSDBalance[_operatorId];
         _sdSlashed = _sdToSlash;
         if (_sdToSlash > sdBalance) {
@@ -116,12 +114,7 @@ contract SDCollateral is
         IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), 0);
         IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), _sdSlashed);
 
-        IAuction(staderConfig.getAuctionContract()).createLot(
-            _sdSlashed,
-            block.number,
-            block.number + _durationInBlocks - 1,
-            _bidIncrement
-        );
+        IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
     }
 
     // SETTERS
@@ -144,6 +137,7 @@ contract SDCollateral is
     // TODO: Manoj Some Contract should execute it, when operator is onboarded to a pool
     function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(WHITELISTED_CONTRACT) {
         Address.checkNonZeroAddress(_operator);
+        if (_poolId == 0) revert InvalidPoolId();
         require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
         poolIdByOperator[_operator] = _poolId;
     }
@@ -159,13 +153,12 @@ contract SDCollateral is
         uint8 _poolId,
         uint256 _numValidator
     ) external view returns (bool) {
-        uint256 sdBalance = operatorSDBalance[_operator];
-        uint256 eqEthBalance = convertSDToETH(sdBalance);
+        return (getMinimumSDToBond(_operator, _poolId, _numValidator) == 0);
+    }
 
-        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
-        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
-
-        return (eqEthBalance >= (poolThresholdInfo.minThreshold * _numValidator));
+    function getOperatorPoolId(address _operator) public view returns (uint8 _poolId) {
+        _poolId = poolIdByOperator[_operator];
+        if (_poolId == 0) revert InvalidPoolId();
     }
 
     /// @notice returns minimum amount of SD required to onboard _numValidators
@@ -175,7 +168,7 @@ contract SDCollateral is
     function getMinimumSDToBond(
         address _operator,
         uint8 _poolId,
-        uint32 _numValidator
+        uint256 _numValidator
     ) public view returns (uint256) {
         uint256 sdBalance = operatorSDBalance[_operator];
 

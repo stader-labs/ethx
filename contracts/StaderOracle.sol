@@ -11,7 +11,7 @@ import './library/Address.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
-    SDPriceData public sdPriceData;
+    SDPriceData public lastReportedSDPriceData;
 
     IStaderConfig public staderConfig;
     /// @inheritdoc IStaderOracle
@@ -175,26 +175,26 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
-        require(_sdPriceData.lastUpdatedBlockNumber < block.number, 'Price can not be submitted for a future block');
+        require(_sdPriceData.reportingBlockNumber < block.number, 'Price can not be submitted for a future block');
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _sdPriceData.lastUpdatedBlockNumber, _sdPriceData.sdPriceInETH)
+            abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber, _sdPriceData.sdPriceInETH)
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(_sdPriceData.lastUpdatedBlockNumber, _sdPriceData.sdPriceInETH)
+            abi.encodePacked(_sdPriceData.reportingBlockNumber, _sdPriceData.sdPriceInETH)
         );
         uint8 submissionCount = _getSubmissionCount(nodeSubmissionKey, submissionCountKey);
         _insertSDPrice(_sdPriceData.sdPriceInETH);
         // Emit SD Price submitted event
-        emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.lastUpdatedBlockNumber, block.number);
+        emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
         if (
             (submissionCount >= trustedNodesCount / 2 + 1) &&
-            _sdPriceData.lastUpdatedBlockNumber > sdPriceData.lastUpdatedBlockNumber
+            _sdPriceData.reportingBlockNumber > lastReportedSDPriceData.reportingBlockNumber
         ) {
-            sdPriceData = _sdPriceData;
-            sdPriceData.sdPriceInETH = _getMedianValue(sdPrices);
+            lastReportedSDPriceData = _sdPriceData;
+            lastReportedSDPriceData.sdPriceInETH = _getMedianValue(sdPrices);
             uint256 len = sdPrices.length;
             while (len > 0) {
                 sdPrices.pop();
@@ -202,7 +202,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             }
 
             // Emit SD Price updated event
-            emit SDPriceUpdated(_sdPriceData.sdPriceInETH, _sdPriceData.lastUpdatedBlockNumber, block.number);
+            emit SDPriceUpdated(_sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
         }
     }
 
@@ -239,7 +239,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function getSDPriceInETH() external view returns (uint256) {
-        return sdPriceData.sdPriceInETH;
+        return lastReportedSDPriceData.sdPriceInETH;
     }
 
     modifier trustedNodeOnly() {

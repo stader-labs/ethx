@@ -4,6 +4,13 @@ pragma solidity ^0.8.16;
 interface ISDCollateral {
     // errors
     error InsufficientSDToWithdraw();
+    error InvalidPoolId();
+
+    struct PoolThresholdInfo {
+        uint256 minThreshold;
+        uint256 withdrawThreshold;
+        string units;
+    }
 
     function depositSDAsCollateral(uint256 _sdAmount) external;
 

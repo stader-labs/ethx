@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 import '../library/ValidatorStatus.sol';
 
 struct SDPriceData {
-    uint256 lastUpdatedBlockNumber;
+    uint256 reportingBlockNumber;
     uint256 sdPriceInETH;
 }
 
@@ -29,7 +29,6 @@ struct RewardsData {
     uint256 operatorSDRewards;
 }
 
-// TODO: Manoj order the methods properly
 interface IStaderOracle {
     // Events
     event BalancesSubmitted(
