@@ -21,32 +21,6 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
     mapping(uint256 => LotItem) public lots;
 
-    // modifiers
-    // modifier onlyAfterStart(uint256 lotId) {
-    //     if (block.number < startBlock[lotId]) revert AuctionNotStarted();
-    //     _;
-    // }
-
-    // modifier onlyBeforeEnd(uint256 lotId) {
-    //     if (block.number > endBlock[lotId]) revert AuctionEnded();
-    //     _;
-    // }
-
-    // modifier onlyNotCancelled(uint256 lotId) {
-    //     if (cancelled[lotId]) revert AuctionCancelled();
-    //     _;
-    // }
-
-    // modifier onlyEnded(uint256 lotId) {
-    //     if (block.number <= endBlock[lotId]) revert AuctionNotEnded();
-    //     _;
-    // }
-
-    // modifier onlyEndedOrCancelled(uint256 lotId) {
-    //     require(block.number > endBlock[lotId] || cancelled[lotId], 'Auction not ended and not cancelled');
-    //     _;
-    // }
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
