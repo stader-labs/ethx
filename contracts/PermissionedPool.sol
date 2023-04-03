@@ -128,7 +128,7 @@ contract PermissionedPool is
         for (uint256 i = 0; i < _pubkey.length; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
-            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = INodeRegistry(
+            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
                 nodeRegistryAddress
             ).validatorRegistry(validatorId);
             bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(
@@ -269,17 +269,9 @@ contract PermissionedPool is
         address _ethDepositContract,
         uint256 _validatorId
     ) internal {
-        (
-            ,
-            bytes memory pubkey,
-            bytes memory preDepositSignature,
-            ,
-            address withdrawVaultAddress,
-            ,
-            ,
-            ,
-
-        ) = INodeRegistry(_nodeRegistryAddress).validatorRegistry(_validatorId);
+        (, bytes memory pubkey, bytes memory preDepositSignature, , address withdrawVaultAddress, , , ) = INodeRegistry(
+            _nodeRegistryAddress
+        ).validatorRegistry(_validatorId);
 
         bytes memory withdrawCredential = IVaultFactory(_vaultFactory).getValidatorWithdrawCredential(
             withdrawVaultAddress

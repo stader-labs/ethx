@@ -3,15 +3,16 @@ pragma solidity ^0.8.16;
 
 import './library/AddressLib.sol';
 
+import './interfaces/IPenalty.sol';
+import './interfaces/IPoolFactory.sol';
+import './interfaces/INodeRegistry.sol';
+import './interfaces/IStaderConfig.sol';
+import './interfaces/IStaderStakePoolManager.sol';
+import './interfaces/IValidatorWithdrawalVault.sol';
+
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-
-import './interfaces/IValidatorWithdrawalVault.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPoolFactory.sol';
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IPenalty.sol';
-import './interfaces/INodeRegistry.sol';
 
 contract ValidatorWithdrawalVault is
     IValidatorWithdrawalVault,
@@ -19,9 +20,9 @@ contract ValidatorWithdrawalVault is
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    using Math for uint256;
     uint8 public poolId;
     IStaderConfig public staderConfig;
-    address payable public nodeRecipient;
     uint256 public validatorId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -32,18 +33,14 @@ contract ValidatorWithdrawalVault is
     function initialize(
         uint8 _poolId,
         address _staderConfig,
-        //TODO sanjay as we _validatorId, _nodeRecipient becomes semi-redundant here
-        address payable _nodeRecipient,
         uint256 _validatorId
     ) external initializer {
         AddressLib.checkNonZeroAddress(_staderConfig);
-        AddressLib.checkNonZeroAddress(_nodeRecipient);
 
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        nodeRecipient = _nodeRecipient;
         poolId = _poolId;
         validatorId = _validatorId;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
@@ -67,7 +64,7 @@ contract ValidatorWithdrawalVault is
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        _sendValue(nodeRecipient, operatorShare);
+        _sendValue(getNodeRecipient(), operatorShare);
         _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
@@ -103,13 +100,14 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        uint256 userShare = userShare_prelim + _min(penaltyAmount, operatorShare);
-
         //TODO liquidate SD if operatorShare < penaltyAmount
-        operatorShare = operatorShare > penaltyAmount ? operatorShare - penaltyAmount : 0;
+
+        penaltyAmount = Math.min(penaltyAmount, operatorShare);
+        uint256 userShare = userShare_prelim + penaltyAmount;
+        operatorShare = operatorShare - penaltyAmount;
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        _sendValue(nodeRecipient, operatorShare);
+        _sendValue(getNodeRecipient(), operatorShare);
         _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
     }
@@ -181,13 +179,16 @@ contract ValidatorWithdrawalVault is
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 
-    function getPenaltyAmount() private returns (uint256) {
+    function getNodeRecipient() private view returns (address payable) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
-        (, bytes memory pubkey, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-        return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
+        (, , , , , uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
+        (, , , address payable operatorRewardAddress, ) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
+        return operatorRewardAddress;
     }
 
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
+    function getPenaltyAmount() private returns (uint256) {
+        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
+        return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
     }
 }

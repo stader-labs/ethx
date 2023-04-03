@@ -134,7 +134,6 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint8 totalWeight;
         for (uint8 i = 0; i < _poolTargets.length; i++) {
             totalWeight += _poolTargets[i];
-            if (totalWeight > POOL_WEIGHTS_SUM) revert InvalidNewTargetInput();
             poolWeights[i + 1] = _poolTargets[i];
             emit UpdatedPoolWeight(i + 1, _poolTargets[i]);
         }

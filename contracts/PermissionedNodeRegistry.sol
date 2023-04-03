@@ -31,8 +31,8 @@ contract PermissionedNodeRegistry is
 
     uint16 public override nextOperatorId;
     uint16 public override inputKeyCountLimit;
-    uint16 public override operatorIdForExcessDeposit;
-    uint16 public override totalActiveOperatorCount;
+    uint256 public override operatorIdForExcessDeposit;
+    uint256 public override totalActiveOperatorCount;
 
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
@@ -54,15 +54,15 @@ contract PermissionedNodeRegistry is
     // mapping of bytes public key and validator Id
     mapping(bytes => uint256) public override validatorIdByPubkey;
     // mapping of operaot ID and Operator struct
-    mapping(uint16 => Operator) public override operatorStructById;
+    mapping(uint256 => Operator) public override operatorStructById;
     // mapping of operator address and operator Id
-    mapping(address => uint16) public override operatorIDByAddress;
+    mapping(address => uint256) public override operatorIDByAddress;
     // mapping of whitelisted permissioned node operator
     mapping(address => bool) public override permissionList;
     //mapping of operator wise queued validator IDs arrays
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     //mapping of operator ID and nextQueuedValidatorIndex
-    mapping(uint16 => uint256) public override nextQueuedValidatorIndexByOperatorId;
+    mapping(uint256 => uint256) public override nextQueuedValidatorIndexByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -135,7 +135,7 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _preDepositSignature,
         bytes[] calldata _depositSignature
     ) external override whenNotPaused {
-        uint16 operatorId = _onlyActiveOperator(msg.sender);
+        uint256 operatorId = _onlyActiveOperator(msg.sender);
         (uint256 keyCount, uint256 operatorTotalKeys) = _checkInputKeysCountAndCollateral(
             poolId,
             _pubkey.length,
@@ -143,7 +143,6 @@ contract PermissionedNodeRegistry is
             _depositSignature.length,
             operatorId
         );
-        address payable operatorRewardAddress = getOperatorRewardAddress(operatorId);
 
         address vaultFactory = staderConfig.getVaultFactory();
         address poolFactory = staderConfig.getPoolFactory();
@@ -153,8 +152,7 @@ contract PermissionedNodeRegistry is
                 poolId,
                 operatorId,
                 operatorTotalKeys + i, //operator totalKeys
-                nextValidatorId,
-                operatorRewardAddress
+                nextValidatorId
             );
             validatorRegistry[nextValidatorId] = Validator(
                 ValidatorStatus.INITIALIZED,
@@ -163,7 +161,6 @@ contract PermissionedNodeRegistry is
                 _depositSignature[i],
                 withdrawVault,
                 operatorId,
-                0,
                 0,
                 0
             );
@@ -211,7 +208,7 @@ contract PermissionedNodeRegistry is
         if (_numValidators > totalValidatorToDeposit) {
             uint16 totalOperators = nextOperatorId - 1;
             uint256 remainingValidatorsToDeposit = _numValidators - totalValidatorToDeposit;
-            uint16 i = operatorIdForExcessDeposit;
+            uint256 i = operatorIdForExcessDeposit;
             do {
                 if (!operatorStructById[i].active) continue;
                 uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
@@ -271,7 +268,7 @@ contract PermissionedNodeRegistry is
      * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances, revert if terminal validators are reported
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
-    function withdrawnValidators(bytes[] calldata _pubkeys) external onlyRole(STADER_ORACLE) {
+    function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyRole(STADER_ORACLE) {
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
@@ -296,7 +293,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `STADER_MANAGER_BOT` role
      * @param _operatorID ID of the operator to deactivate
      */
-    function deactivateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_DAO) {
+    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_DAO) {
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
         emit OperatorDeactivated(_operatorID);
@@ -307,7 +304,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `OPERATOR_STATUS_ROLE` role
      * @param _operatorID ID of the operator to activate
      */
-    function activateNodeOperator(uint16 _operatorID) external override onlyRole(STADER_DAO) {
+    function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_DAO) {
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
         emit OperatorActivated(_operatorID);
@@ -319,7 +316,7 @@ contract PermissionedNodeRegistry is
      * @param _operatorID ID of the node operator
      * @param _nextQueuedValidatorIndex updated next index of queued validator per operator
      */
-    function updateQueuedValidatorIndex(uint16 _operatorID, uint256 _nextQueuedValidatorIndex)
+    function updateQueuedValidatorIndex(uint256 _operatorID, uint256 _nextQueuedValidatorIndex)
         external
         override
         onlyRole(PERMISSIONED_POOL)
@@ -360,7 +357,7 @@ contract PermissionedNodeRegistry is
         _onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_rewardAddress);
         _onlyActiveOperator(msg.sender);
-        uint16 operatorId = operatorIDByAddress[msg.sender];
+        uint256 operatorId = operatorIDByAddress[msg.sender];
         operatorStructById[operatorId].operatorName = _operatorName;
         operatorStructById[operatorId].operatorRewardAddress = _rewardAddress;
         emit UpdatedOperatorDetails(msg.sender, _operatorName, _rewardAddress);
@@ -487,7 +484,7 @@ contract PermissionedNodeRegistry is
         if (_startIndex > _endIndex) {
             revert InvalidStartAndEndIndex();
         }
-        uint16 operatorId = operatorIDByAddress[_nodeOperator];
+        uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
         uint64 totalNonWithdrawnKeyCount;
@@ -502,14 +499,6 @@ contract PermissionedNodeRegistry is
 
     function getCollateralETH() external pure override returns (uint256) {
         return 0;
-    }
-
-    /**
-     * @notice returns the operator reward address
-     * @param _operatorId operator ID
-     */
-    function getOperatorRewardAddress(uint16 _operatorId) public view override returns (address payable) {
-        return operatorStructById[_operatorId].operatorRewardAddress;
     }
 
     /**
@@ -623,7 +612,7 @@ contract PermissionedNodeRegistry is
         uint256 _pubkeyLength,
         uint256 _preDepositSignatureLength,
         uint256 _depositSignatureLength,
-        uint16 _operatorId
+        uint256 _operatorId
     ) internal view returns (uint256 keyCount, uint256 totalKeys) {
         if (_pubkeyLength != _preDepositSignatureLength || _pubkeyLength != _depositSignatureLength)
             revert MisMatchingInputKeysSize();
@@ -645,7 +634,7 @@ contract PermissionedNodeRegistry is
     }
 
     // operator in active state
-    function _onlyActiveOperator(address _operAddr) internal view returns (uint16 _operatorId) {
+    function _onlyActiveOperator(address _operAddr) internal view returns (uint256 _operatorId) {
         _operatorId = operatorIDByAddress[_operAddr];
         if (_operatorId == 0) revert OperatorNotOnBoarded();
         if (!operatorStructById[_operatorId].active) revert OperatorIsDeactivate();

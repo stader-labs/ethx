@@ -54,24 +54,11 @@ interface IPermissionlessNodeRegistry {
 
     function queuedValidators(uint256) external view returns (uint256);
 
-    function operatorStructById(uint256)
-        external
-        view
-        returns (
-            bool active,
-            bool optedForSocializingPool,
-            string calldata operatorName,
-            address payable operatorRewardAddress,
-            address operatorAddress
-        );
-
     function operatorIDByAddress(address) external view returns (uint256);
 
     function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
     function nodeELRewardVaultByOperator(address) external view returns (address);
-
-    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
 
     //Setters
 

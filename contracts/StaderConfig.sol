@@ -5,9 +5,9 @@ import './library/AddressLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 
-import '@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderConfig is IStaderConfig, Initializable, TimelockControllerUpgradeable {
+contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
     // skated ETH per node on beacon chain i.e. 32 ETH
     bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
     // ETH to WEI ratio i.e 10**18
@@ -59,16 +59,10 @@ contract StaderConfig is IStaderConfig, Initializable, TimelockControllerUpgrade
         _disableInitializers();
     }
 
-    function initialize(
-        uint256 minDelay,
-        address[] memory proposers,
-        address[] memory executors,
-        address _admin,
-        address _ethDepositContract
-    ) external initializer {
+    function initialize(address _admin, address _ethDepositContract) external initializer {
         AddressLib.checkNonZeroAddress(_admin);
         AddressLib.checkNonZeroAddress(_ethDepositContract);
-        __TimelockController_init(minDelay, proposers, executors, _admin);
+        __AccessControl_init();
         _setConstant(ETH_PER_NODE, 32 ether);
         _setConstant(DECIMALS, 10**18);
         _setConstant(OPERATOR_MAX_NAME_LENGTH, 255);

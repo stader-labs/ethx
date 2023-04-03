@@ -5,13 +5,13 @@ pragma solidity ^0.8.16;
 import './library/AddressLib.sol';
 
 import './ETHx.sol';
+import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolSelector.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderPoolBase.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPoolSelector.sol';
-import './interfaces/IPoolFactory.sol';
 import './interfaces/IUserWithdrawalManager.sol';
+import './interfaces/IStaderStakePoolManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -112,7 +112,7 @@ contract StaderStakePoolsManager is
     function getExchangeRate() public view override returns (uint256) {
         uint256 DECIMALS = staderConfig.getDecimals();
         uint256 totalETH = totalAssets();
-        uint256 totalETHx = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
+        uint256 totalETHx = IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply;
 
         if (totalETH == 0 || totalETHx == 0) {
             return 1 * DECIMALS;
@@ -122,7 +122,7 @@ contract StaderStakePoolsManager is
 
     /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view override returns (uint256) {
-        return IStaderOracle(staderConfig.getStaderOracle()).totalETHBalance();
+        return IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHBalance;
     }
 
     /** @dev See {IERC4626-convertToShares}. */
@@ -209,7 +209,7 @@ contract StaderStakePoolsManager is
      * would represent an infinite amount of shares.
      */
     function _convertToShares(uint256 _assets, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
+        uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply;
         return
             (_assets == 0 || supply == 0)
                 ? _initialConvertToShares(_assets, rounding)
@@ -232,7 +232,7 @@ contract StaderStakePoolsManager is
      * @dev Internal conversion function (from shares to assets) with support for rounding direction.
      */
     function _convertToAssets(uint256 _shares, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply();
+        uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply;
         return
             (supply == 0)
                 ? _initialConvertToAssets(_shares, rounding)
@@ -269,6 +269,8 @@ contract StaderStakePoolsManager is
      * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
      */
     function _isVaultHealthy() private view returns (bool) {
-        return totalAssets() > 0 || IStaderOracle(staderConfig.getStaderOracle()).totalETHXSupply() == 0;
+        return
+            (totalAssets() > 0 ||
+                IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply == 0) && (!paused());
     }
 }

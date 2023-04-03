@@ -11,11 +11,11 @@ interface IPermissionedNodeRegistry {
 
     //Events
     event OperatorWhitelisted(address permissionedNO);
-    event OperatorDeactivated(uint16 operatorID);
-    event OperatorActivated(uint16 operatorID);
+    event OperatorDeactivated(uint256 operatorID);
+    event OperatorActivated(uint256 operatorID);
     event MarkedValidatorStatusAsPreDeposit(bytes indexed pubkey);
     event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
-    event UpdatedQueuedValidatorIndex(uint16 indexed operatorId, uint256 nextQueuedValidatorIndex);
+    event UpdatedQueuedValidatorIndex(uint256 indexed operatorId, uint256 nextQueuedValidatorIndex);
 
     // Getters
 
@@ -29,11 +29,11 @@ interface IPermissionedNodeRegistry {
 
     function inputKeyCountLimit() external view returns (uint16);
 
-    function operatorIdForExcessDeposit() external view returns (uint16);
+    function operatorIdForExcessDeposit() external view returns (uint256);
 
     function totalActiveValidatorCount() external view returns (uint256);
 
-    function totalActiveOperatorCount() external view returns (uint16);
+    function totalActiveOperatorCount() external view returns (uint256);
 
     function STADER_DAO() external view returns (bytes32);
 
@@ -45,26 +45,13 @@ interface IPermissionedNodeRegistry {
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
-    function operatorStructById(uint16)
-        external
-        view
-        returns (
-            bool active,
-            bool optedForSocializingPool,
-            string calldata operatorName,
-            address payable operatorRewardAddress,
-            address operatorAddress
-        );
+    function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);
 
-    function nextQueuedValidatorIndexByOperatorId(uint16) external view returns (uint256);
-
-    function operatorIDByAddress(address) external view returns (uint16);
+    function operatorIDByAddress(address) external view returns (uint256);
 
     function permissionList(address) external view returns (bool);
 
     function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
-
-    function getOperatorRewardAddress(uint16 _operatorId) external view returns (address payable);
 
     function onlyPreDepositValidator(bytes calldata _pubkey) external view;
 
@@ -92,13 +79,13 @@ interface IPermissionedNodeRegistry {
         bytes[] calldata _invalidSignaturePubkeys
     ) external;
 
-    function activateNodeOperator(uint16 _operatorId) external;
+    function activateNodeOperator(uint256 _operatorId) external;
 
-    function deactivateNodeOperator(uint16 _operatorId) external;
+    function deactivateNodeOperator(uint256 _operatorId) external;
 
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 
-    function updateQueuedValidatorIndex(uint16 _operatorId, uint256 _nextQueuedValidatorIndex) external;
+    function updateQueuedValidatorIndex(uint256 _operatorId, uint256 _nextQueuedValidatorIndex) external;
 
     function updateDepositStatusAndBlock(uint256 _validatorId) external;
 

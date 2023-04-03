@@ -4,11 +4,11 @@ pragma solidity ^0.8.16;
 
 import './library/AddressLib.sol';
 
+import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';

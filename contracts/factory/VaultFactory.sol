@@ -17,7 +17,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     address public nodeELRewardVaultImplementation;
     address public validatorWithdrawalVaultImplementation;
 
-    bytes32 public constant override STADER_NETWORK_CONTRACT = keccak256('STADER_NETWORK_CONTRACT');
+    bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
     function initialize(address _staderConfig) external initializer {
         __AccessControl_init_unchained();
@@ -33,16 +33,14 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint8 _poolId,
         uint256 _operatorId,
         uint256 _validatorCount,
-        uint256 _validatorId,
-        address payable _nodeRecipient
-    ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
+        uint256 _validatorId
+    ) public override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
         address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
         withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(validatorWithdrawalVaultImplementation, salt);
         ValidatorWithdrawalVault(payable(withdrawVaultAddress)).initialize(
             _poolId,
             address(staderConfig),
-            _nodeRecipient,
             _validatorId
         );
 
@@ -50,15 +48,16 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         return withdrawVaultAddress;
     }
 
-    function deployNodeELRewardVault(
-        uint8 _poolId,
-        uint256 _operatorId,
-        address payable _nodeRecipient
-    ) public override onlyRole(STADER_NETWORK_CONTRACT) returns (address) {
+    function deployNodeELRewardVault(uint8 _poolId, uint256 _operatorId)
+        public
+        override
+        onlyRole(NODE_REGISTRY_CONTRACT)
+        returns (address)
+    {
         address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
         nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
-        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(address(staderConfig), _nodeRecipient, _poolId);
+        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(_poolId, _operatorId, address(staderConfig));
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
         return nodeELRewardVaultAddress;

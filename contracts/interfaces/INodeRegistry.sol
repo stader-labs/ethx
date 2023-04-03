@@ -10,8 +10,6 @@ struct Validator {
     bytes depositSignature; //signature for 31 ETH deposit on beacon chain
     address withdrawVaultAddress; //eth1 withdrawal address for validator
     uint256 operatorId; // stader network assigned Id
-    //TODO do we need this if we are not changing it, we already have collateralETH parameter
-    uint256 initialBondEth; // amount of bond eth in gwei
     uint256 depositBlock; // block number of the 31ETH deposit
     uint256 withdrawnBlock; //block number when oracle report validator as withdrawn
 }
@@ -57,6 +55,8 @@ interface INodeRegistry {
     event UpdatedOperatorDetails(address indexed nodeOperator, string operatorName, address rewardAddress);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
 
+    function withdrawnValidators(bytes[] calldata _pubkeys) external;
+
     // return validator struct for a validator Id
     function validatorRegistry(uint256)
         external
@@ -68,12 +68,23 @@ interface INodeRegistry {
             bytes calldata depositSignature,
             address withdrawVaultAddress,
             uint256 operatorId,
-            uint256 initialBondEth,
             uint256 depositTime,
             uint256 withdrawnTime
         );
 
-    // Returns the block of the last time the operator changed the opt-in status for socializing pool
+    // returns the operator struct given operator Id
+    function operatorStructById(uint256)
+        external
+        view
+        returns (
+            bool active,
+            bool optedForSocializingPool,
+            string calldata operatorName,
+            address payable operatorRewardAddress,
+            address operatorAddress
+        );
+
+    // Returns the last block the operator changed the opt-in status for socializing pool
     function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
@@ -89,6 +100,12 @@ interface INodeRegistry {
     */
     function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
 
+    /**
+     *
+     * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
+     * @param _startIndex start index in validator queue to start with
+     * @param _endIndex  up to end index of validator queue to to count
+     */
     function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 _startIndex,

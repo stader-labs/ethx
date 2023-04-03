@@ -259,7 +259,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 _validatorId,
         uint256 _DEPOSIT_SIZE
     ) internal {
-        (, bytes memory pubkey, , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = INodeRegistry(
+        (, bytes memory pubkey, , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
             _nodeRegistryAddress
         ).validatorRegistry(_validatorId);
 
