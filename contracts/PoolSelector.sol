@@ -20,7 +20,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     IStaderConfig public staderConfig;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
 
-    mapping(uint8 => uint256) public poolTargets;
+    mapping(uint8 => uint256) public poolWeights;
 
     bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
     bytes32 public constant override STADER_STAKE_POOL_MANAGER = keccak256('STADER_STAKE_POOL_MANAGER');
@@ -45,8 +45,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         poolIdForExcessDeposit = 1;
         POOL_ALLOCATION_MAX_SIZE = 100;
         staderConfig = IStaderConfig(_staderConfig);
-        poolTargets[1] = _permissionlessTarget;
-        poolTargets[2] = _permissionedTarget;
+        poolWeights[1] = _permissionlessTarget;
+        poolWeights[2] = _permissionedTarget;
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
@@ -86,7 +86,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         for (uint8 i = 1; i <= poolCount && validatorSpunCount < newValidatorsToDeposit; i++) {
             remainingPoolCapacity[i] = IPoolFactory(poolFactoryAddress).getQueuedValidatorCountByPool(i);
             uint256 currentActiveValidators = IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i);
-            uint256 poolTotalTarget = (poolTargets[i] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
+            uint256 poolTotalTarget = (poolWeights[i] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
             (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
             selectedPoolCapacity[i] = Math.min(
                 Math.min(remainingPoolCapacity[i], remainingPoolTarget),
@@ -125,22 +125,25 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length)
             revert InvalidNewTargetInput();
 
-        uint8 totalTarget;
+        uint8 totalWeight;
         for (uint8 i = 0; i < _poolTargets.length; i++) {
-            totalTarget += _poolTargets[i];
-            if (totalTarget > POOL_WEIGHTS_SUM) revert InvalidNewTargetInput();
-            poolTargets[i + 1] = _poolTargets[i];
+            totalWeight += _poolTargets[i];
+            if (totalWeight > POOL_WEIGHTS_SUM) revert InvalidNewTargetInput();
+            poolWeights[i + 1] = _poolTargets[i];
+            emit UpdatedPoolWeight(i + 1, _poolTargets[i]);
         }
-        if (totalTarget != POOL_WEIGHTS_SUM) revert InvalidSumOfPoolTargets();
+        if (totalWeight != POOL_WEIGHTS_SUM) revert InvalidSumOfPoolWeights();
     }
 
     function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(POOL_SELECTOR_ADMIN) {
         POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
+        emit UpdatedPoolAllocationMaxSize(_poolAllocationMaxSize);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 }

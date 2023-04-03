@@ -31,7 +31,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        require(bytes(_poolName).length > 0, 'Pool name cannot be empty');
+        if (bytes(_poolName).length == 0) revert EmptyString();
         Address.checkNonZeroAddress(_poolAddress);
 
         pools[poolCount + 1] = Pool({poolName: _poolName, poolAddress: _poolAddress});
@@ -96,45 +96,6 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    // TODO sanjay implement this pagination at pool level
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
-        public
-        view
-        override
-        returns (Validator[] memory)
-    {
-        uint256 startIndex = (pageNumber - 1) * pageSize;
-        uint256 endIndex = startIndex + pageSize - 1;
-        Validator[] memory allValidators = new Validator[](pageSize);
-
-        uint256 index;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            Validator[] memory validators = IStaderPoolBase(pools[i].poolAddress).getAllActiveValidators();
-            uint256 validatorsCount = validators.length;
-            uint256 fromIndex = startIndex > index ? startIndex - index : 0;
-            uint256 toIndex = endIndex < index + validatorsCount - 1 ? endIndex - index + 1 : validatorsCount;
-
-            if (startIndex <= index + validatorsCount - 1 && endIndex >= index) {
-                for (uint256 j = fromIndex; j < toIndex; j++) {
-                    if (startIndex + j < allValidators.length) {
-                        allValidators[startIndex + j] = validators[j];
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            index += validatorsCount;
-
-            if (index > endIndex) {
-                break;
-            }
-        }
-
-        return allValidators;
-    }
-
-    /// @inheritdoc IPoolFactory
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;
@@ -147,7 +108,13 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) public view override returns (Validator memory) {
+    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey)
+        public
+        view
+        override
+        validPoolId(_poolId)
+        returns (Validator memory)
+    {
         return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
@@ -164,12 +131,18 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolFactory
-    function getOperator(uint8 _poolId, bytes calldata _pubkey) public view override returns (Operator memory) {
+    function getOperator(uint8 _poolId, bytes calldata _pubkey)
+        public
+        view
+        override
+        validPoolId(_poolId)
+        returns (Operator memory)
+    {
         return IStaderPoolBase(pools[_poolId].poolAddress).getOperator(_pubkey);
     }
 
     /// @inheritdoc IPoolFactory
-    function getSocializingPoolAddress(uint8 _poolId) public view override returns (address) {
+    function getSocializingPoolAddress(uint8 _poolId) public view override validPoolId(_poolId) returns (address) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getSocializingPoolAddress();
     }
 
@@ -179,7 +152,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
-    ) public view override returns (uint256) {
+    ) public view override validPoolId(_poolId) returns (uint256) {
         return
             IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonTerminalKeys(
                 _nodeOperator,
@@ -188,11 +161,11 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
             );
     }
 
-    function getCollateralETH(uint8 _poolId) external view override returns (uint256) {
+    function getCollateralETH(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
     }
 
-    function getNodeRegistry(uint8 _poolId) external view override returns (address) {
+    function getNodeRegistry(uint8 _poolId) external view override validPoolId(_poolId) returns (address) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getNodeRegistry();
     }
 
@@ -205,7 +178,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
-        require(_poolId > 0 && _poolId <= poolCount, 'Invalid pool ID');
+        if (_poolId == 0 && _poolId > poolCount) revert InvalidPoolID();
         _;
     }
 }

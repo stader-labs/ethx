@@ -21,6 +21,7 @@ interface IUserWithdrawalManager {
     event UpdatedMaxWithdrawAmount(uint256 amount);
     event UpdatedMinWithdrawAmount(uint256 amount);
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
+    event UpdatedStaderConfig(address staderConfig);
     event WithdrawRequestReceived(
         address indexed _msgSender,
         address _recipient,
@@ -28,6 +29,8 @@ interface IUserWithdrawalManager {
         uint256 _sharesAmount,
         uint256 _etherAmount
     );
+    // finalized request upto `requestId`
+    event FinalizedWithdrawRequest(uint256 requestId);
     event RequestRedeemed(address indexed _sender, address _recipient, uint256 _ethTransferred);
     event RecipientAddressUpdated(
         address indexed _sender,

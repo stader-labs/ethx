@@ -26,6 +26,37 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
+    //ERROR
+    error EmptyNameString();
+    error NameCrossedMaxLength();
+    error maxKeyLimitReached();
+    error OperatorNotOnBoarded();
+    error OperatorAlreadyOnBoarded();
+    error InvalidKeyCount();
+    error InvalidStartAndEndIndex();
+    error OperatorIsDeactivate();
+    error InvalidLengthOfPubkey();
+    error InvalidLengthOfSignature();
+    error MisMatchingInputKeysSize();
+    error PageNumberIsZero();
+    error UNEXPECTED_STATUS();
+    error PubkeyAlreadyExist();
+    error PubkeyDoesNotExist();
+    error NotEnoughSDCollateral();
+
+    //Events
+    event OnboardedOperator(address indexed _nodeOperator, uint256 _operatorId);
+    event AddedValidatorKey(address indexed _nodeOperator, bytes _pubkey, uint256 _validatorId);
+    event ValidatorMarkedAsFrontRunned(bytes indexed _pubkey, uint256 _validatorId);
+    event ValidatorWithdrawn(bytes indexed _pubkey, uint256 _validatorId);
+    event ValidatorStatusMarkedAsInvalidSignature(bytes indexed _pubkey, uint256 _validatorId);
+    event UpdatedValidatorDepositBlock(uint256 _validatorId, uint256 _depositBlock);
+    event UpdatedMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator);
+    event UpdatedInputKeyCountLimit(uint256 _batchKeyDepositLimit);
+    event UpdatedStaderConfig(address _staderConfig);
+    event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
+    event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
+
     function withdrawnValidators(bytes[] calldata _pubkeys) external;
 
     // return validator struct for a validator Id
@@ -47,7 +78,7 @@ interface INodeRegistry {
     // Returns the last block the operator changed the opt-in status for socializing pool
     function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
-    function getAllActiveValidators() external view returns (Validator[] memory);
+    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
 
@@ -77,6 +108,8 @@ interface INodeRegistry {
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
 
     function getCollateralETH() external view returns (uint256);
+
+    function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

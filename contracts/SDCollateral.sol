@@ -48,7 +48,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
         __AccessControl_init();
         __Pausable_init();
 
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         sdERC20 = IERC20(_sdERC20Addr);
         priceFetcher = IPriceFetcher(_priceFetcherAddr);

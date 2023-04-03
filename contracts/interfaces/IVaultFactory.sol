@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 interface IVaultFactory {
     event WithdrawVaultCreated(address withdrawVault);
     event NodeELRewardVaultCreated(address nodeDistributor);
+    event UpdatedStaderConfig(address staderConfig);
 
     function STADER_NETWORK_CONTRACT() external view returns (bytes32);
 

@@ -66,6 +66,7 @@ contract ValidatorWithdrawalVault is
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
         _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
     function _calculateRewardShare(uint256 _totalRewards)
@@ -108,9 +109,16 @@ contract ValidatorWithdrawalVault is
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         _sendValue(nodeRecipient, operatorShare);
         _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        emit SettledFunds(userShare, operatorShare, protocolShare);
     }
 
-    // TODO: add penalty changes
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        Address.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
     function _calculateValidatorWithdrawalShare()
         internal
         view
@@ -154,12 +162,6 @@ contract ValidatorWithdrawalVault is
             (bool success, ) = recipient.call{value: amount}('');
             if (!success) revert TransferFailed();
         }
-    }
-
-    //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
-        staderConfig = IStaderConfig(_staderConfig);
     }
 
     // getters

@@ -179,8 +179,13 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /**
      * @notice get all validator which has user balance on beacon chain
      */
-    function getAllActiveValidators() public view override returns (Validator[] memory) {
-        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators();
+    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+        public
+        view
+        override
+        returns (Validator[] memory)
+    {
+        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(pageNumber, pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
@@ -219,6 +224,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         Address.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     // @notice calculate the deposit data root based on pubkey, signature, withdrawCredential and amount
@@ -273,7 +279,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             depositSignature,
             depositDataRoot
         );
-        IPermissionlessNodeRegistry(_nodeRegistryAddress).updateDepositStatusAndTime(_validatorId);
+        IPermissionlessNodeRegistry(_nodeRegistryAddress).updateDepositStatusAndBlock(_validatorId);
         emit ValidatorDepositedOnBeaconChain(_validatorId, pubkey);
     }
 
