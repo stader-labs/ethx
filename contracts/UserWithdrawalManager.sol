@@ -10,7 +10,6 @@ import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -23,7 +22,6 @@ contract UserWithdrawalManager is
     ReentrancyGuardUpgradeable
 {
     using Math for uint256;
-    using SafeERC20 for IERC20;
     IStaderConfig public staderConfig;
     uint256 public override nextRequestIdToFinalize;
     uint256 public override nextRequestId;
@@ -116,7 +114,10 @@ contract UserWithdrawalManager is
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
         }
-        IERC20(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
+        //TODO sanjay user safeTransfer, can not use only way is to make ETHx token upgradable
+        if (!ETHx(staderConfig.getETHxToken()).transferFrom(msg.sender, (address(this)), _ethXAmount)) {
+            revert TokenTransferFailed();
+        }
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
             payable(_owner),
