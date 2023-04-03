@@ -2,6 +2,7 @@
 pragma solidity ^0.8.16;
 
 import './library/AddressLib.sol';
+import './library/ValidatorStatus.sol';
 
 import './interfaces/IPenalty.sol';
 import './interfaces/IPoolFactory.sol';
@@ -95,8 +96,7 @@ contract ValidatorWithdrawalVault is
     }
 
     function settleFunds() external nonReentrant {
-        if (msg.sender != IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId))
-            revert CallerNotNodeRegistry();
+        if (!isWithdrawnValidator()) revert ValidatorNotWithdrawn();
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
@@ -190,5 +190,11 @@ contract ValidatorWithdrawalVault is
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
+    }
+
+    function isWithdrawnValidator() private view returns (bool) {
+        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        (ValidatorStatus status, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
+        return status == ValidatorStatus.WITHDRAWN;
     }
 }

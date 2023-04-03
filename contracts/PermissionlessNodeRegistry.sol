@@ -212,7 +212,7 @@ contract PermissionlessNodeRegistry is
 
     /**
      * @notice handling of fully withdrawn validators
-     * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances
+     * @dev list of pubkeys reported by oracle
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
     function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyRole(STADER_ORACLE) {
@@ -220,16 +220,8 @@ contract PermissionlessNodeRegistry is
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
-            Validator storage validator = validatorRegistry[validatorId];
-            validator.status = ValidatorStatus.WITHDRAWN;
-            validator.withdrawnBlock = block.number;
-            IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
-            uint256 operatorId = validator.operatorId;
-            if (!operatorStructById[operatorId].optedForSocializingPool) {
-                address nodeELRewardVault = IVaultFactory(staderConfig.getVaultFactory())
-                    .computeNodeELRewardVaultAddress(poolId, operatorId);
-                INodeELRewardVault(nodeELRewardVault).withdraw();
-            }
+            validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
+            validatorRegistry[validatorId].withdrawnBlock = block.number;
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         _decreaseTotalActiveValidatorCount(withdrawnValidatorCount);

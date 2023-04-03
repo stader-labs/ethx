@@ -21,7 +21,7 @@ interface IPermissionedNodeRegistry {
 
     function poolId() external view returns (uint8);
 
-    function nextOperatorId() external view returns (uint16);
+    function nextOperatorId() external view returns (uint256);
 
     function nextValidatorId() external view returns (uint256);
 

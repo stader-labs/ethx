@@ -29,10 +29,7 @@ contract PermissionedNodeRegistry is
 
     uint8 public constant override poolId = 2;
 
-    uint16 public override nextOperatorId;
     uint16 public override inputKeyCountLimit;
-    uint256 public override operatorIdForExcessDeposit;
-    uint256 public override totalActiveOperatorCount;
 
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
@@ -43,6 +40,9 @@ contract PermissionedNodeRegistry is
     uint256 public override nextValidatorId;
     uint256 public override totalActiveValidatorCount;
     uint256 public VERIFIED_KEYS_BATCH_SIZE;
+    uint256 public override nextOperatorId;
+    uint256 public override operatorIdForExcessDeposit;
+    uint256 public override totalActiveOperatorCount;
 
     bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
@@ -194,7 +194,7 @@ contract PermissionedNodeRegistry is
         uint256 totalValidatorToDeposit;
 
         if (validatorPerOperator != 0) {
-            for (uint16 i = 1; i < nextOperatorId; i++) {
+            for (uint256 i = 1; i < nextOperatorId; i++) {
                 if (!operatorStructById[i].active) continue;
                 remainingOperatorCapacity[i] = _getOperatorQueuedValidatorCount(i);
                 selectedOperatorCapacity[i] = Math.min(remainingOperatorCapacity[i], validatorPerOperator);
@@ -206,7 +206,7 @@ contract PermissionedNodeRegistry is
         // check for more validators to deposit and select operators with excess supply in a sequential order
         // and update the starting index of operator for next sequence after every iteration
         if (_numValidators > totalValidatorToDeposit) {
-            uint16 totalOperators = nextOperatorId - 1;
+            uint256 totalOperators = nextOperatorId - 1;
             uint256 remainingValidatorsToDeposit = _numValidators - totalValidatorToDeposit;
             uint256 i = operatorIdForExcessDeposit;
             do {
@@ -259,13 +259,12 @@ contract PermissionedNodeRegistry is
         address permissionedPool = staderConfig.getPermissionedPool();
         IPermissionedPool(permissionedPool).transferETHOfDefectiveKeysToSSPM(totalDefectedKeys);
 
-        // TODO sanjay update 31ETH limbo
         IPermissionedPool(permissionedPool).fullDepositOnBeaconChain(_readyToDepositPubkeys);
     }
 
     /**
      * @notice Flag fully withdrawn validators as reported by oracle.
-     * @dev list of pubkeys reported by oracle, settle all EL and CL vault balances, revert if terminal validators are reported
+     * @dev list of pubkeys reported by oracle, revert if terminal validators are reported
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
     function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyRole(STADER_ORACLE) {
@@ -273,16 +272,8 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
-            Validator storage validator = validatorRegistry[validatorId];
-            validator.status = ValidatorStatus.WITHDRAWN;
-            validator.withdrawnBlock = block.number;
-            IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
-            uint16 operatorId = uint16(validator.operatorId);
-            if (!operatorStructById[operatorId].optedForSocializingPool) {
-                address nodeELRewardVault = IVaultFactory(staderConfig.getVaultFactory())
-                    .computeNodeELRewardVaultAddress(poolId, operatorId);
-                INodeELRewardVault(nodeELRewardVault).withdraw();
-            }
+            validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
+            validatorRegistry[validatorId].withdrawnBlock = block.number;
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         _decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
@@ -424,7 +415,7 @@ contract PermissionedNodeRegistry is
 
             return emptyOperator;
         }
-        uint16 operatorId = uint16(validatorRegistry[validatorId].operatorId);
+        uint256 operatorId = validatorRegistry[validatorId].operatorId;
         return operatorStructById[operatorId];
     }
 
@@ -445,7 +436,7 @@ contract PermissionedNodeRegistry is
      */
     function getTotalQueuedValidatorCount() external view override returns (uint256) {
         uint256 totalQueuedValidators;
-        for (uint16 i = 1; i < nextOperatorId; i++) {
+        for (uint256 i = 1; i < nextOperatorId; i++) {
             if (operatorStructById[i].active) {
                 totalQueuedValidators += _getOperatorQueuedValidatorCount(i);
             }
@@ -582,12 +573,12 @@ contract PermissionedNodeRegistry is
     // handle front run validator by changing their status and deactivating operator
     function _handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
-        uint16 operatorId = uint16(validatorRegistry[_validatorId].operatorId);
+        uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
     }
 
     // returns operator total queued validator count
-    function _getOperatorQueuedValidatorCount(uint16 _operatorId) internal view returns (uint256 _validatorCount) {
+    function _getOperatorQueuedValidatorCount(uint256 _operatorId) internal view returns (uint256 _validatorCount) {
         _validatorCount =
             validatorIdsByOperatorId[_operatorId].length -
             nextQueuedValidatorIndexByOperatorId[_operatorId];

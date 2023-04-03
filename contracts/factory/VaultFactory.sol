@@ -72,7 +72,6 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         return ClonesUpgradeable.predictDeterministicAddress(validatorWithdrawalVaultImplementation, salt);
     }
 
-    // TODO change it to poolID
     function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId)
         public
         view

@@ -70,7 +70,6 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    // TODO: add penalty changes
     function _calculateRewardShare(uint256 _totalRewards)
         internal
         view
