@@ -214,7 +214,7 @@ contract PermissionlessNodeRegistry is
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!_isNonTerminalValidator(validatorId)) revert UNEXPECTED_STATUS();
-            Validator memory validator = validatorRegistry[validatorId];
+            Validator storage validator = validatorRegistry[validatorId];
             validator.status = ValidatorStatus.WITHDRAWN;
             validator.withdrawnBlock = block.number;
             IValidatorWithdrawalVault(validator.withdrawVaultAddress).settleFunds();
