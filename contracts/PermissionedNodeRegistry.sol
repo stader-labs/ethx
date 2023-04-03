@@ -35,9 +35,9 @@ contract PermissionedNodeRegistry is
     uint64 private constant SIGNATURE_LENGTH = 96;
     uint64 public override maxKeyPerOperator;
 
-    //TODO sanjay check if this address gets a getter on etherscan
     IStaderConfig public staderConfig;
 
+    //TODO sanjay avoid using uint256 if possible
     uint256 public override nextValidatorId;
     uint256 public override totalActiveValidatorCount;
     uint256 public VERIFIED_KEYS_BATCH_SIZE;
@@ -146,6 +146,7 @@ contract PermissionedNodeRegistry is
                 poolId,
                 operatorId,
                 operatorTotalKeys + i, //operator totalKeys
+                nextValidatorId,
                 operatorRewardAddress
             );
             validatorRegistry[nextValidatorId] = Validator(

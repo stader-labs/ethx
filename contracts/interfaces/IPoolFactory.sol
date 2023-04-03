@@ -65,5 +65,7 @@ interface IPoolFactory {
 
     function getCollateralETH(uint8 _poolId) external view returns (uint256);
 
+    function getNodeRegistry(uint8 _poolId) external view returns (address);
+
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

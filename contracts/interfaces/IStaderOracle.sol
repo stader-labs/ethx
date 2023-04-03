@@ -24,6 +24,24 @@ struct RewardsData {
     uint256 operatorSDRewards;
 }
 
+struct MissedAttestationPenaltyData {
+    /// @notice count of validator missing attestation penalty
+    uint16 keyCount;
+    /// @notice The block number when the missed attestation penalty data is reported
+    uint256 reportingBlockNumber;
+    /// @notice The index of missed attestation penalty data
+    uint256 index;
+    /// @notice page number of the the data
+    uint256 pageNumber;
+    /// @bytes missed attestation validator's concatenated pubkey
+    bytes pubkeys;
+}
+
+struct MissedAttestationReportInfo {
+    uint256 index;
+    uint256 pageNumber;
+}
+
 /// @title ExchangeRate
 /// @notice This struct holds data related to the exchange rate between ETH and ETHX.
 struct ExchangeRate {
@@ -63,6 +81,25 @@ struct WithdrawnValidators {
 }
 
 interface IStaderOracle {
+    //Error
+    error NodeAlreadyTrusted();
+    error NodeNotTrusted();
+    error ZeroFrequency();
+    error FrequencyUnchanged();
+    error BalancesSubmittedForFutureBlock();
+    error NetworkBalancesSetForEqualOrHigherBlock();
+    error InvalidNetworkBalances();
+    error DuplicateSubmissionFromNode();
+    error ReportingFutureBlockData();
+    error InvalidMerkleRootIndex();
+    error PubkeysNotSorted();
+    error ReportingPreviousCycleData();
+    error StaleData();
+    error PageNumberAlreadyReported();
+    error InvalidData();
+    error InvalidPubkeyLength();
+    error NotATrustedNode();
+
     // Events
     event BalancesSubmitted(
         address indexed from,
@@ -77,6 +114,14 @@ interface IStaderOracle {
     event TrustedNodeRemoved(address indexed node);
     event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 block);
     event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 block);
+    event MissedAttestationPenaltySubmitted(
+        address indexed node,
+        uint256 index,
+        uint256 pageNumber,
+        uint256 block,
+        uint256 reportingBlockNumber
+    );
+    event MissedAttestationPenaltyUpdated(uint256 index, uint256 block);
     event UpdateFrequencyUpdated(uint256 updateFrequency);
     event ValidatorStatsSubmitted(
         address indexed from,
@@ -123,9 +168,15 @@ interface IStaderOracle {
 
     function lastUpdatedBlockNumberForWithdrawnValidators() external view returns (uint256);
 
+    // returns the count of trusted nodes
     function trustedNodesCount() external view returns (uint256);
 
+    //returns the latest consensus index for missed attestation penalty data report
+    function latestMissedAttestationConsensusIndex() external view returns (uint256);
+
     function isTrustedNode(address) external view returns (bool);
+
+    function missedAttestationPenalty(bytes32 pubkey) external view returns (uint16);
 
     function addTrustedNode(address _nodeAddress) external;
 

@@ -38,7 +38,6 @@ contract PermissionlessNodeRegistry is
     uint256 public constant override PRE_DEPOSIT = 1 ether;
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
-    // uint256 public constant override OPERATOR_MAX_NAME_LENGTH = 255;
 
     bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
@@ -138,6 +137,7 @@ contract PermissionlessNodeRegistry is
                 poolId,
                 operatorId,
                 operatorTotalKeys + i, //operator totalKeys
+                nextValidatorId,
                 operatorRewardAddress
             );
             validatorRegistry[nextValidatorId] = Validator(

@@ -28,7 +28,23 @@ struct Operator {
 interface INodeRegistry {
     function withdrawnValidators(bytes[] calldata _pubkeys) external;
 
-    // Returns the block of the last time the operator changed the opt-in status for socializing pool
+    // return validator struct for a validator Id
+    function validatorRegistry(uint256)
+        external
+        view
+        returns (
+            ValidatorStatus status,
+            bytes calldata pubkey,
+            bytes calldata preDepositSignature,
+            bytes calldata depositSignature,
+            address withdrawVaultAddress,
+            uint256 operatorId,
+            uint256 initialBondEth,
+            uint256 depositTime,
+            uint256 withdrawnTime
+        );
+
+    // Returns the last block the operator changed the opt-in status for socializing pool
     function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
     function getAllActiveValidators() external view returns (Validator[] memory);
