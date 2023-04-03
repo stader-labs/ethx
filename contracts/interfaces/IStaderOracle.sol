@@ -97,7 +97,6 @@ interface IStaderOracle {
     error DuplicateSubmissionFromNode();
     error ReportingFutureBlockData();
     error InvalidMerkleRootIndex();
-    error PubkeysNotSorted();
     error ReportingPreviousCycleData();
     error StaleData();
     error PageNumberAlreadyReported();
