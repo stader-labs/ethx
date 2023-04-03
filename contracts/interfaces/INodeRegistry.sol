@@ -57,6 +57,8 @@ interface INodeRegistry {
     event UpdatedOperatorDetails(address indexed _nodeOperator, string _operatorName, address _rewardAddress);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
 
+    function withdrawnValidators(bytes[] calldata _pubkeys) external;
+
     // return validator struct for a validator Id
     function validatorRegistry(uint256)
         external
@@ -73,7 +75,7 @@ interface INodeRegistry {
             uint256 withdrawnTime
         );
 
-    // Returns the block of the last time the operator changed the opt-in status for socializing pool
+    // Returns the last block the operator changed the opt-in status for socializing pool
     function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
     function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);

@@ -8,6 +8,7 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IUserWithdrawalManager.sol';
 
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -19,6 +20,7 @@ contract UserWithdrawalManager is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    using Math for uint256;
     bool public override slashingMode; //TODO sanjay read this from stader oracle contract
 
     IStaderConfig public staderConfig;
@@ -117,7 +119,7 @@ contract UserWithdrawalManager is
         uint256 exchangeRate = IStaderStakePoolManager(poolManager).getExchangeRate();
         if (exchangeRate == 0) revert ProtocolNotHealthy();
 
-        uint256 maxRequestIdToFinalize = _min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit) - 1;
+        uint256 maxRequestIdToFinalize = Math.min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit) - 1;
         uint256 lockedEthXToBurn;
         uint256 ethToSendToFinalizeRequest;
         uint256 requestId;
@@ -125,7 +127,7 @@ contract UserWithdrawalManager is
         for (requestId = nextRequestIdToFinalize; requestId <= maxRequestIdToFinalize; requestId++) {
             uint256 requiredEth = userWithdrawRequests[requestId].ethExpected;
             uint256 lockedEthX = userWithdrawRequests[requestId].ethXAmount;
-            uint256 minEThRequiredToFinalizeRequest = _min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
+            uint256 minEThRequiredToFinalizeRequest = Math.min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
             if (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) {
                 requestId -= 1;
                 break;
@@ -173,10 +175,6 @@ contract UserWithdrawalManager is
      */
     function unpause() external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
         _unpause();
-    }
-
-    function _min(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a < b ? a : b;
     }
 
     // delete entry from userWithdrawRequests mapping and in requestIdsByUserAddress mapping
