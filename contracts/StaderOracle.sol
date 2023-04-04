@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import './library/Address.sol';
 
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/INodeRegistry.sol';
-import './library/Address.sol';
+
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import './library/Address.sol';
 
 import './interfaces/IStaderConfig.sol';
 
-import './library/Address.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
     // full deposit value on beacon chain i.e. 32 ETH

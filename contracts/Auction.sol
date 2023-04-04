@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import './library/Address.sol';
+
+import '../contracts/interfaces/SDCollateral/IAuction.sol';
+import '../contracts/interfaces/IStaderStakePoolManager.sol';
+import '../contracts/interfaces/IStaderConfig.sol';
+
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-
-import './library/Address.sol';
-import '../contracts/interfaces/SDCollateral/IAuction.sol';
-import '../contracts/interfaces/IStaderStakePoolManager.sol';
-import '../contracts/interfaces/IStaderConfig.sol';
 
 contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     bytes32 public constant MANAGER = keccak256('MANAGER');

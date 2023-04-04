@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/utils/math/Math.sol';
+import './library/Address.sol';
 
 import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
@@ -13,7 +9,11 @@ import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
 
-import './library/Address.sol';
+import '@openzeppelin/contracts/utils/math/Math.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract SDCollateral is
     ISDCollateral,
