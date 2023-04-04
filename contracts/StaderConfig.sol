@@ -15,34 +15,37 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     //maximum length of operator name string
     bytes32 public constant OPERATOR_MAX_NAME_LENGTH = keccak256('OPERATOR_MAX_NAME_LENGTH');
 
-    bytes32 public constant SocializingPoolCycleDuration = keccak256('SocializingPoolCycleDuration'); // set it to 28 * 7200
-    bytes32 public constant RewardsThreshold = keccak256('RewardsThreshold');
-    bytes32 public constant MinDepositAmount = keccak256('MinDepositAmount');
-    bytes32 public constant MaxDepositAmount = keccak256('MaxDepositAmount');
-    bytes32 public constant MinWithdrawAmount = keccak256('MinWithdrawAmount');
-    bytes32 public constant MaxWithdrawAmount = keccak256('MaxWithdrawAmount');
+    bytes32 public constant SOCIALIZING_POOL_CYCLE_DURATION = keccak256('SOCIALIZING_POOL_CYCLE_DURATION');
+    bytes32 public constant SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD =
+        keccak256('SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD');
+    bytes32 public constant REWARD_THRESHOLD = keccak256('REWARD_THRESHOLD');
+    bytes32 public constant MIN_DEPOSIT_AMOUNT = keccak256('MIN_DEPOSIT_AMOUNT');
+    bytes32 public constant MAX_DEPOSIT_AMOUNT = keccak256('MAX_DEPOSIT_AMOUNT');
+    bytes32 public constant MIN_WITHDRAW_AMOUNT = keccak256('MIN_WITHDRAW_AMOUNT');
+    bytes32 public constant MAX_WITHDRAW_AMOUNT = keccak256('MAX_WITHDRAW_AMOUNT');
 
-    bytes32 public constant Admin = keccak256('Admin');
-    bytes32 public constant StaderTreasury = keccak256('StaderTreasury');
-    bytes32 public constant StaderPenaltyFund = keccak256('StaderPenaltyFund');
+    bytes32 public constant ADMIN = keccak256('ADMIN');
+    bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
+    bytes32 public constant STADER_PENALTY_FUND = keccak256('STADER_PENALTY_FUND');
 
-    bytes32 public constant TWAPGetter = keccak256('TWAPGetter');
-    bytes32 public constant PoolFactory = keccak256('PoolFactory');
-    bytes32 public constant PoolSelector = keccak256('PoolSelector');
-    bytes32 public constant PriceFetcher = keccak256('PriceFetcher');
-    bytes32 public constant SDCollateral = keccak256('SDCollateral');
-    bytes32 public constant VaultFactory = keccak256('VaultFactory');
-    bytes32 public constant StaderOracle = keccak256('StaderOracle');
-    bytes32 public constant PenaltyContract = keccak256('PenaltyContract');
-    bytes32 public constant PermissionedPool = keccak256('PermissionedPool');
-    bytes32 public constant StakePoolManager = keccak256('StakePoolManager');
-    bytes32 public constant ETHDepositContract = keccak256('ETHDepositContract');
-    bytes32 public constant PermissionlessPool = keccak256('PermissionlessPool');
-    bytes32 public constant UserWithdrawManager = keccak256('UserWithdrawManager');
-    bytes32 public constant PermissionedNodeRegistry = keccak256('PermissionedNodeRegistry');
-    bytes32 public constant PermissionlessNodeRegistry = keccak256('PermissionlessNodeRegistry');
-    bytes32 public constant PermissionedSocializingPool = keccak256('PermissionedSocializingPool');
-    bytes32 public constant PermissionlessSocializingPool = keccak256('PermissionlessSocializingPool');
+    bytes32 public constant TWAP_GETTER = keccak256('TWAP_GETTER');
+    bytes32 public constant POOL_FACTORY = keccak256('POOL_FACTORY');
+    bytes32 public constant POOL_SELECTOR = keccak256('POOL_SELECTOR');
+    bytes32 public constant PRICE_FETCHER = keccak256('PRICE_FETCHER');
+    bytes32 public constant SD_COLLATERAL = keccak256('SD_COLLATERAL');
+    bytes32 public constant VAULT_FACTORY = keccak256('VAULT_FACTORY');
+    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
+    bytes32 public constant PENALTY_CONTRACT = keccak256('PENALTY_CONTRACT');
+    bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
+    bytes32 public constant STAKE_POOL_MANAGER = keccak256('STAKE_POOL_MANAGER');
+    bytes32 public constant ETH_DEPOSIT_CONTRACT = keccak256('ETH_DEPOSIT_CONTRACT');
+    bytes32 public constant PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
+    bytes32 public constant USER_WITHDRAW_MANAGER = keccak256('USER_WITHDRAW_MANAGER');
+    bytes32 public constant STADER_INSURANCE_FUND = keccak256('STADER_INSURANCE_FUND');
+    bytes32 public constant PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
+    bytes32 public constant PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
+    bytes32 public constant PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
+    bytes32 public constant PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
 
     bytes32 public constant SD = keccak256('SD');
     bytes32 public constant WETH = keccak256('WETH');
@@ -66,13 +69,13 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         _setConstant(ETH_PER_NODE, 32 ether);
         _setConstant(DECIMALS, 10**18);
         _setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
-        _setVariable(MinDepositAmount, 100);
-        _setVariable(MaxDepositAmount, 10000 ether);
-        _setVariable(MinWithdrawAmount, 100);
-        _setVariable(MaxWithdrawAmount, 10000 ether);
-        _setContract(ETHDepositContract, _ethDepositContract);
+        _setVariable(MIN_DEPOSIT_AMOUNT, 100);
+        _setVariable(MAX_DEPOSIT_AMOUNT, 10000 ether);
+        _setVariable(MIN_WITHDRAW_AMOUNT, 100);
+        _setVariable(MAX_WITHDRAW_AMOUNT, 10000 ether);
+        _setContract(ETH_DEPOSIT_CONTRACT, _ethDepositContract);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _setAccount(Admin, _admin);
+        _setAccount(ADMIN, _admin);
     }
 
     //Variables Setters
@@ -81,11 +84,18 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setVariable(SocializingPoolCycleDuration, _socializingPoolCycleDuration);
+        _setVariable(SOCIALIZING_POOL_CYCLE_DURATION, _socializingPoolCycleDuration);
+    }
+
+    function updateSocializingPoolOptInCoolingPeriod(uint256 _SocializePoolOptInCoolingPeriod)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setVariable(SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD, _SocializePoolOptInCoolingPeriod);
     }
 
     function updateRewardsThreshold(uint256 _rewardsThreshold) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setVariable(RewardsThreshold, _rewardsThreshold);
+        _setVariable(REWARD_THRESHOLD, _rewardsThreshold);
     }
 
     /**
@@ -96,7 +106,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         if (_minDepositAmount == 0 || _minDepositAmount > getMaxDepositAmount()) {
             revert InvalidMinDepositValue();
         }
-        _setVariable(MinDepositAmount, _minDepositAmount);
+        _setVariable(MIN_DEPOSIT_AMOUNT, _minDepositAmount);
     }
 
     /**
@@ -107,7 +117,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         if (_maxDepositAmount <= getMinDepositAmount()) {
             revert InvalidMaxDepositValue();
         }
-        _setVariable(MaxDepositAmount, _maxDepositAmount);
+        _setVariable(MAX_DEPOSIT_AMOUNT, _maxDepositAmount);
     }
 
     /**
@@ -118,7 +128,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         if (_minWithdrawAmount == 0 || _minWithdrawAmount > getMaxWithdrawAmount()) {
             revert InvalidMinWithdrawValue();
         }
-        _setVariable(MinWithdrawAmount, _minWithdrawAmount);
+        _setVariable(MIN_WITHDRAW_AMOUNT, _minWithdrawAmount);
     }
 
     /**
@@ -129,7 +139,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         if (_maxWithdrawAmount < getMinWithdrawAmount()) {
             revert InvalidMaxWithdrawValue();
         }
-        _setVariable(MaxWithdrawAmount, _maxWithdrawAmount);
+        _setVariable(MAX_WITHDRAW_AMOUNT, _maxWithdrawAmount);
     }
 
     //Accounts Setters
@@ -139,92 +149,96 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         address oldAdmin = getAdmin();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _setAccount(Admin, _admin);
+        _setAccount(ADMIN, _admin);
 
         _revokeRole(DEFAULT_ADMIN_ROLE, oldAdmin);
     }
 
     function updateStaderTreasury(address _staderTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setAccount(StaderTreasury, _staderTreasury);
+        _setAccount(STADER_TREASURY, _staderTreasury);
     }
 
     function updateStaderPenaltyFund(address _staderPenaltyFund) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setAccount(StaderPenaltyFund, _staderPenaltyFund);
+        _setAccount(STADER_PENALTY_FUND, _staderPenaltyFund);
     }
 
     // Contracts Setters
 
     function updateTWAPGetter(address _twapGetter) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(TWAPGetter, _twapGetter);
+        _setContract(TWAP_GETTER, _twapGetter);
     }
 
     function updatePoolFactory(address _poolFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PoolFactory, _poolFactory);
+        _setContract(POOL_FACTORY, _poolFactory);
     }
 
     function updatePoolSelector(address _poolSelector) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PoolSelector, _poolSelector);
+        _setContract(POOL_SELECTOR, _poolSelector);
     }
 
     function updatePriceFetcher(address _priceFetcher) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PriceFetcher, _priceFetcher);
+        _setContract(PRICE_FETCHER, _priceFetcher);
     }
 
     function updateSDCollateral(address _sdCollateral) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(SDCollateral, _sdCollateral);
+        _setContract(SD_COLLATERAL, _sdCollateral);
     }
 
     function updateVaultFactory(address _vaultFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(VaultFactory, _vaultFactory);
+        _setContract(VAULT_FACTORY, _vaultFactory);
     }
 
     function updateStaderOracle(address _staderOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(StaderOracle, _staderOracle);
+        _setContract(STADER_ORACLE, _staderOracle);
     }
 
     function updatePenaltyContract(address _penaltyContract) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PenaltyContract, _penaltyContract);
+        _setContract(PENALTY_CONTRACT, _penaltyContract);
     }
 
     function updatePermissionedPool(address _permissionedPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PermissionedPool, _permissionedPool);
+        _setContract(PERMISSIONED_POOL, _permissionedPool);
     }
 
     function updateStakePoolManager(address _stakePoolManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(StakePoolManager, _stakePoolManager);
+        _setContract(STAKE_POOL_MANAGER, _stakePoolManager);
     }
 
     function updatePermissionlessPool(address _permissionlessPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PermissionlessPool, _permissionlessPool);
+        _setContract(PERMISSIONLESS_POOL, _permissionlessPool);
     }
 
     function updateUserWithdrawManager(address _userWithdrawManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(UserWithdrawManager, _userWithdrawManager);
+        _setContract(USER_WITHDRAW_MANAGER, _userWithdrawManager);
+    }
+
+    function updateStaderInsuranceFund(address _staderInsuranceFund) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setContract(STADER_INSURANCE_FUND, _staderInsuranceFund);
     }
 
     function updatePermissionedNodeRegistry(address _permissionedNodeRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PermissionedNodeRegistry, _permissionedNodeRegistry);
+        _setContract(PERMISSIONED_NODE_REGISTRY, _permissionedNodeRegistry);
     }
 
     function updatePermissionlessNodeRegistry(address _permissionlessNodeRegistry)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setContract(PermissionlessNodeRegistry, _permissionlessNodeRegistry);
+        _setContract(PERMISSIONLESS_NODE_REGISTRY, _permissionlessNodeRegistry);
     }
 
     function updatePermissionedSocializingPool(address _permissionedSocializePool)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setContract(PermissionedSocializingPool, _permissionedSocializePool);
+        _setContract(PERMISSIONED_SOCIALIZING_POOL, _permissionedSocializePool);
     }
 
     function updatePermissionlessSocializingPool(address _permissionlessSocializePool)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setContract(PermissionlessSocializingPool, _permissionlessSocializePool);
+        _setContract(PERMISSIONLESS_SOCIALIZING_POOL, _permissionlessSocializePool);
     }
 
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -256,115 +270,119 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     //Variables Getters
 
     function getSocializingPoolCycleDuration() public view override returns (uint256) {
-        return variablesMap[SocializingPoolCycleDuration];
+        return variablesMap[SOCIALIZING_POOL_CYCLE_DURATION];
     }
 
-    function getSocializingPoolCoolingPeriod() external view override returns (uint256) {
-        return 2 * getSocializingPoolCycleDuration();
+    function getSocializingPoolOptInCoolingPeriod() external view override returns (uint256) {
+        return variablesMap[SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD];
     }
 
     function getRewardsThreshold() external view override returns (uint256) {
-        return variablesMap[RewardsThreshold];
+        return variablesMap[REWARD_THRESHOLD];
     }
 
     function getMinDepositAmount() public view override returns (uint256) {
-        return variablesMap[MinDepositAmount];
+        return variablesMap[MIN_DEPOSIT_AMOUNT];
     }
 
     function getMaxDepositAmount() public view override returns (uint256) {
-        return variablesMap[MaxDepositAmount];
+        return variablesMap[MAX_DEPOSIT_AMOUNT];
     }
 
     function getMinWithdrawAmount() public view override returns (uint256) {
-        return variablesMap[MinWithdrawAmount];
+        return variablesMap[MIN_WITHDRAW_AMOUNT];
     }
 
     function getMaxWithdrawAmount() public view override returns (uint256) {
-        return variablesMap[MaxWithdrawAmount];
+        return variablesMap[MAX_WITHDRAW_AMOUNT];
     }
 
     //Account Getters
 
     function getAdmin() public view returns (address) {
-        return accountsMap[Admin];
+        return accountsMap[ADMIN];
     }
 
     function getStaderTreasury() external view override returns (address) {
-        return accountsMap[StaderTreasury];
+        return accountsMap[STADER_TREASURY];
     }
 
     function getStaderPenaltyFund() external view override returns (address) {
-        return accountsMap[StaderPenaltyFund];
+        return accountsMap[STADER_PENALTY_FUND];
     }
 
     //Contracts Getters
 
     function getTWAPGetter() external view override returns (address) {
-        return contractsMap[TWAPGetter];
+        return contractsMap[TWAP_GETTER];
     }
 
     function getPoolFactory() external view override returns (address) {
-        return contractsMap[PoolFactory];
+        return contractsMap[POOL_FACTORY];
     }
 
     function getPoolSelector() external view override returns (address) {
-        return contractsMap[PoolSelector];
+        return contractsMap[POOL_SELECTOR];
     }
 
     function getPriceFetcher() external view override returns (address) {
-        return contractsMap[PriceFetcher];
+        return contractsMap[PRICE_FETCHER];
     }
 
     function getSDCollateral() external view override returns (address) {
-        return contractsMap[SDCollateral];
+        return contractsMap[SD_COLLATERAL];
     }
 
     function getVaultFactory() external view override returns (address) {
-        return contractsMap[VaultFactory];
+        return contractsMap[VAULT_FACTORY];
     }
 
     function getStaderOracle() external view override returns (address) {
-        return contractsMap[StaderOracle];
+        return contractsMap[STADER_ORACLE];
     }
 
     function getPenaltyContract() external view override returns (address) {
-        return contractsMap[PenaltyContract];
+        return contractsMap[PENALTY_CONTRACT];
     }
 
     function getPermissionedPool() external view override returns (address) {
-        return contractsMap[PermissionedPool];
+        return contractsMap[PERMISSIONED_POOL];
     }
 
     function getStakePoolManager() external view override returns (address) {
-        return contractsMap[StakePoolManager];
+        return contractsMap[STAKE_POOL_MANAGER];
     }
 
     function getETHDepositContract() external view override returns (address) {
-        return contractsMap[ETHDepositContract];
+        return contractsMap[ETH_DEPOSIT_CONTRACT];
     }
 
     function getPermissionlessPool() external view override returns (address) {
-        return contractsMap[PermissionlessPool];
+        return contractsMap[PERMISSIONLESS_POOL];
     }
 
     function getUserWithdrawManager() external view override returns (address) {
-        return contractsMap[UserWithdrawManager];
+        return contractsMap[USER_WITHDRAW_MANAGER];
+    }
+
+    function getStaderInsuranceFund() external view override returns (address) {
+        return contractsMap[STADER_INSURANCE_FUND];
     }
 
     function getPermissionedNodeRegistry() external view override returns (address) {
-        return contractsMap[PermissionedNodeRegistry];
+        return contractsMap[PERMISSIONED_NODE_REGISTRY];
     }
 
     function getPermissionlessNodeRegistry() external view override returns (address) {
-        return contractsMap[PermissionlessNodeRegistry];
+        return contractsMap[PERMISSIONLESS_NODE_REGISTRY];
     }
 
     function getPermissionedSocializingPool() external view override returns (address) {
-        return contractsMap[PermissionedSocializingPool];
+        return contractsMap[PERMISSIONED_SOCIALIZING_POOL];
     }
 
     function getPermissionlessSocializingPool() external view override returns (address) {
-        return contractsMap[PermissionlessSocializingPool];
+        return contractsMap[PERMISSIONLESS_SOCIALIZING_POOL];
     }
 
     //Token Getters

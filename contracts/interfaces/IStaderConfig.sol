@@ -25,7 +25,7 @@ interface IStaderConfig {
     // Variables
     function getSocializingPoolCycleDuration() external view returns (uint256);
 
-    function getSocializingPoolCoolingPeriod() external view returns (uint256);
+    function getSocializingPoolOptInCoolingPeriod() external view returns (uint256);
 
     function getRewardsThreshold() external view returns (uint256);
 
@@ -70,6 +70,8 @@ interface IStaderConfig {
     function getPermissionlessPool() external view returns (address);
 
     function getUserWithdrawManager() external view returns (address);
+
+    function getStaderInsuranceFund() external view returns (address);
 
     function getPermissionedNodeRegistry() external view returns (address);
 

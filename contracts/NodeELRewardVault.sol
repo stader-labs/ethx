@@ -64,7 +64,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         (success, ) = payable(staderConfig.getStaderTreasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = getNodeRecipient().call{value: operatorShare}('');
+        (success, ) = getNodeRewardAddress().call{value: operatorShare}('');
         require(success, 'Operator share transfer failed');
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
@@ -111,9 +111,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 
-    function getNodeRecipient() private view returns (address payable) {
+    function getNodeRewardAddress() private view returns (address payable) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
-        (, , , address payable operatorRewardAddress, ) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
+        address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
         return operatorRewardAddress;
     }
 

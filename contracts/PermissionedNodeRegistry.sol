@@ -502,6 +502,14 @@ contract PermissionedNodeRegistry is
     }
 
     /**
+     * @notice returns the operator reward address
+     * @param _operatorId operator ID
+     */
+    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
+        return operatorStructById[_operatorId].operatorRewardAddress;
+    }
+
+    /**
      * @dev Triggers stopped state.
      * should not be paused
      */
@@ -526,7 +534,7 @@ contract PermissionedNodeRegistry is
      * @return An array of `Validator` objects representing the active validators.
      */
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        public
+        external
         view
         override
         returns (Validator[] memory)

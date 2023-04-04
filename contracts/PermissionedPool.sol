@@ -10,6 +10,7 @@ import './interfaces/IVaultFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/IDepositContract.sol';
+import './interfaces/IStaderInsuranceFund.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 
@@ -68,15 +69,22 @@ contract PermissionedPool is
         revert UnsupportedOperation();
     }
 
-    //TODO sanjay Stader Insurance fund to reimburse lost 1 ETH.
-    // transfer the 31ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
+    function receiveInsuranceFund() external payable {
+        emit ReceivedInsuranceFund(msg.value);
+    }
+
+    // transfer the 32ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
     function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount)
         external
         onlyRole(PERMISSIONED_NODE_REGISTRY)
     {
-        // send back 31 ETH for front run and invalid signature validators back to pool manager
+        //get 1ETH from insurance fund
+        IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).reimburseUserFund(
+            _defectiveKeyCount * PRE_DEPOSIT_SIZE
+        );
+        // send back 32 ETH for front run and invalid signature validators back to pool manager
         // These counts are correct because any double reporting of frontrun/invalid statuses results in an error.
-        uint256 amountToSendToPoolManager = _defectiveKeyCount * FULL_DEPOSIT_SIZE;
+        uint256 amountToSendToPoolManager = _defectiveKeyCount * staderConfig.getStakedEthPerNode();
         //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: amountToSendToPoolManager
@@ -186,7 +194,7 @@ contract PermissionedPool is
     }
 
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        public
+        external
         view
         override
         returns (Validator[] memory)

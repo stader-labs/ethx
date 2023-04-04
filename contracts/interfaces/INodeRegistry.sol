@@ -122,5 +122,9 @@ interface INodeRegistry {
 
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 totalKeys);
 
+    function operatorIDByAddress(address) external view returns (uint256);
+
+    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 }

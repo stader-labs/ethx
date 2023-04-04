@@ -60,7 +60,7 @@ contract PermissionlessNodeRegistry is
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
     //mapping of operator address with nodeELReward vault address
-    mapping(address => address) public override nodeELRewardVaultByOperator;
+    mapping(uint256 => address) public override nodeELRewardVaultByOperatorId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -106,7 +106,7 @@ contract PermissionlessNodeRegistry is
             poolId,
             nextOperatorId
         );
-        nodeELRewardVaultByOperator[msg.sender] = nodeELRewardVault;
+        nodeELRewardVaultByOperatorId[nextOperatorId] = nodeELRewardVault;
         feeRecipientAddress = _optInForSocializingPool
             ? staderConfig.getPermissionlessSocializingPool()
             : nodeELRewardVault;
@@ -262,11 +262,11 @@ contract PermissionlessNodeRegistry is
 
         if (
             block.number <
-            socializingPoolStateChangeBlock[operatorId] + 2 * staderConfig.getSocializingPoolCoolingPeriod()
+            socializingPoolStateChangeBlock[operatorId] + staderConfig.getSocializingPoolOptInCoolingPeriod()
         ) {
             revert CooldownNotComplete();
         }
-        feeRecipientAddress = nodeELRewardVaultByOperator[msg.sender];
+        feeRecipientAddress = nodeELRewardVaultByOperatorId[operatorId];
         if (_optInForSocializingPool) {
             if (address(feeRecipientAddress).balance > 0) {
                 INodeELRewardVault(feeRecipientAddress).withdraw();
@@ -422,6 +422,14 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
+     * @notice returns the operator reward address
+     * @param _operatorId operator ID
+     */
+    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
+        return operatorStructById[_operatorId].operatorRewardAddress;
+    }
+
+    /**
      * @dev Triggers stopped state.
      * should not be paused
      */
@@ -446,7 +454,7 @@ contract PermissionlessNodeRegistry is
      * @return An array of `Validator` objects representing the active validators.
      */
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        public
+        external
         view
         override
         returns (Validator[] memory)
@@ -471,6 +479,43 @@ contract PermissionlessNodeRegistry is
         }
 
         return validators;
+    }
+
+    /**
+     * @notice Returns an array of nodeELRewardVault address for operators opting out of socializing pool
+     *
+     * @param _pageNumber The page number of the results to fetch (starting from 1).
+     * @param _pageSize The maximum number of items per page.
+     *
+     * @return An array of `address` objects representing the nodeELRewardVault contract address.
+     */
+    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
+        external
+        view
+        override
+        returns (address[] memory)
+    {
+        if (_pageNumber == 0) {
+            revert PageNumberIsZero();
+        }
+        uint256 startIndex = (_pageNumber - 1) * _pageSize + 1;
+        uint256 endIndex = startIndex + _pageSize;
+        endIndex = endIndex > nextOperatorId ? nextOperatorId : endIndex;
+        address[] memory nodeELRewardVault = new address[](_pageSize);
+        uint256 optOutOperatorCount = 0;
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            if (!operatorStructById[i].optedForSocializingPool) {
+                nodeELRewardVault[optOutOperatorCount] = nodeELRewardVaultByOperatorId[i];
+                optOutOperatorCount++;
+            }
+        }
+
+        // If the result array isn't full, resize it to remove the unused elements
+        assembly {
+            mstore(nodeELRewardVault, optOutOperatorCount)
+        }
+
+        return nodeELRewardVault;
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
