@@ -70,9 +70,8 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         if (block.number > lotItem.endBlock) revert AuctionEnded();
 
         uint256 totalUserBid = lotItem.bids[msg.sender] + msg.value;
-        uint256 _highestBid = lotItem.highestBidAmount;
 
-        if (totalUserBid < _highestBid + bidIncrement) revert InSufficientETH();
+        if (totalUserBid < lotItem.highestBidAmount + bidIncrement) revert InSufficientBid();
 
         lotItem.highestBidder = msg.sender;
         lotItem.highestBidAmount = totalUserBid;
@@ -108,7 +107,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
     function extractNonBidSD(uint256 lotId) external {
         LotItem storage lotItem = lots[lotId];
         if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
-        if (lotItem.highestBidAmount > 0) revert BidWasSuccessful();
+        if (lotItem.highestBidAmount > 0) revert LotWasAuctioned();
         if (lotItem.sdAmount == 0) revert AlreadyClaimed();
 
         uint256 _sdAmount = lotItem.sdAmount;

@@ -12,6 +12,8 @@ interface IAuction {
     error AlreadyClaimed();
     error NoBidPlaced();
     error BidWasSuccessful();
+    error InSufficientBid();
+    error LotWasAuctioned();
 
     // events
     event LotCreated(uint256 lotId, uint256 sdAmount, uint256 startBlock, uint256 endBlock, uint256 bidIncrement);

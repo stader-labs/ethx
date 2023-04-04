@@ -21,15 +21,10 @@ contract SDCollateral is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    // TODO: Manoj refactor move to Interface
-
-    bytes32 public constant WHITELISTED_CONTRACT = keccak256('WHITELISTED_CONTRACT');
+    bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
     IStaderConfig public staderConfig;
-
     uint256 public totalSDCollateral;
-    // TODO: Manoj we can instead use sdBalnce(address(this))
-
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint8) private poolIdByOperator;
     mapping(address => uint256) public operatorSDBalance;
@@ -48,6 +43,8 @@ contract SDCollateral is
 
         staderConfig = IStaderConfig(_staderConfig);
 
+        // max approval to auction contract for spending SD tokens
+        IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), type(uint256).max);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
@@ -81,11 +78,11 @@ contract SDCollateral is
             1000
         );
 
-        uint256 sdCummulativeThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
-        if (sdBalance <= sdCummulativeThreshold) {
+        uint256 sdCumulativeThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+        if (sdBalance <= sdCumulativeThreshold) {
             revert InsufficientSDToWithdraw();
         }
-        uint256 withdrawableSD = sdBalance - sdCummulativeThreshold;
+        uint256 withdrawableSD = sdBalance - sdCumulativeThreshold;
 
         require(_requestedSD <= withdrawableSD, 'withdraw less SD');
 
@@ -97,17 +94,17 @@ contract SDCollateral is
     }
 
     // TODO: proper access control
-    function slashSD(address _operatorId, uint256 _sdToSlash)
+    function slashSD(address _operator, uint256 _sdToSlash)
         external
-        onlyRole(WHITELISTED_CONTRACT)
+        onlyRole(DEFAULT_ADMIN_ROLE)
         returns (uint256 _sdSlashed)
     {
-        uint256 sdBalance = operatorSDBalance[_operatorId];
+        uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = _sdToSlash;
         if (_sdToSlash > sdBalance) {
             _sdSlashed = sdBalance;
         }
-        operatorSDBalance[_operatorId] -= _sdSlashed;
+        operatorSDBalance[_operator] -= _sdSlashed;
 
         // TODO: Manoj research and check if below is a correct solution
         // reduced approval to zero first, to avoid race condition
@@ -134,11 +131,12 @@ contract SDCollateral is
         });
     }
 
-    // TODO: Manoj Some Contract should execute it, when operator is onboarded to a pool
-    function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(WHITELISTED_CONTRACT) {
+    function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(NODE_REGISTRY_CONTRACT) {
         Address.checkNonZeroAddress(_operator);
         if (_poolId == 0) revert InvalidPoolId();
-        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
+            revert InvalidPoolId();
+        }
         poolIdByOperator[_operator] = _poolId;
     }
 
@@ -153,36 +151,46 @@ contract SDCollateral is
         uint8 _poolId,
         uint256 _numValidator
     ) external view returns (bool) {
-        return (getMinimumSDToBond(_operator, _poolId, _numValidator) == 0);
+        return (getRemainingSDToBond(_operator, _poolId, _numValidator) == 0);
     }
 
     function getOperatorPoolId(address _operator) public view returns (uint8 _poolId) {
         _poolId = poolIdByOperator[_operator];
+        // TODO: this check is not required as I am checking this while setting
         if (_poolId == 0) revert InvalidPoolId();
     }
 
-    /// @notice returns minimum amount of SD required to onboard _numValidators
+    /// @notice returns minimum amount of SD required to onboard _numValidators in a pool
+    /// @param _poolId pool id, where operator wants to onboard validators
+    /// @param _numValidator number of validators to onBoard (including already onboarded, if any)
+    function getMinimumSDToBond(uint8 _poolId, uint256 _numValidator) public view returns (uint256 _minSDToBond) {
+        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
+            revert InvalidPoolId();
+        }
+        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
+
+        _minSDToBond = convertETHToSD(poolThresholdInfo.minThreshold);
+        _minSDToBond *= _numValidator;
+    }
+
+    /// @notice returns remaining amount of SD required to onboard _numValidators
     /// @param _operator node operator addr who want to onboard validators
     /// @param _poolId pool id, where operator wants to onboard validators
     /// @param _numValidator number of validators to onBoard (including already onboarded, if any)
-    function getMinimumSDToBond(
+    function getRemainingSDToBond(
         address _operator,
         uint8 _poolId,
         uint256 _numValidator
     ) public view returns (uint256) {
         uint256 sdBalance = operatorSDBalance[_operator];
-
-        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
-        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
-
-        uint256 minThresholdInSD = convertETHToSD(poolThresholdInfo.minThreshold);
-        minThresholdInSD *= _numValidator;
-
+        uint256 minThresholdInSD = getMinimumSDToBond(_poolId, _numValidator);
         return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD - sdBalance);
     }
 
     function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) public view returns (uint256) {
-        require(bytes(poolThresholdbyPoolId[_poolId].units).length > 0, 'invalid poolId');
+        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
+            revert InvalidPoolId();
+        }
 
         uint256 ethAmount = convertSDToETH(_sdAmount);
         return ethAmount / poolThresholdbyPoolId[_poolId].minThreshold;
