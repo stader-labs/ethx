@@ -183,8 +183,8 @@ contract SDCollateral is
         uint256 _numValidator
     ) public view returns (uint256) {
         uint256 sdBalance = operatorSDBalance[_operator];
-        uint256 minThresholdInSD = getMinimumSDToBond(_poolId, _numValidator);
-        return (sdBalance >= minThresholdInSD ? 0 : minThresholdInSD - sdBalance);
+        uint256 minSDToBond = getMinimumSDToBond(_poolId, _numValidator);
+        return (sdBalance >= minSDToBond ? 0 : minSDToBond - sdBalance);
     }
 
     function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) public view returns (uint256) {
