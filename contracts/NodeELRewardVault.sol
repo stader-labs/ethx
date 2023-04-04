@@ -52,6 +52,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
         bool success;
 
+        // TODO: Manoj is it safe to distribute rewards to all in a single method ?
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
         // slither-disable-next-line arbitrary-send-eth
