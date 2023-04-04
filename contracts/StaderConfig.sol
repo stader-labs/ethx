@@ -35,6 +35,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant SD_COLLATERAL = keccak256('SD_COLLATERAL');
     bytes32 public constant VAULT_FACTORY = keccak256('VAULT_FACTORY');
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
+    bytes32 public constant AUCTION_CONTRACT = keccak256('AuctionContract');
     bytes32 public constant PENALTY_CONTRACT = keccak256('PENALTY_CONTRACT');
     bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
     bytes32 public constant STAKE_POOL_MANAGER = keccak256('STAKE_POOL_MANAGER');
@@ -188,6 +189,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         _setContract(VAULT_FACTORY, _vaultFactory);
     }
 
+    function updateAuctionContract(address _auctionContract) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setContract(AUCTION_CONTRACT, _auctionContract);
+    }
+
     function updateStaderOracle(address _staderOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setContract(STADER_ORACLE, _staderOracle);
     }
@@ -339,6 +344,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getStaderOracle() external view override returns (address) {
         return contractsMap[STADER_ORACLE];
+    }
+
+    function getAuctionContract() external view override returns (address) {
+        return contractsMap[AUCTION_CONTRACT];
     }
 
     function getPenaltyContract() external view override returns (address) {

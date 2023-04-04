@@ -22,3 +22,19 @@ export async function deployUpgradeableContract(contractName: string, ...args: a
 
   return contract.address
 }
+
+export async function upgradeProxy(contractName: string, proxyAddress: string) {
+  const Contract = await ethers.getContractFactory(contractName)
+
+  console.log(`Upgrading ${contractName} with proxy at: ${proxyAddress}`)
+
+  const contract = await upgrades.upgradeProxy(proxyAddress, Contract)
+  await contract.deployed()
+
+  const contractImplAddress = await upgrades.erc1967.getImplementationAddress(proxyAddress)
+
+  console.log(`Proxy ${contractName} deployed to:`, contract.address)
+  console.log(`Impl ${contractName} deployed to:`, contractImplAddress)
+
+  return contract.address
+}

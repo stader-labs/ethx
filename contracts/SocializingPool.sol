@@ -106,6 +106,7 @@ contract SocializingPool is
         require(success, 'Protocol ETH rewards transfer failed');
     }
 
+    // TODO: fetch _operatorRewardAddr from operatorID, once sanjay merges the impl
     function claim(
         uint256[] calldata _index,
         uint256[] calldata _amountSD,

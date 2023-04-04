@@ -27,6 +27,7 @@ interface INodeRegistry {
     // Errors
     error EmptyNameString();
     error NameCrossedMaxLength();
+    error OperatorAlreadyAddedInOtherPool();
     error maxKeyLimitReached();
     error OperatorNotOnBoarded();
     error OperatorAlreadyOnBoarded();

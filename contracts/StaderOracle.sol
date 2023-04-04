@@ -13,9 +13,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
-
-    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
-
+    SDPriceData public lastReportedSDPriceData;
     IStaderConfig public staderConfig;
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
@@ -24,14 +22,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override lastUpdatedBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
-
-    // indicate the health of protocol on beacon chain
-    // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
-    bool public override safeMode;
     /// @inheritdoc IStaderOracle
     uint256 public override latestMissedAttestationConsensusIndex;
 
+    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
     bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
+    // indicate the health of protocol on beacon chain
+    // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
+    bool public override safeMode;
 
     /// @inheritdoc IStaderOracle
     mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
@@ -41,6 +39,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(bytes32 => uint16) public override missedAttestationPenalty;
     // mapping of trusted node address with report index and report pageNumber
     mapping(address => MissedAttestationReportInfo) public missedAttestationDataByTrustedNode;
+    uint256[] private sdPrices;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -215,6 +214,55 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
             emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);
         }
+    }
+
+    function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
+        require(_sdPriceData.reportingBlockNumber < block.number, 'Price can not be submitted for a future block');
+
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber, _sdPriceData.sdPriceInETH)
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encodePacked(_sdPriceData.reportingBlockNumber, _sdPriceData.sdPriceInETH)
+        );
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        _insertSDPrice(_sdPriceData.sdPriceInETH);
+        // Emit SD Price submitted event
+        emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
+
+        if (
+            (submissionCount >= trustedNodesCount / 2 + 1) &&
+            _sdPriceData.reportingBlockNumber > lastReportedSDPriceData.reportingBlockNumber
+        ) {
+            lastReportedSDPriceData = _sdPriceData;
+            lastReportedSDPriceData.sdPriceInETH = _getMedianValue(sdPrices);
+            uint256 len = sdPrices.length;
+            while (len > 0) {
+                sdPrices.pop();
+                len--;
+            }
+
+            // Emit SD Price updated event
+            emit SDPriceUpdated(_sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
+        }
+    }
+
+    function _insertSDPrice(uint256 _sdPrice) internal {
+        sdPrices.push(_sdPrice);
+        if (sdPrices.length == 1) return;
+
+        uint256 j = sdPrices.length - 1;
+        while ((j >= 1) && (_sdPrice < sdPrices[j - 1])) {
+            sdPrices[j] = sdPrices[j - 1];
+            j--;
+        }
+        sdPrices[j] = _sdPrice;
+    }
+
+    function _getMedianValue(uint256[] storage dataArray) internal view returns (uint256 _medianValue) {
+        uint256 len = dataArray.length;
+        return (dataArray[(len - 1) / 2] + dataArray[len / 2]) / 2;
     }
 
     /// @inheritdoc IStaderOracle
@@ -408,7 +456,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function getPubkeyRoot(bytes calldata _pubkey) public pure returns (bytes32) {
-        if (_pubkey.length != 48) {
+        if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
             revert InvalidPubkeyLength();
         }
 
@@ -447,6 +495,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             }
         }
         return true;
+    }
+
+    function getSDPriceInETH() external view returns (uint256) {
+        return lastReportedSDPriceData.sdPriceInETH;
     }
 
     modifier trustedNodeOnly() {

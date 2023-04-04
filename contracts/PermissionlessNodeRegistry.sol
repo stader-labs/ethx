@@ -95,7 +95,10 @@ contract PermissionlessNodeRegistry is
     ) external override whenNotPaused returns (address feeRecipientAddress) {
         _onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_operatorRewardAddress);
-        //TODO sanjay check for operator, should not be in other pool
+
+        if (ISDCollateral(staderConfig.getSDCollateral()).poolIdByOperator(msg.sender) != 0) {
+            revert OperatorAlreadyAddedInOtherPool();
+        }
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) {
             revert OperatorAlreadyOnBoarded();
@@ -111,7 +114,6 @@ contract PermissionlessNodeRegistry is
             ? staderConfig.getPermissionlessSocializingPool()
             : nodeELRewardVault;
         _onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
-        //TODO sanjay, function signature only in interface, ask Manoj for full function
         ISDCollateral(staderConfig.getSDCollateral()).updatePoolIdForOperator(poolId, msg.sender);
         return feeRecipientAddress;
     }

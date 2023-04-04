@@ -17,6 +17,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     uint256 public override missedAttestationPenaltyPerStrike;
     uint256 public override validatorExitPenaltyThreshold;
     bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
+    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
     /// @inheritdoc IPenalty
     mapping(bytes32 => uint256) public override additionalPenaltyAmount;
@@ -149,7 +150,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function getPubkeyRoot(bytes calldata _pubkey) public pure override returns (bytes32) {
-        if (_pubkey.length != 48) {
+        if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
             revert InvalidPubkeyLength();
         }
 

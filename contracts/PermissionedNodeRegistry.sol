@@ -51,7 +51,7 @@ contract PermissionedNodeRegistry is
     mapping(uint256 => Validator) public override validatorRegistry;
     // mapping of bytes public key and validator Id
     mapping(bytes => uint256) public override validatorIdByPubkey;
-    // mapping of operaot Id and Operator struct
+    // mapping of operator Id and Operator struct
     mapping(uint256 => Operator) public override operatorStructById;
     // mapping of operator address and operator Id
     mapping(address => uint256) public override operatorIDByAddress;
@@ -113,14 +113,15 @@ contract PermissionedNodeRegistry is
             revert NotAPermissionedNodeOperator();
         }
 
-        //TODO sanjay check for operator, should not be in other pool
+        if (ISDCollateral(staderConfig.getSDCollateral()).poolIdByOperator(msg.sender) != 0) {
+            revert OperatorAlreadyAddedInOtherPool();
+        }
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) {
             revert OperatorAlreadyOnBoarded();
         }
         feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
         _onboardOperator(_operatorName, _operatorRewardAddress);
-        //TODO sanjay, function signature only in interface, ask Manoj for full function
         ISDCollateral(staderConfig.getSDCollateral()).updatePoolIdForOperator(poolId, msg.sender);
         return feeRecipientAddress;
     }
