@@ -5,6 +5,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/utils/math/Math.sol';
 
 import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
@@ -21,6 +22,7 @@ contract SDCollateral is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    bytes32 public constant MANAGER = keccak256('MANAGER');
     bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
     IStaderConfig public staderConfig;
@@ -42,9 +44,6 @@ contract SDCollateral is
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-
-        // max approval to auction contract for spending SD tokens
-        IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), type(uint256).max);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
@@ -94,16 +93,9 @@ contract SDCollateral is
     }
 
     // TODO: proper access control
-    function slashSD(address _operator, uint256 _sdToSlash)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-        returns (uint256 _sdSlashed)
-    {
+    function slashSD(address _operator, uint256 _sdToSlash) external onlyRole(MANAGER) returns (uint256 _sdSlashed) {
         uint256 sdBalance = operatorSDBalance[_operator];
-        _sdSlashed = _sdToSlash;
-        if (_sdToSlash > sdBalance) {
-            _sdSlashed = sdBalance;
-        }
+        _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
 
         // TODO: Manoj research and check if below is a correct solution
@@ -114,6 +106,11 @@ contract SDCollateral is
         IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
     }
 
+    // for max approval to auction contract for spending SD tokens
+    function maxApproveSD(address spenderAddr) external onlyRole(MANAGER) {
+        IERC20(staderConfig.getStaderToken()).approve(spenderAddr, type(uint256).max);
+    }
+
     // SETTERS
 
     function updatePoolThreshold(
@@ -121,7 +118,7 @@ contract SDCollateral is
         uint256 _minThreshold,
         uint256 _withdrawThreshold,
         string memory _units
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) public onlyRole(MANAGER) {
         require(_minThreshold <= _withdrawThreshold, 'invalid limits');
 
         poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({
