@@ -59,6 +59,8 @@ interface IStaderConfig {
 
     function getStaderOracle() external view returns (address);
 
+    function getAuctionContract() external view returns (address);
+
     function getPenaltyContract() external view returns (address);
 
     function getPermissionedPool() external view returns (address);

@@ -3,6 +3,11 @@ pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
+struct SDPriceData {
+    uint256 reportingBlockNumber;
+    uint256 sdPriceInETH;
+}
+
 /// @title RewardsData
 /// @notice This struct holds rewards merkleRoot and rewards split
 struct RewardsData {
@@ -116,6 +121,9 @@ interface IStaderOracle {
     event TrustedNodeRemoved(address indexed node);
     event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 block);
     event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 block);
+    event SDPriceSubmitted(address indexed node, uint256 sdPriceInETH, uint256 reportedBlock, uint256 block);
+    event SDPriceUpdated(uint256 sdPriceInETH, uint256 reportedBlock, uint256 block);
+
     event MissedAttestationPenaltySubmitted(
         address indexed node,
         uint256 index,
@@ -164,6 +172,9 @@ interface IStaderOracle {
     // The last updated merkle tree index
     function getCurrentRewardsIndex() external view returns (uint256);
 
+    // returns price of 1 SD in ETH
+    function getSDPriceInETH() external view returns (uint256);
+
     function getExchangeRate() external view returns (ExchangeRate memory);
 
     function getValidatorStats() external view returns (ValidatorStats memory);
@@ -204,6 +215,8 @@ interface IStaderOracle {
     @param _rewardsData contains rewards merkleRoot and rewards split
     */
     function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external;
+
+    function submitSDPrice(SDPriceData calldata _sdPriceData) external;
 
     /*
      * @notice Submit validator stats for a specific block.
