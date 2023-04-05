@@ -4,11 +4,11 @@ pragma solidity ^0.8.16;
 
 import './library/AddressLib.sol';
 
+import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
@@ -36,6 +36,11 @@ contract SocializingPool is
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address _staderConfig) external initializer {
         AddressLib.checkNonZeroAddress(_staderConfig);

@@ -3,10 +3,11 @@ pragma solidity ^0.8.16;
 
 import './library/AddressLib.sol';
 
+import './interfaces/IPoolFactory.sol';
+import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -17,23 +18,27 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     // Pool information
     uint8 public poolId;
 
-    // Recipients
-    address payable public nodeRecipient;
+    // operatorId
+    uint256 public operatorId;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
-        address _staderConfig,
-        address payable _nodeRecipient,
-        uint8 _poolId
+        uint8 _poolId,
+        uint256 _operatorId,
+        address _staderConfig
     ) external initializer {
         AddressLib.checkNonZeroAddress(_staderConfig);
-        AddressLib.checkNonZeroAddress(_nodeRecipient);
 
         __AccessControl_init();
         __ReentrancyGuard_init();
 
-        staderConfig = IStaderConfig(_staderConfig);
-        nodeRecipient = _nodeRecipient;
         poolId = _poolId;
+        operatorId = _operatorId;
+        staderConfig = IStaderConfig(_staderConfig);
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
@@ -51,18 +56,19 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             address(this).balance
         );
 
-        bool success;
-
         // TODO: Manoj is it safe to distribute rewards to all in a single method ?
         // Distribute rewards
+        bool success;
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
+
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(staderConfig.getStaderTreasury()).call{value: protocolShare}('');
         if (!success) {
             revert ETHTransferFailed();
         }
+
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(nodeRecipient).call{value: operatorShare}('');
+        (success, ) = getNodeRecipient().call{value: operatorShare}('');
         if (!success) {
             revert ETHTransferFailed();
         }
@@ -70,7 +76,6 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    // TODO: add penalty changes
     function _calculateRewardShare(uint256 _totalRewards)
         internal
         view
@@ -110,6 +115,13 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
     function getCollateralETH() private view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
+    }
+
+    //TODO sanjay move to node registry
+    function getNodeRecipient() private view returns (address payable) {
+        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        (, , , address payable operatorRewardAddress, ) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
+        return operatorRewardAddress;
     }
 
     //update the address of staderConfig

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolSelector.sol';
 import './interfaces/IPoolFactory.sol';
@@ -20,13 +21,19 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     IStaderConfig public staderConfig;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
 
+    //TODO make sure weight are in order of pool Id
     mapping(uint8 => uint256) public poolWeights;
 
+    bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
     bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
-    bytes32 public constant override STADER_STAKE_POOL_MANAGER = keccak256('STADER_STAKE_POOL_MANAGER');
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
-     * @notice initialize with permissioned and permissionless Pool
+     * @notice initialize with permissionless and permissioned Pool weights
      * @dev pool index start from 1 with permission less pool
      * @param _staderConfig config contract address
      * @param _permissionlessTarget target weight of permissionless pool
@@ -37,8 +44,10 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256 _permissionlessTarget,
         uint256 _permissionedTarget
     ) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
-        if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) revert InvalidTargetWeight();
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) {
+            revert InvalidTargetWeight();
+        }
 
         __AccessControl_init_unchained();
 
@@ -62,7 +71,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     function computePoolAllocationForDeposit(uint256 _pooledEth)
         external
         override
-        onlyRole(STADER_STAKE_POOL_MANAGER)
+        onlyRole(POOL_MANAGER)
         returns (uint256[] memory selectedPoolCapacity)
     {
         address poolFactoryAddress = staderConfig.getPoolFactory();
@@ -122,17 +131,19 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @param _poolTargets new target weights of pools
      */
     function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(POOL_SELECTOR_ADMIN) {
-        if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length)
+        if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length) {
             revert InvalidNewTargetInput();
+        }
 
         uint8 totalWeight;
         for (uint8 i = 0; i < _poolTargets.length; i++) {
             totalWeight += _poolTargets[i];
-            if (totalWeight > POOL_WEIGHTS_SUM) revert InvalidNewTargetInput();
             poolWeights[i + 1] = _poolTargets[i];
             emit UpdatedPoolWeight(i + 1, _poolTargets[i]);
         }
-        if (totalWeight != POOL_WEIGHTS_SUM) revert InvalidSumOfPoolWeights();
+        if (totalWeight != POOL_WEIGHTS_SUM) {
+            revert InvalidSumOfPoolWeights();
+        }
     }
 
     function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(POOL_SELECTOR_ADMIN) {
@@ -142,7 +153,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

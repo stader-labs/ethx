@@ -5,7 +5,7 @@ import '../library/ValidatorStatus.sol';
 import './INodeRegistry.sol';
 
 interface IPermissionlessNodeRegistry {
-    // Error
+    // Errors
     error TransferFailed();
     error InvalidBondEthValue();
     error InSufficientBalance();
@@ -13,12 +13,11 @@ interface IPermissionlessNodeRegistry {
     error CooldownNotComplete();
     error NoChangeInState();
 
-    //Events
-
-    event ValidatorMarkedReadyToDeposit(bytes indexed _pubkey, uint256 _validatorId);
-    event UpdatedNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex);
-    event UpdatedSocializingPoolState(uint256 _operatorId, bool _optedForSocializingPool, uint256 block);
-    event TransferredCollateralToPool(uint256 _amount);
+    // Events
+    event ValidatorMarkedReadyToDeposit(bytes indexed pubkey, uint256 validatorId);
+    event UpdatedNextQueuedValidatorIndex(uint256 nextQueuedValidatorIndex);
+    event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);
+    event TransferredCollateralToPool(uint256 amount);
 
     //Getters
 
@@ -54,22 +53,11 @@ interface IPermissionlessNodeRegistry {
 
     function queuedValidators(uint256) external view returns (uint256);
 
-    function operatorStructById(uint256)
-        external
-        view
-        returns (
-            bool active,
-            bool optedForSocializingPool,
-            string calldata operatorName,
-            address payable operatorRewardAddress,
-            address operatorAddress
-        );
-
     function operatorIDByAddress(address) external view returns (uint256);
 
     function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
-    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+    function nodeELRewardVaultByOperator(address) external view returns (address);
 
     //Setters
 

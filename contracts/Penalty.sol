@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './interfaces/IPenalty.sol';
 import './interfaces/IRatedV1.sol';
 import './interfaces/IStaderOracle.sol';
@@ -16,15 +17,21 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     uint256 public override missedAttestationPenaltyPerStrike;
     uint256 public override validatorExitPenaltyThreshold;
     bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
+    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
     /// @inheritdoc IPenalty
     mapping(bytes32 => uint256) public override additionalPenaltyAmount;
     /// @inheritdoc IPenalty
     mapping(bytes => uint256) public override totalPenaltyAmount;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_ratedOracleAddress);
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_ratedOracleAddress);
         __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
@@ -55,10 +62,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (mevTheftPenaltyPerStrike == _mevTheftPenaltyPerStrike) revert MEVTheftPenaltyPerStrikeUnchanged();
-
         mevTheftPenaltyPerStrike = _mevTheftPenaltyPerStrike;
-
         emit UpdatedMEVTheftPenaltyPerStrike(_mevTheftPenaltyPerStrike);
     }
 
@@ -68,11 +72,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (missedAttestationPenaltyPerStrike == _missedAttestationPenaltyPerStrike)
-            revert MissedAttestationPenaltyPerStrikeUnchanged();
-
         missedAttestationPenaltyPerStrike = _missedAttestationPenaltyPerStrike;
-
         emit UpdatedMissedAttestationPenaltyPerStrike(_missedAttestationPenaltyPerStrike);
     }
 
@@ -82,20 +82,14 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (validatorExitPenaltyThreshold == _validatorExitPenaltyThreshold)
-            revert ValidatorExitPenaltyThresholdUnchanged();
-
         validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
-
         emit UpdatedValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
     }
 
     /// @inheritdoc IPenalty
     function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_ratedOracleAddress);
-
+        AddressLib.checkNonZeroAddress(_ratedOracleAddress);
         ratedOracleAddress = _ratedOracleAddress;
-
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }
 
@@ -139,7 +133,9 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function getPubkeyRoot(bytes calldata _pubkey) public pure override returns (bytes32) {
-        if (_pubkey.length != 48) revert InvalidPubkeyLength();
+        if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
+            revert InvalidPubkeyLength();
+        }
 
         // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
         return sha256(abi.encodePacked(_pubkey, bytes16(0)));

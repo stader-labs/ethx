@@ -6,21 +6,16 @@ interface IVaultFactory {
     event NodeELRewardVaultCreated(address nodeDistributor);
     event UpdatedStaderConfig(address staderConfig);
 
-    function STADER_NETWORK_CONTRACT() external view returns (bytes32);
+    function NODE_REGISTRY_CONTRACT() external view returns (bytes32);
 
     function deployWithdrawVault(
         uint8 _poolId,
         uint256 _operatorId,
         uint256 _validatorCount,
-        uint256 _validatorId,
-        address payable _nodeRecipient
+        uint256 _validatorId
     ) external returns (address);
 
-    function deployNodeELRewardVault(
-        uint8 _poolId,
-        uint256 _operatorId,
-        address payable _nodeRecipient
-    ) external returns (address);
+    function deployNodeELRewardVault(uint8 _poolId, uint256 _operatorId) external returns (address);
 
     function computeWithdrawVaultAddress(
         uint8 _poolId,

@@ -12,6 +12,8 @@ interface ISDCollateral {
         string units;
     }
 
+    function poolIdByOperator(address) external view returns (uint8);
+
     function depositSDAsCollateral(uint256 _sdAmount) external;
 
     function withdraw(uint256 _requestedSD) external;
@@ -22,6 +24,8 @@ interface ISDCollateral {
         uint256 _withdrawThreshold,
         string memory _units
     ) external;
+
+    function updatePoolIdForOperator(uint8 _poolId, address _operator) external;
 
     function hasEnoughSDCollateral(
         address _operator,

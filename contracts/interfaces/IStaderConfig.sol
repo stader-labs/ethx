@@ -2,13 +2,13 @@
 pragma solidity ^0.8.16;
 
 interface IStaderConfig {
-    //error
+    // Errors
     error InvalidMinDepositValue();
     error InvalidMaxDepositValue();
     error InvalidMinWithdrawValue();
     error InvalidMaxWithdrawValue();
 
-    // events
+    // Events
     event SetConstant(bytes32, uint256);
     event SetVariable(bytes32, uint256);
     event SetAccount(bytes32, address);
@@ -36,6 +36,8 @@ interface IStaderConfig {
     function getMinWithdrawAmount() external view returns (uint256);
 
     function getMaxWithdrawAmount() external view returns (uint256);
+
+    function getMinDelayToFinalizeWithdrawRequest() external view returns (uint256);
 
     // Accounts
     function getAdmin() external view returns (address);

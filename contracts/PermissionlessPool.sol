@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IStaderConfig.sol';
@@ -21,8 +21,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint8 public constant poolId = 1;
     IStaderConfig public staderConfig;
 
-    bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
     bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
+    bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
     bytes32 public constant PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
@@ -36,8 +36,13 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /// @inheritdoc IStaderPoolBase
     uint256 public override operatorFee;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
@@ -59,31 +64,31 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         emit ReceivedCollateralETH(msg.value);
     }
 
-    //TODO sanjay merge setProtocolFee and setOperatorFee function
     /// @inheritdoc IStaderPoolBase
-    function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        if (_protocolFee > TOTAL_FEE) revert ProtocolFeeMoreThanTOTAL_FEE();
-        if (protocolFee == _protocolFee) revert ProtocolFeeUnchanged();
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee)
+        external
+        onlyRole(PERMISSIONLESS_POOL_ADMIN)
+    {
+        if (_protocolFee + _operatorFee > TOTAL_FEE) {
+            revert CommissionFeesMoreThanTOTAL_FEE();
+        }
+        if (protocolFee == _protocolFee) {
+            revert ProtocolFeeUnchanged();
+        }
+        if (operatorFee == _operatorFee) {
+            revert OperatorFeeUnchanged();
+        }
 
         protocolFee = _protocolFee;
-
-        emit ProtocolFeeUpdated(_protocolFee);
-    }
-
-    /// @inheritdoc IStaderPoolBase
-    function setOperatorFee(uint256 _operatorFee) external onlyRole(PERMISSIONLESS_POOL_ADMIN) {
-        if (_operatorFee > TOTAL_FEE) revert OperatorFeeMoreThanTOTAL_FEE();
-        if (operatorFee == _operatorFee) revert OperatorFeeUnchanged();
-
         operatorFee = _operatorFee;
 
-        emit OperatorFeeUpdated(_operatorFee);
+        emit UpdatedCommissionFees(_protocolFee, _operatorFee);
     }
 
     /**
      * @notice pre deposit for permission less validator to avoid front running
      * @dev only permissionless node registry can call
-     * @param _pubkey public key array of validators
+     * @param _pubkey pubkey array of validators
      * @param _preDepositSignature signature array of validators for 1ETH deposit
      * @param _operatorId operator Id of the NO
      * @param _operatorTotalKeys total keys of operator at the starting of adding new keys
@@ -179,13 +184,14 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     /**
      * @notice get all validator which has user balance on beacon chain
      */
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
         public
         view
         override
         returns (Validator[] memory)
     {
-        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(pageNumber, pageSize);
+        return
+            INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
@@ -222,7 +228,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -259,7 +265,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 _validatorId,
         uint256 _DEPOSIT_SIZE
     ) internal {
-        (, bytes memory pubkey, , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = INodeRegistry(
+        (, bytes memory pubkey, , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
             _nodeRegistryAddress
         ).validatorRegistry(_validatorId);
 

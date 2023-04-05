@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/INodeRegistry.sol';
@@ -12,8 +13,13 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     mapping(uint8 => Pool) public override pools;
     uint8 public override poolCount;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _admin) external initializer {
-        Address.checkNonZeroAddress(_admin);
+        AddressLib.checkNonZeroAddress(_admin);
         __AccessControl_init_unchained();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -31,8 +37,10 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (bytes(_poolName).length == 0) revert EmptyString();
-        Address.checkNonZeroAddress(_poolAddress);
+        if (bytes(_poolName).length == 0) {
+            revert EmptyString();
+        }
+        AddressLib.checkNonZeroAddress(_poolAddress);
 
         pools[poolCount + 1] = Pool({poolName: _poolName, poolAddress: _poolAddress});
         poolCount++;
@@ -52,7 +60,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         validPoolId(_poolId)
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        Address.checkNonZeroAddress(_newPoolAddress);
+        AddressLib.checkNonZeroAddress(_newPoolAddress);
 
         pools[_poolId].poolAddress = _newPoolAddress;
 
@@ -98,8 +106,9 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPoolFactory
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
-            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;
-
+            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
+                continue;
+            }
             return getValidatorByPool(i, _pubkey);
         }
         Validator memory emptyValidator;
@@ -121,8 +130,9 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPoolFactory
     function retrieveOperator(bytes calldata _pubkey) public view override returns (Operator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
-            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) continue;
-
+            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
+                continue;
+            }
             return getOperator(i, _pubkey);
         }
 
@@ -171,14 +181,18 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         for (uint8 i = 1; i <= poolCount; i++) {
-            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) return true;
+            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) {
+                return true;
+            }
         }
         return false;
     }
 
     // Modifiers
     modifier validPoolId(uint8 _poolId) {
-        if (_poolId == 0 && _poolId > poolCount) revert InvalidPoolID();
+        if (_poolId == 0 && _poolId > poolCount) {
+            revert InvalidPoolID();
+        }
         _;
     }
 }
