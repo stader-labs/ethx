@@ -5,6 +5,16 @@ pragma solidity ^0.8.16;
 import './IStaderOracle.sol';
 
 interface ISocializingPool {
+    // errors
+    error ETHTransferFailed(address recipient, uint256 amount);
+    error RewardAlreadyHandled();
+    error RewardAlreadyClaimed(address operator, uint256 cycle);
+    error InsufficientETHRewards();
+    error InsufficientSDRewards();
+    error InvalidAmount();
+    error InvalidProof(uint256 cycle, address operator);
+
+    // events
     event ETHReceived(address indexed sender, uint256 amount);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);

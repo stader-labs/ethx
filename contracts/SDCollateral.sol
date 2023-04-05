@@ -84,7 +84,9 @@ contract SDCollateral is
         }
         uint256 withdrawableSD = sdBalance - sdCumulativeThreshold;
 
-        require(_requestedSD <= withdrawableSD, 'withdraw less SD');
+        if (_requestedSD > withdrawableSD) {
+            revert InsufficientSDToWithdraw();
+        }
 
         totalSDCollateral -= _requestedSD;
         operatorSDBalance[operator] -= _requestedSD;
@@ -117,7 +119,9 @@ contract SDCollateral is
         uint256 _withdrawThreshold,
         string memory _units
     ) public onlyRole(MANAGER) {
-        require(_minThreshold <= _withdrawThreshold, 'invalid limits');
+        if (_minThreshold > _withdrawThreshold) {
+            revert InvalidPoolLimit();
+        }
 
         poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({
             minThreshold: _minThreshold,

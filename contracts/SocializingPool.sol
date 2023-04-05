@@ -85,17 +85,21 @@ contract SocializingPool is
     }
 
     function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
-        require(!handledRewards[_rewardsData.index], 'Rewards already handled for this cycle');
-        require(
-            _rewardsData.operatorETHRewards + _rewardsData.userETHRewards + _rewardsData.protocolETHRewards <=
-                address(this).balance - totalOperatorETHRewardsRemaining,
-            'insufficient eth rewards'
-        );
-        require(
-            _rewardsData.operatorSDRewards <=
-                IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining,
-            'insufficient sd rewards'
-        );
+        if (handledRewards[_rewardsData.index]) {
+            revert RewardAlreadyHandled();
+        }
+        if (
+            _rewardsData.operatorETHRewards + _rewardsData.userETHRewards + _rewardsData.protocolETHRewards >
+            address(this).balance - totalOperatorETHRewardsRemaining
+        ) {
+            revert InsufficientETHRewards();
+        }
+        if (
+            _rewardsData.operatorSDRewards >
+            IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining
+        ) {
+            revert InsufficientSDRewards();
+        }
 
         handledRewards[_rewardsData.index] = true;
         totalOperatorETHRewardsRemaining += _rewardsData.operatorETHRewards;
@@ -103,10 +107,14 @@ contract SocializingPool is
 
         bool success;
         (success, ) = payable(staderConfig.getStakePoolManager()).call{value: _rewardsData.userETHRewards}('');
-        require(success, 'User ETH rewards transfer failed');
+        if (!success) {
+            revert ETHTransferFailed(staderConfig.getStakePoolManager(), _rewardsData.userETHRewards);
+        }
 
         (success, ) = payable(staderConfig.getStaderTreasury()).call{value: _rewardsData.protocolETHRewards}('');
-        require(success, 'Protocol ETH rewards transfer failed');
+        if (!success) {
+            revert ETHTransferFailed(staderConfig.getStaderTreasury(), _rewardsData.protocolETHRewards);
+        }
     }
 
     // TODO: fetch _operatorRewardAddr from operatorID, once sanjay merges the impl
@@ -129,7 +137,9 @@ contract SocializingPool is
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
             (success, ) = payable(_operatorRewardsAddr).call{value: totalAmountETH}('');
-            require(success, 'Operator ETH rewards transfer failed');
+            if (!success) {
+                revert ETHTransferFailed(_operatorRewardsAddr, totalAmountETH);
+            }
         }
 
         if (totalAmountSD > 0) {
@@ -146,14 +156,20 @@ contract SocializingPool is
         bytes32[][] calldata _merkleProof
     ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
         for (uint256 i = 0; i < _index.length; i++) {
-            require(_amountSD[i] > 0 || _amountETH[i] > 0, 'Invalid amount');
-            require(!claimedRewards[_operator][_index[i]], 'Already claimed');
+            if (_amountSD[i] == 0 && _amountETH[i] == 0) {
+                revert InvalidAmount();
+            }
+            if (claimedRewards[_operator][_index[i]]) {
+                revert RewardAlreadyClaimed(_operator, _index[i]);
+            }
 
             _totalAmountSD += _amountSD[i];
             _totalAmountETH += _amountETH[i];
             claimedRewards[_operator][_index[i]] = true;
 
-            require(_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i]), 'Invalid proof');
+            if (!_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
+                revert InvalidProof(_index[i], _operator);
+            }
         }
     }
 
