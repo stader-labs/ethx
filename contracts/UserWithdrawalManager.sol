@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 import './ETHx.sol';
 import './interfaces/IStaderConfig.sol';
@@ -12,6 +12,7 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract UserWithdrawalManager is
     IUserWithdrawalManager,
@@ -20,6 +21,7 @@ contract UserWithdrawalManager is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    using SafeERC20 for IERC20;
     using Math for uint256;
     bool public override slashingMode; //TODO sanjay read this from stader oracle contract
 
@@ -47,7 +49,7 @@ contract UserWithdrawalManager is
     }
 
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -79,7 +81,7 @@ contract UserWithdrawalManager is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -96,9 +98,8 @@ contract UserWithdrawalManager is
             revert InvalidWithdrawAmount();
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount)
             revert MaxLimitOnWithdrawRequestCountReached();
-        //TODO sanjay user safeTransfer
-        if (!ETHx(staderConfig.getETHxToken()).transferFrom(msg.sender, (address(this)), _ethXAmount))
-            revert TokenTransferFailed();
+
+        IERC20(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(payable(_owner), _ethXAmount, assets, 0);
         requestIdsByUserAddress[_owner].push(nextRequestId);

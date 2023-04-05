@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
@@ -14,6 +14,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract SDCollateral is
     ISDCollateral,
@@ -22,6 +23,8 @@ contract SDCollateral is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    using SafeERC20 for IERC20;
+
     bytes32 public constant MANAGER = keccak256('MANAGER');
     bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
@@ -37,7 +40,7 @@ contract SDCollateral is
     }
 
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
         __Pausable_init();
@@ -57,9 +60,7 @@ contract SDCollateral is
         totalSDCollateral += _sdAmount;
         operatorSDBalance[operator] += _sdAmount;
 
-        // TODO: Manoj check if the below line could be moved to start of this method
-        bool success = IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount);
-        require(success, 'sd transfer failed');
+        IERC20(staderConfig.getStaderToken()).safeTransferFrom(operator, address(this), _sdAmount);
     }
 
     function withdraw(uint256 _requestedSD) external {
@@ -88,8 +89,7 @@ contract SDCollateral is
         totalSDCollateral -= _requestedSD;
         operatorSDBalance[operator] -= _requestedSD;
 
-        bool success = IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD);
-        require(success, 'sd transfer failed');
+        IERC20(staderConfig.getStaderToken()).safeTransfer(payable(operator), _requestedSD);
     }
 
     // TODO: proper access control
@@ -129,7 +129,7 @@ contract SDCollateral is
     }
 
     function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(NODE_REGISTRY_CONTRACT) {
-        Address.checkNonZeroAddress(_operator);
+        AddressLib.checkNonZeroAddress(_operator);
         if (_poolId == 0) revert InvalidPoolId();
         if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
             revert InvalidPoolId();

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 
@@ -62,8 +62,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //TODO sanjay implement Timelock controller
     function initialize(address _admin, address _ethDepositContract) external initializer {
-        Address.checkNonZeroAddress(_admin);
-        Address.checkNonZeroAddress(_ethDepositContract);
+        AddressLib.checkNonZeroAddress(_admin);
+        AddressLib.checkNonZeroAddress(_ethDepositContract);
         __AccessControl_init();
         _setConstant(ETH_PER_NODE, 32 ether);
         _setConstant(DECIMALS, 10**18);
@@ -395,19 +395,19 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     function _setAccount(bytes32 key, address val) internal {
-        Address.checkNonZeroAddress(val);
+        AddressLib.checkNonZeroAddress(val);
         accountsMap[key] = val;
         emit SetAccount(key, val);
     }
 
     function _setContract(bytes32 key, address val) internal {
-        Address.checkNonZeroAddress(val);
+        AddressLib.checkNonZeroAddress(val);
         contractsMap[key] = val;
         emit SetContract(key, val);
     }
 
     function _setToken(bytes32 key, address val) internal {
-        Address.checkNonZeroAddress(val);
+        AddressLib.checkNonZeroAddress(val);
         tokensMap[key] = val;
         emit SetToken(key, val);
     }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolFactory.sol';
@@ -39,7 +39,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(address => MissedAttestationReportInfo) public missedAttestationDataByTrustedNode;
 
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
 
@@ -51,7 +51,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_nodeAddress);
+        AddressLib.checkNonZeroAddress(_nodeAddress);
         if (isTrustedNode[_nodeAddress]) revert NodeAlreadyTrusted();
         isTrustedNode[_nodeAddress] = true;
         trustedNodesCount++;
@@ -61,7 +61,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_nodeAddress);
+        AddressLib.checkNonZeroAddress(_nodeAddress);
         if (!isTrustedNode[_nodeAddress]) revert NodeNotTrusted();
         isTrustedNode[_nodeAddress] = false;
         trustedNodesCount--;
@@ -193,7 +193,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
-        require(_sdPriceData.reportingBlockNumber < block.number, 'Price can not be submitted for a future block');
+        if (_sdPriceData.reportingBlockNumber >= block.number) {
+            revert ReportingFutureBlockData();
+        }
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(

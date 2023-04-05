@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderStakePoolManager.sol';
@@ -11,8 +11,11 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+    using SafeERC20 for IERC20;
+
     bytes32 public constant MANAGER = keccak256('MANAGER');
 
     IStaderConfig public staderConfig;
@@ -33,8 +36,8 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         uint256 _duration,
         uint256 _bidIncrement
     ) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_manager);
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_manager);
         if (_duration < 24 hours) revert ShortDuration();
 
         __AccessControl_init();
@@ -59,7 +62,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
         LotItem storage lotItem = lots[nextLot];
 
-        IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount);
+        IERC20(staderConfig.getStaderToken()).safeTransferFrom(msg.sender, address(this), _sdAmount);
         emit LotCreated(nextLot, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
     }
 
@@ -88,7 +91,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         if (lotItem.sdClaimed) revert AlreadyClaimed();
 
         lotItem.sdClaimed = true;
-        IERC20(staderConfig.getStaderToken()).transfer(lotItem.highestBidder, lotItem.sdAmount);
+        IERC20(staderConfig.getStaderToken()).safeTransfer(lotItem.highestBidder, lotItem.sdAmount);
         emit SDClaimed(lotId, lotItem.highestBidder, lotItem.sdAmount);
     }
 
@@ -113,7 +116,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
         uint256 _sdAmount = lotItem.sdAmount;
         lotItem.sdAmount = 0;
-        IERC20(staderConfig.getStaderToken()).transfer(staderConfig.getStaderTreasury(), _sdAmount);
+        IERC20(staderConfig.getStaderToken()).safeTransfer(staderConfig.getStaderTreasury(), _sdAmount);
         emit UnsuccessfulSDAuctionExtracted(lotId, _sdAmount, staderConfig.getStaderTreasury());
     }
 
