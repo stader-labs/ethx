@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 interface INodeELRewardVault {
     // errors
-    error ETHTransferFailed();
+    error ETHTransferFailed(address recipient, uint256 amount);
 
     // events
     event ETHReceived(address indexed sender, uint256 amount);

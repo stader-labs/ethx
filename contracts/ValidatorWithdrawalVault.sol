@@ -165,7 +165,7 @@ contract ValidatorWithdrawalVault is
         if (_amount > 0) {
             (bool success, ) = _recipient.call{value: _amount}('');
             if (!success) {
-                revert TransferFailed();
+                revert ETHTransferFailed(_recipient, _amount);
             }
         }
     }

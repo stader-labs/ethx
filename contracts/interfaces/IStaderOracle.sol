@@ -93,8 +93,6 @@ interface IStaderOracle {
     error NodeNotTrusted();
     error ZeroFrequency();
     error FrequencyUnchanged();
-    error BalancesSubmittedForFutureBlock();
-    error NetworkBalancesSetForEqualOrHigherBlock();
     error InvalidNetworkBalances();
     error DuplicateSubmissionFromNode();
     error ReportingFutureBlockData();

@@ -6,7 +6,7 @@ interface IStaderStakePoolManager {
     // Errors
     error InvalidDepositAmount();
     error UnsupportedOperation();
-    error insufficientBalance();
+    error InsufficientBalance();
     error TransferFailed();
     error CallerNotUserWithdrawManager();
     error UnsupportedOperationInSafeMode();

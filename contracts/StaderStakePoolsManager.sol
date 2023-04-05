@@ -188,7 +188,7 @@ contract StaderStakePoolsManager is
         address poolFactory = staderConfig.getPoolFactory();
         uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
         if (availableETHForNewDeposit < ETH_PER_NODE) {
-            revert insufficientBalance();
+            revert InsufficientBalance();
         }
         uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
             .computePoolAllocationForDeposit(availableETHForNewDeposit);

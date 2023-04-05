@@ -9,7 +9,6 @@ interface IPermissionlessNodeRegistry {
     error TransferFailed();
     error InvalidBondEthValue();
     error InSufficientBalance();
-    error PubkeyNotFoundOrDuplicateInput();
     error CooldownNotComplete();
     error NoChangeInState();
 

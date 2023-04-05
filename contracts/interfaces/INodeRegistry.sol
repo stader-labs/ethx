@@ -40,7 +40,6 @@ interface INodeRegistry {
     error PageNumberIsZero();
     error UNEXPECTED_STATUS();
     error PubkeyAlreadyExist();
-    error PubkeyDoesNotExist();
     error NotEnoughSDCollateral();
 
     // Events

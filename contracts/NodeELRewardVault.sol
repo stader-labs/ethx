@@ -64,13 +64,13 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = payable(staderConfig.getStaderTreasury()).call{value: protocolShare}('');
         if (!success) {
-            revert ETHTransferFailed();
+            revert ETHTransferFailed(staderConfig.getStaderTreasury(), protocolShare);
         }
 
         // slither-disable-next-line arbitrary-send-eth
         (success, ) = getNodeRecipient().call{value: operatorShare}('');
         if (!success) {
-            revert ETHTransferFailed();
+            revert ETHTransferFailed(getNodeRecipient(), operatorShare);
         }
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
