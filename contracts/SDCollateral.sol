@@ -12,7 +12,7 @@ import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 
 contract SDCollateral is
     ISDCollateral,
@@ -26,7 +26,7 @@ contract SDCollateral is
     IStaderConfig public staderConfig;
     uint256 public totalSDCollateral;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
-    mapping(address => uint8) private poolIdByOperator;
+    mapping(address => uint8) public poolIdByOperator;
     mapping(address => uint256) public operatorSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -35,7 +35,7 @@ contract SDCollateral is
     }
 
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
         __Pausable_init();
@@ -131,9 +131,7 @@ contract SDCollateral is
         });
     }
 
-    function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(NODE_REGISTRY_CONTRACT) {
-        Address.checkNonZeroAddress(_operator);
-        if (_poolId == 0) revert InvalidPoolId();
+    function updatePoolIdForOperator(uint8 _poolId, address _operator) external onlyRole(NODE_REGISTRY_CONTRACT) {
         if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
             revert InvalidPoolId();
         }

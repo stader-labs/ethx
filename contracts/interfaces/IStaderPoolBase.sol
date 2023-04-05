@@ -4,44 +4,40 @@ pragma solidity ^0.8.16;
 import './INodeRegistry.sol';
 
 interface IStaderPoolBase {
-    //Error events
-    error ProtocolFeeMoreThanTOTAL_FEE();
+    // Errors
+    error CommissionFeesMoreThanTOTAL_FEE();
     error ProtocolFeeUnchanged();
-    error OperatorFeeMoreThanTOTAL_FEE();
     error OperatorFeeUnchanged();
     error UnsupportedOperation();
 
     // Events
-    event ValidatorPreDepositedOnBeaconChain(bytes indexed _pubKey);
-    event ValidatorDepositedOnBeaconChain(uint256 indexed _validatorId, bytes _pubKey);
-    event OperatorFeeUpdated(uint256 _operatorFee);
-    event ProtocolFeeUpdated(uint256 _protocolFee);
-    event ReceivedCollateralETH(uint256 _amount);
-    event UpdatedStaderConfig(address _staderConfig);
-    event TransferredETHToSSPMForDefectiveKeys(uint256 _amount);
+    event ValidatorPreDepositedOnBeaconChain(bytes indexed pubKey);
+    event ValidatorDepositedOnBeaconChain(uint256 indexed validatorId, bytes pubKey);
+    event UpdatedCommissionFees(uint256 protocolFee, uint256 operatorFee);
+    event ReceivedCollateralETH(uint256 amount);
+    event UpdatedStaderConfig(address staderConfig);
+    event TransferredETHToSSPMForDefectiveKeys(uint256 amount);
 
     // Setters
 
-    function setProtocolFee(uint256 _protocolFee) external; // sets the protocol fee percent (0-100)
-
-    function setOperatorFee(uint256 _operatorFee) external; // sets the operator fee percent (0-100)
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external; // sets the commission fees, protocol and operator
 
     //Getters
 
-    function protocolFee() external view returns (uint256); // returns the protocol fee percent (0-100)
+    function protocolFee() external view returns (uint256); // returns the protocol fee
 
-    function operatorFee() external view returns (uint256); // returns the operator fee percent (0-100)
+    function operatorFee() external view returns (uint256); // returns the operator fee
 
     function getTotalActiveValidatorCount() external view returns (uint256); // returns the total number of active validators across all operators
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
 
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize) external view returns (Validator[] memory);
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
 
     function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
-        uint256 startIndex,
-        uint256 endIndex
+        uint256 _startIndex,
+        uint256 _endIndex
     ) external view returns (uint256);
 
     function stakeUserETHToBeaconChain() external payable;

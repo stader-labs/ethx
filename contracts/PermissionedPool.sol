@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
+
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IStaderConfig.sol';
@@ -43,8 +44,13 @@ contract PermissionedPool is
     // @inheritdoc IStaderPoolBase
     uint256 public override operatorFee;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -91,10 +97,12 @@ contract PermissionedPool is
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .computeOperatorAllocationForDeposit(requiredValidators);
 
-        // i is the operator ID
+        // i is the operator Id
         for (uint16 i = 1; i < selectedOperatorCapacity.length; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
-            if (validatorToDeposit == 0) continue;
+            if (validatorToDeposit == 0) {
+                continue;
+            }
             uint256 nextQueuedValidatorIndex = IPermissionedNodeRegistry(nodeRegistryAddress)
                 .nextQueuedValidatorIndexByOperatorId(i);
 
@@ -122,7 +130,7 @@ contract PermissionedPool is
         for (uint256 i = 0; i < _pubkey.length; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
-            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , , ) = INodeRegistry(
+            (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
                 nodeRegistryAddress
             ).validatorRegistry(validatorId);
             bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(
@@ -177,13 +185,13 @@ contract PermissionedPool is
             );
     }
 
-    function getAllActiveValidators(uint256 pageNumber, uint256 pageSize)
+    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
         public
         view
         override
         returns (Validator[] memory)
     {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getAllActiveValidators(pageNumber, pageSize);
+        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
@@ -212,30 +220,27 @@ contract PermissionedPool is
         return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).isExistingPubkey(_pubkey);
     }
 
-    //TODO sanjay merge setProtocolFee and setOperatorFee function
     // @inheritdoc IStaderPoolBase
-    function setProtocolFee(uint256 _protocolFee) external onlyRole(PERMISSIONED_POOL_ADMIN) {
-        if (_protocolFee > TOTAL_FEE) revert ProtocolFeeMoreThanTOTAL_FEE();
-        if (protocolFee == _protocolFee) revert ProtocolFeeUnchanged();
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+        if (_protocolFee + _operatorFee > TOTAL_FEE) {
+            revert CommissionFeesMoreThanTOTAL_FEE();
+        }
+        if (protocolFee == _protocolFee) {
+            revert ProtocolFeeUnchanged();
+        }
+        if (operatorFee == _operatorFee) {
+            revert OperatorFeeUnchanged();
+        }
 
         protocolFee = _protocolFee;
-
-        emit ProtocolFeeUpdated(_protocolFee);
-    }
-
-    // @inheritdoc IStaderPoolBase
-    function setOperatorFee(uint256 _operatorFee) external onlyRole(PERMISSIONED_POOL_ADMIN) {
-        if (_operatorFee > TOTAL_FEE) revert OperatorFeeMoreThanTOTAL_FEE();
-        if (operatorFee == _operatorFee) revert OperatorFeeUnchanged();
-
         operatorFee = _operatorFee;
 
-        emit OperatorFeeUpdated(_operatorFee);
+        emit UpdatedCommissionFees(_protocolFee, _operatorFee);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        Address.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -272,17 +277,9 @@ contract PermissionedPool is
         address _ethDepositContract,
         uint256 _validatorId
     ) internal {
-        (
-            ,
-            bytes memory pubkey,
-            bytes memory preDepositSignature,
-            ,
-            address withdrawVaultAddress,
-            ,
-            ,
-            ,
-
-        ) = INodeRegistry(_nodeRegistryAddress).validatorRegistry(_validatorId);
+        (, bytes memory pubkey, bytes memory preDepositSignature, , address withdrawVaultAddress, , , ) = INodeRegistry(
+            _nodeRegistryAddress
+        ).validatorRegistry(_validatorId);
 
         bytes memory withdrawCredential = IVaultFactory(_vaultFactory).getValidatorWithdrawCredential(
             withdrawVaultAddress

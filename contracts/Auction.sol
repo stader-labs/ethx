@@ -6,7 +6,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-import './library/Address.sol';
+import './library/AddressLib.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderStakePoolManager.sol';
 import '../contracts/interfaces/IStaderConfig.sol';
@@ -32,8 +32,8 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         uint256 _duration,
         uint256 _bidIncrement
     ) external initializer {
-        Address.checkNonZeroAddress(_staderConfig);
-        Address.checkNonZeroAddress(_manager);
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        AddressLib.checkNonZeroAddress(_manager);
         if (_duration < 24 hours) revert ShortDuration();
 
         __AccessControl_init();

@@ -11,7 +11,7 @@ struct Pool {
 
 // Interface for the PoolFactory contract
 interface IPoolFactory {
-    //Errors
+    // Errors
     error EmptyString();
     error InvalidPoolID();
     // Events

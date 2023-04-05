@@ -3,38 +3,41 @@
 pragma solidity ^0.8.16;
 
 interface IStaderStakePoolManager {
-    //Error events
+    // Errors
     error InvalidDepositAmount();
     error UnsupportedOperation();
     error insufficientBalance();
     error TransferFailed();
     error CallerNotUserWithdrawManager();
+    error UnsupportedOperationInSafeMode();
 
     // Events
-    event UpdatedStaderConfig(address _staderConfig);
+    event UpdatedStaderConfig(address staderConfig);
     event Deposited(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event ExecutionLayerRewardsReceived(uint256 amount);
     event AuctionedEthReceived(uint256 amount);
-    event ReceivedExcessEthFromPool(uint8 indexed _poolId);
-    event TransferredETHToUserWithdrawManager(uint256 _amount);
+    event ReceivedExcessEthFromPool(uint8 indexed poolId);
+    event TransferredETHToUserWithdrawManager(uint256 amount);
     event ETHTransferredToPool(string indexed poolName, address poolAddress, uint256 validatorCount);
     event WithdrawVaultUserShareReceived(uint256 amount);
 
     function depositedPooledETH() external view returns (uint256);
 
-    function deposit(address receiver) external payable returns (uint256);
+    function STADER_MANAGER() external view returns (bytes32);
 
-    function previewDeposit(uint256 assets) external view returns (uint256);
+    function deposit(address _receiver) external payable returns (uint256);
 
-    function previewWithdraw(uint256 shares) external view returns (uint256);
+    function previewDeposit(uint256 _assets) external view returns (uint256);
+
+    function previewWithdraw(uint256 _shares) external view returns (uint256);
 
     function getExchangeRate() external view returns (uint256);
 
     function totalAssets() external view returns (uint256);
 
-    function convertToShares(uint256 assets) external view returns (uint256);
+    function convertToShares(uint256 _assets) external view returns (uint256);
 
-    function convertToAssets(uint256 shares) external view returns (uint256);
+    function convertToAssets(uint256 _shares) external view returns (uint256);
 
     function maxDeposit() external view returns (uint256);
 
