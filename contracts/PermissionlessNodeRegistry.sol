@@ -252,12 +252,10 @@ contract PermissionlessNodeRegistry is
         returns (address feeRecipientAddress)
     {
         uint256 operatorId = _onlyActiveOperator(msg.sender);
-        //TODO sanjay configure formatter to put braces in single if/else statements
         if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool) {
             revert NoChangeInState();
         }
 
-        //TODO remove this 2 factor call from config
         if (
             block.number <
             socializingPoolStateChangeBlock[operatorId] + staderConfig.getSocializingPoolOptInCoolingPeriod()
