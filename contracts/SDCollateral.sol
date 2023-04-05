@@ -4,7 +4,6 @@ pragma solidity ^0.8.16;
 import './library/AddressLib.sol';
 
 import '../contracts/interfaces/IPoolFactory.sol';
-import '../contracts/interfaces/IStaderConfig.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
@@ -28,11 +27,11 @@ contract SDCollateral is
     bytes32 public constant MANAGER = keccak256('MANAGER');
     bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
-    IStaderConfig public staderConfig;
-    uint256 public totalSDCollateral;
+    IStaderConfig public override staderConfig;
+    uint256 public override totalSDCollateral;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
-    mapping(address => uint8) public poolIdByOperator;
-    mapping(address => uint256) public operatorSDBalance;
+    mapping(address => uint8) public override poolIdByOperator;
+    mapping(address => uint256) public override operatorSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -54,7 +53,7 @@ contract SDCollateral is
      * @param _sdAmount SD Token Amount to Deposit
      * @dev sender should approve this contract for spending SD
      */
-    function depositSDAsCollateral(uint256 _sdAmount) external {
+    function depositSDAsCollateral(uint256 _sdAmount) external override {
         address operator = msg.sender;
 
         totalSDCollateral += _sdAmount;
@@ -63,7 +62,7 @@ contract SDCollateral is
         IERC20(staderConfig.getStaderToken()).safeTransferFrom(operator, address(this), _sdAmount);
     }
 
-    function withdraw(uint256 _requestedSD) external {
+    function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator];
 
@@ -98,7 +97,12 @@ contract SDCollateral is
     /// @dev do provide SD approval to auction contract using `maxApproveSD()`
     /// @param _operator which operator SD collateral to slash
     /// @param _sdToSlash amount of SD to slash
-    function slashSD(address _operator, uint256 _sdToSlash) external onlyRole(MANAGER) returns (uint256 _sdSlashed) {
+    function slashSD(address _operator, uint256 _sdToSlash)
+        external
+        override
+        onlyRole(MANAGER)
+        returns (uint256 _sdSlashed)
+    {
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
@@ -107,7 +111,7 @@ contract SDCollateral is
 
     /// @notice for max approval to auction contract for spending SD tokens
     /// @param spenderAddr contract to approve for spending SD
-    function maxApproveSD(address spenderAddr) external onlyRole(MANAGER) {
+    function maxApproveSD(address spenderAddr) external override onlyRole(MANAGER) {
         IERC20(staderConfig.getStaderToken()).approve(spenderAddr, type(uint256).max);
     }
 
@@ -118,7 +122,7 @@ contract SDCollateral is
         uint256 _minThreshold,
         uint256 _withdrawThreshold,
         string memory _units
-    ) public onlyRole(MANAGER) {
+    ) public override onlyRole(MANAGER) {
         if (_minThreshold > _withdrawThreshold) {
             revert InvalidPoolLimit();
         }
@@ -130,7 +134,11 @@ contract SDCollateral is
         });
     }
 
-    function updatePoolIdForOperator(uint8 _poolId, address _operator) public onlyRole(NODE_REGISTRY_CONTRACT) {
+    function updatePoolIdForOperator(uint8 _poolId, address _operator)
+        external
+        override
+        onlyRole(NODE_REGISTRY_CONTRACT)
+    {
         AddressLib.checkNonZeroAddress(_operator);
         if (_poolId == 0) revert InvalidPoolId();
         if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
@@ -149,11 +157,11 @@ contract SDCollateral is
         address _operator,
         uint8 _poolId,
         uint256 _numValidator
-    ) external view returns (bool) {
+    ) external view override returns (bool) {
         return (getRemainingSDToBond(_operator, _poolId, _numValidator) == 0);
     }
 
-    function getOperatorPoolId(address _operator) public view returns (uint8 _poolId) {
+    function getOperatorPoolId(address _operator) public view override returns (uint8 _poolId) {
         _poolId = poolIdByOperator[_operator];
         // TODO: this check is not required as I am checking this while setting
         if (_poolId == 0) revert InvalidPoolId();
@@ -162,7 +170,12 @@ contract SDCollateral is
     /// @notice returns minimum amount of SD required to onboard _numValidators in a pool
     /// @param _poolId pool id, where operator wants to onboard validators
     /// @param _numValidator number of validators to onBoard (including already onboarded, if any)
-    function getMinimumSDToBond(uint8 _poolId, uint256 _numValidator) public view returns (uint256 _minSDToBond) {
+    function getMinimumSDToBond(uint8 _poolId, uint256 _numValidator)
+        public
+        view
+        override
+        returns (uint256 _minSDToBond)
+    {
         if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
             revert InvalidPoolId();
         }
@@ -180,13 +193,13 @@ contract SDCollateral is
         address _operator,
         uint8 _poolId,
         uint256 _numValidator
-    ) public view returns (uint256) {
+    ) public view override returns (uint256) {
         uint256 sdBalance = operatorSDBalance[_operator];
         uint256 minSDToBond = getMinimumSDToBond(_poolId, _numValidator);
         return (sdBalance >= minSDToBond ? 0 : minSDToBond - sdBalance);
     }
 
-    function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) public view returns (uint256) {
+    function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) external view override returns (uint256) {
         if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
             revert InvalidPoolId();
         }
@@ -195,12 +208,12 @@ contract SDCollateral is
         return ethAmount / poolThresholdbyPoolId[_poolId].minThreshold;
     }
 
-    function convertSDToETH(uint256 _sdAmount) public view returns (uint256) {
+    function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
         return (_sdAmount * sdPriceInETH);
     }
 
-    function convertETHToSD(uint256 _ethAmount) public view returns (uint256) {
+    function convertETHToSD(uint256 _ethAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
         return (_ethAmount / sdPriceInETH);
     }

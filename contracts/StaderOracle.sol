@@ -3,7 +3,6 @@ pragma solidity ^0.8.16;
 
 import './library/AddressLib.sol';
 
-import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
@@ -14,7 +13,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
-    IStaderConfig public staderConfig;
+    IStaderConfig public override staderConfig;
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
@@ -26,7 +25,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override latestMissedAttestationConsensusIndex;
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
     // indicate the health of protocol on beacon chain
     // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
@@ -392,12 +391,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
-    /**
-     * @notice store the missed attestation penalty strike on validator
-     * @dev _missedAttestationPenaltyData.index should not be zero
-     * @param _mapd missed attestation penalty data
-     */
-    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd) external trustedNodeOnly {
+    /// @inheritdoc IStaderOracle
+    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd)
+        external
+        override
+        trustedNodeOnly
+    {
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -453,11 +452,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit UpdatedSafeMode(_safeMode);
     }
 
-    function getCurrentRewardsIndex() external view returns (uint256) {
+    function getCurrentRewardsIndex() external view override returns (uint256) {
         return rewardsData.index + 1; // rewardsData.index is the last updated index
     }
 
-    function getPubkeyRoot(bytes calldata _pubkey) public pure returns (bytes32) {
+    function getPubkeyRoot(bytes calldata _pubkey) public pure override returns (bytes32) {
         if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
             revert InvalidPubkeyLength();
         }
@@ -499,7 +498,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return true;
     }
 
-    function getSDPriceInETH() external view returns (uint256) {
+    function getSDPriceInETH() external view override returns (uint256) {
         return lastReportedSDPriceData.sdPriceInETH;
     }
 

@@ -5,7 +5,6 @@ pragma solidity ^0.8.16;
 import './library/AddressLib.sol';
 
 import './interfaces/IPoolFactory.sol';
-import './interfaces/IStaderConfig.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
@@ -26,11 +25,11 @@ contract SocializingPool is
 {
     using SafeERC20 for IERC20;
 
-    IStaderConfig public staderConfig;
+    IStaderConfig public override staderConfig;
     uint256 public override totalELRewardsCollected;
     uint256 public override totalOperatorETHRewardsRemaining;
     uint256 public override totalOperatorSDRewardsRemaining;
-    uint256 public initialBlock;
+    uint256 public override initialBlock;
 
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
@@ -61,27 +60,6 @@ contract SocializingPool is
      */
     receive() external payable {
         emit ETHReceived(msg.sender, msg.value);
-    }
-
-    function getRewardDetails()
-        external
-        view
-        returns (
-            uint256 currentIndex,
-            uint256 currentStartBlock,
-            uint256 currentEndBlock,
-            uint256 nextIndex,
-            uint256 nextStartBlock,
-            uint256 nextEndBlock
-        )
-    {
-        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
-        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
-        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
-        currentEndBlock = currentStartBlock + cycleDuration - 1;
-        nextIndex = currentIndex + 1;
-        nextStartBlock = currentEndBlock + 1;
-        nextEndBlock = nextStartBlock + cycleDuration - 1;
     }
 
     function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
@@ -183,5 +161,29 @@ contract SocializingPool is
         bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
+    }
+
+    // GETTERS
+
+    function getRewardDetails()
+        external
+        view
+        override
+        returns (
+            uint256 currentIndex,
+            uint256 currentStartBlock,
+            uint256 currentEndBlock,
+            uint256 nextIndex,
+            uint256 nextStartBlock,
+            uint256 nextEndBlock
+        )
+    {
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
+        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
+        currentEndBlock = currentStartBlock + cycleDuration - 1;
+        nextIndex = currentIndex + 1;
+        nextStartBlock = currentEndBlock + 1;
+        nextEndBlock = nextStartBlock + cycleDuration - 1;
     }
 }

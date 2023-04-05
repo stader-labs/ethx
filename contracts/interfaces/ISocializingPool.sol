@@ -3,6 +3,7 @@
 pragma solidity ^0.8.16;
 
 import './IStaderOracle.sol';
+import './IStaderConfig.sol';
 
 interface ISocializingPool {
     // errors
@@ -19,6 +20,30 @@ interface ISocializingPool {
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
 
+    // methods
+    function handleRewards(RewardsData calldata _rewardsData) external;
+
+    function claim(
+        uint256[] calldata _index,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof,
+        address operatorRewardsAddr
+    ) external;
+
+    // getters
+    function staderConfig() external view returns (IStaderConfig);
+
+    function claimedRewards(address _user, uint256 _index) external view returns (bool);
+
+    function totalELRewardsCollected() external view returns (uint256);
+
+    function totalOperatorETHRewardsRemaining() external view returns (uint256);
+
+    function totalOperatorSDRewardsRemaining() external view returns (uint256);
+
+    function initialBlock() external view returns (uint256);
+
     function getRewardDetails()
         external
         view
@@ -30,22 +55,4 @@ interface ISocializingPool {
             uint256 nextStartBlock,
             uint256 nextEndBlock
         );
-
-    function handleRewards(RewardsData calldata _rewardsData) external;
-
-    function claimedRewards(address _user, uint256 _index) external view returns (bool);
-
-    function totalELRewardsCollected() external view returns (uint256);
-
-    function totalOperatorETHRewardsRemaining() external view returns (uint256);
-
-    function totalOperatorSDRewardsRemaining() external view returns (uint256);
-
-    function claim(
-        uint256[] calldata _index,
-        uint256[] calldata _amountSD,
-        uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof,
-        address operatorRewardsAddr
-    ) external;
 }

@@ -3,6 +3,8 @@ pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
+import './IStaderConfig.sol';
+
 struct SDPriceData {
     uint256 reportingBlockNumber;
     uint256 sdPriceInETH;
@@ -162,37 +164,7 @@ interface IStaderOracle {
     event WithdrawnValidatorsUpdated(uint256 block, address nodeRegistry, bytes[] pubkeys, uint256 time);
     event UpdatedSafeMode(bool safeMode);
 
-    function STADER_MANAGER() external view returns (bytes32);
-
-    // The root of the merkle tree containing the socializing rewards of operator
-    function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
-
-    // The last updated merkle tree index
-    function getCurrentRewardsIndex() external view returns (uint256);
-
-    // returns price of 1 SD in ETH
-    function getSDPriceInETH() external view returns (uint256);
-
-    function getExchangeRate() external view returns (ExchangeRate memory);
-
-    function getValidatorStats() external view returns (ValidatorStats memory);
-
-    // The frequency in blocks at which network updates should be submitted by trusted nodes
-    function updateFrequency() external view returns (uint256);
-
-    function reportingBlockNumberForWithdrawnValidators() external view returns (uint256);
-
-    // returns the count of trusted nodes
-    function trustedNodesCount() external view returns (uint256);
-
-    function safeMode() external view returns (bool);
-
-    //returns the latest consensus index for missed attestation penalty data report
-    function latestMissedAttestationConsensusIndex() external view returns (uint256);
-
-    function isTrustedNode(address) external view returns (bool);
-
-    function missedAttestationPenalty(bytes32 _pubkey) external view returns (uint16);
+    // methods
 
     function addTrustedNode(address _nodeAddress) external;
 
@@ -216,7 +188,7 @@ interface IStaderOracle {
 
     function submitSDPrice(SDPriceData calldata _sdPriceData) external;
 
-    /*
+    /**
      * @notice Submit validator stats for a specific block.
      * @dev This function can only be called by trusted nodes.
      * @param _validatorStats The validator stats to submit.
@@ -239,8 +211,52 @@ interface IStaderOracle {
     /// @param _withdrawnValidators The withdrawn validators data, including lastUpdatedBlockNumber and sorted pubkeys.
     function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators) external;
 
+    /**
+     * @notice store the missed attestation penalty strike on validator
+     * @dev _missedAttestationPenaltyData.index should not be zero
+     * @param _mapd missed attestation penalty data
+     */
+    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd) external;
+
+    // setters
+
     // update the status of safeMode depending on network and protocol health
     function setSafeMode(bool _safeMode) external;
 
+    // getters
+    function staderConfig() external view returns (IStaderConfig);
+
+    // The frequency in blocks at which network updates should be submitted by trusted nodes
+    function updateFrequency() external view returns (uint256);
+
+    function reportingBlockNumberForWithdrawnValidators() external view returns (uint256);
+
+    // returns the count of trusted nodes
+    function trustedNodesCount() external view returns (uint256);
+
+    //returns the latest consensus index for missed attestation penalty data report
+    function latestMissedAttestationConsensusIndex() external view returns (uint256);
+
+    function safeMode() external view returns (bool);
+
+    // The root of the merkle tree containing the socializing rewards of operator
+    function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
+
+    function isTrustedNode(address) external view returns (bool);
+
+    function missedAttestationPenalty(bytes32 _pubkey) external view returns (uint16);
+
+    // The last updated merkle tree index
+    function getCurrentRewardsIndex() external view returns (uint256);
+
     function getLatestReportableBlock() external view returns (uint256);
+
+    function getPubkeyRoot(bytes calldata _pubkey) external pure returns (bytes32);
+
+    function getExchangeRate() external view returns (ExchangeRate memory);
+
+    function getValidatorStats() external view returns (ValidatorStats memory);
+
+    // returns price of 1 SD in ETH
+    function getSDPriceInETH() external view returns (uint256);
 }
