@@ -642,6 +642,7 @@ contract PermissionedNodeRegistry is
 
         //check if operator has enough SD collateral for adding `keyCount` keys
         //SD threshold for permissioned NOs is 0 for phase1
+        //TODO sanjay do not use this extra boolean
         bool isEnoughCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
             msg.sender,
             _poolId,
