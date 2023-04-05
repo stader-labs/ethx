@@ -37,6 +37,8 @@ interface IStaderConfig {
 
     function getMaxWithdrawAmount() external view returns (uint256);
 
+    function getMinDelayToFinalizeWithdrawRequest() external view returns (uint256);
+
     // Accounts
     function getAdmin() external view returns (address);
 

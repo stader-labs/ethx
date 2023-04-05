@@ -12,7 +12,7 @@ struct SDPriceData {
 /// @notice This struct holds rewards merkleRoot and rewards split
 struct RewardsData {
     /// @notice The block number when the rewards data was last updated
-    uint256 lastUpdatedBlockNumber;
+    uint256 reportingBlockNumber;
     /// @notice The index of merkle tree or rewards cycle
     uint256 index;
     /// @notice The merkle root hash
@@ -53,7 +53,7 @@ struct MissedAttestationReportInfo {
 /// @notice This struct holds data related to the exchange rate between ETH and ETHX.
 struct ExchangeRate {
     /// @notice The block number when the exchange rate was last updated.
-    uint256 lastUpdatedBlockNumber;
+    uint256 reportingBlockNumber;
     /// @notice The total balance of Ether (ETH) in the system.
     uint256 totalETHBalance;
     /// @notice The total balance of staked Ether (ETH) in the system.
@@ -66,7 +66,7 @@ struct ExchangeRate {
 /// @notice This struct holds statistics related to validators in the beaconchain.
 struct ValidatorStats {
     /// @notice The block number when the validator stats was last updated.
-    uint256 lastUpdatedBlockNumber;
+    uint256 reportingBlockNumber;
     /// @notice The total balance of all active validators.
     uint128 activeValidatorsBalance;
     /// @notice The total balance of all exited validators.
@@ -82,7 +82,7 @@ struct ValidatorStats {
 }
 
 struct WithdrawnValidators {
-    uint256 lastUpdatedBlockNumber;
+    uint256 reportingBlockNumber;
     address nodeRegistry;
     bytes[] sortedPubkeys;
 }
@@ -164,7 +164,7 @@ interface IStaderOracle {
     event WithdrawnValidatorsUpdated(uint256 block, address nodeRegistry, bytes[] pubkeys, uint256 time);
     event UpdatedSafeMode(bool safeMode);
 
-    function STADER_MANAGER_BOT() external view returns (bytes32);
+    function STADER_MANAGER() external view returns (bytes32);
 
     // The root of the merkle tree containing the socializing rewards of operator
     function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
@@ -182,7 +182,7 @@ interface IStaderOracle {
     // The frequency in blocks at which network updates should be submitted by trusted nodes
     function updateFrequency() external view returns (uint256);
 
-    function lastUpdatedBlockNumberForWithdrawnValidators() external view returns (uint256);
+    function reportingBlockNumberForWithdrawnValidators() external view returns (uint256);
 
     // returns the count of trusted nodes
     function trustedNodesCount() external view returns (uint256);

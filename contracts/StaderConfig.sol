@@ -8,7 +8,7 @@ import './interfaces/IStaderConfig.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
-    // skated ETH per node on beacon chain i.e. 32 ETH
+    // staked ETH per node on beacon chain i.e. 32 ETH
     bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
     // ETH to WEI ratio i.e 10**18
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
@@ -21,6 +21,9 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant MaxDepositAmount = keccak256('MaxDepositAmount');
     bytes32 public constant MinWithdrawAmount = keccak256('MinWithdrawAmount');
     bytes32 public constant MaxWithdrawAmount = keccak256('MaxWithdrawAmount');
+    //minimum delay between user requesting withdraw and request finalization
+    bytes32 public constant MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST =
+        keccak256('MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST');
 
     bytes32 public constant Admin = keccak256('Admin');
     bytes32 public constant StaderTreasury = keccak256('StaderTreasury');
@@ -90,7 +93,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     /**
-     * @dev update the minimum stake amount
+     * @dev update the minimum deposit amount
      * @param _minDepositAmount minimum deposit amount
      */
     function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -101,11 +104,11 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     /**
-     * @dev update the maximum stake amount
+     * @dev update the maximum deposit amount
      * @param _maxDepositAmount maximum deposit amount
      */
     function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_maxDepositAmount <= getMinDepositAmount()) {
+        if (_maxDepositAmount < getMinDepositAmount()) {
             revert InvalidMaxDepositValue();
         }
         _setVariable(MaxDepositAmount, _maxDepositAmount);
@@ -131,6 +134,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
             revert InvalidMaxWithdrawValue();
         }
         _setVariable(MaxWithdrawAmount, _maxWithdrawAmount);
+    }
+
+    function updateMinDelayToFinalizeWithdrawRequest(uint256 _minDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setVariable(MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minDelay);
     }
 
     //Accounts Setters
@@ -286,6 +293,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getMaxWithdrawAmount() public view override returns (uint256) {
         return variablesMap[MaxWithdrawAmount];
+    }
+
+    function getMinDelayToFinalizeWithdrawRequest() external view override returns (uint256) {
+        return variablesMap[MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST];
     }
 
     //Account Getters

@@ -6,7 +6,7 @@ interface IUserWithdrawalManager {
     // Errors
     error TransferFailed();
     error TokenTransferFailed();
-    error ProtocolNotInSafeMode();
+    error UnsupportedOperationInSafeMode();
     error InSufficientBalance();
     error ProtocolNotHealthy();
     error InvalidWithdrawAmount();
@@ -20,7 +20,6 @@ interface IUserWithdrawalManager {
     // Events
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
     event UpdatedStaderConfig(address staderConfig);
-    event UpdatedMinimumDelayToFinalizeRequest(uint256 _minimumDelayToFinalizeRequest);
     event WithdrawRequestReceived(
         address indexed _msgSender,
         address _recipient,
@@ -50,8 +49,6 @@ interface IUserWithdrawalManager {
     function ethRequestedForWithdraw() external view returns (uint256);
 
     function maxNonRedeemedUserRequestCount() external view returns (uint256);
-
-    function minimumDelayToFinalizeRequest() external view returns (uint256);
 
     function userWithdrawRequests(uint256)
         external

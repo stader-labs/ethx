@@ -19,14 +19,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
     uint256 public override updateFrequency;
-    uint256 public override lastUpdatedBlockNumberForWithdrawnValidators;
+    uint256 public override reportingBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     /// @inheritdoc IStaderOracle
     uint256 public override latestMissedAttestationConsensusIndex;
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
-    bytes32 public constant override STADER_MANAGER_BOT = keccak256('STADER_MANAGER_BOT');
+    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
     // indicate the health of protocol on beacon chain
     // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
@@ -95,7 +95,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
-        if (_exchangeRate.lastUpdatedBlockNumber >= block.number) {
+        if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
         if (_exchangeRate.totalStakingETHBalance > _exchangeRate.totalETHBalance) {
@@ -106,7 +106,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(
                 msg.sender,
-                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
                 _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply
@@ -114,7 +114,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         );
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(
-                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
                 _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply
@@ -124,7 +124,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         // Emit balances submitted event
         emit BalancesSubmitted(
             msg.sender,
-            _exchangeRate.lastUpdatedBlockNumber,
+            _exchangeRate.reportingBlockNumber,
             _exchangeRate.totalETHBalance,
             _exchangeRate.totalStakingETHBalance,
             _exchangeRate.totalETHXSupply,
@@ -133,13 +133,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         if (
             submissionCount >= trustedNodesCount / 2 + 1 &&
-            _exchangeRate.lastUpdatedBlockNumber > exchangeRate.lastUpdatedBlockNumber
+            _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
         ) {
             exchangeRate = _exchangeRate;
 
             // Emit balances updated event
             emit BalancesUpdated(
-                _exchangeRate.lastUpdatedBlockNumber,
+                _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
                 _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply,
@@ -161,7 +161,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
     /// @dev _rewardsData.index should not be zero
     function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
-        if (_rewardsData.lastUpdatedBlockNumber >= block.number) {
+        if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
 
@@ -267,7 +267,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     /// @inheritdoc IStaderOracle
     function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
-        if (_validatorStats.lastUpdatedBlockNumber >= block.number) {
+        if (_validatorStats.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
 
@@ -275,7 +275,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(
                 msg.sender,
-                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.reportingBlockNumber,
                 _validatorStats.activeValidatorsBalance,
                 _validatorStats.exitedValidatorsBalance,
                 _validatorStats.slashedValidatorsBalance,
@@ -286,7 +286,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         );
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(
-                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.reportingBlockNumber,
                 _validatorStats.activeValidatorsBalance,
                 _validatorStats.exitedValidatorsBalance,
                 _validatorStats.slashedValidatorsBalance,
@@ -300,7 +300,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         // Emit validator stats submitted event
         emit ValidatorStatsSubmitted(
             msg.sender,
-            _validatorStats.lastUpdatedBlockNumber,
+            _validatorStats.reportingBlockNumber,
             _validatorStats.activeValidatorsBalance,
             _validatorStats.exitedValidatorsBalance,
             _validatorStats.slashedValidatorsBalance,
@@ -312,13 +312,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         if (
             submissionCount >= trustedNodesCount / 2 + 1 &&
-            _validatorStats.lastUpdatedBlockNumber > validatorStats.lastUpdatedBlockNumber
+            _validatorStats.reportingBlockNumber > validatorStats.reportingBlockNumber
         ) {
             validatorStats = _validatorStats;
 
             // Emit stats updated event
             emit ValidatorStatsUpdated(
-                _validatorStats.lastUpdatedBlockNumber,
+                _validatorStats.reportingBlockNumber,
                 _validatorStats.activeValidatorsBalance,
                 _validatorStats.exitedValidatorsBalance,
                 _validatorStats.slashedValidatorsBalance,
@@ -336,7 +336,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         override
         trustedNodeOnly
     {
-        if (_withdrawnValidators.lastUpdatedBlockNumber >= block.number) {
+        if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
 
@@ -350,14 +350,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 nodeSubmissionKey = keccak256(
             abi.encodePacked(
                 msg.sender,
-                _withdrawnValidators.lastUpdatedBlockNumber,
+                _withdrawnValidators.reportingBlockNumber,
                 _withdrawnValidators.nodeRegistry,
                 encodedPubkeys
             )
         );
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(
-                _withdrawnValidators.lastUpdatedBlockNumber,
+                _withdrawnValidators.reportingBlockNumber,
                 _withdrawnValidators.nodeRegistry,
                 encodedPubkeys
             )
@@ -367,7 +367,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         // Emit withdrawn validators submitted event
         emit WithdrawnValidatorsSubmitted(
             msg.sender,
-            _withdrawnValidators.lastUpdatedBlockNumber,
+            _withdrawnValidators.reportingBlockNumber,
             _withdrawnValidators.nodeRegistry,
             _withdrawnValidators.sortedPubkeys,
             block.timestamp
@@ -375,14 +375,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         if (
             submissionCount >= trustedNodesCount / 2 + 1 &&
-            _withdrawnValidators.lastUpdatedBlockNumber > lastUpdatedBlockNumberForWithdrawnValidators
+            _withdrawnValidators.reportingBlockNumber > reportingBlockNumberForWithdrawnValidators
         ) {
-            lastUpdatedBlockNumberForWithdrawnValidators = _withdrawnValidators.lastUpdatedBlockNumber;
+            reportingBlockNumberForWithdrawnValidators = _withdrawnValidators.reportingBlockNumber;
             INodeRegistry(_withdrawnValidators.nodeRegistry).withdrawnValidators(_withdrawnValidators.sortedPubkeys);
 
             // Emit withdrawn validators updated event
             emit WithdrawnValidatorsUpdated(
-                _withdrawnValidators.lastUpdatedBlockNumber,
+                _withdrawnValidators.reportingBlockNumber,
                 _withdrawnValidators.nodeRegistry,
                 _withdrawnValidators.sortedPubkeys,
                 block.timestamp
@@ -446,7 +446,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function setSafeMode(bool _safeMode) external override onlyRole(STADER_MANAGER_BOT) {
+    function setSafeMode(bool _safeMode) external override onlyRole(STADER_MANAGER) {
         safeMode = _safeMode;
         emit UpdatedSafeMode(_safeMode);
     }

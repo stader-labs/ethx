@@ -35,6 +35,8 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
 
+    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -178,7 +180,7 @@ contract StaderStakePoolsManager is
      */
     function validatorBatchDeposit() external override nonReentrant whenNotPaused {
         if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
-            revert ProtocolNotInSafeMode();
+            revert UnsupportedOperationInSafeMode();
         }
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
@@ -208,7 +210,7 @@ contract StaderStakePoolsManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function pause() external onlyRole(STADER_MANAGER) {
         _pause();
     }
 
