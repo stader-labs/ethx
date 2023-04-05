@@ -113,6 +113,7 @@ contract PermissionedNodeRegistry is
             revert NotAPermissionedNodeOperator();
         }
 
+        //TODO sanjay move it to pool factory same as isPubkeyExit()
         if (ISDCollateral(staderConfig.getSDCollateral()).poolIdByOperator(msg.sender) != 0) {
             revert OperatorAlreadyAddedInOtherPool();
         }
@@ -596,6 +597,7 @@ contract PermissionedNodeRegistry is
             nextQueuedValidatorIndexByOperatorId[_operatorId];
     }
 
+    //TODO sanjay move common method to pool factory
     // checks for keys lengths, and if pubkey is already present in stader protocol
     function _validateKeys(
         bytes calldata _pubkey,
@@ -681,6 +683,7 @@ contract PermissionedNodeRegistry is
                 validator.status == ValidatorStatus.INVALID_SIGNATURE);
     }
 
+    //TODO sanjay move common method to pool factory
     // only valid name with string length limit
     function _onlyValidName(string calldata _name) internal view {
         if (bytes(_name).length == 0) {

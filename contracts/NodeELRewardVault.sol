@@ -112,6 +112,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 
+    //TODO sanjay move to node registry
     function getNodeRecipient() private view returns (address payable) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (, , , address payable operatorRewardAddress, ) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);

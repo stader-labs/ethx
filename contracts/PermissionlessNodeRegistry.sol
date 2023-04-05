@@ -60,6 +60,7 @@ contract PermissionlessNodeRegistry is
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
     //mapping of operator address with nodeELReward vault address
+    //TODO sanjay make it with operator ID
     mapping(address => address) public override nodeELRewardVaultByOperator;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -96,6 +97,7 @@ contract PermissionlessNodeRegistry is
         _onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_operatorRewardAddress);
 
+        //TODO sanjay move it to pool factory same as isPubkeyExit()
         if (ISDCollateral(staderConfig.getSDCollateral()).poolIdByOperator(msg.sender) != 0) {
             revert OperatorAlreadyAddedInOtherPool();
         }
@@ -262,6 +264,7 @@ contract PermissionlessNodeRegistry is
             revert NoChangeInState();
         }
 
+        //TODO remove this 2 factor call from config
         if (
             block.number <
             socializingPoolStateChangeBlock[operatorId] + 2 * staderConfig.getSocializingPoolCoolingPeriod()
@@ -530,6 +533,7 @@ contract PermissionlessNodeRegistry is
         _sendValue(operatorAddress, collateralETH - PRE_DEPOSIT);
     }
 
+    //TODO sanjay move common method to pool factory
     // checks for keys lengths, and if pubkey is already present in stader protocol(not just permissionless pool)
     function _validateKeys(
         bytes calldata _pubkey,
@@ -577,6 +581,7 @@ contract PermissionlessNodeRegistry is
         if (msg.value != keyCount * collateralETH) {
             revert InvalidBondEthValue();
         }
+        //TODO sanjay do not use this extra boolean
         //check if operator has enough SD collateral for adding `keyCount` keys
         bool isEnoughCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
             msg.sender,
@@ -611,6 +616,7 @@ contract PermissionlessNodeRegistry is
         }
     }
 
+    //TODO sanjay move common method to pool factory
     // only valid name with string length limit
     function _onlyValidName(string calldata _name) internal view {
         if (bytes(_name).length == 0) {

@@ -163,6 +163,7 @@ contract StaderStakePoolsManager is
     }
 
     /** @dev See {IERC4626-deposit}. */
+    //TODO sanjay Why is this inconsistent?
     function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < staderConfig.getMinDepositAmount()) {
