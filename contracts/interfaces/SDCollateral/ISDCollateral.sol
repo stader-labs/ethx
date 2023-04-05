@@ -3,7 +3,8 @@ pragma solidity ^0.8.16;
 
 interface ISDCollateral {
     // errors
-    error InsufficientSDToWithdraw();
+    error InsufficientSDCollateral(uint256 operatorSDCollateral);
+    error InsufficientWithdrawableSD(uint256 withdrawableSD);
     error InvalidPoolId();
     error InvalidPoolLimit();
 

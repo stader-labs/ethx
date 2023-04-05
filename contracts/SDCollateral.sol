@@ -80,12 +80,12 @@ contract SDCollateral is
 
         uint256 sdCumulativeThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
         if (sdBalance <= sdCumulativeThreshold) {
-            revert InsufficientSDToWithdraw();
+            revert InsufficientSDCollateral(sdBalance);
         }
         uint256 withdrawableSD = sdBalance - sdCumulativeThreshold;
 
         if (_requestedSD > withdrawableSD) {
-            revert InsufficientSDToWithdraw();
+            revert InsufficientWithdrawableSD(withdrawableSD);
         }
 
         totalSDCollateral -= _requestedSD;
