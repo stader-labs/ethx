@@ -92,21 +92,19 @@ contract SDCollateral is
         IERC20(staderConfig.getStaderToken()).safeTransfer(payable(operator), _requestedSD);
     }
 
-    // TODO: proper access control
+    /// @notice used to slash operator SD, incase of operator default
+    /// @dev do provide SD approval to auction contract using `maxApproveSD()`
+    /// @param _operator which operator SD collateral to slash
+    /// @param _sdToSlash amount of SD to slash
     function slashSD(address _operator, uint256 _sdToSlash) external onlyRole(MANAGER) returns (uint256 _sdSlashed) {
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
-
-        // TODO: Manoj research and check if below is a correct solution
-        // reduced approval to zero first, to avoid race condition
-        IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), 0);
-        IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), _sdSlashed);
-
         IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
     }
 
-    // for max approval to auction contract for spending SD tokens
+    /// @notice for max approval to auction contract for spending SD tokens
+    /// @param spenderAddr contract to approve for spending SD
     function maxApproveSD(address spenderAddr) external onlyRole(MANAGER) {
         IERC20(staderConfig.getStaderToken()).approve(spenderAddr, type(uint256).max);
     }
