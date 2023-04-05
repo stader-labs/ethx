@@ -26,7 +26,7 @@ contract SDCollateral is
     IStaderConfig public staderConfig;
     uint256 public totalSDCollateral;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
-    mapping(address => uint8) public poolIdByOperator;
+    mapping(address => uint8) private poolIdByOperator;
     mapping(address => uint256) public operatorSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor

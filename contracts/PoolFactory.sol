@@ -73,6 +73,13 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
     /// @inheritdoc IPoolFactory
     function getProtocolFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).protocolFee();
@@ -214,7 +221,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     // checks for keys lengths, and if pubkey is already present in stader protocol
-    function validKeys(
+    function onlyValidKeys(
         bytes calldata _pubkey,
         bytes calldata _preDepositSignature,
         bytes calldata _depositSignature

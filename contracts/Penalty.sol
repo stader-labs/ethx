@@ -93,6 +93,13 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }
 
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
     /// @inheritdoc IPenalty
     function calculatePenalty(bytes calldata _pubkey) external override returns (uint256) {
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);

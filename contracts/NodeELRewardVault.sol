@@ -119,7 +119,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);

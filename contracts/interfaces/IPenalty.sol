@@ -12,6 +12,7 @@ interface IPenalty {
     event UpdatedMissedAttestationPenaltyPerStrike(uint256 missedAttestationPenalty);
     event UpdatedValidatorExitPenaltyThreshold(uint256 totalPenaltyThreshold);
     event ExitValidator(bytes pubkey);
+    event UpdatedStaderConfig(address staderConfig);
 
     // returns the address of the Rated.network penalty oracle
     function ratedOracleAddress() external view returns (address);
@@ -37,6 +38,8 @@ interface IPenalty {
 
     // Sets the address of the Rated.network penalty oracle.
     function updateRatedOracleAddress(address _penaltyOracleAddress) external;
+
+    function updateStaderConfig(address _staderConfig) external;
 
     // Sets the penalty amount for a single violation.
     //This is the amount that will be imposed for each violation after first violation

@@ -23,6 +23,7 @@ interface IPoolFactory {
     // Events
     event PoolAdded(string poolName, address poolAddress);
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);
+    event UpdatedStaderConfig(address staderConfig);
 
     // returns the details of a specific pool
     function pools(uint8) external view returns (string calldata poolName, address poolAddress);
@@ -74,7 +75,7 @@ interface IPoolFactory {
 
     function onlyValidName(string calldata _name) external;
 
-    function validKeys(
+    function onlyValidKeys(
         bytes calldata _pubkey,
         bytes calldata _preDepositSignature,
         bytes calldata _depositSignature

@@ -26,11 +26,7 @@ contract PermissionedNodeRegistry is
     using Math for uint256;
 
     uint8 public constant override poolId = 2;
-
     uint16 public override inputKeyCountLimit;
-
-    uint64 private constant PUBKEY_LENGTH = 48;
-    uint64 private constant SIGNATURE_LENGTH = 96;
     uint64 public override maxNonTerminalKeyPerOperator;
 
     IStaderConfig public staderConfig;
@@ -147,7 +143,7 @@ contract PermissionedNodeRegistry is
         address vaultFactory = staderConfig.getVaultFactory();
         address poolFactory = staderConfig.getPoolFactory();
         for (uint256 i = 0; i < keyCount; i++) {
-            IPoolFactory(poolFactory).validKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
+            IPoolFactory(poolFactory).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 poolId,
                 operatorId,

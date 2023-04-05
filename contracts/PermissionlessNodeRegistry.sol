@@ -137,7 +137,7 @@ contract PermissionlessNodeRegistry is
         address vaultFactory = staderConfig.getVaultFactory();
         address poolFactory = staderConfig.getPoolFactory();
         for (uint256 i = 0; i < keyCount; i++) {
-            IPoolFactory(poolFactory).validKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
+            IPoolFactory(poolFactory).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 poolId,
                 operatorId,
