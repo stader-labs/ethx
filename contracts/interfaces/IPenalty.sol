@@ -4,10 +4,7 @@ pragma solidity ^0.8.16;
 // Interface for the Penalty contract
 interface IPenalty {
     // Errors
-    error MEVTheftPenaltyPerStrikeUnchanged();
     error InvalidPubkeyLength();
-    error MissedAttestationPenaltyPerStrikeUnchanged();
-    error ValidatorExitPenaltyThresholdUnchanged();
     // Events
     event UpdatedAdditionalPenaltyAmount(bytes indexed pubkey, uint256 amount);
     event UpdatedMEVTheftPenaltyPerStrike(uint256 mevTheftPenalty);

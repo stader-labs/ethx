@@ -59,4 +59,6 @@ interface IStaderPoolBase {
     function getNodeRegistry() external view returns (address);
 
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
+
+    function isExistingOperator(address _operAddr) external view returns (bool);
 }

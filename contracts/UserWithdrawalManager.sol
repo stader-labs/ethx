@@ -29,8 +29,6 @@ contract UserWithdrawalManager is
     uint256 public override ethRequestedForWithdraw;
     //upper cap on user non redeemed withdraw request count
     uint256 public override maxNonRedeemedUserRequestCount;
-    //minimum delay between user requesting withdraw and request finalization
-    uint256 public override minimumDelayToFinalizeRequest;
 
     bytes32 public constant override USER_WITHDRAWAL_MANAGER_ADMIN = keccak256('USER_WITHDRAWAL_MANAGER_ADMIN');
 
@@ -63,7 +61,6 @@ contract UserWithdrawalManager is
         nextRequestId = 1;
         finalizationBatchLimit = 50;
         maxNonRedeemedUserRequestCount = 1000;
-        minimumDelayToFinalizeRequest = 86400;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
@@ -90,14 +87,6 @@ contract UserWithdrawalManager is
         AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
-    }
-
-    function updateMinimumDelayToFinalizeRequest(uint256 _minimumDelayToFinalizeRequest)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        minimumDelayToFinalizeRequest = _minimumDelayToFinalizeRequest;
-        emit UpdatedMinimumDelayToFinalizeRequest(_minimumDelayToFinalizeRequest);
     }
 
     /**
@@ -138,7 +127,7 @@ contract UserWithdrawalManager is
      */
     function finalizeUserWithdrawalRequest() external override whenNotPaused {
         if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
-            revert ProtocolNotInSafeMode();
+            revert UnsupportedOperationInSafeMode();
         }
         address poolManager = staderConfig.getStakePoolManager();
         uint256 DECIMALS = staderConfig.getDecimals();
@@ -159,7 +148,7 @@ contract UserWithdrawalManager is
             uint256 minEThRequiredToFinalizeRequest = Math.min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
             if (
                 (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) ||
-                (userWithdrawInfo.requestTime + minimumDelayToFinalizeRequest > block.timestamp)
+                (userWithdrawInfo.requestTime + staderConfig.getMinDelayToFinalizeWithdrawRequest() > block.timestamp)
             ) {
                 requestId -= 1;
                 break;

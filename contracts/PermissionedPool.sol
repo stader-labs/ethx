@@ -224,8 +224,14 @@ contract PermissionedPool is
         return staderConfig.getPermissionedNodeRegistry();
     }
 
+    // check for duplicate keys in permissioned pool
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).isExistingPubkey(_pubkey);
+    }
+
+    // check for duplicate operator in permissioned pool
+    function isExistingOperator(address _operAddr) external view override returns (bool) {
+        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).isExistingOperator(_operAddr);
     }
 
     // @inheritdoc IStaderPoolBase

@@ -233,8 +233,14 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         return staderConfig.getPermissionlessNodeRegistry();
     }
 
+    // check for duplicate keys in permissionless pool
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).isExistingPubkey(_pubkey);
+    }
+
+    // check for duplicate operator in permissionless pool
+    function isExistingOperator(address _operAddr) external view override returns (bool) {
+        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).isExistingOperator(_operAddr);
     }
 
     //update the address of staderConfig

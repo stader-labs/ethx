@@ -62,12 +62,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (mevTheftPenaltyPerStrike == _mevTheftPenaltyPerStrike) {
-            revert MEVTheftPenaltyPerStrikeUnchanged();
-        }
-
         mevTheftPenaltyPerStrike = _mevTheftPenaltyPerStrike;
-
         emit UpdatedMEVTheftPenaltyPerStrike(_mevTheftPenaltyPerStrike);
     }
 
@@ -77,12 +72,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (missedAttestationPenaltyPerStrike == _missedAttestationPenaltyPerStrike) {
-            revert MissedAttestationPenaltyPerStrikeUnchanged();
-        }
-
         missedAttestationPenaltyPerStrike = _missedAttestationPenaltyPerStrike;
-
         emit UpdatedMissedAttestationPenaltyPerStrike(_missedAttestationPenaltyPerStrike);
     }
 
@@ -92,21 +82,14 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        if (validatorExitPenaltyThreshold == _validatorExitPenaltyThreshold) {
-            revert ValidatorExitPenaltyThresholdUnchanged();
-        }
-
         validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
-
         emit UpdatedValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
     }
 
     /// @inheritdoc IPenalty
     function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         AddressLib.checkNonZeroAddress(_ratedOracleAddress);
-
         ratedOracleAddress = _ratedOracleAddress;
-
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }
 

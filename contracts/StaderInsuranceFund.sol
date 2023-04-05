@@ -14,6 +14,11 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
     bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
     bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _staderConfig) external initializer {
         __AccessControl_init_unchained();
         staderConfig = IStaderConfig(_staderConfig);
@@ -32,7 +37,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
         }
 
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(staderConfig.getStaderTreasury()).call{value: _amount}('');
+        (bool success, ) = payable(msg.sender).call{value: _amount}('');
         if (!success) {
             revert TransferFailed();
         }

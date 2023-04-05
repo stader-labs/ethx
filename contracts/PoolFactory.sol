@@ -6,23 +6,29 @@ import './library/AddressLib.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     mapping(uint8 => Pool) public override pools;
+
     uint8 public override poolCount;
+    uint64 private constant PUBKEY_LENGTH = 48;
+    uint64 private constant SIGNATURE_LENGTH = 96;
+    IStaderConfig public staderConfig;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address _admin) external initializer {
-        AddressLib.checkNonZeroAddress(_admin);
+    function initialize(address _staderConfig) external initializer {
+        AddressLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
+        staderConfig = IStaderConfig(_staderConfig);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -179,13 +185,52 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getNodeRegistry();
     }
 
-    function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
+    function isExistingPubkey(bytes calldata _pubkey) public view override returns (bool) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) {
                 return true;
             }
         }
         return false;
+    }
+
+    function isExistingOperator(address _operAddr) external view override returns (bool) {
+        for (uint8 i = 1; i <= poolCount; i++) {
+            if (IStaderPoolBase(pools[i].poolAddress).isExistingOperator(_operAddr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // only valid name with string length limit
+    function onlyValidName(string calldata _name) external view {
+        if (bytes(_name).length == 0) {
+            revert EmptyNameString();
+        }
+        if (bytes(_name).length > staderConfig.getOperatorMaxNameLength()) {
+            revert NameCrossedMaxLength();
+        }
+    }
+
+    // checks for keys lengths, and if pubkey is already present in stader protocol
+    function validKeys(
+        bytes calldata _pubkey,
+        bytes calldata _preDepositSignature,
+        bytes calldata _depositSignature
+    ) external view {
+        if (_pubkey.length != PUBKEY_LENGTH) {
+            revert InvalidLengthOfPubkey();
+        }
+        if (_preDepositSignature.length != SIGNATURE_LENGTH) {
+            revert InvalidLengthOfSignature();
+        }
+        if (_depositSignature.length != SIGNATURE_LENGTH) {
+            revert InvalidLengthOfSignature();
+        }
+        if (isExistingPubkey(_pubkey)) {
+            revert PubkeyAlreadyExist();
+        }
     }
 
     // Modifiers

@@ -35,6 +35,8 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
 
+    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -150,6 +152,10 @@ contract StaderStakePoolsManager is
         return _isVaultHealthy() ? staderConfig.getMaxDepositAmount() : 0;
     }
 
+    function minDeposit() public view override returns (uint256) {
+        return _isVaultHealthy() ? staderConfig.getMinDepositAmount() : 0;
+    }
+
     /** @dev See {IERC4626-previewDeposit}. */
     function previewDeposit(uint256 _assets) public view override returns (uint256) {
         return _convertToShares(_assets, Math.Rounding.Down);
@@ -163,7 +169,7 @@ contract StaderStakePoolsManager is
     /** @dev See {IERC4626-deposit}. */
     function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
-        if (assets > maxDeposit() || assets < staderConfig.getMinDepositAmount()) {
+        if (assets > maxDeposit() || assets < minDeposit()) {
             revert InvalidDepositAmount();
         }
         uint256 shares = previewDeposit(assets);
@@ -178,7 +184,7 @@ contract StaderStakePoolsManager is
      */
     function validatorBatchDeposit() external override nonReentrant whenNotPaused {
         if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
-            revert ProtocolNotInSafeMode();
+            revert UnsupportedOperationInSafeMode();
         }
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
@@ -208,7 +214,7 @@ contract StaderStakePoolsManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function pause() external onlyRole(STADER_MANAGER) {
         _pause();
     }
 

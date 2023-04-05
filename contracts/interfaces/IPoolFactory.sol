@@ -14,6 +14,12 @@ interface IPoolFactory {
     // Errors
     error EmptyString();
     error InvalidPoolID();
+    error EmptyNameString();
+    error PubkeyAlreadyExist();
+    error NameCrossedMaxLength();
+    error InvalidLengthOfPubkey();
+    error InvalidLengthOfSignature();
+
     // Events
     event PoolAdded(string poolName, address poolAddress);
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);
@@ -60,5 +66,17 @@ interface IPoolFactory {
 
     function getNodeRegistry(uint8 _poolId) external view returns (address);
 
+    // check for duplicate pubkey across all pools
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
+
+    // check for duplicate operator across all pools
+    function isExistingOperator(address _operAddr) external view returns (bool);
+
+    function onlyValidName(string calldata _name) external;
+
+    function validKeys(
+        bytes calldata _pubkey,
+        bytes calldata _preDepositSignature,
+        bytes calldata _depositSignature
+    ) external;
 }

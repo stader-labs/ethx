@@ -27,8 +27,6 @@ contract PermissionlessNodeRegistry is
     uint8 public constant override poolId = 1;
     uint16 public override inputKeyCountLimit;
     uint64 public override maxNonTerminalKeyPerOperator;
-    uint64 private constant PUBKEY_LENGTH = 48;
-    uint64 private constant SIGNATURE_LENGTH = 96;
 
     IStaderConfig public staderConfig;
 
@@ -93,17 +91,14 @@ contract PermissionlessNodeRegistry is
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) external override whenNotPaused returns (address feeRecipientAddress) {
-        _onlyValidName(_operatorName);
+        address poolFactory = staderConfig.getPoolFactory();
+        IPoolFactory(poolFactory).onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_operatorRewardAddress);
 
-        if (ISDCollateral(staderConfig.getSDCollateral()).poolIdByOperator(msg.sender) != 0) {
-            revert OperatorAlreadyAddedInOtherPool();
+        //checks if operator already onboarded in any pool of protocol
+        if (IPoolFactory(poolFactory).isExistingOperator(msg.sender)) {
+            revert OperatorAlreadyOnBoardedInProtocol();
         }
-        uint256 operatorId = operatorIDByAddress[msg.sender];
-        if (operatorId != 0) {
-            revert OperatorAlreadyOnBoarded();
-        }
-
         //deploy NodeELRewardVault for NO
         address nodeELRewardVault = IVaultFactory(staderConfig.getVaultFactory()).deployNodeELRewardVault(
             poolId,
@@ -142,7 +137,7 @@ contract PermissionlessNodeRegistry is
         address vaultFactory = staderConfig.getVaultFactory();
         address poolFactory = staderConfig.getPoolFactory();
         for (uint256 i = 0; i < keyCount; i++) {
-            _validateKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i], poolFactory);
+            IPoolFactory(poolFactory).validKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 poolId,
                 operatorId,
@@ -262,6 +257,7 @@ contract PermissionlessNodeRegistry is
             revert NoChangeInState();
         }
 
+        //TODO remove this 2 factor call from config
         if (
             block.number <
             socializingPoolStateChangeBlock[operatorId] + staderConfig.getSocializingPoolOptInCoolingPeriod()
@@ -339,7 +335,7 @@ contract PermissionlessNodeRegistry is
      * @param _rewardAddress new reward address
      */
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
-        _onlyValidName(_operatorName);
+        IPoolFactory(staderConfig.getPoolFactory()).onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_rewardAddress);
         _onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
@@ -533,6 +529,11 @@ contract PermissionlessNodeRegistry is
         return validatorIdByPubkey[_pubkey] != 0;
     }
 
+    // check for duplicate operator in permissionless node registry
+    function isExistingOperator(address _operAddr) external view override returns (bool) {
+        return operatorIDByAddress[_operAddr] != 0;
+    }
+
     function _onboardOperator(
         bool _optInForSocializingPool,
         string calldata _operatorName,
@@ -575,27 +576,6 @@ contract PermissionlessNodeRegistry is
         _sendValue(operatorAddress, collateralETH - PRE_DEPOSIT);
     }
 
-    // checks for keys lengths, and if pubkey is already present in stader protocol(not just permissionless pool)
-    function _validateKeys(
-        bytes calldata _pubkey,
-        bytes calldata _preDepositSignature,
-        bytes calldata _depositSignature,
-        address _poolFactory
-    ) private view {
-        if (_pubkey.length != PUBKEY_LENGTH) {
-            revert InvalidLengthOfPubkey();
-        }
-        if (_preDepositSignature.length != SIGNATURE_LENGTH) {
-            revert InvalidLengthOfSignature();
-        }
-        if (_depositSignature.length != SIGNATURE_LENGTH) {
-            revert InvalidLengthOfSignature();
-        }
-        if (IPoolFactory(_poolFactory).isExistingPubkey(_pubkey)) {
-            revert PubkeyAlreadyExist();
-        }
-    }
-
     // validate the input of `addValidatorKeys` function
     function _checkInputKeysCountAndCollateral(
         uint8 _poolId,
@@ -622,13 +602,14 @@ contract PermissionlessNodeRegistry is
         if (msg.value != keyCount * collateralETH) {
             revert InvalidBondEthValue();
         }
-        //check if operator has enough SD collateral for adding `keyCount` keys
-        bool isEnoughCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
-            msg.sender,
-            _poolId,
-            totalNonTerminalKeys + keyCount
-        );
-        if (!isEnoughCollateral) {
+        //checks if operator has enough SD collateral for adding `keyCount` keys
+        if (
+            !ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
+                msg.sender,
+                _poolId,
+                totalNonTerminalKeys + keyCount
+            )
+        ) {
             revert NotEnoughSDCollateral();
         }
     }
@@ -653,16 +634,6 @@ contract PermissionlessNodeRegistry is
         }
         if (!operatorStructById[_operatorId].active) {
             revert OperatorIsDeactivate();
-        }
-    }
-
-    // only valid name with string length limit
-    function _onlyValidName(string calldata _name) internal view {
-        if (bytes(_name).length == 0) {
-            revert EmptyNameString();
-        }
-        if (bytes(_name).length > staderConfig.getOperatorMaxNameLength()) {
-            revert NameCrossedMaxLength();
         }
     }
 
