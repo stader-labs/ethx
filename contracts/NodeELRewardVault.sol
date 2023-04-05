@@ -52,9 +52,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(
-            address(this).balance
-        );
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
 
         bool success;
 
@@ -71,8 +69,8 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    function _calculateRewardShare(uint256 _totalRewards)
-        internal
+    function calculateRewardShare(uint256 _totalRewards)
+        public
         view
         returns (
             uint256 _userShare,
