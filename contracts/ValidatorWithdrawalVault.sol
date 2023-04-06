@@ -61,7 +61,7 @@ contract ValidatorWithdrawalVault is
             revert InvalidRewardAmount();
         }
 
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(totalRewards);
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
@@ -70,8 +70,8 @@ contract ValidatorWithdrawalVault is
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
-    function _calculateRewardShare(uint256 _totalRewards)
-        internal
+    function calculateRewardShare(uint256 _totalRewards)
+        public
         view
         returns (
             uint256 userShare,
@@ -99,7 +99,7 @@ contract ValidatorWithdrawalVault is
         if (!_isWithdrawnValidator()) {
             revert ValidatorNotWithdrawn();
         }
-        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
+        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = _getPenaltyAmount();
         //TODO liquidate SD if operatorShare < penaltyAmount
@@ -112,6 +112,13 @@ contract ValidatorWithdrawalVault is
         _sendValue(_getNodeRecipient(), operatorShare);
         _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
+    }
+
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     function _calculateValidatorWithdrawalShare()
@@ -143,7 +150,7 @@ contract ValidatorWithdrawalVault is
             _userShare = usersETH;
         }
 
-        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = _calculateRewardShare(totalRewards);
+        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = calculateRewardShare(totalRewards);
         _userShare += userReward;
         _operatorShare += operatorReward;
         _protocolShare += protocolReward;
@@ -188,7 +195,7 @@ contract ValidatorWithdrawalVault is
     function _getNodeRecipient() internal view returns (address payable) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (, , , , , uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-        (, , , address payable operatorRewardAddress, ) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
+        address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
         return operatorRewardAddress;
     }
 

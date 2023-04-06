@@ -26,11 +26,7 @@ contract PermissionedNodeRegistry is
     using Math for uint256;
 
     uint8 public constant override poolId = 2;
-
     uint16 public override inputKeyCountLimit;
-
-    uint64 private constant PUBKEY_LENGTH = 48;
-    uint64 private constant SIGNATURE_LENGTH = 96;
     uint64 public override maxNonTerminalKeyPerOperator;
 
     IStaderConfig public staderConfig;
@@ -107,19 +103,15 @@ contract PermissionedNodeRegistry is
         whenNotPaused
         returns (address feeRecipientAddress)
     {
-        _onlyValidName(_operatorName);
+        address poolFactory = staderConfig.getPoolFactory();
+        IPoolFactory(poolFactory).onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_operatorRewardAddress);
         if (!permissionList[msg.sender]) {
             revert NotAPermissionedNodeOperator();
         }
-
-        //TODO sanjay move it to pool factory same as isPubkeyExit()
-        if (ISDCollateral(staderConfig.getSDCollateral()).poolIdByOperator(msg.sender) != 0) {
-            revert OperatorAlreadyAddedInOtherPool();
-        }
-        uint256 operatorId = operatorIDByAddress[msg.sender];
-        if (operatorId != 0) {
-            revert OperatorAlreadyOnBoarded();
+        //checks if operator already onboarded in any pool of protocol
+        if (IPoolFactory(poolFactory).isExistingOperator(msg.sender)) {
+            revert OperatorAlreadyOnBoardedInProtocol();
         }
         feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
         _onboardOperator(_operatorName, _operatorRewardAddress);
@@ -151,7 +143,7 @@ contract PermissionedNodeRegistry is
         address vaultFactory = staderConfig.getVaultFactory();
         address poolFactory = staderConfig.getPoolFactory();
         for (uint256 i = 0; i < keyCount; i++) {
-            _validateKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i], poolFactory);
+            IPoolFactory(poolFactory).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 poolId,
                 operatorId,
@@ -357,7 +349,7 @@ contract PermissionedNodeRegistry is
      * @param _rewardAddress new reward address
      */
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
-        _onlyValidName(_operatorName);
+        IPoolFactory(staderConfig.getPoolFactory()).onlyValidName(_operatorName);
         AddressLib.checkNonZeroAddress(_rewardAddress);
         _onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
@@ -504,6 +496,14 @@ contract PermissionedNodeRegistry is
     }
 
     /**
+     * @notice returns the operator reward address
+     * @param _operatorId operator ID
+     */
+    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
+        return operatorStructById[_operatorId].operatorRewardAddress;
+    }
+
+    /**
      * @dev Triggers stopped state.
      * should not be paused
      */
@@ -528,7 +528,7 @@ contract PermissionedNodeRegistry is
      * @return An array of `Validator` objects representing the active validators.
      */
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        public
+        external
         view
         override
         returns (Validator[] memory)
@@ -568,6 +568,11 @@ contract PermissionedNodeRegistry is
         return validatorIdByPubkey[_pubkey] != 0;
     }
 
+    // check for duplicate operator in permissioned node registry
+    function isExistingOperator(address _operAddr) external view override returns (bool) {
+        return operatorIDByAddress[_operAddr] != 0;
+    }
+
     // check for only PRE_DEPOSIT state validators
     function onlyPreDepositValidator(bytes calldata _pubkey) external view override {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
@@ -597,28 +602,6 @@ contract PermissionedNodeRegistry is
             nextQueuedValidatorIndexByOperatorId[_operatorId];
     }
 
-    //TODO sanjay move common method to pool factory
-    // checks for keys lengths, and if pubkey is already present in stader protocol
-    function _validateKeys(
-        bytes calldata _pubkey,
-        bytes calldata _preDepositSignature,
-        bytes calldata _depositSignature,
-        address _poolFactory
-    ) private view {
-        if (_pubkey.length != PUBKEY_LENGTH) {
-            revert InvalidLengthOfPubkey();
-        }
-        if (_preDepositSignature.length != SIGNATURE_LENGTH) {
-            revert InvalidLengthOfSignature();
-        }
-        if (_depositSignature.length != SIGNATURE_LENGTH) {
-            revert InvalidLengthOfSignature();
-        }
-        if (IPoolFactory(_poolFactory).isExistingPubkey(_pubkey)) {
-            revert PubkeyAlreadyExist();
-        }
-    }
-
     // validate the input of `addValidatorKeys` function
     function _checkInputKeysCountAndCollateral(
         uint8 _poolId,
@@ -640,15 +623,15 @@ contract PermissionedNodeRegistry is
             revert maxKeyLimitReached();
         }
 
-        //check if operator has enough SD collateral for adding `keyCount` keys
+        //checks if operator has enough SD collateral for adding `keyCount` keys
         //SD threshold for permissioned NOs is 0 for phase1
-        //TODO sanjay do not use this extra boolean
-        bool isEnoughCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
-            msg.sender,
-            _poolId,
-            totalNonTerminalKeys + keyCount
-        );
-        if (!isEnoughCollateral) {
+        if (
+            !ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
+                msg.sender,
+                _poolId,
+                totalNonTerminalKeys + keyCount
+            )
+        ) {
             revert NotEnoughSDCollateral();
         }
     }
@@ -682,17 +665,6 @@ contract PermissionedNodeRegistry is
             !(validator.status == ValidatorStatus.WITHDRAWN ||
                 validator.status == ValidatorStatus.FRONT_RUN ||
                 validator.status == ValidatorStatus.INVALID_SIGNATURE);
-    }
-
-    //TODO sanjay move common method to pool factory
-    // only valid name with string length limit
-    function _onlyValidName(string calldata _name) internal view {
-        if (bytes(_name).length == 0) {
-            revert EmptyNameString();
-        }
-        if (bytes(_name).length > staderConfig.getOperatorMaxNameLength()) {
-            revert NameCrossedMaxLength();
-        }
     }
 
     // decreases the pool total active validator count

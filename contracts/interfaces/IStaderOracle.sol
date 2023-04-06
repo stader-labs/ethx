@@ -163,6 +163,7 @@ interface IStaderOracle {
     );
     event WithdrawnValidatorsUpdated(uint256 block, address nodeRegistry, bytes[] pubkeys, uint256 time);
     event UpdatedSafeMode(bool safeMode);
+    event UpdatedStaderConfig(address staderConfig);
 
     // methods
 

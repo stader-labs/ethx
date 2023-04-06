@@ -452,7 +452,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit UpdatedSafeMode(_safeMode);
     }
 
-    function getCurrentRewardsIndex() external view override returns (uint256) {
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function getCurrentRewardsIndex() external view returns (uint256) {
         return rewardsData.index + 1; // rewardsData.index is the last updated index
     }
 
