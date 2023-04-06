@@ -54,6 +54,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /// @inheritdoc IStaderOracle

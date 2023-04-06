@@ -220,9 +220,10 @@ interface IStaderOracle {
     function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd) external;
 
     // setters
-
     // update the status of safeMode depending on network and protocol health
     function setSafeMode(bool _safeMode) external;
+
+    function updateStaderConfig(address _staderConfig) external;
 
     // getters
     function staderConfig() external view returns (IStaderConfig);

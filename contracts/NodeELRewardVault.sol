@@ -13,8 +13,8 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
-    uint8 public override poolId;
-    uint256 public override operatorId;
+    uint8 public override poolId; // No Setter as this is supposed to be set once
+    uint256 public override operatorId; // No Setter as this is supposed to be set once
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -36,6 +36,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         staderConfig = IStaderConfig(_staderConfig);
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /**
@@ -47,7 +48,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(
+            address(this).balance
+        );
 
         // TODO: Manoj is it safe to distribute rewards to all in a single method ?
         // Distribute rewards
@@ -69,8 +72,8 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    function calculateRewardShare(uint256 _totalRewards)
-        public
+    function _calculateRewardShare(uint256 _totalRewards)
+        internal
         view
         returns (
             uint256 _userShare,
