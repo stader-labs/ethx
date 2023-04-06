@@ -7,4 +7,6 @@ interface INodeELRewardVault {
     event UpdatedStaderConfig(address staderConfig);
 
     function withdraw() external;
+
+    function updateStaderConfig(address _staderConfig) external;
 }

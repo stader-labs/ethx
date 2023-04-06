@@ -53,11 +53,14 @@ interface IPermissionlessNodeRegistry {
 
     function queuedValidators(uint256) external view returns (uint256);
 
-    function operatorIDByAddress(address) external view returns (uint256);
-
     function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
-    function nodeELRewardVaultByOperator(address) external view returns (address);
+    function nodeELRewardVaultByOperatorId(uint256) external view returns (address);
+
+    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
+        external
+        view
+        returns (address[] memory);
 
     //Setters
 

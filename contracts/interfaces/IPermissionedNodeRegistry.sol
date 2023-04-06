@@ -47,8 +47,6 @@ interface IPermissionedNodeRegistry {
 
     function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);
 
-    function operatorIDByAddress(address) external view returns (uint256);
-
     function permissionList(address) external view returns (bool);
 
     function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);

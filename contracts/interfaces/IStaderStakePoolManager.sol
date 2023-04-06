@@ -41,6 +41,8 @@ interface IStaderStakePoolManager {
 
     function maxDeposit() external view returns (uint256);
 
+    function minDeposit() external view returns (uint256);
+
     function receiveExecutionLayerRewards() external payable;
 
     function receiveWithdrawVaultUserShare() external payable;

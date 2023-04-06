@@ -25,21 +25,15 @@ struct Operator {
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
     // Errors
-    error EmptyNameString();
-    error NameCrossedMaxLength();
-    error OperatorAlreadyAddedInOtherPool();
+    error OperatorAlreadyOnBoardedInProtocol();
     error maxKeyLimitReached();
     error OperatorNotOnBoarded();
-    error OperatorAlreadyOnBoarded();
     error InvalidKeyCount();
     error InvalidStartAndEndIndex();
     error OperatorIsDeactivate();
-    error InvalidLengthOfPubkey();
-    error InvalidLengthOfSignature();
     error MisMatchingInputKeysSize();
     error PageNumberIsZero();
     error UNEXPECTED_STATUS();
-    error PubkeyAlreadyExist();
     error PubkeyDoesNotExist();
     error NotEnoughSDCollateral();
 
@@ -123,5 +117,11 @@ interface INodeRegistry {
 
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 totalKeys);
 
+    function operatorIDByAddress(address) external view returns (uint256);
+
+    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
+
+    function isExistingOperator(address _operAddr) external view returns (bool);
 }

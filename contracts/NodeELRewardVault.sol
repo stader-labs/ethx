@@ -52,9 +52,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(
-            address(this).balance
-        );
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
 
         bool success;
 
@@ -65,14 +63,14 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         (success, ) = payable(staderConfig.getStaderTreasury()).call{value: protocolShare}('');
         require(success, 'Protocol share transfer failed');
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = getNodeRecipient().call{value: operatorShare}('');
+        (success, ) = getNodeRewardAddress().call{value: operatorShare}('');
         require(success, 'Operator share transfer failed');
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    function _calculateRewardShare(uint256 _totalRewards)
-        internal
+    function calculateRewardShare(uint256 _totalRewards)
+        public
         view
         returns (
             uint256 _userShare,
@@ -112,15 +110,14 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 
-    //TODO sanjay move to node registry
-    function getNodeRecipient() private view returns (address payable) {
+    function getNodeRewardAddress() private view returns (address payable) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
-        (, , , address payable operatorRewardAddress, ) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
+        address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
         return operatorRewardAddress;
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);

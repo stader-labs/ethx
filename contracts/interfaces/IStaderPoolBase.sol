@@ -16,6 +16,7 @@ interface IStaderPoolBase {
     event UpdatedCommissionFees(uint256 protocolFee, uint256 operatorFee);
     event ReceivedCollateralETH(uint256 amount);
     event UpdatedStaderConfig(address staderConfig);
+    event ReceivedInsuranceFund(uint256 amount);
     event TransferredETHToSSPMForDefectiveKeys(uint256 amount);
 
     // Setters
@@ -58,4 +59,6 @@ interface IStaderPoolBase {
     function getNodeRegistry() external view returns (address);
 
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
+
+    function isExistingOperator(address _operAddr) external view returns (bool);
 }

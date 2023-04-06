@@ -152,6 +152,10 @@ contract StaderStakePoolsManager is
         return _isVaultHealthy() ? staderConfig.getMaxDepositAmount() : 0;
     }
 
+    function minDeposit() public view override returns (uint256) {
+        return _isVaultHealthy() ? staderConfig.getMinDepositAmount() : 0;
+    }
+
     /** @dev See {IERC4626-previewDeposit}. */
     function previewDeposit(uint256 _assets) public view override returns (uint256) {
         return _convertToShares(_assets, Math.Rounding.Down);
@@ -163,10 +167,9 @@ contract StaderStakePoolsManager is
     }
 
     /** @dev See {IERC4626-deposit}. */
-    //TODO sanjay Why is this inconsistent?
     function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
-        if (assets > maxDeposit() || assets < staderConfig.getMinDepositAmount()) {
+        if (assets > maxDeposit() || assets < minDeposit()) {
             revert InvalidDepositAmount();
         }
         uint256 shares = previewDeposit(assets);

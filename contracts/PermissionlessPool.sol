@@ -185,13 +185,24 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @notice get all validator which has user balance on beacon chain
      */
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        public
+        external
         view
         override
         returns (Validator[] memory)
     {
         return
             INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
+    }
+
+    // returns array of nodeELRewardVault address for opt out of socializing pool operators
+    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
+        external
+        view
+        returns (address[] memory)
+    {
+        return
+            IPermissionlessNodeRegistry(staderConfig.getPermissionlessNodeRegistry())
+                .getAllSocializingPoolOptOutOperators(_pageNumber, _pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
@@ -222,8 +233,14 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         return staderConfig.getPermissionlessNodeRegistry();
     }
 
+    // check for duplicate keys in permissionless pool
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).isExistingPubkey(_pubkey);
+    }
+
+    // check for duplicate operator in permissionless pool
+    function isExistingOperator(address _operAddr) external view override returns (bool) {
+        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).isExistingOperator(_operAddr);
     }
 
     //update the address of staderConfig
