@@ -13,7 +13,6 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract UserWithdrawalManager is
     IUserWithdrawalManager,
@@ -22,7 +21,6 @@ contract UserWithdrawalManager is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    using SafeERC20 for IERC20;
     using Math for uint256;
     IStaderConfig public staderConfig;
     uint256 public override nextRequestIdToFinalize;
@@ -105,7 +103,9 @@ contract UserWithdrawalManager is
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
         }
-        IERC20(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
+        if (!ETHx(staderConfig.getETHxToken()).transferFrom(msg.sender, (address(this)), _ethXAmount)) {
+            revert ETHTransferFailed();
+        }
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
             payable(_owner),
@@ -226,7 +226,7 @@ contract UserWithdrawalManager is
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = _recipient.call{value: _amount}('');
         if (!success) {
-            revert TransferFailed();
+            revert ETHTransferFailed();
         }
     }
 }

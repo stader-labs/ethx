@@ -5,23 +5,19 @@ import './library/AddressLib.sol';
 
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderStakePoolManager.sol';
-import '../contracts/interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeERC20 for IERC20;
-
     bytes32 public constant MANAGER = keccak256('MANAGER');
 
-    IStaderConfig public staderConfig;
-    uint256 public nextLot;
-    uint256 public bidIncrement;
-    uint256 public duration;
+    IStaderConfig public override staderConfig;
+    uint256 public override nextLot;
+    uint256 public override bidIncrement;
+    uint256 public override duration;
 
     mapping(uint256 => LotItem) public lots;
 
@@ -55,18 +51,20 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit BidInrementUpdated(bidIncrement);
     }
 
-    function createLot(uint256 _sdAmount) external whenNotPaused onlyRole(MANAGER) {
+    function createLot(uint256 _sdAmount) external override whenNotPaused onlyRole(MANAGER) {
         lots[nextLot].startBlock = block.number;
         lots[nextLot].endBlock = block.number + duration;
         lots[nextLot].sdAmount = _sdAmount;
 
         LotItem storage lotItem = lots[nextLot];
 
-        IERC20(staderConfig.getStaderToken()).safeTransferFrom(msg.sender, address(this), _sdAmount);
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
+            revert SDTransferFailed();
+        }
         emit LotCreated(nextLot, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
     }
 
-    function addBid(uint256 lotId) external payable whenNotPaused {
+    function addBid(uint256 lotId) external payable override whenNotPaused {
         // reject payments of 0 ETH
         if (msg.value == 0) revert InSufficientETH();
 
@@ -84,18 +82,20 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit BidPlaced(lotId, msg.sender, totalUserBid);
     }
 
-    function claimSD(uint256 lotId) external {
+    function claimSD(uint256 lotId) external override {
         LotItem storage lotItem = lots[lotId];
         if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
         if (msg.sender != lotItem.highestBidder) revert notQualified();
         if (lotItem.sdClaimed) revert AlreadyClaimed();
 
         lotItem.sdClaimed = true;
-        IERC20(staderConfig.getStaderToken()).safeTransfer(lotItem.highestBidder, lotItem.sdAmount);
+        if (!IERC20(staderConfig.getStaderToken()).transfer(lotItem.highestBidder, lotItem.sdAmount)) {
+            revert SDTransferFailed();
+        }
         emit SDClaimed(lotId, lotItem.highestBidder, lotItem.sdAmount);
     }
 
-    function transferHighestBidToSSPM(uint256 lotId) external {
+    function transferHighestBidToSSPM(uint256 lotId) external override {
         LotItem storage lotItem = lots[lotId];
         uint256 ethAmount = lotItem.highestBidAmount;
 
@@ -108,7 +108,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit ETHClaimed(lotId, staderConfig.getStakePoolManager(), ethAmount);
     }
 
-    function extractNonBidSD(uint256 lotId) external {
+    function extractNonBidSD(uint256 lotId) external override {
         LotItem storage lotItem = lots[lotId];
         if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
         if (lotItem.highestBidAmount > 0) revert LotWasAuctioned();
@@ -116,11 +116,13 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
         uint256 _sdAmount = lotItem.sdAmount;
         lotItem.sdAmount = 0;
-        IERC20(staderConfig.getStaderToken()).safeTransfer(staderConfig.getStaderTreasury(), _sdAmount);
+        if (!IERC20(staderConfig.getStaderToken()).transfer(staderConfig.getStaderTreasury(), _sdAmount)) {
+            revert SDTransferFailed();
+        }
         emit UnsuccessfulSDAuctionExtracted(lotId, _sdAmount, staderConfig.getStaderTreasury());
     }
 
-    function withdrawUnselectedBid(uint256 lotId) external {
+    function withdrawUnselectedBid(uint256 lotId) external override {
         LotItem storage lotItem = lots[lotId];
         if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
         if (msg.sender == lotItem.highestBidder) revert BidWasSuccessful();
@@ -137,13 +139,13 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit BidWithdrawn(lotId, msg.sender, withdrawalAmount);
     }
 
-    function updateDuration(uint256 _duration) external onlyRole(MANAGER) {
+    function updateDuration(uint256 _duration) external override onlyRole(MANAGER) {
         if (_duration < 24 hours) revert ShortDuration();
         duration = _duration;
         emit AuctionDurationUpdated(duration);
     }
 
-    function updateBidIncrement(uint256 _bidIncrement) external onlyRole(MANAGER) {
+    function updateBidIncrement(uint256 _bidIncrement) external override onlyRole(MANAGER) {
         bidIncrement = _bidIncrement;
         emit BidInrementUpdated(_bidIncrement);
     }

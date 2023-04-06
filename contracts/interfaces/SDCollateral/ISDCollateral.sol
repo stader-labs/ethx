@@ -9,6 +9,7 @@ interface ISDCollateral {
     error InsufficientWithdrawableSD(uint256 withdrawableSD);
     error InvalidPoolId();
     error InvalidPoolLimit();
+    error SDTransferFailed();
 
     struct PoolThresholdInfo {
         uint256 minThreshold;

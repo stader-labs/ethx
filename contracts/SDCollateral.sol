@@ -13,7 +13,6 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract SDCollateral is
     ISDCollateral,
@@ -22,8 +21,6 @@ contract SDCollateral is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    using SafeERC20 for IERC20;
-
     bytes32 public constant MANAGER = keccak256('MANAGER');
     bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
@@ -59,7 +56,10 @@ contract SDCollateral is
         totalSDCollateral += _sdAmount;
         operatorSDBalance[operator] += _sdAmount;
 
-        IERC20(staderConfig.getStaderToken()).safeTransferFrom(operator, address(this), _sdAmount);
+        // cannot use safeERC20 as this contract is an upgradeable contract
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount)) {
+            revert SDTransferFailed();
+        }
     }
 
     function withdraw(uint256 _requestedSD) external override {
@@ -90,7 +90,10 @@ contract SDCollateral is
         totalSDCollateral -= _requestedSD;
         operatorSDBalance[operator] -= _requestedSD;
 
-        IERC20(staderConfig.getStaderToken()).safeTransfer(payable(operator), _requestedSD);
+        // cannot use safeERC20 as this contract is an upgradeable contract
+        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
+            revert SDTransferFailed();
+        }
     }
 
     /// @notice used to slash operator SD, incase of operator default

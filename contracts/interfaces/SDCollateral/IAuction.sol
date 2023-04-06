@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
+import '../IStaderConfig.sol';
+
 interface IAuction {
     // errors
     error InSufficientETH();
@@ -14,6 +16,7 @@ interface IAuction {
     error BidWasSuccessful();
     error InSufficientBid();
     error LotWasAuctioned();
+    error SDTransferFailed();
 
     // events
     event LotCreated(uint256 lotId, uint256 sdAmount, uint256 startBlock, uint256 endBlock, uint256 bidIncrement);
@@ -50,4 +53,18 @@ interface IAuction {
     function extractNonBidSD(uint256 lotId) external;
 
     function withdrawUnselectedBid(uint256 lotId) external;
+
+    // setters
+    function updateDuration(uint256 _duration) external;
+
+    function updateBidIncrement(uint256 _bidIncrement) external;
+
+    //getters
+    function staderConfig() external view returns (IStaderConfig);
+
+    function nextLot() external view returns (uint256);
+
+    function bidIncrement() external view returns (uint256);
+
+    function duration() external view returns (uint256);
 }

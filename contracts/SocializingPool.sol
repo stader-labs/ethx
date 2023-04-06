@@ -14,7 +14,6 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 contract SocializingPool is
     ISocializingPool,
@@ -23,8 +22,6 @@ contract SocializingPool is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    using SafeERC20 for IERC20;
-
     IStaderConfig public override staderConfig;
     uint256 public override totalELRewardsCollected;
     uint256 public override totalOperatorETHRewardsRemaining;
@@ -122,7 +119,9 @@ contract SocializingPool is
 
         if (totalAmountSD > 0) {
             totalOperatorSDRewardsRemaining -= totalAmountSD;
-            IERC20(staderConfig.getStaderToken()).safeTransfer(_operatorRewardsAddr, totalAmountSD);
+            if (!IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD)) {
+                revert SDTransferFailed();
+            }
         }
     }
 

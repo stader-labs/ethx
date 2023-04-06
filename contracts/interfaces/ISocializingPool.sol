@@ -8,6 +8,7 @@ import './IStaderConfig.sol';
 interface ISocializingPool {
     // errors
     error ETHTransferFailed(address recipient, uint256 amount);
+    error SDTransferFailed();
     error RewardAlreadyHandled();
     error RewardAlreadyClaimed(address operator, uint256 cycle);
     error InsufficientETHRewards();

@@ -99,7 +99,7 @@ contract ValidatorWithdrawalVault is
         if (!_isWithdrawnValidator()) {
             revert ValidatorNotWithdrawn();
         }
-        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
+        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = _calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = _getPenaltyAmount();
         //TODO liquidate SD if operatorShare < penaltyAmount
@@ -112,13 +112,6 @@ contract ValidatorWithdrawalVault is
         _sendValue(_getNodeRecipient(), operatorShare);
         _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
-    }
-
-    //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
-        staderConfig = IStaderConfig(_staderConfig);
-        emit UpdatedStaderConfig(_staderConfig);
     }
 
     function _calculateValidatorWithdrawalShare()
