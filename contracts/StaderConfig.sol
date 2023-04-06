@@ -31,10 +31,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
     bytes32 public constant STADER_PENALTY_FUND = keccak256('STADER_PENALTY_FUND');
 
-    bytes32 public constant TWAP_GETTER = keccak256('TWAP_GETTER');
     bytes32 public constant POOL_FACTORY = keccak256('POOL_FACTORY');
     bytes32 public constant POOL_SELECTOR = keccak256('POOL_SELECTOR');
-    bytes32 public constant PRICE_FETCHER = keccak256('PRICE_FETCHER');
     bytes32 public constant SD_COLLATERAL = keccak256('SD_COLLATERAL');
     bytes32 public constant VAULT_FACTORY = keccak256('VAULT_FACTORY');
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
@@ -173,20 +171,12 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     // Contracts Setters
 
-    function updateTWAPGetter(address _twapGetter) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(TWAP_GETTER, _twapGetter);
-    }
-
     function updatePoolFactory(address _poolFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setContract(POOL_FACTORY, _poolFactory);
     }
 
     function updatePoolSelector(address _poolSelector) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setContract(POOL_SELECTOR, _poolSelector);
-    }
-
-    function updatePriceFetcher(address _priceFetcher) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setContract(PRICE_FETCHER, _priceFetcher);
     }
 
     function updateSDCollateral(address _sdCollateral) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -330,20 +320,12 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Contracts Getters
 
-    function getTWAPGetter() external view override returns (address) {
-        return contractsMap[TWAP_GETTER];
-    }
-
     function getPoolFactory() external view override returns (address) {
         return contractsMap[POOL_FACTORY];
     }
 
     function getPoolSelector() external view override returns (address) {
         return contractsMap[POOL_SELECTOR];
-    }
-
-    function getPriceFetcher() external view override returns (address) {
-        return contractsMap[PRICE_FETCHER];
     }
 
     function getSDCollateral() external view override returns (address) {
