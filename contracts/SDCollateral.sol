@@ -44,6 +44,8 @@ contract SDCollateral is
 
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /**
@@ -60,6 +62,8 @@ contract SDCollateral is
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
+
+        emit SDDeposited(operator, _sdAmount);
     }
 
     function withdraw(uint256 _requestedSD) external override {
@@ -94,6 +98,8 @@ contract SDCollateral is
         if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
             revert SDTransferFailed();
         }
+
+        emit SDWithdraw(operator, _requestedSD);
     }
 
     /// @notice used to slash operator SD, incase of operator default
@@ -110,6 +116,8 @@ contract SDCollateral is
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
         IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
+
+        emit SDSlashed(_operator, staderConfig.getAuctionContract(), _sdToSlash);
     }
 
     /// @notice for max approval to auction contract for spending SD tokens
@@ -140,6 +148,8 @@ contract SDCollateral is
             withdrawThreshold: _withdrawThreshold,
             units: _units
         });
+
+        emit UpdatedPoolThreshold(_poolId, _minThreshold, _withdrawThreshold);
     }
 
     function updatePoolIdForOperator(uint8 _poolId, address _operator)
@@ -153,6 +163,8 @@ contract SDCollateral is
             revert InvalidPoolId();
         }
         poolIdByOperator[_operator] = _poolId;
+
+        emit UpdatedPoolIdForOperator(_poolId, _operator);
     }
 
     // GETTERS

@@ -18,7 +18,12 @@ interface ISDCollateral {
     error SDTransferFailed();
 
     // events
-    event UpdatedStaderConfig(address indexed _staderConfig);
+    event UpdatedStaderConfig(address indexed staderConfig);
+    event SDDeposited(address indexed operator, uint256 sdAmount);
+    event SDWithdraw(address indexed operator, uint256 requestedSD);
+    event SDSlashed(address indexed operator, address indexed auction, uint256 sdToSlash);
+    event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
+    event UpdatedPoolIdForOperator(uint8 poolId, address operator);
 
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;

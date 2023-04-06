@@ -90,6 +90,16 @@ contract SocializingPool is
         if (!success) {
             revert ETHTransferFailed(staderConfig.getStaderTreasury(), _rewardsData.protocolETHRewards);
         }
+
+        emit OperatorRewardsUpdated(
+            _rewardsData.operatorETHRewards,
+            totalOperatorETHRewardsRemaining,
+            _rewardsData.operatorSDRewards,
+            totalOperatorSDRewardsRemaining
+        );
+
+        emit UserETHRewardsTransferred(_rewardsData.userETHRewards);
+        emit ProtocolETHRewardsTransferred(_rewardsData.protocolETHRewards);
     }
 
     // TODO: fetch _operatorRewardAddr from operatorID, once sanjay merges the impl
@@ -123,6 +133,8 @@ contract SocializingPool is
                 revert SDTransferFailed();
             }
         }
+
+        emit OperatorRewardsClaimed(_operatorRewardsAddr, totalAmountETH, totalAmountSD);
     }
 
     function _claim(

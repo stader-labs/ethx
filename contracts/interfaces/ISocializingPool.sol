@@ -17,10 +17,20 @@ interface ISocializingPool {
     error InvalidProof(uint256 cycle, address operator);
 
     // events
-    event UpdatedStaderConfig(address indexed _staderConfig);
+    event UpdatedStaderConfig(address indexed staderConfig);
     event ETHReceived(address indexed sender, uint256 amount);
-    event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
-    event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
+    event UpdatedStaderValidatorRegistry(address indexed staderValidatorRegistry);
+    event UpdatedStaderOperatorRegistry(address indexed staderOperatorRegistry);
+    event OperatorRewardsClaimed(address indexed recipient, uint256 ethRewards, uint256 sdRewards);
+    event OperatorRewardsUpdated(
+        uint256 ethRewards,
+        uint256 totalETHRewards,
+        uint256 sdRewards,
+        uint256 totalSDRewards
+    );
+
+    event UserETHRewardsTransferred(uint256 ethRewards);
+    event ProtocolETHRewardsTransferred(uint256 ethRewards);
 
     // methods
     function handleRewards(RewardsData calldata _rewardsData) external;

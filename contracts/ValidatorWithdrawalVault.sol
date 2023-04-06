@@ -61,7 +61,7 @@ contract ValidatorWithdrawalVault is
             revert InvalidRewardAmount();
         }
 
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(totalRewards);
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
@@ -70,8 +70,8 @@ contract ValidatorWithdrawalVault is
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
-    function calculateRewardShare(uint256 _totalRewards)
-        public
+    function _calculateRewardShare(uint256 _totalRewards)
+        internal
         view
         returns (
             uint256 userShare,
@@ -143,7 +143,7 @@ contract ValidatorWithdrawalVault is
             _userShare = usersETH;
         }
 
-        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = calculateRewardShare(totalRewards);
+        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = _calculateRewardShare(totalRewards);
         _userShare += userReward;
         _operatorShare += operatorReward;
         _protocolShare += protocolReward;

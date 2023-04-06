@@ -47,6 +47,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
         _grantRole(MANAGER, _manager);
 
+        emit UpdatedStaderConfig(_staderConfig);
         emit AuctionDurationUpdated(duration);
         emit BidInrementUpdated(bidIncrement);
     }

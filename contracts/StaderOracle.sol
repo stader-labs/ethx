@@ -232,6 +232,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
+        // TODO: this consensus approach won't work for prices
         if (
             (submissionCount >= trustedNodesCount / 2 + 1) &&
             _sdPriceData.reportingBlockNumber > lastReportedSDPriceData.reportingBlockNumber
