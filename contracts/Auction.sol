@@ -139,6 +139,13 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit BidWithdrawn(lotId, msg.sender, withdrawalAmount);
     }
 
+    // SETTERS
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
     function updateDuration(uint256 _duration) external override onlyRole(MANAGER) {
         if (_duration < 24 hours) revert ShortDuration();
         duration = _duration;

@@ -19,6 +19,7 @@ interface IAuction {
     error SDTransferFailed();
 
     // events
+    event UpdatedStaderConfig(address indexed _staderConfig);
     event LotCreated(uint256 lotId, uint256 sdAmount, uint256 startBlock, uint256 endBlock, uint256 bidIncrement);
     event BidPlaced(uint256 lotId, address indexed bidder, uint256 bid);
     event BidWithdrawn(uint256 lotId, address indexed withdrawalAccount, uint256 amount);
@@ -55,6 +56,8 @@ interface IAuction {
     function withdrawUnselectedBid(uint256 lotId) external;
 
     // setters
+    function updateStaderConfig(address _staderConfig) external;
+
     function updateDuration(uint256 _duration) external;
 
     function updateBidIncrement(uint256 _bidIncrement) external;

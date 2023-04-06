@@ -4,6 +4,12 @@ pragma solidity ^0.8.16;
 import '../IStaderConfig.sol';
 
 interface ISDCollateral {
+    struct PoolThresholdInfo {
+        uint256 minThreshold;
+        uint256 withdrawThreshold;
+        string units;
+    }
+
     // errors
     error InsufficientSDCollateral(uint256 operatorSDCollateral);
     error InsufficientWithdrawableSD(uint256 withdrawableSD);
@@ -11,11 +17,8 @@ interface ISDCollateral {
     error InvalidPoolLimit();
     error SDTransferFailed();
 
-    struct PoolThresholdInfo {
-        uint256 minThreshold;
-        uint256 withdrawThreshold;
-        string units;
-    }
+    // events
+    event UpdatedStaderConfig(address indexed _staderConfig);
 
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
@@ -27,6 +30,8 @@ interface ISDCollateral {
     function maxApproveSD(address spenderAddr) external;
 
     // setters
+    function updateStaderConfig(address _staderConfig) external;
+
     function updatePoolThreshold(
         uint8 _poolId,
         uint256 _minThreshold,

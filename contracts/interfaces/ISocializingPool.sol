@@ -17,6 +17,7 @@ interface ISocializingPool {
     error InvalidProof(uint256 cycle, address operator);
 
     // events
+    event UpdatedStaderConfig(address indexed _staderConfig);
     event ETHReceived(address indexed sender, uint256 amount);
     event UpdatedStaderValidatorRegistry(address staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address staderOperatorRegistry);
@@ -31,6 +32,9 @@ interface ISocializingPool {
         bytes32[][] calldata _merkleProof,
         address operatorRewardsAddr
     ) external;
+
+    // setters
+    function updateStaderConfig(address _staderConfig) external;
 
     // getters
     function staderConfig() external view returns (IStaderConfig);

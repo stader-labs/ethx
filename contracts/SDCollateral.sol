@@ -119,6 +119,11 @@ contract SDCollateral is
     }
 
     // SETTERS
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
 
     function updatePoolThreshold(
         uint8 _poolId,

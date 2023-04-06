@@ -162,6 +162,13 @@ contract SocializingPool is
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
 
+    // SETTERS
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
     // GETTERS
 
     function getRewardDetails()
