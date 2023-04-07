@@ -183,7 +183,7 @@ contract SDCollateral is
 
     function getOperatorPoolId(address _operator) public view override returns (uint8 _poolId) {
         _poolId = poolIdByOperator[_operator];
-        // TODO: this check is not required as I am checking this while setting
+        // TODO: Discuss? this check is not required as I am checking this while setting
         if (_poolId == 0) revert InvalidPoolId();
     }
 

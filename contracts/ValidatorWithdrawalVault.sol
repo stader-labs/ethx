@@ -55,7 +55,7 @@ contract ValidatorWithdrawalVault is
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
 
-        // TODO: in below condition, let staderManager handle it, impl to byPass below revert for staderManager
+        // TODO: Discuss? in below condition, let staderManager handle it, impl to byPass below revert for staderManager
         if (totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
@@ -102,7 +102,7 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        //TODO liquidate SD if operatorShare < penaltyAmount
+        //TODO: Discuss? liquidate SD if operatorShare < penaltyAmount
 
         penaltyAmount = Math.min(penaltyAmount, operatorShare);
         uint256 userShare = userShare_prelim + penaltyAmount;

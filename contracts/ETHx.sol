@@ -13,7 +13,7 @@ import '@openzeppelin/contracts/security/Pausable.sol';
  * @author Stader Labs
  * @notice The ERC20 contract for the ETHx token
  */
-//TODO sanjay make this upgradable??
+//TODO: Discuss? sanjay make this upgradable??
 contract ETHx is ERC20, ERC20Burnable, AccessControl, Pausable {
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
