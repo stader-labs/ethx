@@ -216,6 +216,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
+    // TODO: revisit this impl, submissionKey, consensus needs modification
     function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
         if (_sdPriceData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();

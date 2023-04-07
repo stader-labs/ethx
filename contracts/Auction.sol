@@ -43,6 +43,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         staderConfig = IStaderConfig(_staderConfig);
         duration = _duration;
         bidIncrement = _bidIncrement;
+        nextLot = 1;
 
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
         _grantRole(MANAGER, _manager);
@@ -62,7 +63,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
-        emit LotCreated(nextLot, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
+        emit LotCreated(nextLot++, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
     }
 
     function addBid(uint256 lotId) external payable override whenNotPaused {
