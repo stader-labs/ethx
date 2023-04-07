@@ -73,12 +73,13 @@ contract SDCollateral is
         uint8 poolId = getOperatorPoolId(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
-        // TODO: Manoj update startIndex, endIndex
+        INodeRegistry nodeRegistry = INodeRegistry(IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId));
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operator);
         uint256 validatorCount = IPoolFactory(staderConfig.getPoolFactory()).getOperatorTotalNonTerminalKeys(
             poolId,
             operator,
             0,
-            1000
+            nodeRegistry.getOperatorTotalKeys(operatorId)
         );
 
         uint256 sdCumulativeThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);

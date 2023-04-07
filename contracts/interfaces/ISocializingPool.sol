@@ -40,7 +40,7 @@ interface ISocializingPool {
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof,
-        address operatorRewardsAddr
+        uint8 _poolId
     ) external;
 
     // setters

@@ -102,13 +102,15 @@ contract SocializingPool is
         emit ProtocolETHRewardsTransferred(_rewardsData.protocolETHRewards);
     }
 
-    // TODO: fetch _operatorRewardAddr from operatorID, once sanjay merges the impl
+    // Discuss? Shall we move operator -> poolID mapping to NodeRegistry or some other place
+    // currently it is in SDCollateral, which doesn't seem to be right place for it
+    // then we can read poolID directly, instead of passing
     function claim(
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof,
-        address _operatorRewardsAddr
+        uint8 _poolId
     ) external override nonReentrant whenNotPaused {
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
             _index,
@@ -118,23 +120,24 @@ contract SocializingPool is
             _merkleProof
         );
 
+        address operatorRewardsAddr = getNodeRecipient(msg.sender, _poolId);
         bool success;
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
-            (success, ) = payable(_operatorRewardsAddr).call{value: totalAmountETH}('');
+            (success, ) = payable(operatorRewardsAddr).call{value: totalAmountETH}('');
             if (!success) {
-                revert ETHTransferFailed(_operatorRewardsAddr, totalAmountETH);
+                revert ETHTransferFailed(operatorRewardsAddr, totalAmountETH);
             }
         }
 
         if (totalAmountSD > 0) {
             totalOperatorSDRewardsRemaining -= totalAmountSD;
-            if (!IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD)) {
+            if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardsAddr, totalAmountSD)) {
                 revert SDTransferFailed();
             }
         }
 
-        emit OperatorRewardsClaimed(_operatorRewardsAddr, totalAmountETH, totalAmountSD);
+        emit OperatorRewardsClaimed(operatorRewardsAddr, totalAmountETH, totalAmountSD);
     }
 
     function _claim(
@@ -172,6 +175,14 @@ contract SocializingPool is
         bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
+    }
+
+    function getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
+        INodeRegistry nodeRegistry = INodeRegistry(
+            IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId)
+        );
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(_operator);
+        return nodeRegistry.getOperatorRewardAddress(operatorId);
     }
 
     // SETTERS
