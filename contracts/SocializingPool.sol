@@ -156,13 +156,13 @@ contract SocializingPool is
             _totalAmountETH += _amountETH[i];
             claimedRewards[_operator][_index[i]] = true;
 
-            if (!_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
+            if (!verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
                 revert InvalidProof(_index[i], _operator);
             }
         }
     }
 
-    function _verifyProof(
+    function verifyProof(
         uint256 _index,
         address _operator,
         uint256 _amountSD,

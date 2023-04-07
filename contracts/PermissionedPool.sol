@@ -120,7 +120,7 @@ contract PermissionedPool is
                 index++
             ) {
                 uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
-                _preDepositOnBeaconChain(nodeRegistryAddress, vaultFactory, ethDepositContract, validatorId);
+                preDepositOnBeaconChain(nodeRegistryAddress, vaultFactory, ethDepositContract, validatorId);
             }
             IPermissionedNodeRegistry(nodeRegistryAddress).updateQueuedValidatorIndex(
                 i,
@@ -285,7 +285,7 @@ contract PermissionedPool is
     }
 
     // deposit `PRE_DEPOSIT_SIZE` for validator
-    function _preDepositOnBeaconChain(
+    function preDepositOnBeaconChain(
         address _nodeRegistryAddress,
         address _vaultFactory,
         address _ethDepositContract,

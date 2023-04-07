@@ -48,9 +48,7 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = _calculateRewardShare(
-            address(this).balance
-        );
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
 
         // TODO: Manoj is it safe to distribute rewards to all in a single method ?
         // Distribute rewards
@@ -64,16 +62,16 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         }
 
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = _getNodeRecipient().call{value: operatorShare}('');
+        (success, ) = getNodeRecipient().call{value: operatorShare}('');
         if (!success) {
-            revert ETHTransferFailed(_getNodeRecipient(), operatorShare);
+            revert ETHTransferFailed(getNodeRecipient(), operatorShare);
         }
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
 
-    function _calculateRewardShare(uint256 _totalRewards)
-        internal
+    function calculateRewardShare(uint256 _totalRewards)
+        public
         view
         returns (
             uint256 _userShare,
@@ -86,10 +84,10 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         }
 
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
-        uint256 collateralETH = _getCollateralETH();
+        uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
-        uint256 protocolFeeBps = _getProtocolFeeBps();
-        uint256 operatorFeeBps = _getOperatorFeeBps();
+        uint256 protocolFeeBps = getProtocolFeeBps();
+        uint256 operatorFeeBps = getOperatorFeeBps();
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
@@ -101,20 +99,20 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function _getProtocolFeeBps() internal view returns (uint256) {
+    function getProtocolFeeBps() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
     }
 
-    function _getOperatorFeeBps() internal view returns (uint256) {
+    function getOperatorFeeBps() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
     }
 
-    function _getCollateralETH() internal view returns (uint256) {
+    function getCollateralETH() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 
     //TODO sanjay move to node registry
-    function _getNodeRecipient() internal view returns (address payable) {
+    function getNodeRecipient() internal view returns (address payable) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
         return operatorRewardAddress;
