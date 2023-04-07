@@ -216,27 +216,22 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
-    // TODO: revisit this impl, submissionKey, consensus needs modification
     function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
         if (_sdPriceData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
 
         // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber, _sdPriceData.sdPriceInETH)
-        );
-        bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(_sdPriceData.reportingBlockNumber, _sdPriceData.sdPriceInETH)
-        );
+        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber));
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_sdPriceData.reportingBlockNumber));
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
         insertSDPrice(_sdPriceData.sdPriceInETH);
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
-        // TODO: this consensus approach won't work for prices
+        // price can be derived once more than 66% percent oracles have submitted price
         if (
-            (submissionCount >= trustedNodesCount / 2 + 1) &&
+            (submissionCount >= (2 * trustedNodesCount) / 3 + 1) &&
             _sdPriceData.reportingBlockNumber > lastReportedSDPriceData.reportingBlockNumber
         ) {
             lastReportedSDPriceData = _sdPriceData;
