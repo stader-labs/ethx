@@ -9,6 +9,7 @@ import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -98,13 +99,20 @@ contract ValidatorWithdrawalVault is
         if (!isWithdrawnValidator()) {
             revert ValidatorNotWithdrawn();
         }
-        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
+        (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        //TODO: Discuss? liquidate SD if operatorShare < penaltyAmount
 
-        penaltyAmount = Math.min(penaltyAmount, operatorShare);
-        uint256 userShare = userShare_prelim + penaltyAmount;
+        if (operatorShare < penaltyAmount) {
+            // TODO: Discuss? Manoj get operator address from operator ID,
+            // OR change SD collateral impl to operator ID
+            // should follow same everywhere
+            address operator;
+            ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(operator);
+            penaltyAmount = operatorShare;
+        }
+
+        uint256 userShare = userSharePrelim + penaltyAmount;
         operatorShare = operatorShare - penaltyAmount;
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();

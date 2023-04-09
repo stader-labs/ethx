@@ -69,17 +69,9 @@ contract SDCollateral is
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator];
 
+        uint256 validatorCount = getOperatorValidatorCount(operator);
         uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
-
-        INodeRegistry nodeRegistry = INodeRegistry(IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId));
-        uint256 operatorId = nodeRegistry.operatorIDByAddress(operator);
-        uint256 validatorCount = IPoolFactory(staderConfig.getPoolFactory()).getOperatorTotalNonTerminalKeys(
-            poolId,
-            operator,
-            0,
-            nodeRegistry.getOperatorTotalKeys(operatorId)
-        );
 
         uint256 sdCumulativeThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
         if (sdBalance <= sdCumulativeThreshold) {
@@ -102,12 +94,23 @@ contract SDCollateral is
         emit SDWithdraw(operator, _requestedSD);
     }
 
+    /// @notice slashes one validator equi. SD amount
+    /// @param _operator which operator's validator SD collateral to slash
+    function slashValidatorSD(address _operator) external override onlyRole(MANAGER) returns (uint256 _sdSlashed) {
+        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 validatorCount = getOperatorValidatorCount(_operator);
+        uint256 sdToSlash = sdBalance / validatorCount;
+        // TODO: Sanjay, Dheraj Does validatorCount decreses on slashing?
+        // else it will be a problem on next validator slash
+        return slashSD(_operator, sdToSlash);
+    }
+
     /// @notice used to slash operator SD, incase of operator default
     /// @dev do provide SD approval to auction contract using `maxApproveSD()`
     /// @param _operator which operator SD collateral to slash
     /// @param _sdToSlash amount of SD to slash
     function slashSD(address _operator, uint256 _sdToSlash)
-        external
+        public
         override
         onlyRole(MANAGER)
         returns (uint256 _sdSlashed)
@@ -216,5 +219,20 @@ contract SDCollateral is
     function convertETHToSD(uint256 _ethAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
         return (_ethAmount / sdPriceInETH);
+    }
+
+    // HELPER
+
+    function getOperatorValidatorCount(address operator) internal view returns (uint256 _validatorCount) {
+        uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
+
+        INodeRegistry nodeRegistry = INodeRegistry(IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId));
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operator);
+        _validatorCount = IPoolFactory(staderConfig.getPoolFactory()).getOperatorTotalNonTerminalKeys(
+            poolId,
+            operator,
+            0,
+            nodeRegistry.getOperatorTotalKeys(operatorId)
+        );
     }
 }

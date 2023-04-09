@@ -30,6 +30,8 @@ interface ISDCollateral {
 
     function withdraw(uint256 _requestedSD) external;
 
+    function slashValidatorSD(address _operator) external returns (uint256 _sdSlashed);
+
     function slashSD(address _operator, uint256 _sdToSlash) external returns (uint256 _sdSlashed);
 
     function maxApproveSD(address spenderAddr) external;
