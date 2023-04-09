@@ -109,18 +109,14 @@ contract SocializingPool is
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof,
-        uint8 _poolId
+        bytes32[][] calldata _merkleProof
     ) external override nonReentrant whenNotPaused {
-        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
-            _index,
-            msg.sender,
-            _amountSD,
-            _amountETH,
-            _merkleProof
-        );
+        address operator = msg.sender;
+        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
 
-        address operatorRewardsAddr = getNodeRecipient(msg.sender, _poolId);
+        uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
+        address operatorRewardsAddr = getNodeRecipient(operator, poolId);
+
         bool success;
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;

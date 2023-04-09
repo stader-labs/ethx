@@ -44,14 +44,10 @@ interface ISDCollateral {
         string memory _units
     ) external;
 
-    function updatePoolIdForOperator(uint8 _poolId, address _operator) external;
-
     // getters
     function staderConfig() external view returns (IStaderConfig);
 
     function totalSDCollateral() external view returns (uint256);
-
-    function poolIdByOperator(address) external view returns (uint8);
 
     function operatorSDBalance(address) external view returns (uint256);
 
@@ -60,8 +56,6 @@ interface ISDCollateral {
         uint8 _poolId,
         uint256 _numValidators
     ) external view returns (bool);
-
-    function getOperatorPoolId(address _operator) external view returns (uint8 _poolId);
 
     function getMinimumSDToBond(uint8 _poolId, uint256 _numValidator) external view returns (uint256 _minSDToBond);
 

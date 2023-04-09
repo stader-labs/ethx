@@ -39,8 +39,7 @@ interface ISocializingPool {
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof,
-        uint8 _poolId
+        bytes32[][] calldata _merkleProof
     ) external;
 
     // setters

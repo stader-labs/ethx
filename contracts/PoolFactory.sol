@@ -210,6 +210,15 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return false;
     }
 
+    function getOperatorPoolId(address _operAddr) external view override returns (uint8) {
+        for (uint8 i = 1; i <= poolCount; i++) {
+            if (IStaderPoolBase(pools[i].poolAddress).isExistingOperator(_operAddr)) {
+                return i;
+            }
+        }
+        revert OperatorIsNotOnboarded();
+    }
+
     // only valid name with string length limit
     function onlyValidName(string calldata _name) external view {
         if (bytes(_name).length == 0) {

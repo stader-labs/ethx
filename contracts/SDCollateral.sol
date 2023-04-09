@@ -27,7 +27,6 @@ contract SDCollateral is
     IStaderConfig public override staderConfig;
     uint256 public override totalSDCollateral;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
-    mapping(address => uint8) public override poolIdByOperator;
     mapping(address => uint256) public override operatorSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -70,7 +69,7 @@ contract SDCollateral is
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator];
 
-        uint8 poolId = getOperatorPoolId(operator);
+        uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
         INodeRegistry nodeRegistry = INodeRegistry(IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId));
@@ -113,6 +112,7 @@ contract SDCollateral is
         onlyRole(MANAGER)
         returns (uint256 _sdSlashed)
     {
+        // TODO: Manoj calculate sd_to_slash = 1/totalNonTerminalValidatorCount * totalSD_balance
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
@@ -153,21 +153,6 @@ contract SDCollateral is
         emit UpdatedPoolThreshold(_poolId, _minThreshold, _withdrawThreshold);
     }
 
-    function updatePoolIdForOperator(uint8 _poolId, address _operator)
-        external
-        override
-        onlyRole(NODE_REGISTRY_CONTRACT)
-    {
-        AddressLib.checkNonZeroAddress(_operator);
-        if (_poolId == 0) revert InvalidPoolId();
-        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
-            revert InvalidPoolId();
-        }
-        poolIdByOperator[_operator] = _poolId;
-
-        emit UpdatedPoolIdForOperator(_poolId, _operator);
-    }
-
     // GETTERS
 
     /// @notice checks if operator has enough SD collateral to onboard validators in a specific pool
@@ -180,12 +165,6 @@ contract SDCollateral is
         uint256 _numValidator
     ) external view override returns (bool) {
         return (getRemainingSDToBond(_operator, _poolId, _numValidator) == 0);
-    }
-
-    function getOperatorPoolId(address _operator) public view override returns (uint8 _poolId) {
-        _poolId = poolIdByOperator[_operator];
-        // TODO: Discuss? this check is not required as I am checking this while setting
-        if (_poolId == 0) revert InvalidPoolId();
     }
 
     /// @notice returns minimum amount of SD required to onboard _numValidators in a pool
