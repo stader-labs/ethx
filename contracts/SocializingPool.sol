@@ -102,9 +102,6 @@ contract SocializingPool is
         emit ProtocolETHRewardsTransferred(_rewardsData.protocolETHRewards);
     }
 
-    // Discuss? Shall we move operator -> poolID mapping to NodeRegistry or some other place
-    // currently it is in SDCollateral, which doesn't seem to be right place for it
-    // then we can read poolID directly, instead of passing
     function claim(
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
