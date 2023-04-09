@@ -55,7 +55,6 @@ contract ValidatorWithdrawalVault is
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
 
-        // TODO: Discuss? in below condition, let staderManager handle it, impl to byPass below revert for staderManager
         if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();

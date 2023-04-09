@@ -151,7 +151,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Accounts Setters
 
-    // TODO: Discuss? Manoj propose-accept two step required ??
     function updateAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
         address oldAdmin = getAdmin();
 
