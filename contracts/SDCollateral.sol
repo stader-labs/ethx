@@ -115,7 +115,6 @@ contract SDCollateral is
         onlyRole(MANAGER)
         returns (uint256 _sdSlashed)
     {
-        // TODO: Manoj calculate sd_to_slash = 1/totalNonTerminalValidatorCount * totalSD_balance
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
