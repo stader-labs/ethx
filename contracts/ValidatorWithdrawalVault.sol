@@ -7,7 +7,6 @@ import './library/ValidatorStatus.sol';
 import './interfaces/IPenalty.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
-import './interfaces/IStaderConfig.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
 
@@ -22,9 +21,10 @@ contract ValidatorWithdrawalVault is
     ReentrancyGuardUpgradeable
 {
     using Math for uint256;
-    uint8 public poolId;
-    IStaderConfig public staderConfig;
-    uint256 public validatorId;
+
+    uint8 public override poolId; // No Setter as this is supposed to be set once
+    IStaderConfig public override staderConfig;
+    uint256 public override validatorId; // No Setter as this is supposed to be set once
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -52,7 +52,7 @@ contract ValidatorWithdrawalVault is
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function distributeRewards() external nonReentrant {
+    function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
 
         // TODO: in below condition, let staderManager handle it, impl to byPass below revert for staderManager
@@ -65,8 +65,8 @@ contract ValidatorWithdrawalVault is
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        _sendValue(getNodeRewardAddress(), operatorShare);
-        _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        sendValue(getNodeRecipient(), operatorShare);
+        sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
@@ -95,7 +95,7 @@ contract ValidatorWithdrawalVault is
         userShare = _totalRewards - protocolShare - operatorShare;
     }
 
-    function settleFunds() external nonReentrant {
+    function settleFunds() external override nonReentrant {
         if (!isWithdrawnValidator()) {
             revert ValidatorNotWithdrawn();
         }
@@ -109,16 +109,9 @@ contract ValidatorWithdrawalVault is
         operatorShare = operatorShare - penaltyAmount;
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        _sendValue(getNodeRewardAddress(), operatorShare);
-        _sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        sendValue(getNodeRecipient(), operatorShare);
+        sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
-    }
-
-    //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
-        staderConfig = IStaderConfig(_staderConfig);
-        emit UpdatedStaderConfig(_staderConfig);
     }
 
     function calculateValidatorWithdrawalShare()
@@ -156,7 +149,14 @@ contract ValidatorWithdrawalVault is
         _protocolShare += protocolReward;
     }
 
-    function _sendValue(address payable _recipient, uint256 _amount) internal {
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function sendValue(address payable _recipient, uint256 _amount) internal {
         if (address(this).balance < _amount) {
             revert InsufficientBalance();
         }
@@ -165,12 +165,12 @@ contract ValidatorWithdrawalVault is
         if (_amount > 0) {
             (bool success, ) = _recipient.call{value: _amount}('');
             if (!success) {
-                revert TransferFailed();
+                revert ETHTransferFailed(_recipient, _amount);
             }
         }
     }
 
-    // getters
+    // HELPER METHODS
 
     function getProtocolFeeBps() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
@@ -181,24 +181,24 @@ contract ValidatorWithdrawalVault is
         return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
     }
 
-    function getCollateralETH() private view returns (uint256) {
+    function getCollateralETH() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 
-    function getNodeRewardAddress() private view returns (address payable) {
+    function getNodeRecipient() internal view returns (address payable) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (, , , , , uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
         return operatorRewardAddress;
     }
 
-    function getPenaltyAmount() private returns (uint256) {
+    function getPenaltyAmount() internal returns (uint256) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
     }
 
-    function isWithdrawnValidator() private view returns (bool) {
+    function isWithdrawnValidator() internal view returns (bool) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (ValidatorStatus status, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return status == ValidatorStatus.WITHDRAWN;

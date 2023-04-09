@@ -3,7 +3,6 @@ pragma solidity ^0.8.16;
 
 import './library/AddressLib.sol';
 
-import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
@@ -14,7 +13,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
-    IStaderConfig public staderConfig;
+    IStaderConfig public override staderConfig;
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
@@ -26,7 +25,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override latestMissedAttestationConsensusIndex;
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
     // indicate the health of protocol on beacon chain
     // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
@@ -55,6 +54,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /// @inheritdoc IStaderOracle
@@ -120,7 +120,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
                 _exchangeRate.totalETHXSupply
             )
         );
-        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit balances submitted event
         emit BalancesSubmitted(
             msg.sender,
@@ -200,7 +200,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             block.number
         );
 
-        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
             // Update merkle root
@@ -216,8 +216,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
+    // TODO: revisit this impl, submissionKey, consensus needs modification
     function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
-        require(_sdPriceData.reportingBlockNumber < block.number, 'Price can not be submitted for a future block');
+        if (_sdPriceData.reportingBlockNumber >= block.number) {
+            revert ReportingFutureBlockData();
+        }
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
@@ -226,17 +229,18 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(_sdPriceData.reportingBlockNumber, _sdPriceData.sdPriceInETH)
         );
-        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
-        _insertSDPrice(_sdPriceData.sdPriceInETH);
+        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        insertSDPrice(_sdPriceData.sdPriceInETH);
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
+        // TODO: this consensus approach won't work for prices
         if (
             (submissionCount >= trustedNodesCount / 2 + 1) &&
             _sdPriceData.reportingBlockNumber > lastReportedSDPriceData.reportingBlockNumber
         ) {
             lastReportedSDPriceData = _sdPriceData;
-            lastReportedSDPriceData.sdPriceInETH = _getMedianValue(sdPrices);
+            lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
             uint256 len = sdPrices.length;
             while (len > 0) {
                 sdPrices.pop();
@@ -248,7 +252,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
-    function _insertSDPrice(uint256 _sdPrice) internal {
+    function insertSDPrice(uint256 _sdPrice) internal {
         sdPrices.push(_sdPrice);
         if (sdPrices.length == 1) return;
 
@@ -260,7 +264,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         sdPrices[j] = _sdPrice;
     }
 
-    function _getMedianValue(uint256[] storage dataArray) internal view returns (uint256 _medianValue) {
+    function getMedianValue(uint256[] storage dataArray) internal view returns (uint256 _medianValue) {
         uint256 len = dataArray.length;
         return (dataArray[(len - 1) / 2] + dataArray[len / 2]) / 2;
     }
@@ -296,7 +300,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             )
         );
 
-        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit validator stats submitted event
         emit ValidatorStatsSubmitted(
             msg.sender,
@@ -341,7 +345,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
 
         // Ensure the pubkeys array is sorted
-        if (!_isSorted(_withdrawnValidators.sortedPubkeys)) {
+        if (!isSorted(_withdrawnValidators.sortedPubkeys)) {
             revert PubkeysNotSorted();
         }
 
@@ -363,7 +367,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             )
         );
 
-        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit withdrawn validators submitted event
         emit WithdrawnValidatorsSubmitted(
             msg.sender,
@@ -390,12 +394,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
-    /**
-     * @notice store the missed attestation penalty strike on validator
-     * @dev _missedAttestationPenaltyData.index should not be zero
-     * @param _mapd missed attestation penalty data
-     */
-    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd) external trustedNodeOnly {
+    /// @inheritdoc IStaderOracle
+    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd)
+        external
+        override
+        trustedNodeOnly
+    {
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -421,7 +425,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, _mapd.pageNumber, _mapd.pubkeys));
 
         missedAttestationDataByTrustedNode[msg.sender] = MissedAttestationReportInfo(_mapd.index, _mapd.pageNumber);
-        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         // Emit missed attestation penalty submitted event
         emit MissedAttestationPenaltySubmitted(
@@ -462,7 +466,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return rewardsData.index + 1; // rewardsData.index is the last updated index
     }
 
-    function getPubkeyRoot(bytes calldata _pubkey) public pure returns (bytes32) {
+    function getPubkeyRoot(bytes calldata _pubkey) public pure override returns (bytes32) {
         if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
             revert InvalidPubkeyLength();
         }
@@ -479,7 +483,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return (exchangeRate);
     }
 
-    function _attestSubmission(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
+    function attestSubmission(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
         internal
         returns (uint8 _submissionCount)
     {
@@ -495,7 +499,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// @notice Check if the array of pubkeys is sorted.
     /// @param pubkeys The array of pubkeys to check.
     /// @return True if the array is sorted, false otherwise.
-    function _isSorted(bytes[] memory pubkeys) internal pure returns (bool) {
+    function isSorted(bytes[] memory pubkeys) internal pure returns (bool) {
         for (uint256 i = 0; i < pubkeys.length - 1; i++) {
             if (keccak256(pubkeys[i]) > keccak256(pubkeys[i + 1])) {
                 return false;
@@ -504,7 +508,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         return true;
     }
 
-    function getSDPriceInETH() external view returns (uint256) {
+    function getSDPriceInETH() external view override returns (uint256) {
         return lastReportedSDPriceData.sdPriceInETH;
     }
 

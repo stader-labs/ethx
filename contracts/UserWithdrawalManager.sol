@@ -103,9 +103,8 @@ contract UserWithdrawalManager is
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
         }
-        //TODO sanjay user safeTransfer, can not use only way is to make ETHx token upgradable
         if (!ETHx(staderConfig.getETHxToken()).transferFrom(msg.sender, (address(this)), _ethXAmount)) {
-            revert TokenTransferFailed();
+            revert ETHTransferFailed();
         }
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
@@ -183,8 +182,8 @@ contract UserWithdrawalManager is
             revert RequestAlreadyRedeemed(_requestId);
         }
         uint256 etherToTransfer = userRequest.ethFinalized;
-        _deleteRequestId(_requestId, userRequest.owner);
-        _sendValue(userRequest.owner, etherToTransfer);
+        deleteRequestId(_requestId, userRequest.owner);
+        sendValue(userRequest.owner, etherToTransfer);
         emit RequestRedeemed(msg.sender, userRequest.owner, etherToTransfer);
     }
 
@@ -205,7 +204,7 @@ contract UserWithdrawalManager is
     }
 
     // delete entry from userWithdrawRequests mapping and in requestIdsByUserAddress mapping
-    function _deleteRequestId(uint256 _requestId, address _owner) internal {
+    function deleteRequestId(uint256 _requestId, address _owner) internal {
         delete (userWithdrawRequests[_requestId]);
         uint256 userRequestCount = requestIdsByUserAddress[_owner].length;
         uint256[] storage requestIds = requestIdsByUserAddress[_owner];
@@ -219,7 +218,7 @@ contract UserWithdrawalManager is
         revert CannotFindRequestId();
     }
 
-    function _sendValue(address payable _recipient, uint256 _amount) internal {
+    function sendValue(address payable _recipient, uint256 _amount) internal {
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }
@@ -227,7 +226,7 @@ contract UserWithdrawalManager is
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = _recipient.call{value: _amount}('');
         if (!success) {
-            revert TransferFailed();
+            revert ETHTransferFailed();
         }
     }
 }

@@ -47,13 +47,9 @@ interface IStaderConfig {
     function getStaderPenaltyFund() external view returns (address);
 
     // Contracts
-    function getTWAPGetter() external view returns (address);
-
     function getPoolFactory() external view returns (address);
 
     function getPoolSelector() external view returns (address);
-
-    function getPriceFetcher() external view returns (address);
 
     function getSDCollateral() external view returns (address);
 

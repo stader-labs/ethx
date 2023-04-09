@@ -5,7 +5,6 @@ pragma solidity ^0.8.16;
 import './library/AddressLib.sol';
 
 import './interfaces/IPoolFactory.sol';
-import './interfaces/IStaderConfig.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
@@ -23,11 +22,11 @@ contract SocializingPool is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    IStaderConfig public staderConfig;
+    IStaderConfig public override staderConfig;
     uint256 public override totalELRewardsCollected;
     uint256 public override totalOperatorETHRewardsRemaining;
     uint256 public override totalOperatorSDRewardsRemaining;
-    uint256 public initialBlock;
+    uint256 public override initialBlock;
 
     bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
 
@@ -60,39 +59,22 @@ contract SocializingPool is
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function getRewardDetails()
-        external
-        view
-        returns (
-            uint256 currentIndex,
-            uint256 currentStartBlock,
-            uint256 currentEndBlock,
-            uint256 nextIndex,
-            uint256 nextStartBlock,
-            uint256 nextEndBlock
-        )
-    {
-        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
-        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
-        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
-        currentEndBlock = currentStartBlock + cycleDuration - 1;
-        nextIndex = currentIndex + 1;
-        nextStartBlock = currentEndBlock + 1;
-        nextEndBlock = nextStartBlock + cycleDuration - 1;
-    }
-
     function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
-        require(!handledRewards[_rewardsData.index], 'Rewards already handled for this cycle');
-        require(
-            _rewardsData.operatorETHRewards + _rewardsData.userETHRewards + _rewardsData.protocolETHRewards <=
-                address(this).balance - totalOperatorETHRewardsRemaining,
-            'insufficient eth rewards'
-        );
-        require(
-            _rewardsData.operatorSDRewards <=
-                IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining,
-            'insufficient sd rewards'
-        );
+        if (handledRewards[_rewardsData.index]) {
+            revert RewardAlreadyHandled();
+        }
+        if (
+            _rewardsData.operatorETHRewards + _rewardsData.userETHRewards + _rewardsData.protocolETHRewards >
+            address(this).balance - totalOperatorETHRewardsRemaining
+        ) {
+            revert InsufficientETHRewards();
+        }
+        if (
+            _rewardsData.operatorSDRewards >
+            IERC20(staderConfig.getStaderToken()).balanceOf(address(this)) - totalOperatorSDRewardsRemaining
+        ) {
+            revert InsufficientSDRewards();
+        }
 
         handledRewards[_rewardsData.index] = true;
         totalOperatorETHRewardsRemaining += _rewardsData.operatorETHRewards;
@@ -100,10 +82,24 @@ contract SocializingPool is
 
         bool success;
         (success, ) = payable(staderConfig.getStakePoolManager()).call{value: _rewardsData.userETHRewards}('');
-        require(success, 'User ETH rewards transfer failed');
+        if (!success) {
+            revert ETHTransferFailed(staderConfig.getStakePoolManager(), _rewardsData.userETHRewards);
+        }
 
         (success, ) = payable(staderConfig.getStaderTreasury()).call{value: _rewardsData.protocolETHRewards}('');
-        require(success, 'Protocol ETH rewards transfer failed');
+        if (!success) {
+            revert ETHTransferFailed(staderConfig.getStaderTreasury(), _rewardsData.protocolETHRewards);
+        }
+
+        emit OperatorRewardsUpdated(
+            _rewardsData.operatorETHRewards,
+            totalOperatorETHRewardsRemaining,
+            _rewardsData.operatorSDRewards,
+            totalOperatorSDRewardsRemaining
+        );
+
+        emit UserETHRewardsTransferred(_rewardsData.userETHRewards);
+        emit ProtocolETHRewardsTransferred(_rewardsData.protocolETHRewards);
     }
 
     // TODO: fetch _operatorRewardAddr from operatorID, once sanjay merges the impl
@@ -126,16 +122,19 @@ contract SocializingPool is
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
             (success, ) = payable(_operatorRewardsAddr).call{value: totalAmountETH}('');
-            require(success, 'Operator ETH rewards transfer failed');
+            if (!success) {
+                revert ETHTransferFailed(_operatorRewardsAddr, totalAmountETH);
+            }
         }
 
         if (totalAmountSD > 0) {
             totalOperatorSDRewardsRemaining -= totalAmountSD;
-            // TODO: cannot use safeTransfer as safeERC20 uses a library named Address and which conflicts with our library 'Address'
-            // we should rename our library 'Address'
-            success = IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD);
-            require(success, 'Protocol ETH rewards transfer failed');
+            if (!IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD)) {
+                revert SDTransferFailed();
+            }
         }
+
+        emit OperatorRewardsClaimed(_operatorRewardsAddr, totalAmountETH, totalAmountSD);
     }
 
     function _claim(
@@ -146,18 +145,24 @@ contract SocializingPool is
         bytes32[][] calldata _merkleProof
     ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
         for (uint256 i = 0; i < _index.length; i++) {
-            require(_amountSD[i] > 0 || _amountETH[i] > 0, 'Invalid amount');
-            require(!claimedRewards[_operator][_index[i]], 'Already claimed');
+            if (_amountSD[i] == 0 && _amountETH[i] == 0) {
+                revert InvalidAmount();
+            }
+            if (claimedRewards[_operator][_index[i]]) {
+                revert RewardAlreadyClaimed(_operator, _index[i]);
+            }
 
             _totalAmountSD += _amountSD[i];
             _totalAmountETH += _amountETH[i];
             claimedRewards[_operator][_index[i]] = true;
 
-            require(_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i]), 'Invalid proof');
+            if (!verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
+                revert InvalidProof(_index[i], _operator);
+            }
         }
     }
 
-    function _verifyProof(
+    function verifyProof(
         uint256 _index,
         address _operator,
         uint256 _amountSD,
@@ -167,5 +172,36 @@ contract SocializingPool is
         bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
+    }
+
+    // SETTERS
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    // GETTERS
+
+    function getRewardDetails()
+        external
+        view
+        override
+        returns (
+            uint256 currentIndex,
+            uint256 currentStartBlock,
+            uint256 currentEndBlock,
+            uint256 nextIndex,
+            uint256 nextStartBlock,
+            uint256 nextEndBlock
+        )
+    {
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
+        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
+        currentEndBlock = currentStartBlock + cycleDuration - 1;
+        nextIndex = currentIndex + 1;
+        nextStartBlock = currentEndBlock + 1;
+        nextEndBlock = nextStartBlock + cycleDuration - 1;
     }
 }

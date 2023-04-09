@@ -141,7 +141,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistryAddress).nextQueuedValidatorIndex();
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
-            _fullDepositOnBeaconChain(
+            fullDepositOnBeaconChain(
                 nodeRegistryAddress,
                 vaultFactoryAddress,
                 ethDepositContract,
@@ -275,7 +275,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             );
     }
 
-    function _fullDepositOnBeaconChain(
+    function fullDepositOnBeaconChain(
         address _nodeRegistryAddress,
         address _vaultFactoryAddress,
         address _ethDepositContract,

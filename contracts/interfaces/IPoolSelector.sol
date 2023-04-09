@@ -6,8 +6,6 @@ interface IPoolSelector {
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
     error InvalidSumOfPoolWeights();
-    error NotEnoughInitializedValidators();
-    error InputBatchLimitIsIdenticalToCurrent();
 
     // Events
 

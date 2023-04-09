@@ -34,7 +34,7 @@ interface INodeRegistry {
     error MisMatchingInputKeysSize();
     error PageNumberIsZero();
     error UNEXPECTED_STATUS();
-    error PubkeyDoesNotExist();
+    error PubkeyAlreadyExist();
     error NotEnoughSDCollateral();
 
     // Events
