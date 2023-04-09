@@ -1,26 +1,46 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
-
 import './library/AddressLib.sol';
 
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol';
-import '@openzeppelin/contracts/access/AccessControl.sol';
-import '@openzeppelin/contracts/security/Pausable.sol';
+import './interfaces/IStaderConfig.sol';
+
+import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
 /**
  * @title ETHx token Contract
  * @author Stader Labs
  * @notice The ERC20 contract for the ETHx token
  */
-//TODO: Discuss? sanjay make this upgradable??
-contract ETHx is ERC20, ERC20Burnable, AccessControl, Pausable {
+
+contract ETHx is
+    Initializable,
+    ERC20Upgradeable,
+    ERC20BurnableUpgradeable,
+    PausableUpgradeable,
+    AccessControlUpgradeable
+{
+    IStaderConfig staderConfig;
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
 
-    constructor(address _admin) ERC20('ETHx', 'ETHx') {
-        AddressLib.checkNonZeroAddress(_admin);
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _staderConfig) public initializer {
+        AddressLib.checkNonZeroAddress(_staderConfig);
+
+        __ERC20_init('Liquid Staking ETH', 'ETHx');
+        __ERC20Burnable_init();
+        __Pausable_init();
+        __AccessControl_init();
+
+        staderConfig = IStaderConfig(_staderConfig);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
@@ -41,11 +61,16 @@ contract ETHx is ERC20, ERC20Burnable, AccessControl, Pausable {
         _burn(account, amount);
     }
 
-    function pause() public onlyRole(PAUSER_ROLE) whenNotPaused {
-        _pause();
+    /// @notice Flips the pause state
+    function togglePause() external onlyRole(PAUSER_ROLE) {
+        paused() ? _unpause() : _pause();
     }
 
-    function unpause() public onlyRole(PAUSER_ROLE) {
-        _unpause();
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override whenNotPaused {
+        super._beforeTokenTransfer(from, to, amount);
     }
 }
