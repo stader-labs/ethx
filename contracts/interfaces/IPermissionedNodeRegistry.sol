@@ -36,10 +36,6 @@ interface IPermissionedNodeRegistry {
 
     function totalActiveOperatorCount() external view returns (uint256);
 
-    function STADER_MANAGER() external view returns (bytes32);
-
-    function STADER_OPERATOR() external view returns (bytes32);
-
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
     function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);

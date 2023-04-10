@@ -20,10 +20,6 @@ interface IPermissionlessNodeRegistry {
     event TransferredCollateralToPool(uint256 amount);
 
     //Getters
-    function STADER_MANAGER() external view returns (bytes32);
-
-    function STADER_OPERATOR() external returns (bytes32);
-
     function poolId() external view returns (uint8);
 
     function nextOperatorId() external view returns (uint256);

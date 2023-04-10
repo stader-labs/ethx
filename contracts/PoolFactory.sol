@@ -18,8 +18,6 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     uint64 private constant SIGNATURE_LENGTH = 96;
     IStaderConfig public staderConfig;
 
-    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -40,7 +38,11 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
      * @param _poolAddress The address of the new pool contract.
      */
     //TODO sanjay make sure pools are added in same order of poolId
-    function addNewPool(string calldata _poolName, address _poolAddress) external override onlyRole(STADER_MANAGER) {
+    function addNewPool(string calldata _poolName, address _poolAddress)
+        external
+        override
+        onlyRole(staderConfig.STADER_MANAGER())
+    {
         if (bytes(_poolName).length == 0) {
             revert EmptyString();
         }

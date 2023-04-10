@@ -21,9 +21,6 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     IStaderConfig public staderConfig;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
 
-    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
-    bytes32 public constant STADER_OPERATOR = keccak256('STADER_OPERATOR');
-
     //TODO make sure weight are in order of pool Id
     mapping(uint8 => uint256) public poolWeights;
 
@@ -130,7 +127,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @dev only admin can call
      * @param _poolTargets new target weights of pools
      */
-    function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(STADER_MANAGER) {
+    function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(staderConfig.STADER_MANAGER()) {
         if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length) {
             revert InvalidNewTargetInput();
         }
@@ -146,7 +143,10 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         }
     }
 
-    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(STADER_OPERATOR) {
+    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize)
+        external
+        onlyRole(staderConfig.STADER_OPERATOR())
+    {
         POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
         emit UpdatedPoolAllocationMaxSize(_poolAllocationMaxSize);
     }

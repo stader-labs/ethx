@@ -23,8 +23,6 @@ interface IStaderStakePoolManager {
 
     function depositedPooledETH() external view returns (uint256);
 
-    function STADER_MANAGER() external view returns (bytes32);
-
     function deposit(address _receiver) external payable returns (uint256);
 
     function previewDeposit(uint256 _assets) external view returns (uint256);

@@ -11,7 +11,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
-    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -30,7 +29,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
     }
 
     // `STADER_MANAGER` can withdraw access fund
-    function withdrawFund(uint256 _amount) external override onlyRole(STADER_MANAGER) {
+    function withdrawFund(uint256 _amount) external override onlyRole(staderConfig.STADER_MANAGER()) {
         if (address(this).balance < _amount || _amount == 0) {
             revert InvalidAmountProvided();
         }

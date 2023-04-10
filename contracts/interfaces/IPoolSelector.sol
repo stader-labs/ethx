@@ -19,10 +19,6 @@ interface IPoolSelector {
     // returns the ID of the pool with excess supply
     function poolIdForExcessDeposit() external view returns (uint8);
 
-    function STADER_MANAGER() external view returns (bytes32);
-
-    function STADER_OPERATOR() external view returns (bytes32);
-
     function computePoolAllocationForDeposit(uint256 _pooledEth)
         external
         returns (uint256[] memory poolWiseValidatorsToDeposit);

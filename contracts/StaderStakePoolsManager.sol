@@ -35,8 +35,6 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
 
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -210,7 +208,7 @@ contract StaderStakePoolsManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(STADER_MANAGER) {
+    function pause() external onlyRole(staderConfig.STADER_MANAGER()) {
         _pause();
     }
 

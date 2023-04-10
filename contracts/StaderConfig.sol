@@ -49,7 +49,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
 
     //Roles
-    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant override STADER_OPERATOR = keccak256('STADER_OPERATOR');
 
     bytes32 public constant SD = keccak256('SD');
     bytes32 public constant WETH = keccak256('WETH');

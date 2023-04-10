@@ -15,6 +15,11 @@ interface IStaderConfig {
     event SetContract(bytes32, address);
     event SetToken(bytes32, address);
 
+    //Roles
+    function STADER_MANAGER() external view returns (bytes32);
+
+    function STADER_OPERATOR() external view returns (bytes32);
+
     // Constants
     function getStakedEthPerNode() external view returns (uint256);
 

@@ -39,9 +39,6 @@ contract PermissionlessNodeRegistry is
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
 
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
-    bytes32 public constant override STADER_OPERATOR = keccak256('STADER_OPERATOR');
-
     // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
     // mapping of validator public key and validator Id
@@ -294,7 +291,11 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
-    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override onlyRole(STADER_OPERATOR) {
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit)
+        external
+        override
+        onlyRole(staderConfig.STADER_OPERATOR())
+    {
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
@@ -307,7 +308,7 @@ contract PermissionlessNodeRegistry is
     function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator)
         external
         override
-        onlyRole(STADER_MANAGER)
+        onlyRole(staderConfig.STADER_MANAGER())
     {
         maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
         emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
@@ -423,7 +424,7 @@ contract PermissionlessNodeRegistry is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external override onlyRole(STADER_MANAGER) {
+    function pause() external override onlyRole(staderConfig.STADER_MANAGER()) {
         _pause();
     }
 

@@ -38,9 +38,6 @@ contract PermissionedNodeRegistry is
     uint256 public override operatorIdForExcessDeposit;
     uint256 public override totalActiveOperatorCount;
 
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
-    bytes32 public constant override STADER_OPERATOR = keccak256('STADER_OPERATOR');
-
     // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
     // mapping of bytes public key and validator Id
@@ -81,7 +78,11 @@ contract PermissionedNodeRegistry is
      * @dev only `STADER_MANAGER` can call, whitelisting a one way change there is no blacklisting
      * @param _permissionedNOs array of permissioned NOs address
      */
-    function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external override onlyRole(STADER_MANAGER) {
+    function whitelistPermissionedNOs(address[] calldata _permissionedNOs)
+        external
+        override
+        onlyRole(staderConfig.STADER_MANAGER())
+    {
         for (uint256 i = 0; i < _permissionedNOs.length; i++) {
             permissionList[_permissionedNOs[i]] = true;
             emit OperatorWhitelisted(_permissionedNOs[i]);
@@ -286,7 +287,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `STADER_MANAGER` role
      * @param _operatorID ID of the operator to deactivate
      */
-    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER) {
+    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(staderConfig.STADER_MANAGER()) {
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
         emit OperatorDeactivated(_operatorID);
@@ -297,7 +298,7 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `STADER_MANAGER` role
      * @param _operatorID ID of the operator to activate
      */
-    function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER) {
+    function activateNodeOperator(uint256 _operatorID) external override onlyRole(staderConfig.STADER_MANAGER()) {
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
         emit OperatorActivated(_operatorID);
@@ -364,7 +365,7 @@ contract PermissionedNodeRegistry is
     function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator)
         external
         override
-        onlyRole(STADER_MANAGER)
+        onlyRole(staderConfig.STADER_MANAGER())
     {
         maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
         emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
@@ -375,7 +376,11 @@ contract PermissionedNodeRegistry is
      * @dev only `STADER_OPERATOR` role can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
-    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override onlyRole(STADER_OPERATOR) {
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit)
+        external
+        override
+        onlyRole(staderConfig.STADER_OPERATOR())
+    {
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
@@ -385,7 +390,10 @@ contract PermissionedNodeRegistry is
      * @dev only `STADER_OPERATOR` can call
      * @param _verifiedKeysBatchSize updated maximum verified key limit in the oracle input
      */
-    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external onlyRole(STADER_OPERATOR) {
+    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize)
+        external
+        onlyRole(staderConfig.STADER_OPERATOR())
+    {
         VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
         emit UpdatedVerifiedKeyBatchSize(_verifiedKeysBatchSize);
     }
@@ -498,7 +506,7 @@ contract PermissionedNodeRegistry is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external override onlyRole(STADER_MANAGER) {
+    function pause() external override onlyRole(staderConfig.STADER_MANAGER()) {
         _pause();
     }
 

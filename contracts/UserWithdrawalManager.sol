@@ -30,9 +30,6 @@ contract UserWithdrawalManager is
     //upper cap on user non redeemed withdraw request count
     uint256 public override maxNonRedeemedUserRequestCount;
 
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
-    bytes32 public constant override STADER_OPERATOR = keccak256('STADER_OPERATOR');
-
     /// @notice user withdrawal requests
     mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
 
@@ -74,7 +71,11 @@ contract UserWithdrawalManager is
      * @dev only admin of this contract can call
      * @param _finalizationBatchLimit value of finalizationBatchLimit
      */
-    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override onlyRole(STADER_MANAGER) {
+    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit)
+        external
+        override
+        onlyRole(staderConfig.STADER_MANAGER())
+    {
         finalizationBatchLimit = _finalizationBatchLimit;
         emit UpdatedFinalizationBatchLimit(_finalizationBatchLimit);
     }
@@ -188,7 +189,7 @@ contract UserWithdrawalManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(STADER_MANAGER) {
+    function pause() external onlyRole(staderConfig.STADER_MANAGER()) {
         _pause();
     }
 

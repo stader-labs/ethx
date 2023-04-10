@@ -26,8 +26,6 @@ interface IPenalty {
     // returns the totalPenalty threshold after which validator is force exited
     function validatorExitPenaltyThreshold() external view returns (uint256);
 
-    function STADER_MANAGER() external view returns (bytes32);
-
     // returns the additional penalty amount of a validator given its pubkey root
     function additionalPenaltyAmount(bytes32 _pubkeyRoot) external view returns (uint256);
 

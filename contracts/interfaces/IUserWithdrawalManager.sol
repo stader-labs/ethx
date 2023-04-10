@@ -37,10 +37,6 @@ interface IUserWithdrawalManager {
     );
     event ReceivedETH(uint256 _amount);
 
-    function STADER_MANAGER() external view returns (bytes32);
-
-    function STADER_OPERATOR() external view returns (bytes32);
-
     function finalizationBatchLimit() external view returns (uint256);
 
     function nextRequestIdToFinalize() external view returns (uint256);
