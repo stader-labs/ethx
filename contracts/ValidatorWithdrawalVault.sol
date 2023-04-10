@@ -104,11 +104,7 @@ contract ValidatorWithdrawalVault is
         uint256 penaltyAmount = getPenaltyAmount();
 
         if (operatorShare < penaltyAmount) {
-            // TODO: Discuss? Manoj get operator address from operator ID,
-            // OR change SD collateral impl to operator ID
-            // should follow same everywhere
-            address operator;
-            ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(operator);
+            ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(validatorId, poolId);
             penaltyAmount = operatorShare;
         }
 

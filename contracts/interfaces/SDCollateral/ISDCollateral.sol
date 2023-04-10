@@ -16,6 +16,7 @@ interface ISDCollateral {
     error InvalidPoolId();
     error InvalidPoolLimit();
     error SDTransferFailed();
+    error InvalidExecutor();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -30,7 +31,7 @@ interface ISDCollateral {
 
     function withdraw(uint256 _requestedSD) external;
 
-    function slashValidatorSD(address _operator) external returns (uint256 _sdSlashed);
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external returns (uint256 _sdSlashed);
 
     function slashSD(address _operator, uint256 _sdToSlash) external returns (uint256 _sdSlashed);
 

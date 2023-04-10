@@ -95,14 +95,26 @@ contract SDCollateral is
     }
 
     /// @notice slashes one validator equi. SD amount
-    /// @param _operator which operator's validator SD collateral to slash
-    function slashValidatorSD(address _operator) external override onlyRole(MANAGER) returns (uint256 _sdSlashed) {
-        uint256 sdBalance = operatorSDBalance[_operator];
-        uint256 validatorCount = getOperatorNonTerminalValidatorCount(_operator);
-        uint256 sdToSlash = sdBalance / validatorCount;
-        // TODO: Sanjay, Dheraj Does validatorCount decreses on slashing?
-        // else it will be a problem on next validator slash
-        return slashSD(_operator, sdToSlash);
+    /// @param _validatorId validator SD collateral to slash
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId)
+        external
+        override
+        onlyRole(MANAGER)
+        returns (uint256 _sdSlashed)
+    {
+        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
+        (, , , , address withdrawVaultAddress, uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(
+            _validatorId
+        );
+        (, , , , address operator) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
+
+        if (msg.sender != withdrawVaultAddress) {
+            revert InvalidExecutor();
+        }
+
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
+        uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
+        return slashSD(operator, sdToSlash);
     }
 
     /// @notice used to slash operator SD, incase of operator default
