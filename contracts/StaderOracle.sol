@@ -17,7 +17,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
     /// @inheritdoc IStaderOracle
-    uint256 public override updateFrequency;
     uint256 public override reportingBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
@@ -40,6 +39,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     mapping(address => MissedAttestationReportInfo) public missedAttestationDataByTrustedNode;
     uint256[] private sdPrices;
 
+    bytes32 public constant ETHX_ER_UF = keccak256('ETHX_ER_UF'); // ETHx Exchange Rate, Balances Update Frequency
+    bytes32 public constant MERKLE_UF = keccak256('MERKLE_UF'); // Socializing Pool Rewards Merkle Root Update Frequency Key
+    bytes32 public constant SD_PRICE_UF = keccak256('SD_PRICE_UF'); // SD Price Update Frequency Key
+    bytes32 public constant VALIDATOR_STATS_UF = keccak256('VALIDATOR_STATS_UF'); // Validator Status Update Frequency Key
+    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256('WITHDRAWN_VALIDATORS_UF'); // Withdrawn Validator Update Frequency Key
+    bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256('MISSED_ATTESTATION_PENALTY_UF'); // Missed Attestation Penalty Update Frequency Key
+    mapping(bytes32 => uint256) public updateFrequencyMap;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -49,8 +56,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         AddressLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
-
-        updateFrequency = 7200; // 24 hours
 
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
@@ -81,22 +86,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit TrustedNodeRemoved(_nodeAddress);
     }
 
-    function setUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_updateFrequency == 0) {
-            revert ZeroFrequency();
-        }
-        if (_updateFrequency == updateFrequency) {
-            revert FrequencyUnchanged();
-        }
-        updateFrequency = _updateFrequency;
-
-        emit UpdateFrequencyUpdated(_updateFrequency);
-    }
-
     /// @inheritdoc IStaderOracle
     function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
+        }
+        if (_exchangeRate.reportingBlockNumber % updateFrequencyMap[ETHX_ER_UF] > 0) {
+            revert InvalidReportingBlock();
         }
         if (_exchangeRate.totalStakingETHBalance > _exchangeRate.totalETHBalance) {
             revert InvalidNetworkBalances();
@@ -148,12 +144,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         }
     }
 
-    // Returns the latest block number that oracles should be reporting balances for
-    function getLatestReportableBlock() external view override returns (uint256) {
-        // Calculate the last reportable block based on update frequency
-        return (block.number / updateFrequency) * updateFrequency;
-    }
-
     /// @notice submits merkle root and handles reward
     /// sends user rewards to Stader Stake Pool Manager
     /// sends protocol rewards to stader treasury
@@ -164,7 +154,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
-
+        if (_rewardsData.reportingBlockNumber % updateFrequencyMap[MERKLE_UF] > 0) {
+            revert InvalidReportingBlock();
+        }
         if (_rewardsData.index <= rewardsData.index) {
             revert InvalidMerkleRootIndex();
         }
@@ -220,6 +212,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         if (_sdPriceData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
+        if (_sdPriceData.reportingBlockNumber % updateFrequencyMap[SD_PRICE_UF] > 0) {
+            revert InvalidReportingBlock();
+        }
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber));
@@ -268,6 +263,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
         if (_validatorStats.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
+        }
+        if (_validatorStats.reportingBlockNumber % updateFrequencyMap[VALIDATOR_STATS_UF] > 0) {
+            revert InvalidReportingBlock();
         }
 
         // Get submission keys
@@ -338,6 +336,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
+        if (_withdrawnValidators.reportingBlockNumber % updateFrequencyMap[WITHDRAWN_VALIDATORS_UF] > 0) {
+            revert InvalidReportingBlock();
+        }
 
         // Ensure the pubkeys array is sorted
         if (!isSorted(_withdrawnValidators.sortedPubkeys)) {
@@ -398,6 +399,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
+        if (_mapd.reportingBlockNumber % updateFrequencyMap[MISSED_ATTESTATION_PENALTY_UF] > 0) {
+            revert InvalidReportingBlock();
+        }
         if (_mapd.index <= latestMissedAttestationConsensusIndex) {
             revert StaleData();
         }
@@ -455,6 +459,82 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function setERUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
+    }
+
+    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        setUpdateFrequency(MERKLE_UF, _updateFrequency);
+    }
+
+    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
+    }
+
+    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        setUpdateFrequency(VALIDATOR_STATS_UF, _updateFrequency);
+    }
+
+    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency)
+        external
+        override
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, _updateFrequency);
+    }
+
+    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency)
+        external
+        override
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, _updateFrequency);
+    }
+
+    function setUpdateFrequency(bytes32 _key, uint256 _updateFrequency) internal {
+        if (_updateFrequency == 0) {
+            revert ZeroFrequency();
+        }
+        if (_updateFrequency == updateFrequencyMap[_key]) {
+            revert FrequencyUnchanged();
+        }
+        updateFrequencyMap[_key] = _updateFrequency;
+
+        emit UpdateFrequencyUpdated(_updateFrequency);
+    }
+
+    function getERReportableBlock() public view override returns (uint256) {
+        return getReportableBlockFor(ETHX_ER_UF);
+    }
+
+    function getMerkleRootReportableBlock() public view override returns (uint256) {
+        return getReportableBlockFor(MERKLE_UF);
+    }
+
+    function getSDPriceReportableBlock() public view override returns (uint256) {
+        return getReportableBlockFor(SD_PRICE_UF);
+    }
+
+    function getValidatorStatsReportableBlock() public view override returns (uint256) {
+        return getReportableBlockFor(VALIDATOR_STATS_UF);
+    }
+
+    function getWithdrawnValidatorReportableBlock() public view override returns (uint256) {
+        return getReportableBlockFor(WITHDRAWN_VALIDATORS_UF);
+    }
+
+    function getMissedAttestationPenaltyReportableBlock() public view override returns (uint256) {
+        return getReportableBlockFor(MISSED_ATTESTATION_PENALTY_UF);
+    }
+
+    function getReportableBlockFor(bytes32 _key) internal view returns (uint256) {
+        uint256 updateFrequency = updateFrequencyMap[_key];
+        if (updateFrequency == 0) {
+            revert UpdateFrequencyNotSet();
+        }
+        return (block.number / updateFrequency) * updateFrequency;
     }
 
     function getCurrentRewardsIndex() external view returns (uint256) {
