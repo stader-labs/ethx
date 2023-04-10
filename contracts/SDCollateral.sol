@@ -69,7 +69,7 @@ contract SDCollateral is
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator];
 
-        uint256 validatorCount = getOperatorValidatorCount(operator);
+        uint256 validatorCount = getOperatorNonTerminalValidatorCount(operator);
         uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
@@ -98,7 +98,7 @@ contract SDCollateral is
     /// @param _operator which operator's validator SD collateral to slash
     function slashValidatorSD(address _operator) external override onlyRole(MANAGER) returns (uint256 _sdSlashed) {
         uint256 sdBalance = operatorSDBalance[_operator];
-        uint256 validatorCount = getOperatorValidatorCount(_operator);
+        uint256 validatorCount = getOperatorNonTerminalValidatorCount(_operator);
         uint256 sdToSlash = sdBalance / validatorCount;
         // TODO: Sanjay, Dheraj Does validatorCount decreses on slashing?
         // else it will be a problem on next validator slash
@@ -222,7 +222,7 @@ contract SDCollateral is
 
     // HELPER
 
-    function getOperatorValidatorCount(address operator) internal view returns (uint256 _validatorCount) {
+    function getOperatorNonTerminalValidatorCount(address operator) internal view returns (uint256 _validatorCount) {
         uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
 
         INodeRegistry nodeRegistry = INodeRegistry(IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId));
