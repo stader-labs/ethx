@@ -50,7 +50,6 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     function withdraw() external override nonReentrant {
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
 
-        // TODO: Reminder Manoj is it safe to distribute rewards to all in a single method ?
         // Distribute rewards
         bool success;
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();

@@ -16,14 +16,13 @@ interface ISDCollateral {
     }
 
     // errors
-    error InsufficientSDCollateral(uint256 operatorSDCollateral);
-    error InsufficientWithdrawableSD(uint256 withdrawableSD);
+    error InsufficientSDToWithdraw(uint256 operatorSDCollateral);
     error InvalidPoolId();
     error InvalidPoolLimit();
     error SDTransferFailed();
     error InvalidExecutor();
     error AlreadyClaimed();
-    error EarlyClaimNotAllowed();
+    error ClaimNotReady();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -33,6 +32,7 @@ interface ISDCollateral {
     event SDSlashed(address indexed operator, address indexed auction, uint256 sdToSlash);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
     event UpdatedPoolIdForOperator(uint8 poolId, address operator);
+    event WithdrawDelayUpdated(uint256 withdrawDelay);
 
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
@@ -57,10 +57,14 @@ interface ISDCollateral {
         string memory _units
     ) external;
 
+    function updateWithdrawDelay(uint256 _withdrawDelay) external;
+
     // getters
     function staderConfig() external view returns (IStaderConfig);
 
     function totalSDCollateral() external view returns (uint256);
+
+    function withdrawDelay() external view returns (uint256);
 
     function operatorSDBalance(address) external view returns (uint256);
 
