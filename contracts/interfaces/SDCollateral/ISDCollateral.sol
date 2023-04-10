@@ -10,6 +10,11 @@ interface ISDCollateral {
         string units;
     }
 
+    struct WithdrawRequestInfo {
+        uint256 lastWithdrawReqTimestamp;
+        uint256 totalSDWithdrawReqAmount;
+    }
+
     // errors
     error InsufficientSDCollateral(uint256 operatorSDCollateral);
     error InsufficientWithdrawableSD(uint256 withdrawableSD);
@@ -17,11 +22,14 @@ interface ISDCollateral {
     error InvalidPoolLimit();
     error SDTransferFailed();
     error InvalidExecutor();
+    error AlreadyClaimed();
+    error EarlyClaimNotAllowed();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
     event SDDeposited(address indexed operator, uint256 sdAmount);
-    event SDWithdraw(address indexed operator, uint256 requestedSD);
+    event SDWithdrawRequested(address indexed operator, uint256 requestedSD);
+    event SDClaimed(address indexed operator, uint256 requestedSD);
     event SDSlashed(address indexed operator, address indexed auction, uint256 sdToSlash);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
     event UpdatedPoolIdForOperator(uint8 poolId, address operator);
@@ -29,7 +37,9 @@ interface ISDCollateral {
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
 
-    function withdraw(uint256 _requestedSD) external;
+    function requestWithdraw(uint256 _requestedSD) external;
+
+    function claimWithdraw() external;
 
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external returns (uint256 _sdSlashed);
 

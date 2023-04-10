@@ -28,6 +28,7 @@ contract SDCollateral is
     uint256 public override totalSDCollateral;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;
+    mapping(address => WithdrawRequestInfo) private withdrawReq;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -65,7 +66,11 @@ contract SDCollateral is
         emit SDDeposited(operator, _sdAmount);
     }
 
-    function withdraw(uint256 _requestedSD) external override {
+    /// @notice for operator to request withdraw of sd
+    /// @dev it does not transfer sd tokens immediately
+    /// operator should come back after 3 days (subject to change) to claim
+    /// this requested sd is subject to slashes
+    function requestWithdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator];
 
@@ -82,16 +87,32 @@ contract SDCollateral is
         if (_requestedSD > withdrawableSD) {
             revert InsufficientWithdrawableSD(withdrawableSD);
         }
+        withdrawReq[operator].lastWithdrawReqTimestamp = block.timestamp;
+        withdrawReq[operator].totalSDWithdrawReqAmount += _requestedSD;
 
-        totalSDCollateral -= _requestedSD;
-        operatorSDBalance[operator] -= _requestedSD;
+        emit SDWithdrawRequested(operator, _requestedSD);
+    }
+
+    function claimWithdraw() external override {
+        address operator = msg.sender;
+        uint256 requestedSD = withdrawReq[operator].totalSDWithdrawReqAmount;
+        if (requestedSD == 0) {
+            revert AlreadyClaimed();
+        }
+        if (block.timestamp < (withdrawReq[operator].lastWithdrawReqTimestamp + 3 days)) {
+            revert EarlyClaimNotAllowed();
+        }
+
+        totalSDCollateral -= requestedSD;
+        operatorSDBalance[operator] -= requestedSD;
+        withdrawReq[operator].totalSDWithdrawReqAmount -= requestedSD;
 
         // cannot use safeERC20 as this contract is an upgradeable contract
-        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
+        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), requestedSD)) {
             revert SDTransferFailed();
         }
 
-        emit SDWithdraw(operator, _requestedSD);
+        emit SDClaimed(operator, requestedSD);
     }
 
     /// @notice slashes one validator equi. SD amount
