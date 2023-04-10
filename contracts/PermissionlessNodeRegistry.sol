@@ -109,8 +109,6 @@ contract PermissionlessNodeRegistry is
             ? staderConfig.getPermissionlessSocializingPool()
             : nodeELRewardVault;
         onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
-        // TODO sanjay below update not required anymore, please confirm?
-        // ISDCollateral(staderConfig.getSDCollateral()).updatePoolIdForOperator(poolId, msg.sender);
         return feeRecipientAddress;
     }
 

@@ -115,8 +115,6 @@ contract PermissionedNodeRegistry is
         }
         feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
         onboardOperator(_operatorName, _operatorRewardAddress);
-        // TODO sanjay below update not required anymore, please confirm?
-        // ISDCollateral(staderConfig.getSDCollateral()).updatePoolIdForOperator(poolId, msg.sender);
         return feeRecipientAddress;
     }
 
