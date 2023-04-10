@@ -72,7 +72,7 @@ contract SDCollateral is
     /// this requested sd is subject to slashes
     function requestWithdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
-        uint256 sdBalance = operatorSDBalance[operator];
+        uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
 
         uint256 validatorCount = getOperatorNonTerminalValidatorCount(operator);
         uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
