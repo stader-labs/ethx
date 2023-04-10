@@ -95,6 +95,7 @@ contract ValidatorWithdrawalVault is
         userShare = _totalRewards - protocolShare - operatorShare;
     }
 
+    // TODO sanjay mark this vault settled?
     function settleFunds() external override nonReentrant {
         if (!isWithdrawnValidator()) {
             revert ValidatorNotWithdrawn();
