@@ -23,7 +23,7 @@ contract ValidatorWithdrawalVault is
 {
     using Math for uint256;
 
-    bytes32 public constant OPERATOR = keccak256('MANAGER');
+    bytes32 public constant OPERATOR = keccak256('OPERATOR');
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
