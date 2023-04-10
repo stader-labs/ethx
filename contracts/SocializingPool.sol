@@ -170,6 +170,7 @@ contract SocializingPool is
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
 
+    // TODO sanjay move to NodeRegistry?
     function getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
         INodeRegistry nodeRegistry = INodeRegistry(
             IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId)
