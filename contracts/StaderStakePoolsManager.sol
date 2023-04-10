@@ -97,14 +97,10 @@ contract StaderStakePoolsManager is
      * @dev only user withdraw manager allowed to call
      * @param _amount amount of ETH to transfer
      */
-    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
-        address userWithdrawManager = staderConfig.getUserWithdrawManager();
-        if (msg.sender != userWithdrawManager) {
-            revert CallerNotUserWithdrawManager();
-        }
+    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant onlyUserWithdrawManager {
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(userWithdrawManager).call{value: _amount}('');
+        (bool success, ) = payable(staderConfig.getUserWithdrawManager()).call{value: _amount}('');
         if (!success) {
             revert TransferFailed();
         }
@@ -294,5 +290,13 @@ contract StaderStakePoolsManager is
         return
             (totalAssets() > 0 ||
                 IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply == 0) && (!paused());
+    }
+
+    //modifier
+    modifier onlyUserWithdrawManager() {
+        if (msg.sender != staderConfig.getUserWithdrawManager()) {
+            revert CallerNotUserWithdrawManager();
+        }
+        _;
     }
 }

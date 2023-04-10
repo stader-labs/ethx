@@ -16,7 +16,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     uint256 public override mevTheftPenaltyPerStrike;
     uint256 public override missedAttestationPenaltyPerStrike;
     uint256 public override validatorExitPenaltyThreshold;
-    bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
+    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
     /// @inheritdoc IPenalty
@@ -48,7 +48,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount)
         external
         override
-        onlyRole(STADER_DAO)
+        onlyRole(STADER_MANAGER)
     {
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
         additionalPenaltyAmount[pubkeyRoot] += _amount;
@@ -60,7 +60,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function updateMEVTheftPenaltyPerStrike(uint256 _mevTheftPenaltyPerStrike)
         external
         override
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(STADER_MANAGER)
     {
         mevTheftPenaltyPerStrike = _mevTheftPenaltyPerStrike;
         emit UpdatedMEVTheftPenaltyPerStrike(_mevTheftPenaltyPerStrike);
@@ -70,7 +70,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function updateMissedAttestationPenaltyPerStrike(uint256 _missedAttestationPenaltyPerStrike)
         external
         override
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(STADER_MANAGER)
     {
         missedAttestationPenaltyPerStrike = _missedAttestationPenaltyPerStrike;
         emit UpdatedMissedAttestationPenaltyPerStrike(_missedAttestationPenaltyPerStrike);
@@ -80,14 +80,14 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function updateValidatorExitPenaltyThreshold(uint256 _validatorExitPenaltyThreshold)
         external
         override
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(STADER_MANAGER)
     {
         validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
         emit UpdatedValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
     }
 
     /// @inheritdoc IPenalty
-    function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(STADER_MANAGER) {
         AddressLib.checkNonZeroAddress(_ratedOracleAddress);
         ratedOracleAddress = _ratedOracleAddress;
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);

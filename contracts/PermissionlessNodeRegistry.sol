@@ -39,10 +39,8 @@ contract PermissionlessNodeRegistry is
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
     uint256 public constant override collateralETH = 4 ether;
 
-    bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
-    bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
-    bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY_OWNER =
-        keccak256('PERMISSIONLESS_NODE_REGISTRY_OWNER');
+    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant override STADER_OPERATOR = keccak256('STADER_OPERATOR');
 
     // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
@@ -180,7 +178,7 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _readyToDepositPubkey,
         bytes[] calldata _frontRunnedPubkey,
         bytes[] calldata _invalidSignaturePubkey
-    ) external override whenNotPaused nonReentrant onlyRole(STADER_ORACLE) {
+    ) external override whenNotPaused nonReentrant onlyStaderOracle {
         for (uint256 i = 0; i < _readyToDepositPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             onlyInitializedValidator(validatorId);
@@ -188,7 +186,7 @@ contract PermissionlessNodeRegistry is
             emit ValidatorMarkedReadyToDeposit(_readyToDepositPubkey[i], validatorId);
         }
 
-        address staderPenaltyFund = staderConfig.getStaderPenaltyFund();
+        address staderPenaltyFund = staderConfig.getStaderInsuranceFund();
         for (uint256 i = 0; i < _frontRunnedPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_frontRunnedPubkey[i]];
             onlyInitializedValidator(validatorId);
@@ -210,7 +208,7 @@ contract PermissionlessNodeRegistry is
      * @dev list of pubkeys reported by oracle
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
-    function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyRole(STADER_ORACLE) {
+    function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyStaderOracle {
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
@@ -229,7 +227,7 @@ contract PermissionlessNodeRegistry is
      * @dev accept call from permissionless pool
      * @param _nextQueuedValidatorIndex updated next index of queued validator
      */
-    function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external onlyRole(PERMISSIONLESS_POOL) {
+    function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external onlyPermissionlessPool {
         nextQueuedValidatorIndex = _nextQueuedValidatorIndex;
         emit UpdatedNextQueuedValidatorIndex(nextQueuedValidatorIndex);
     }
@@ -239,7 +237,7 @@ contract PermissionlessNodeRegistry is
      * @dev only permissionless pool can call
      * @param _validatorId ID of the validator
      */
-    function updateDepositStatusAndBlock(uint256 _validatorId) external override onlyRole(PERMISSIONLESS_POOL) {
+    function updateDepositStatusAndBlock(uint256 _validatorId) external override onlyPermissionlessPool {
         validatorRegistry[_validatorId].depositBlock = block.number;
         markValidatorDeposited(_validatorId);
         emit UpdatedValidatorDepositBlock(_validatorId, block.number);
@@ -296,11 +294,7 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
-    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit)
-        external
-        override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
-    {
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override onlyRole(STADER_OPERATOR) {
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
@@ -313,7 +307,7 @@ contract PermissionlessNodeRegistry is
     function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator)
         external
         override
-        onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER)
+        onlyRole(STADER_MANAGER)
     {
         maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
         emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
@@ -347,7 +341,7 @@ contract PermissionlessNodeRegistry is
      * @dev only permissionless pool calls it when it does the deposit of 31ETH for validator
      * @param _count count to increase total active validator value
      */
-    function increaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(PERMISSIONLESS_POOL) {
+    function increaseTotalActiveValidatorCount(uint256 _count) external override onlyPermissionlessPool {
         totalActiveValidatorCount += _count;
         emit IncreasedTotalActiveValidatorCount(totalActiveValidatorCount);
     }
@@ -357,7 +351,7 @@ contract PermissionlessNodeRegistry is
      * @dev only permissionless pool can call
      * @param _amount amount of eth to send to permissionless pool
      */
-    function transferCollateralToPool(uint256 _amount) external override whenNotPaused onlyRole(PERMISSIONLESS_POOL) {
+    function transferCollateralToPool(uint256 _amount) external override whenNotPaused onlyPermissionlessPool {
         IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{value: _amount}();
         emit TransferredCollateralToPool(_amount);
     }
@@ -429,7 +423,7 @@ contract PermissionlessNodeRegistry is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
+    function pause() external override onlyRole(STADER_MANAGER) {
         _pause();
     }
 
@@ -437,7 +431,7 @@ contract PermissionlessNodeRegistry is
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external override onlyRole(PERMISSIONLESS_NODE_REGISTRY_OWNER) {
+    function unpause() external override onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -669,5 +663,20 @@ contract PermissionlessNodeRegistry is
 
     function markValidatorDeposited(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.DEPOSITED;
+    }
+
+    //modifier
+    modifier onlyStaderOracle() {
+        if (msg.sender != staderConfig.getStaderOracle()) {
+            revert CallerNotStaderOracle();
+        }
+        _;
+    }
+
+    modifier onlyPermissionlessPool() {
+        if (msg.sender != staderConfig.getPermissionlessPool()) {
+            revert CallerNotPermissionlessPool();
+        }
+        _;
     }
 }

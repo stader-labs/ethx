@@ -11,6 +11,7 @@ interface IPermissionlessNodeRegistry {
     error InSufficientBalance();
     error CooldownNotComplete();
     error NoChangeInState();
+    error CallerNotPermissionlessPool();
 
     // Events
     event ValidatorMarkedReadyToDeposit(bytes indexed pubkey, uint256 validatorId);
@@ -19,12 +20,9 @@ interface IPermissionlessNodeRegistry {
     event TransferredCollateralToPool(uint256 amount);
 
     //Getters
+    function STADER_MANAGER() external view returns (bytes32);
 
-    function PERMISSIONLESS_NODE_REGISTRY_OWNER() external returns (bytes32);
-
-    function STADER_ORACLE() external view returns (bytes32);
-
-    function PERMISSIONLESS_POOL() external returns (bytes32);
+    function STADER_OPERATOR() external returns (bytes32);
 
     function poolId() external view returns (uint8);
 

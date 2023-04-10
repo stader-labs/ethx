@@ -38,10 +38,8 @@ contract PermissionedNodeRegistry is
     uint256 public override operatorIdForExcessDeposit;
     uint256 public override totalActiveOperatorCount;
 
-    bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
-    bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
-    bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
-    bytes32 public constant override PERMISSIONED_NODE_REGISTRY_OWNER = keccak256('PERMISSIONED_NODE_REGISTRY_OWNER');
+    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant override STADER_OPERATOR = keccak256('STADER_OPERATOR');
 
     // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
@@ -80,10 +78,10 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice white list the permissioned node operator
-     * @dev only admin can call, whitelisting a one way change there is no blacklisting
+     * @dev only `STADER_MANAGER` can call, whitelisting a one way change there is no blacklisting
      * @param _permissionedNOs array of permissioned NOs address
      */
-    function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external override onlyRole(STADER_DAO) {
+    function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external override onlyRole(STADER_MANAGER) {
         for (uint256 i = 0; i < _permissionedNOs.length; i++) {
             permissionList[_permissionedNOs[i]] = true;
             emit OperatorWhitelisted(_permissionedNOs[i]);
@@ -179,7 +177,7 @@ contract PermissionedNodeRegistry is
     function computeOperatorAllocationForDeposit(uint256 _numValidators)
         external
         override
-        onlyRole(PERMISSIONED_POOL)
+        onlyPermissionedPool
         returns (uint256[] memory selectedOperatorCapacity)
     {
         // nextOperatorId is total operator count plus 1
@@ -228,7 +226,7 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _readyToDepositPubkeys,
         bytes[] calldata _frontRunPubkeys,
         bytes[] calldata _invalidSignaturePubkeys
-    ) external onlyRole(STADER_ORACLE) {
+    ) external onlyStaderOracle {
         uint256 verifiedValidatorsLength = _readyToDepositPubkeys.length;
         if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) {
             revert TooManyVerifiedKeysToDeposit();
@@ -269,7 +267,7 @@ contract PermissionedNodeRegistry is
      * @dev list of pubkeys reported by oracle, revert if terminal validators are reported
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
-    function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyRole(STADER_ORACLE) {
+    function withdrawnValidators(bytes[] calldata _pubkeys) external override onlyStaderOracle {
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
@@ -285,10 +283,10 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice deactivate a node operator from running new validator clients
-     * @dev only accept call from address having `STADER_DAO` role
+     * @dev only accept call from address having `STADER_MANAGER` role
      * @param _operatorID ID of the operator to deactivate
      */
-    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_DAO) {
+    function deactivateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER) {
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
         emit OperatorDeactivated(_operatorID);
@@ -296,10 +294,10 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice activate a node operator for running new validator clients
-     * @dev only accept call from address having `STADER_DAO` role
+     * @dev only accept call from address having `STADER_MANAGER` role
      * @param _operatorID ID of the operator to activate
      */
-    function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_DAO) {
+    function activateNodeOperator(uint256 _operatorID) external override onlyRole(STADER_MANAGER) {
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
         emit OperatorActivated(_operatorID);
@@ -314,7 +312,7 @@ contract PermissionedNodeRegistry is
     function updateQueuedValidatorIndex(uint256 _operatorID, uint256 _nextQueuedValidatorIndex)
         external
         override
-        onlyRole(PERMISSIONED_POOL)
+        onlyPermissionedPool
     {
         nextQueuedValidatorIndexByOperatorId[_operatorID] = _nextQueuedValidatorIndex;
         emit UpdatedQueuedValidatorIndex(_operatorID, _nextQueuedValidatorIndex);
@@ -325,7 +323,7 @@ contract PermissionedNodeRegistry is
      * @dev only permissioned pool can call
      * @param _validatorId ID of the validator
      */
-    function updateDepositStatusAndBlock(uint256 _validatorId) external override onlyRole(PERMISSIONED_POOL) {
+    function updateDepositStatusAndBlock(uint256 _validatorId) external override onlyPermissionedPool {
         validatorRegistry[_validatorId].depositBlock = block.number;
         markValidatorDeposited(_validatorId);
         emit UpdatedValidatorDepositBlock(_validatorId, block.number);
@@ -336,7 +334,7 @@ contract PermissionedNodeRegistry is
      * @dev only `PERMISSIONED_POOL` role can call
      * @param _pubkey pubkey of the validator
      */
-    function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external override onlyRole(PERMISSIONED_POOL) {
+    function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external override onlyPermissionedPool {
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         validatorRegistry[validatorId].status = ValidatorStatus.PRE_DEPOSIT;
         emit MarkedValidatorStatusAsPreDeposit(_pubkey);
@@ -360,13 +358,13 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice update the maximum non terminal key limit per operator
-     * @dev only admin can call
+     * @dev only `STADER_MANAGER` role can call
      * @param _maxNonTerminalKeyPerOperator updated maximum non terminal key per operator limit
      */
     function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator)
         external
         override
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
+        onlyRole(STADER_MANAGER)
     {
         maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
         emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
@@ -374,27 +372,20 @@ contract PermissionedNodeRegistry is
 
     /**
      * @notice update number of validator keys that can be added in a single tx by the operator
-     * @dev only admin can call
+     * @dev only `STADER_OPERATOR` role can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
-    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit)
-        external
-        override
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
-    {
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override onlyRole(STADER_OPERATOR) {
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
 
     /**
      * @notice update the max number of verified validator keys reported by oracle
-     * @dev only admin can call
+     * @dev only `STADER_OPERATOR` can call
      * @param _verifiedKeysBatchSize updated maximum verified key limit in the oracle input
      */
-    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize)
-        external
-        onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER)
-    {
+    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external onlyRole(STADER_OPERATOR) {
         VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
         emit UpdatedVerifiedKeyBatchSize(_verifiedKeysBatchSize);
     }
@@ -427,7 +418,7 @@ contract PermissionedNodeRegistry is
      * @dev only permissioned pool calls it when it does the deposit of 1 ETH for validator
      * @param _count count to increase total active validator value
      */
-    function increaseTotalActiveValidatorCount(uint256 _count) external override onlyRole(PERMISSIONED_POOL) {
+    function increaseTotalActiveValidatorCount(uint256 _count) external override onlyPermissionedPool {
         totalActiveValidatorCount += _count;
         emit IncreasedTotalActiveValidatorCount(totalActiveValidatorCount);
     }
@@ -507,7 +498,7 @@ contract PermissionedNodeRegistry is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
+    function pause() external override onlyRole(STADER_MANAGER) {
         _pause();
     }
 
@@ -515,7 +506,7 @@ contract PermissionedNodeRegistry is
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external override onlyRole(PERMISSIONED_NODE_REGISTRY_OWNER) {
+    function unpause() external override onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -680,5 +671,20 @@ contract PermissionedNodeRegistry is
 
     function markValidatorDeposited(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.DEPOSITED;
+    }
+
+    //modifier
+    modifier onlyStaderOracle() {
+        if (msg.sender != staderConfig.getStaderOracle()) {
+            revert CallerNotStaderOracle();
+        }
+        _;
+    }
+
+    modifier onlyPermissionedPool() {
+        if (msg.sender != staderConfig.getPermissionedPool()) {
+            revert CallerNotPermissionedPool();
+        }
+        _;
     }
 }

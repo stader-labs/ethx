@@ -21,11 +21,11 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     IStaderConfig public staderConfig;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
 
+    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant STADER_OPERATOR = keccak256('STADER_OPERATOR');
+
     //TODO make sure weight are in order of pool Id
     mapping(uint8 => uint256) public poolWeights;
-
-    bytes32 public constant override POOL_MANAGER = keccak256('POOL_MANAGER');
-    bytes32 public constant override POOL_SELECTOR_ADMIN = keccak256('POOL_SELECTOR_ADMIN');
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -71,7 +71,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     function computePoolAllocationForDeposit(uint256 _pooledEth)
         external
         override
-        onlyRole(POOL_MANAGER)
+        onlyPoolManager
         returns (uint256[] memory selectedPoolCapacity)
     {
         address poolFactoryAddress = staderConfig.getPoolFactory();
@@ -130,7 +130,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @dev only admin can call
      * @param _poolTargets new target weights of pools
      */
-    function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(POOL_SELECTOR_ADMIN) {
+    function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(STADER_MANAGER) {
         if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length) {
             revert InvalidNewTargetInput();
         }
@@ -146,7 +146,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         }
     }
 
-    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(POOL_SELECTOR_ADMIN) {
+    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(STADER_OPERATOR) {
         POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
         emit UpdatedPoolAllocationMaxSize(_poolAllocationMaxSize);
     }
@@ -156,5 +156,13 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    //modifier
+    modifier onlyPoolManager() {
+        if (msg.sender != staderConfig.getStakePoolManager()) {
+            revert CallerNotPoolManager();
+        }
+        _;
     }
 }

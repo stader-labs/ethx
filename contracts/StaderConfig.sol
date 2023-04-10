@@ -29,7 +29,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     bytes32 public constant ADMIN = keccak256('ADMIN');
     bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
-    bytes32 public constant STADER_PENALTY_FUND = keccak256('STADER_PENALTY_FUND');
 
     bytes32 public constant POOL_FACTORY = keccak256('POOL_FACTORY');
     bytes32 public constant POOL_SELECTOR = keccak256('POOL_SELECTOR');
@@ -48,6 +47,9 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
     bytes32 public constant PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
     bytes32 public constant PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
+
+    //Roles
+    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
 
     bytes32 public constant SD = keccak256('SD');
     bytes32 public constant WETH = keccak256('WETH');
@@ -84,19 +86,19 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function updateSocializingPoolCycleDuration(uint256 _socializingPoolCycleDuration)
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(STADER_MANAGER)
     {
         setVariable(SOCIALIZING_POOL_CYCLE_DURATION, _socializingPoolCycleDuration);
     }
 
     function updateSocializingPoolOptInCoolingPeriod(uint256 _SocializePoolOptInCoolingPeriod)
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(STADER_MANAGER)
     {
         setVariable(SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD, _SocializePoolOptInCoolingPeriod);
     }
 
-    function updateRewardsThreshold(uint256 _rewardsThreshold) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateRewardsThreshold(uint256 _rewardsThreshold) external onlyRole(STADER_MANAGER) {
         setVariable(REWARD_THRESHOLD, _rewardsThreshold);
     }
 
@@ -104,7 +106,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @dev update the minimum deposit amount
      * @param _minDepositAmount minimum deposit amount
      */
-    function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(STADER_MANAGER) {
         if (_minDepositAmount == 0 || _minDepositAmount > getMaxDepositAmount()) {
             revert InvalidMinDepositValue();
         }
@@ -115,7 +117,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @dev update the maximum deposit amount
      * @param _maxDepositAmount maximum deposit amount
      */
-    function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(STADER_MANAGER) {
         if (_maxDepositAmount < getMinDepositAmount()) {
             revert InvalidMaxDepositValue();
         }
@@ -161,12 +163,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         _revokeRole(DEFAULT_ADMIN_ROLE, oldAdmin);
     }
 
-    function updateStaderTreasury(address _staderTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderTreasury(address _staderTreasury) external onlyRole(STADER_MANAGER) {
         setAccount(STADER_TREASURY, _staderTreasury);
-    }
-
-    function updateStaderPenaltyFund(address _staderPenaltyFund) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setAccount(STADER_PENALTY_FUND, _staderPenaltyFund);
     }
 
     // Contracts Setters
@@ -312,10 +310,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getStaderTreasury() external view override returns (address) {
         return accountsMap[STADER_TREASURY];
-    }
-
-    function getStaderPenaltyFund() external view override returns (address) {
-        return accountsMap[STADER_PENALTY_FUND];
     }
 
     //Contracts Getters

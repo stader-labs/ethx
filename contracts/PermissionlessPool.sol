@@ -21,10 +21,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint8 public constant poolId = 1;
     IStaderConfig public staderConfig;
 
-    bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
-    bytes32 public constant PERMISSIONLESS_POOL_ADMIN = keccak256('PERMISSIONLESS_POOL_ADMIN');
-    bytes32 public constant PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
-
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
@@ -60,15 +56,12 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     // receive `DEPOSIT_NODE_BOND` collateral ETH from permissionless node registry
-    function receiveRemainingCollateralETH() external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
+    function receiveRemainingCollateralETH() external payable onlyPermissionlessNodeRegistry {
         emit ReceivedCollateralETH(msg.value);
     }
 
     /// @inheritdoc IStaderPoolBase
-    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee)
-        external
-        onlyRole(PERMISSIONLESS_POOL_ADMIN)
-    {
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_protocolFee + _operatorFee > TOTAL_FEE) {
             revert CommissionFeesMoreThanTOTAL_FEE();
         }
@@ -98,7 +91,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         bytes[] calldata _preDepositSignature,
         uint256 _operatorId,
         uint256 _operatorTotalKeys
-    ) external payable onlyRole(PERMISSIONLESS_NODE_REGISTRY) {
+    ) external payable onlyPermissionlessNodeRegistry {
         address vaultFactory = staderConfig.getVaultFactory();
         for (uint256 i = 0; i < _pubkey.length; i++) {
             address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(
@@ -129,7 +122,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit validator taking care of pool capacity
      */
-    function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
+    function stakeUserETHToBeaconChain() external payable override onlyPoolManager {
         uint256 requiredValidators = msg.value / (FULL_DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         address nodeRegistryAddress = staderConfig.getPermissionlessNodeRegistry();
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
@@ -321,5 +314,20 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         ret[5] = bytesValue[2];
         ret[6] = bytesValue[1];
         ret[7] = bytesValue[0];
+    }
+
+    //modifier
+    modifier onlyPoolManager() {
+        if (msg.sender != staderConfig.getStakePoolManager()) {
+            revert CallerNotPoolManager();
+        }
+        _;
+    }
+
+    modifier onlyPermissionlessNodeRegistry() {
+        if (msg.sender != staderConfig.getPermissionlessNodeRegistry()) {
+            revert CallerNotPermissionlessNodeRegistry();
+        }
+        _;
     }
 }

@@ -8,6 +8,7 @@ interface IPermissionedNodeRegistry {
     // Errors
     error NotAPermissionedNodeOperator();
     error TooManyVerifiedKeysToDeposit();
+    error CallerNotPermissionedPool();
 
     // Events
     event OperatorWhitelisted(address permissionedNO);
@@ -35,13 +36,9 @@ interface IPermissionedNodeRegistry {
 
     function totalActiveOperatorCount() external view returns (uint256);
 
-    function STADER_DAO() external view returns (bytes32);
+    function STADER_MANAGER() external view returns (bytes32);
 
-    function STADER_ORACLE() external view returns (bytes32);
-
-    function PERMISSIONED_POOL() external view returns (bytes32);
-
-    function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
+    function STADER_OPERATOR() external view returns (bytes32);
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 

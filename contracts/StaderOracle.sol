@@ -26,6 +26,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
     bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
+    bytes32 public constant STADER_OPERATOR = keccak256('STADER_OPERATOR');
     // indicate the health of protocol on beacon chain
     // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
@@ -58,7 +59,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addTrustedNode(address _nodeAddress) external override onlyRole(STADER_MANAGER) {
         AddressLib.checkNonZeroAddress(_nodeAddress);
         if (isTrustedNode[_nodeAddress]) {
             revert NodeAlreadyTrusted();
@@ -70,7 +71,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function removeTrustedNode(address _nodeAddress) external override onlyRole(STADER_MANAGER) {
         AddressLib.checkNonZeroAddress(_nodeAddress);
         if (!isTrustedNode[_nodeAddress]) {
             revert NodeNotTrusted();
@@ -81,7 +82,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit TrustedNodeRemoved(_nodeAddress);
     }
 
-    function setUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setUpdateFrequency(uint256 _updateFrequency) external override onlyRole(STADER_MANAGER) {
         if (_updateFrequency == 0) {
             revert ZeroFrequency();
         }

@@ -12,7 +12,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
     bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
-    bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -49,7 +48,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
      * @dev only permissioned pool can call
      * @param _amount amount of ETH to transfer to permissioned pool
      */
-    function reimburseUserFund(uint256 _amount) external override onlyRole(PERMISSIONED_POOL) {
+    function reimburseUserFund(uint256 _amount) external override onlyPermissionedPool {
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }
@@ -61,5 +60,13 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
         AddressLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    //modifier
+    modifier onlyPermissionedPool() {
+        if (msg.sender != staderConfig.getPermissionedPool()) {
+            revert CallerNotPermissionedPool();
+        }
+        _;
     }
 }

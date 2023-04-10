@@ -31,10 +31,6 @@ contract PermissionedPool is
     IStaderConfig public staderConfig;
     uint8 public constant poolId = 2;
 
-    bytes32 public constant POOL_MANAGER = keccak256('POOL_MANAGER');
-    bytes32 public constant PERMISSIONED_POOL_ADMIN = keccak256('PERMISSIONED_POOL_ADMIN');
-    bytes32 public constant PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
-
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
     uint256 public constant TOTAL_FEE = 10000;
@@ -74,10 +70,7 @@ contract PermissionedPool is
     }
 
     // transfer the 32ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
-    function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount)
-        external
-        onlyRole(PERMISSIONED_NODE_REGISTRY)
-    {
+    function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount) external onlyPermissionedNodeRegistry {
         //get 1ETH from insurance fund
         IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).reimburseUserFund(
             _defectiveKeyCount * PRE_DEPOSIT_SIZE
@@ -96,7 +89,7 @@ contract PermissionedPool is
      * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit PRE_DEPOSIT_SIZE of ETH for validators while adhering to pool capacity.
      */
-    function stakeUserETHToBeaconChain() external payable override onlyRole(POOL_MANAGER) {
+    function stakeUserETHToBeaconChain() external payable override onlyPoolManager {
         //TODO sanjay how to make sure pool capacity remain same at this point compared to pool selection
         uint256 requiredValidators = msg.value / staderConfig.getStakedEthPerNode();
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
@@ -131,7 +124,7 @@ contract PermissionedPool is
     }
 
     // deposit `FULL_DEPOSIT_SIZE` for the verified preDeposited Validator
-    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external onlyRole(PERMISSIONED_NODE_REGISTRY) {
+    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external onlyPermissionedNodeRegistry {
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
@@ -235,7 +228,7 @@ contract PermissionedPool is
     }
 
     // @inheritdoc IStaderPoolBase
-    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(PERMISSIONED_POOL_ADMIN) {
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_protocolFee + _operatorFee > TOTAL_FEE) {
             revert CommissionFeesMoreThanTOTAL_FEE();
         }
@@ -331,5 +324,20 @@ contract PermissionedPool is
         ret[5] = bytesValue[2];
         ret[6] = bytesValue[1];
         ret[7] = bytesValue[0];
+    }
+
+    //modifier
+    modifier onlyPoolManager() {
+        if (msg.sender != staderConfig.getStakePoolManager()) {
+            revert CallerNotPoolManager();
+        }
+        _;
+    }
+
+    modifier onlyPermissionedNodeRegistry() {
+        if (msg.sender != staderConfig.getPermissionedNodeRegistry()) {
+            revert CallerNotPermissionedNodeRegistry();
+        }
+        _;
     }
 }

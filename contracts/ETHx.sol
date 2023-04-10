@@ -45,7 +45,7 @@ contract ETHx is ERC20, ERC20Burnable, AccessControl, Pausable {
         _pause();
     }
 
-    function unpause() public onlyRole(PAUSER_ROLE) {
+    function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 }
