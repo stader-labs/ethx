@@ -91,6 +91,7 @@ contract SDCollateral is
 
     function claimWithdraw() external override {
         address operator = msg.sender;
+        // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, operatorSDBalance)
         uint256 requestedSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, operatorSDBalance[operator]);
         if (requestedSD == 0) {
             revert AlreadyClaimed();
@@ -138,12 +139,7 @@ contract SDCollateral is
     /// @dev do provide SD approval to auction contract using `maxApproveSD()`
     /// @param _operator which operator SD collateral to slash
     /// @param _sdToSlash amount of SD to slash
-    function slashSD(address _operator, uint256 _sdToSlash)
-        public
-        override
-        onlyRole(MANAGER)
-        returns (uint256 _sdSlashed)
-    {
+    function slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
@@ -162,6 +158,9 @@ contract SDCollateral is
     // SETTERS
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         AddressLib.checkNonZeroAddress(_staderConfig);
+        if (_staderConfig == address(staderConfig)) {
+            revert NoStateChange();
+        }
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -185,7 +184,10 @@ contract SDCollateral is
         emit UpdatedPoolThreshold(_poolId, _minThreshold, _withdrawThreshold);
     }
 
-    function updateWithdrawDelay(uint256 _withdrawDelay) external override onlyRole(MANAGER) {
+    function setWithdrawDelay(uint256 _withdrawDelay) external override onlyRole(MANAGER) {
+        if (withdrawDelay == _withdrawDelay) {
+            revert NoStateChange();
+        }
         withdrawDelay = _withdrawDelay;
         emit WithdrawDelayUpdated(_withdrawDelay);
     }

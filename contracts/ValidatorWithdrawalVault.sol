@@ -23,6 +23,7 @@ contract ValidatorWithdrawalVault is
 {
     using Math for uint256;
 
+    bytes32 public constant OPERATOR = keccak256('MANAGER');
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
@@ -56,7 +57,7 @@ contract ValidatorWithdrawalVault is
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
 
-        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
+        if (!hasRole(OPERATOR, msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }

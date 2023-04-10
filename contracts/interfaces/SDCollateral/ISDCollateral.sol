@@ -23,6 +23,7 @@ interface ISDCollateral {
     error InvalidExecutor();
     error AlreadyClaimed();
     error ClaimNotReady();
+    error NoStateChange();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -43,8 +44,6 @@ interface ISDCollateral {
 
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external returns (uint256 _sdSlashed);
 
-    function slashSD(address _operator, uint256 _sdToSlash) external returns (uint256 _sdSlashed);
-
     function maxApproveSD(address spenderAddr) external;
 
     // setters
@@ -57,7 +56,7 @@ interface ISDCollateral {
         string memory _units
     ) external;
 
-    function updateWithdrawDelay(uint256 _withdrawDelay) external;
+    function setWithdrawDelay(uint256 _withdrawDelay) external;
 
     // getters
     function staderConfig() external view returns (IStaderConfig);
