@@ -5,7 +5,6 @@ import './library/AddressLib.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
@@ -15,13 +14,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  * @notice The ERC20 contract for the ETHx token
  */
 
-contract ETHx is
-    Initializable,
-    ERC20Upgradeable,
-    ERC20BurnableUpgradeable,
-    PausableUpgradeable,
-    AccessControlUpgradeable
-{
+contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
     IStaderConfig staderConfig;
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
@@ -35,7 +28,6 @@ contract ETHx is
         AddressLib.checkNonZeroAddress(_staderConfig);
 
         __ERC20_init('Liquid Staking ETH', 'ETHx');
-        __ERC20Burnable_init();
         __Pausable_init();
         __AccessControl_init();
 
@@ -57,7 +49,7 @@ contract ETHx is
      * @param account the account to burn from
      * @param amount the amount of ethX to burn
      */
-    function burnFrom(address account, uint256 amount) public override onlyRole(MINTER_ROLE) whenNotPaused {
+    function burnFrom(address account, uint256 amount) external onlyRole(MINTER_ROLE) whenNotPaused {
         _burn(account, amount);
     }
 
