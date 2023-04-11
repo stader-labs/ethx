@@ -107,8 +107,7 @@ contract StaderStakePoolsManager is
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external {
-        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
@@ -219,8 +218,7 @@ contract StaderStakePoolsManager is
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external {
-        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 

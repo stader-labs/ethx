@@ -62,8 +62,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     /// @inheritdoc IStaderPoolBase
-    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external {
-        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_protocolFee + _operatorFee > TOTAL_FEE) {
             revert CommissionFeesMoreThanTOTAL_FEE();
         }
@@ -241,8 +240,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external {
-        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);

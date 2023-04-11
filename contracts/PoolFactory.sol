@@ -57,18 +57,19 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
      * @param _poolId The ID of the pool to update.
      * @param _newPoolAddress The updated address of the pool.
      */
-    function updatePoolAddress(uint8 _poolId, address _newPoolAddress) external override validPoolId(_poolId) {
-        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
+    function updatePoolAddress(uint8 _poolId, address _newPoolAddress)
+        external
+        override
+        validPoolId(_poolId)
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         UtilLib.checkNonZeroAddress(_newPoolAddress);
-
         pools[_poolId].poolAddress = _newPoolAddress;
-
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external {
-        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);

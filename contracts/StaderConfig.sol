@@ -435,8 +435,4 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     function onlyOperatorRole(address account) public view override returns (bool) {
         return hasRole(OPERATOR, account);
     }
-
-    function onlyDefaultAdminRole(address account) public view override returns (bool) {
-        return hasRole(DEFAULT_ADMIN_ROLE, account);
-    }
 }

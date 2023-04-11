@@ -106,7 +106,6 @@ interface IStaderOracle {
     error InvalidData();
     error InvalidPubkeyLength();
     error NotATrustedNode();
-    error CallerNotManager();
 
     // Events
     event BalancesSubmitted(

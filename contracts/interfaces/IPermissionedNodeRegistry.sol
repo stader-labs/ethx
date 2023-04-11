@@ -8,7 +8,6 @@ interface IPermissionedNodeRegistry {
     // Errors
     error NotAPermissionedNodeOperator();
     error TooManyVerifiedKeysToDeposit();
-    error CallerNotPermissionedPool();
 
     // Events
     event OperatorWhitelisted(address permissionedNO);
