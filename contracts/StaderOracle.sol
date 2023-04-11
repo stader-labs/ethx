@@ -340,11 +340,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             revert InvalidReportingBlock();
         }
 
-        // Ensure the pubkeys array is sorted
-        if (!isSorted(_withdrawnValidators.sortedPubkeys)) {
-            revert PubkeysNotSorted();
-        }
-
         bytes memory encodedPubkeys = abi.encode(_withdrawnValidators.sortedPubkeys);
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
@@ -569,18 +564,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         nodeSubmissionKeys[_nodeSubmissionKey] = true;
         submissionCountKeys[_submissionCountKey]++;
         _submissionCount = submissionCountKeys[_submissionCountKey];
-    }
-
-    /// @notice Check if the array of pubkeys is sorted.
-    /// @param pubkeys The array of pubkeys to check.
-    /// @return True if the array is sorted, false otherwise.
-    function isSorted(bytes[] memory pubkeys) internal pure returns (bool) {
-        for (uint256 i = 0; i < pubkeys.length - 1; i++) {
-            if (keccak256(pubkeys[i]) > keccak256(pubkeys[i + 1])) {
-                return false;
-            }
-        }
-        return true;
     }
 
     function getSDPriceInETH() external view override returns (uint256) {
