@@ -39,8 +39,7 @@ interface ISocializingPool {
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof,
-        address operatorRewardsAddr
+        bytes32[][] calldata _merkleProof
     ) external;
 
     // setters
@@ -70,4 +69,6 @@ interface ISocializingPool {
             uint256 nextStartBlock,
             uint256 nextEndBlock
         );
+
+    function getRewardCycleDetails(uint256 _index) external view returns (uint256 _startBlock, uint256 _endBlock);
 }

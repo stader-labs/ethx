@@ -75,7 +75,6 @@ contract StaderStakePoolsManager is
         emit WithdrawVaultUserShareReceived(msg.value);
     }
 
-    // TODO: Manoj below might be wrong
     function receiveEthFromAuction() external payable override {
         depositedPooledETH += msg.value;
         emit AuctionedEthReceived(msg.value);

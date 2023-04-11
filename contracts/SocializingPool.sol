@@ -28,8 +28,6 @@ contract SocializingPool is
     uint256 public override totalOperatorSDRewardsRemaining;
     uint256 public override initialBlock;
 
-    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
-
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
 
@@ -59,7 +57,9 @@ contract SocializingPool is
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
+    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
+
         if (handledRewards[_rewardsData.index]) {
             revert RewardAlreadyHandled();
         }
@@ -102,39 +102,35 @@ contract SocializingPool is
         emit ProtocolETHRewardsTransferred(_rewardsData.protocolETHRewards);
     }
 
-    // TODO: fetch _operatorRewardAddr from operatorID, once sanjay merges the impl
     function claim(
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof,
-        address _operatorRewardsAddr
+        bytes32[][] calldata _merkleProof
     ) external override nonReentrant whenNotPaused {
-        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
-            _index,
-            msg.sender,
-            _amountSD,
-            _amountETH,
-            _merkleProof
-        );
+        address operator = msg.sender;
+        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
+
+        uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
+        address operatorRewardsAddr = getNodeRecipient(operator, poolId);
 
         bool success;
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
-            (success, ) = payable(_operatorRewardsAddr).call{value: totalAmountETH}('');
+            (success, ) = payable(operatorRewardsAddr).call{value: totalAmountETH}('');
             if (!success) {
-                revert ETHTransferFailed(_operatorRewardsAddr, totalAmountETH);
+                revert ETHTransferFailed(operatorRewardsAddr, totalAmountETH);
             }
         }
 
         if (totalAmountSD > 0) {
             totalOperatorSDRewardsRemaining -= totalAmountSD;
-            if (!IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD)) {
+            if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardsAddr, totalAmountSD)) {
                 revert SDTransferFailed();
             }
         }
 
-        emit OperatorRewardsClaimed(_operatorRewardsAddr, totalAmountETH, totalAmountSD);
+        emit OperatorRewardsClaimed(operatorRewardsAddr, totalAmountETH, totalAmountSD);
     }
 
     function _claim(
@@ -174,6 +170,15 @@ contract SocializingPool is
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
 
+    // TODO sanjay move to NodeRegistry?
+    function getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
+        INodeRegistry nodeRegistry = INodeRegistry(
+            IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId)
+        );
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(_operator);
+        return nodeRegistry.getOperatorRewardAddress(operatorId);
+    }
+
     // SETTERS
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
@@ -203,5 +208,17 @@ contract SocializingPool is
         nextIndex = currentIndex + 1;
         nextStartBlock = currentEndBlock + 1;
         nextEndBlock = nextStartBlock + cycleDuration - 1;
+    }
+
+    /// @param _index reward cycle index for which details is required
+    function getRewardCycleDetails(uint256 _index)
+        external
+        view
+        override
+        returns (uint256 _startBlock, uint256 _endBlock)
+    {
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        _startBlock = initialBlock + ((_index - 1) * cycleDuration);
+        _endBlock = _startBlock + cycleDuration - 1;
     }
 }
