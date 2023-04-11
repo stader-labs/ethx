@@ -201,22 +201,14 @@ contract SocializingPool is
             uint256 nextEndBlock
         )
     {
-        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
         currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
-        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
-        currentEndBlock = currentStartBlock + cycleDuration - 1;
+        (currentStartBlock, currentEndBlock) = getRewardCycleDetails(currentIndex);
         nextIndex = currentIndex + 1;
-        nextStartBlock = currentEndBlock + 1;
-        nextEndBlock = nextStartBlock + cycleDuration - 1;
+        (nextStartBlock, nextEndBlock) = getRewardCycleDetails(nextIndex);
     }
 
     /// @param _index reward cycle index for which details is required
-    function getRewardCycleDetails(uint256 _index)
-        external
-        view
-        override
-        returns (uint256 _startBlock, uint256 _endBlock)
-    {
+    function getRewardCycleDetails(uint256 _index) public view returns (uint256 _startBlock, uint256 _endBlock) {
         uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
         _startBlock = initialBlock + ((_index - 1) * cycleDuration);
         _endBlock = _startBlock + cycleDuration - 1;
