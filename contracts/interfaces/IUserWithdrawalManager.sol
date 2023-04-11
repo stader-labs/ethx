@@ -15,6 +15,7 @@ interface IUserWithdrawalManager {
     error CannotFindRequestId();
     error CallerNotAuthorizedToRedeem();
     error ZeroAddressReceived();
+    error CallerNotManager();
 
     // Events
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);

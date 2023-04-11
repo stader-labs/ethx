@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import '../contracts/interfaces/IPoolFactory.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
@@ -36,7 +36,7 @@ contract SDCollateral is
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
         __Pausable_init();
@@ -128,7 +128,7 @@ contract SDCollateral is
 
     // SETTERS
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -157,7 +157,7 @@ contract SDCollateral is
         override
         onlyRole(NODE_REGISTRY_CONTRACT)
     {
-        AddressLib.checkNonZeroAddress(_operator);
+        UtilLib.checkNonZeroAddress(_operator);
         if (_poolId == 0) revert InvalidPoolId();
         if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
             revert InvalidPoolId();

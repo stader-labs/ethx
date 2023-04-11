@@ -6,6 +6,7 @@ interface IStaderInsuranceFund {
     error InvalidAmountProvided();
     error TransferFailed();
     error InSufficientBalance();
+    error CallerNotManager();
     error CallerNotPermissionedPool();
 
     //Events

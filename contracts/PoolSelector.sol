@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolSelector.sol';
@@ -41,7 +41,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256 _permissionlessTarget,
         uint256 _permissionedTarget
     ) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) {
             revert InvalidTargetWeight();
         }
@@ -68,9 +68,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     function computePoolAllocationForDeposit(uint256 _pooledEth)
         external
         override
-        onlyPoolManager
         returns (uint256[] memory selectedPoolCapacity)
     {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
         address poolFactoryAddress = staderConfig.getPoolFactory();
         uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
         uint8 poolCount = IPoolFactory(poolFactoryAddress).poolCount();
@@ -127,7 +127,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @dev only admin can call
      * @param _poolTargets new target weights of pools
      */
-    function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(staderConfig.MANAGER()) {
+    function updatePoolWeights(uint8[] calldata _poolTargets) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length) {
             revert InvalidNewTargetInput();
         }
@@ -143,23 +144,16 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         }
     }
 
-    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(staderConfig.OPERATOR()) {
+    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external {
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
         POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
         emit UpdatedPoolAllocationMaxSize(_poolAllocationMaxSize);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
-    }
-
-    //modifier
-    modifier onlyPoolManager() {
-        if (msg.sender != staderConfig.getStakePoolManager()) {
-            revert CallerNotPoolManager();
-        }
-        _;
     }
 }

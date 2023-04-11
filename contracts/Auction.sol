@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderStakePoolManager.sol';
@@ -32,8 +32,8 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         uint256 _duration,
         uint256 _bidIncrement
     ) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
-        AddressLib.checkNonZeroAddress(_manager);
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_manager);
         if (_duration < 24 hours) revert ShortDuration();
 
         __AccessControl_init();
@@ -143,7 +143,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
     // SETTERS
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

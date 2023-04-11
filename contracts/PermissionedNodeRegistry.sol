@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './library/ValidatorStatus.sol';
 import './interfaces/IStaderConfig.sol';
@@ -60,7 +60,7 @@ contract PermissionedNodeRegistry is
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
@@ -79,9 +79,7 @@ contract PermissionedNodeRegistry is
      * @param _permissionedNOs array of permissioned NOs address
      */
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external override {
-        if (!staderConfig.onlyManagerRole(msg.sender)) {
-            revert CallerNotManager();
-        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         for (uint256 i = 0; i < _permissionedNOs.length; i++) {
             permissionList[_permissionedNOs[i]] = true;
             emit OperatorWhitelisted(_permissionedNOs[i]);
@@ -103,7 +101,7 @@ contract PermissionedNodeRegistry is
     {
         address poolFactory = staderConfig.getPoolFactory();
         IPoolFactory(poolFactory).onlyValidName(_operatorName);
-        AddressLib.checkNonZeroAddress(_operatorRewardAddress);
+        UtilLib.checkNonZeroAddress(_operatorRewardAddress);
         if (!permissionList[msg.sender]) {
             revert NotAPermissionedNodeOperator();
         }
@@ -179,9 +177,7 @@ contract PermissionedNodeRegistry is
         override
         returns (uint256[] memory selectedOperatorCapacity)
     {
-        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.PERMISSIONED_POOL())) {
-            revert CallerNotPermissionedPool();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         // nextOperatorId is total operator count plus 1
         selectedOperatorCapacity = new uint256[](nextOperatorId);
 
@@ -229,9 +225,7 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _frontRunPubkeys,
         bytes[] calldata _invalidSignaturePubkeys
     ) external {
-        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.STADER_ORACLE())) {
-            revert CallerNotStaderOracle();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
         uint256 verifiedValidatorsLength = _readyToDepositPubkeys.length;
         if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) {
             revert TooManyVerifiedKeysToDeposit();
@@ -273,9 +267,7 @@ contract PermissionedNodeRegistry is
      * @param  _pubkeys array of withdrawn validator's pubkey
      */
     function withdrawnValidators(bytes[] calldata _pubkeys) external override {
-        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.STADER_ORACLE())) {
-            revert CallerNotStaderOracle();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
         uint256 withdrawnValidatorCount = _pubkeys.length;
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
@@ -295,9 +287,7 @@ contract PermissionedNodeRegistry is
      * @param _operatorID ID of the operator to deactivate
      */
     function deactivateNodeOperator(uint256 _operatorID) external override {
-        if (!staderConfig.onlyManagerRole(msg.sender)) {
-            revert CallerNotManager();
-        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
         emit OperatorDeactivated(_operatorID);
@@ -309,9 +299,7 @@ contract PermissionedNodeRegistry is
      * @param _operatorID ID of the operator to activate
      */
     function activateNodeOperator(uint256 _operatorID) external override {
-        if (!staderConfig.onlyManagerRole(msg.sender)) {
-            revert CallerNotManager();
-        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
         emit OperatorActivated(_operatorID);
@@ -324,9 +312,7 @@ contract PermissionedNodeRegistry is
      * @param _nextQueuedValidatorIndex updated next index of queued validator per operator
      */
     function updateQueuedValidatorIndex(uint256 _operatorID, uint256 _nextQueuedValidatorIndex) external override {
-        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.PERMISSIONED_POOL())) {
-            revert CallerNotPermissionedPool();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         nextQueuedValidatorIndexByOperatorId[_operatorID] = _nextQueuedValidatorIndex;
         emit UpdatedQueuedValidatorIndex(_operatorID, _nextQueuedValidatorIndex);
     }
@@ -337,9 +323,7 @@ contract PermissionedNodeRegistry is
      * @param _validatorId ID of the validator
      */
     function updateDepositStatusAndBlock(uint256 _validatorId) external override {
-        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.PERMISSIONED_POOL())) {
-            revert CallerNotPermissionedPool();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         validatorRegistry[_validatorId].depositBlock = block.number;
         markValidatorDeposited(_validatorId);
         emit UpdatedValidatorDepositBlock(_validatorId, block.number);
@@ -351,9 +335,7 @@ contract PermissionedNodeRegistry is
      * @param _pubkey pubkey of the validator
      */
     function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external override {
-        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.PERMISSIONED_POOL())) {
-            revert CallerNotPermissionedPool();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         validatorRegistry[validatorId].status = ValidatorStatus.PRE_DEPOSIT;
         emit MarkedValidatorStatusAsPreDeposit(_pubkey);
@@ -367,7 +349,7 @@ contract PermissionedNodeRegistry is
      */
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
         IPoolFactory(staderConfig.getPoolFactory()).onlyValidName(_operatorName);
-        AddressLib.checkNonZeroAddress(_rewardAddress);
+        UtilLib.checkNonZeroAddress(_rewardAddress);
         onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
         operatorStructById[operatorId].operatorName = _operatorName;
@@ -381,9 +363,7 @@ contract PermissionedNodeRegistry is
      * @param _maxNonTerminalKeyPerOperator updated maximum non terminal key per operator limit
      */
     function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external override {
-        if (!staderConfig.onlyManagerRole(msg.sender)) {
-            revert CallerNotManager();
-        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
         emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
     }
@@ -394,9 +374,7 @@ contract PermissionedNodeRegistry is
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override {
-        if (!staderConfig.onlyManagerRole(msg.sender)) {
-            revert CallerNotManager();
-        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
@@ -407,16 +385,14 @@ contract PermissionedNodeRegistry is
      * @param _verifiedKeysBatchSize updated maximum verified key limit in the oracle input
      */
     function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external {
-        if (!staderConfig.onlyOperatorRole(msg.sender)) {
-            revert CallerNotOperator();
-        }
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
         VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
         emit UpdatedVerifiedKeyBatchSize(_verifiedKeysBatchSize);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -443,9 +419,7 @@ contract PermissionedNodeRegistry is
      * @param _count count to increase total active validator value
      */
     function increaseTotalActiveValidatorCount(uint256 _count) external override {
-        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.PERMISSIONED_POOL())) {
-            revert CallerNotPermissionedPool();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         totalActiveValidatorCount += _count;
         emit IncreasedTotalActiveValidatorCount(totalActiveValidatorCount);
     }
@@ -526,9 +500,7 @@ contract PermissionedNodeRegistry is
      * should not be paused
      */
     function pause() external override {
-        if (!staderConfig.onlyManagerRole(msg.sender)) {
-            revert CallerNotManager();
-        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         _pause();
     }
 
@@ -537,9 +509,7 @@ contract PermissionedNodeRegistry is
      * should not be paused
      */
     function unpause() external override {
-        if (!staderConfig.onlyManagerRole(msg.sender)) {
-            revert CallerNotManager();
-        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         _unpause();
     }
 
@@ -705,12 +675,4 @@ contract PermissionedNodeRegistry is
     function markValidatorDeposited(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.DEPOSITED;
     }
-
-    //modifier
-    // modifier onlyStaderOracle() {
-    //     if (msg.sender != staderConfig.getStaderOracle()) {
-    //         revert CallerNotStaderOracle();
-    //     }
-    //     _;
-    // }
 }

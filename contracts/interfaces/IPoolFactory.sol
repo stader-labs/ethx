@@ -15,6 +15,7 @@ interface IPoolFactory {
     error EmptyString();
     error InvalidPoolID();
     error EmptyNameString();
+    error CallerNotManager();
     error PubkeyAlreadyExist();
     error NameCrossedMaxLength();
     error InvalidLengthOfPubkey();
