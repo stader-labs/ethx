@@ -14,15 +14,9 @@ import './interfaces/IPermissionedNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-contract PermissionedNodeRegistry is
-    INodeRegistry,
-    IPermissionedNodeRegistry,
-    Initializable,
-    AccessControlUpgradeable,
-    PausableUpgradeable
-{
+contract PermissionedNodeRegistry is INodeRegistry, IPermissionedNodeRegistry, Initializable, PausableUpgradeable {
     using Math for uint256;
 
     uint8 public constant override poolId = 2;
@@ -61,7 +55,7 @@ contract PermissionedNodeRegistry is
 
     function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
-        __AccessControl_init_unchained();
+
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
         nextOperatorId = 1;
@@ -70,7 +64,6 @@ contract PermissionedNodeRegistry is
         inputKeyCountLimit = 100;
         maxNonTerminalKeyPerOperator = 1000;
         VERIFIED_KEYS_BATCH_SIZE = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**

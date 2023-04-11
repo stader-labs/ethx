@@ -7,11 +7,11 @@ import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderStakePoolManager.sol';
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+contract Auction is IAuction, Initializable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     bytes32 public constant MANAGER = keccak256('MANAGER');
 
     IStaderConfig public override staderConfig;
@@ -36,7 +36,6 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         UtilLib.checkNonZeroAddress(_manager);
         if (_duration < 24 hours) revert ShortDuration();
 
-        __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
@@ -44,9 +43,6 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         duration = _duration;
         bidIncrement = _bidIncrement;
         nextLot = 1;
-
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
-        _grantRole(MANAGER, _manager);
 
         emit UpdatedStaderConfig(_staderConfig);
         emit AuctionDurationUpdated(duration);

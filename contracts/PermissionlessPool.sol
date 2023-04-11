@@ -13,10 +13,10 @@ import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionlessPool is IStaderPoolBase, Initializable, PausableUpgradeable {
     using Math for uint256;
     uint8 public constant poolId = 1;
     IStaderConfig public staderConfig;
@@ -39,10 +39,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
-        __AccessControl_init_unchained();
+
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     // protection against accidental submissions by calling non-existent function

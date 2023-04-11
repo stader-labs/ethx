@@ -10,17 +10,11 @@ import '../contracts/interfaces/IStaderOracle.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-contract SDCollateral is
-    ISDCollateral,
-    Initializable,
-    AccessControlUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract SDCollateral is ISDCollateral, Initializable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     bytes32 public constant MANAGER = keccak256('MANAGER');
     bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
@@ -39,12 +33,10 @@ contract SDCollateral is
     function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
 
-        __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
         emit UpdatedStaderConfig(_staderConfig);
     }

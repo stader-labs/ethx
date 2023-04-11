@@ -7,9 +7,9 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/IPermissionedPool.sol';
 import './interfaces/IStaderInsuranceFund.sol';
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessControlUpgradeable {
+contract StaderInsuranceFund is IStaderInsuranceFund, Initializable {
     IStaderConfig public staderConfig;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -18,9 +18,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
     }
 
     function initialize(address _staderConfig) external initializer {
-        __AccessControl_init_unchained();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     // function to add fund for insurance

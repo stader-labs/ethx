@@ -8,9 +8,9 @@ import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/INodeRegistry.sol';
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
+contract StaderOracle is IStaderOracle {
     RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
@@ -54,10 +54,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
 
-        __AccessControl_init();
-
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+
         emit UpdatedStaderConfig(_staderConfig);
     }
 

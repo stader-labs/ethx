@@ -8,10 +8,10 @@ import './interfaces/INodeRegistry.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract NodeELRewardVault is INodeELRewardVault, Initializable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
     uint8 public override poolId; // No Setter as this is supposed to be set once
     uint256 public override operatorId; // No Setter as this is supposed to be set once
@@ -28,14 +28,12 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     ) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
 
-        __AccessControl_init();
         __ReentrancyGuard_init();
 
         poolId = _poolId;
         operatorId = _operatorId;
         staderConfig = IStaderConfig(_staderConfig);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
         emit UpdatedStaderConfig(_staderConfig);
     }
 

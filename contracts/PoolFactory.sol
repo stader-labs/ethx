@@ -8,9 +8,9 @@ import './interfaces/IStaderPoolBase.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderConfig.sol';
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
+contract PoolFactory is IPoolFactory, Initializable {
     mapping(uint8 => Pool) public override pools;
 
     uint8 public override poolCount;
@@ -25,10 +25,8 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
-        __AccessControl_init_unchained();
-        staderConfig = IStaderConfig(_staderConfig);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        staderConfig = IStaderConfig(_staderConfig);
     }
 
     /**

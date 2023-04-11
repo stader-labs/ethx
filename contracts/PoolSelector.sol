@@ -9,9 +9,9 @@ import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable {
+contract PoolSelector is IPoolSelector, Initializable {
     using Math for uint256;
     using SafeMath for uint256;
 
@@ -46,15 +46,11 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
             revert InvalidTargetWeight();
         }
 
-        __AccessControl_init_unchained();
-
         poolIdForExcessDeposit = 1;
         POOL_ALLOCATION_MAX_SIZE = 100;
         staderConfig = IStaderConfig(_staderConfig);
         poolWeights[1] = _permissionlessTarget;
         poolWeights[2] = _permissionedTarget;
-
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**

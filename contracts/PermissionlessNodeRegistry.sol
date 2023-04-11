@@ -14,13 +14,12 @@ import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract PermissionlessNodeRegistry is
     INodeRegistry,
     IPermissionlessNodeRegistry,
-    AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
@@ -62,7 +61,7 @@ contract PermissionlessNodeRegistry is
 
     function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
-        __AccessControl_init_unchained();
+
         __Pausable_init();
         __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
@@ -70,7 +69,6 @@ contract PermissionlessNodeRegistry is
         nextValidatorId = 1;
         inputKeyCountLimit = 100;
         maxNonTerminalKeyPerOperator = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**

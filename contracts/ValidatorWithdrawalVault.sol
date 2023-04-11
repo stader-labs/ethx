@@ -12,15 +12,10 @@ import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract ValidatorWithdrawalVault is
-    IValidatorWithdrawalVault,
-    Initializable,
-    AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract ValidatorWithdrawalVault is IValidatorWithdrawalVault, Initializable, ReentrancyGuardUpgradeable {
     using Math for uint256;
 
     bytes32 public constant OPERATOR = keccak256('OPERATOR');
@@ -40,13 +35,11 @@ contract ValidatorWithdrawalVault is
     ) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
 
-        __AccessControl_init_unchained();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
         poolId = _poolId;
         validatorId = _validatorId;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     // Allows the contract to receive ETH

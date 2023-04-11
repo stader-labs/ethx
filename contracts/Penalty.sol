@@ -8,9 +8,9 @@ import './interfaces/IRatedV1.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderConfig.sol';
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
+contract Penalty is IPenalty, Initializable {
     IStaderConfig public staderConfig;
     address public override ratedOracleAddress;
     uint256 public override mevTheftPenaltyPerStrike;
@@ -31,14 +31,12 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
         UtilLib.checkNonZeroAddress(_ratedOracleAddress);
-        __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
         ratedOracleAddress = _ratedOracleAddress;
         mevTheftPenaltyPerStrike = 1 ether;
         missedAttestationPenaltyPerStrike = 0.2 ether;
         validatorExitPenaltyThreshold = 2.5 ether;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
 
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }

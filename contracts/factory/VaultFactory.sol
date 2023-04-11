@@ -10,9 +10,9 @@ import '../interfaces/IVaultFactory.sol';
 import '../interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 
-contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
+contract VaultFactory is IVaultFactory, Initializable {
     IStaderConfig public staderConfig;
     address public nodeELRewardVaultImplementation;
     address public validatorWithdrawalVaultImplementation;
@@ -20,13 +20,9 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
     function initialize(address _staderConfig) external initializer {
-        __AccessControl_init_unchained();
-
         staderConfig = IStaderConfig(_staderConfig);
         nodeELRewardVaultImplementation = address(new NodeELRewardVault());
         validatorWithdrawalVaultImplementation = address(new ValidatorWithdrawalVault());
-
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     function deployWithdrawVault(
