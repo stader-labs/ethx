@@ -28,8 +28,6 @@ contract SocializingPool is
     uint256 public override totalOperatorSDRewardsRemaining;
     uint256 public override initialBlock;
 
-    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
-
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
 
@@ -59,7 +57,9 @@ contract SocializingPool is
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
+    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
+
         if (handledRewards[_rewardsData.index]) {
             revert RewardAlreadyHandled();
         }
@@ -208,5 +208,17 @@ contract SocializingPool is
         nextIndex = currentIndex + 1;
         nextStartBlock = currentEndBlock + 1;
         nextEndBlock = nextStartBlock + cycleDuration - 1;
+    }
+
+    /// @param _index reward cycle index for which details is required
+    function getRewardCycleDetails(uint256 _index)
+        external
+        view
+        override
+        returns (uint256 _startBlock, uint256 _endBlock)
+    {
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        _startBlock = initialBlock + ((_index - 1) * cycleDuration);
+        _endBlock = _startBlock + cycleDuration - 1;
     }
 }

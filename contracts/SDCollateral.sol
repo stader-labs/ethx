@@ -21,9 +21,6 @@ contract SDCollateral is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    bytes32 public constant MANAGER = keccak256('MANAGER');
-    bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
-
     IStaderConfig public override staderConfig;
     uint256 public override totalSDCollateral;
     uint256 public override withdrawDelay; // in seconds
@@ -113,13 +110,9 @@ contract SDCollateral is
     }
 
     /// @notice slashes one validator equi. SD amount
+    /// @dev callable only by respective withdrawVaults
     /// @param _validatorId validator SD collateral to slash
-    function slashValidatorSD(uint256 _validatorId, uint8 _poolId)
-        external
-        override
-        onlyRole(MANAGER)
-        returns (uint256 _sdSlashed)
-    {
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external override returns (uint256 _sdSlashed) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
         (, , , , address withdrawVaultAddress, uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(
             _validatorId
@@ -151,7 +144,8 @@ contract SDCollateral is
 
     /// @notice for max approval to auction contract for spending SD tokens
     /// @param spenderAddr contract to approve for spending SD
-    function maxApproveSD(address spenderAddr) external override onlyRole(MANAGER) {
+    function maxApproveSD(address spenderAddr) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         IERC20(staderConfig.getStaderToken()).approve(spenderAddr, type(uint256).max);
     }
 
@@ -170,7 +164,8 @@ contract SDCollateral is
         uint256 _minThreshold,
         uint256 _withdrawThreshold,
         string memory _units
-    ) external override onlyRole(MANAGER) {
+    ) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (_minThreshold > _withdrawThreshold) {
             revert InvalidPoolLimit();
         }
@@ -184,7 +179,8 @@ contract SDCollateral is
         emit UpdatedPoolThreshold(_poolId, _minThreshold, _withdrawThreshold);
     }
 
-    function setWithdrawDelay(uint256 _withdrawDelay) external override onlyRole(MANAGER) {
+    function setWithdrawDelay(uint256 _withdrawDelay) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (withdrawDelay == _withdrawDelay) {
             revert NoStateChange();
         }

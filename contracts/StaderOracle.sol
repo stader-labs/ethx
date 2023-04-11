@@ -472,31 +472,28 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 
-    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(MERKLE_UF, _updateFrequency);
     }
 
-    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
     }
 
-    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(VALIDATOR_STATS_UF, _updateFrequency);
     }
 
-    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, _updateFrequency);
     }
 
-    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, _updateFrequency);
     }
 
