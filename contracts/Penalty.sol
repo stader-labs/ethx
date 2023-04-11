@@ -82,7 +82,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderConfig(address _staderConfig) external override {
+        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);

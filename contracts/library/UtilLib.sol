@@ -8,6 +8,7 @@ library UtilLib {
     error InvalidPubkeyLength();
     error CallerNotManager();
     error CallerNotOperator();
+    error CallerNotDefaultAdmin();
     error CallerNotStaderContract();
 
     /// @notice zero address check modifier
@@ -25,6 +26,12 @@ library UtilLib {
     function onlyOperatorRole(address _addr, IStaderConfig _staderConfig) internal view {
         if (!_staderConfig.onlyOperatorRole(_addr)) {
             revert CallerNotOperator();
+        }
+    }
+
+    function onlyDefaultAdminRole(address _addr, IStaderConfig _staderConfig) internal view {
+        if (!_staderConfig.onlyOperatorRole(_addr)) {
+            revert CallerNotDefaultAdmin();
         }
     }
 

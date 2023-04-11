@@ -456,13 +456,15 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit SafeModeEnabled();
     }
 
-    function disableSafeMode() external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function disableSafeMode() external override {
+        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
         safeMode = false;
         emit SafeModeDisabled();
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderConfig(address _staderConfig) external {
+        UtilLib.onlyDefaultAdminRole(msg.sender, staderConfig);
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
