@@ -9,6 +9,7 @@ import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -22,6 +23,7 @@ contract ValidatorWithdrawalVault is
 {
     using Math for uint256;
 
+    bytes32 public constant OPERATOR = keccak256('OPERATOR');
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
@@ -55,8 +57,7 @@ contract ValidatorWithdrawalVault is
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
 
-        // TODO: in below condition, let staderManager handle it, impl to byPass below revert for staderManager
-        if (totalRewards > staderConfig.getRewardsThreshold()) {
+        if (!hasRole(OPERATOR, msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }
@@ -95,17 +96,21 @@ contract ValidatorWithdrawalVault is
         userShare = _totalRewards - protocolShare - operatorShare;
     }
 
+    // TODO sanjay mark this vault settled?
     function settleFunds() external override nonReentrant {
         if (!isWithdrawnValidator()) {
             revert ValidatorNotWithdrawn();
         }
-        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
+        (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        //TODO liquidate SD if operatorShare < penaltyAmount
 
-        penaltyAmount = Math.min(penaltyAmount, operatorShare);
-        uint256 userShare = userShare_prelim + penaltyAmount;
+        if (operatorShare < penaltyAmount) {
+            ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(validatorId, poolId);
+            penaltyAmount = operatorShare;
+        }
+
+        uint256 userShare = userSharePrelim + penaltyAmount;
         operatorShare = operatorShare - penaltyAmount;
         // Final settlement
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();

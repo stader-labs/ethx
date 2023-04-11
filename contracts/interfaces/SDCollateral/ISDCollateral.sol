@@ -10,27 +10,39 @@ interface ISDCollateral {
         string units;
     }
 
+    struct WithdrawRequestInfo {
+        uint256 lastWithdrawReqTimestamp;
+        uint256 totalSDWithdrawReqAmount;
+    }
+
     // errors
-    error InsufficientSDCollateral(uint256 operatorSDCollateral);
-    error InsufficientWithdrawableSD(uint256 withdrawableSD);
+    error InsufficientSDToWithdraw(uint256 operatorSDCollateral);
     error InvalidPoolId();
     error InvalidPoolLimit();
     error SDTransferFailed();
+    error InvalidExecutor();
+    error AlreadyClaimed();
+    error ClaimNotReady();
+    error NoStateChange();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
     event SDDeposited(address indexed operator, uint256 sdAmount);
-    event SDWithdraw(address indexed operator, uint256 requestedSD);
+    event SDWithdrawRequested(address indexed operator, uint256 requestedSD);
+    event SDClaimed(address indexed operator, uint256 requestedSD);
     event SDSlashed(address indexed operator, address indexed auction, uint256 sdToSlash);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
     event UpdatedPoolIdForOperator(uint8 poolId, address operator);
+    event WithdrawDelayUpdated(uint256 withdrawDelay);
 
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
 
-    function withdraw(uint256 _requestedSD) external;
+    function requestWithdraw(uint256 _requestedSD) external;
 
-    function slashSD(address _operator, uint256 _sdToSlash) external returns (uint256 _sdSlashed);
+    function claimWithdraw() external;
+
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external returns (uint256 _sdSlashed);
 
     function maxApproveSD(address spenderAddr) external;
 
@@ -44,14 +56,14 @@ interface ISDCollateral {
         string memory _units
     ) external;
 
-    function updatePoolIdForOperator(uint8 _poolId, address _operator) external;
+    function setWithdrawDelay(uint256 _withdrawDelay) external;
 
     // getters
     function staderConfig() external view returns (IStaderConfig);
 
     function totalSDCollateral() external view returns (uint256);
 
-    function poolIdByOperator(address) external view returns (uint8);
+    function withdrawDelay() external view returns (uint256);
 
     function operatorSDBalance(address) external view returns (uint256);
 
@@ -60,8 +72,6 @@ interface ISDCollateral {
         uint8 _poolId,
         uint256 _numValidators
     ) external view returns (bool);
-
-    function getOperatorPoolId(address _operator) external view returns (uint8 _poolId);
 
     function getMinimumSDToBond(uint8 _poolId, uint256 _numValidator) external view returns (uint256 _minSDToBond);
 
