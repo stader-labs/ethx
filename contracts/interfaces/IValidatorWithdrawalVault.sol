@@ -26,6 +26,8 @@ interface IValidatorWithdrawalVault {
     function updateStaderConfig(address _staderConfig) external;
 
     // getters
+    function isSettled() external view returns (bool);
+
     function poolId() external view returns (uint8);
 
     function staderConfig() external view returns (IStaderConfig);

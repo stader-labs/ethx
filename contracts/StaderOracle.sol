@@ -8,9 +8,10 @@ import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/INodeRegistry.sol';
 
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
+contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable {
     RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
@@ -48,6 +49,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
+        __Pausable_init();
 
         updateFrequency = 7200; // 24 hours
 
@@ -96,7 +98,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
+    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly whenNotPaused {
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -162,7 +164,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// updates operator reward balances on socializing pool
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
     /// @dev _rewardsData.index should not be zero
-    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
+    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData)
+        external
+        override
+        trustedNodeOnly
+        whenNotPaused
+    {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -219,7 +226,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     // TODO: revisit this impl, submissionKey, consensus needs modification
-    function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
+    function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly whenNotPaused {
         if (_sdPriceData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -272,7 +279,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
+    function submitValidatorStats(ValidatorStats calldata _validatorStats)
+        external
+        override
+        trustedNodeOnly
+        whenNotPaused
+    {
         if (_validatorStats.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -341,6 +353,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         external
         override
         trustedNodeOnly
+        whenNotPaused
     {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -401,6 +414,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         external
         override
         trustedNodeOnly
+        whenNotPaused
     {
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -514,6 +528,23 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             }
         }
         return true;
+    }
+
+    /**
+     * @dev Triggers stopped state.
+     * should not be paused
+     */
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * should not be paused
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     function getSDPriceInETH() external view override returns (uint256) {

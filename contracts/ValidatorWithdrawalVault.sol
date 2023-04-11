@@ -22,6 +22,7 @@ contract ValidatorWithdrawalVault is
 {
     using Math for uint256;
 
+    bool public override isSettled;
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
