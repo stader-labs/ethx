@@ -291,11 +291,7 @@ contract PermissionlessNodeRegistry is
      * @dev only admin can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
-    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit)
-        external
-        override
-        onlyRole(staderConfig.STADER_OPERATOR())
-    {
+    function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override onlyRole(staderConfig.OPERATOR()) {
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
@@ -308,7 +304,7 @@ contract PermissionlessNodeRegistry is
     function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator)
         external
         override
-        onlyRole(staderConfig.STADER_MANAGER())
+        onlyRole(staderConfig.MANAGER())
     {
         maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
         emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
@@ -424,7 +420,7 @@ contract PermissionlessNodeRegistry is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external override onlyRole(staderConfig.STADER_MANAGER()) {
+    function pause() external override onlyRole(staderConfig.MANAGER()) {
         _pause();
     }
 

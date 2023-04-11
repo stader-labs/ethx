@@ -74,7 +74,7 @@ contract UserWithdrawalManager is
     function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit)
         external
         override
-        onlyRole(staderConfig.STADER_MANAGER())
+        onlyRole(staderConfig.MANAGER())
     {
         finalizationBatchLimit = _finalizationBatchLimit;
         emit UpdatedFinalizationBatchLimit(_finalizationBatchLimit);
@@ -189,7 +189,7 @@ contract UserWithdrawalManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(staderConfig.STADER_MANAGER()) {
+    function pause() external onlyRole(staderConfig.MANAGER()) {
         _pause();
     }
 

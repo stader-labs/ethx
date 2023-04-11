@@ -33,7 +33,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     /**
      * @notice Add a new pool.
-     * @dev This function should only be called by the `STADER_MANAGER` role
+     * @dev This function should only be called by the `MANAGER` role
      * @param _poolName The name of the new pool.
      * @param _poolAddress The address of the new pool contract.
      */
@@ -41,7 +41,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     function addNewPool(string calldata _poolName, address _poolAddress)
         external
         override
-        onlyRole(staderConfig.STADER_MANAGER())
+        onlyRole(staderConfig.MANAGER())
     {
         if (bytes(_poolName).length == 0) {
             revert EmptyString();

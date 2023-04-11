@@ -26,7 +26,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
     // indicate the health of protocol on beacon chain
-    // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
+    // set to true by `MANAGER_BOT` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
 
     /// @inheritdoc IStaderOracle
@@ -57,7 +57,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function addTrustedNode(address _nodeAddress) external override onlyRole(staderConfig.STADER_MANAGER()) {
+    function addTrustedNode(address _nodeAddress) external override onlyRole(staderConfig.MANAGER()) {
         AddressLib.checkNonZeroAddress(_nodeAddress);
         if (isTrustedNode[_nodeAddress]) {
             revert NodeAlreadyTrusted();
@@ -69,7 +69,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function removeTrustedNode(address _nodeAddress) external override onlyRole(staderConfig.STADER_MANAGER()) {
+    function removeTrustedNode(address _nodeAddress) external override onlyRole(staderConfig.MANAGER()) {
         AddressLib.checkNonZeroAddress(_nodeAddress);
         if (!isTrustedNode[_nodeAddress]) {
             revert NodeNotTrusted();
@@ -80,7 +80,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         emit TrustedNodeRemoved(_nodeAddress);
     }
 
-    function setUpdateFrequency(uint256 _updateFrequency) external override onlyRole(staderConfig.STADER_MANAGER()) {
+    function setUpdateFrequency(uint256 _updateFrequency) external override onlyRole(staderConfig.MANAGER()) {
         if (_updateFrequency == 0) {
             revert ZeroFrequency();
         }
@@ -449,7 +449,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function setSafeMode(bool _safeMode) external override onlyRole(staderConfig.STADER_MANAGER()) {
+    function setSafeMode(bool _safeMode) external override onlyRole(staderConfig.MANAGER()) {
         safeMode = _safeMode;
         emit UpdatedSafeMode(_safeMode);
     }

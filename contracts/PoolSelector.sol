@@ -127,7 +127,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @dev only admin can call
      * @param _poolTargets new target weights of pools
      */
-    function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(staderConfig.STADER_MANAGER()) {
+    function updatePoolWeights(uint8[] calldata _poolTargets) external onlyRole(staderConfig.MANAGER()) {
         if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length) {
             revert InvalidNewTargetInput();
         }
@@ -143,10 +143,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         }
     }
 
-    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize)
-        external
-        onlyRole(staderConfig.STADER_OPERATOR())
-    {
+    function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external onlyRole(staderConfig.OPERATOR()) {
         POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
         emit UpdatedPoolAllocationMaxSize(_poolAllocationMaxSize);
     }

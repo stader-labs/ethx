@@ -47,7 +47,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount)
         external
         override
-        onlyRole(staderConfig.STADER_MANAGER())
+        onlyRole(staderConfig.MANAGER())
     {
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
         additionalPenaltyAmount[pubkeyRoot] += _amount;
@@ -59,7 +59,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function updateMEVTheftPenaltyPerStrike(uint256 _mevTheftPenaltyPerStrike)
         external
         override
-        onlyRole(staderConfig.STADER_MANAGER())
+        onlyRole(staderConfig.MANAGER())
     {
         mevTheftPenaltyPerStrike = _mevTheftPenaltyPerStrike;
         emit UpdatedMEVTheftPenaltyPerStrike(_mevTheftPenaltyPerStrike);
@@ -69,7 +69,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function updateMissedAttestationPenaltyPerStrike(uint256 _missedAttestationPenaltyPerStrike)
         external
         override
-        onlyRole(staderConfig.STADER_MANAGER())
+        onlyRole(staderConfig.MANAGER())
     {
         missedAttestationPenaltyPerStrike = _missedAttestationPenaltyPerStrike;
         emit UpdatedMissedAttestationPenaltyPerStrike(_missedAttestationPenaltyPerStrike);
@@ -79,18 +79,14 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     function updateValidatorExitPenaltyThreshold(uint256 _validatorExitPenaltyThreshold)
         external
         override
-        onlyRole(staderConfig.STADER_MANAGER())
+        onlyRole(staderConfig.MANAGER())
     {
         validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
         emit UpdatedValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
     }
 
     /// @inheritdoc IPenalty
-    function updateRatedOracleAddress(address _ratedOracleAddress)
-        external
-        override
-        onlyRole(staderConfig.STADER_MANAGER())
-    {
+    function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(staderConfig.MANAGER()) {
         AddressLib.checkNonZeroAddress(_ratedOracleAddress);
         ratedOracleAddress = _ratedOracleAddress;
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);

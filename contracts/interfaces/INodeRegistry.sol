@@ -37,6 +37,8 @@ interface INodeRegistry {
     error PubkeyAlreadyExist();
     error NotEnoughSDCollateral();
     error CallerNotStaderOracle();
+    error CallerNotManager();
+    error CallerNotOperator();
 
     // Events
     event OnboardedOperator(address indexed nodeOperator, uint256 operatorId);

@@ -30,27 +30,27 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant ADMIN = keccak256('ADMIN');
     bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
 
-    bytes32 public constant POOL_FACTORY = keccak256('POOL_FACTORY');
-    bytes32 public constant POOL_SELECTOR = keccak256('POOL_SELECTOR');
-    bytes32 public constant SD_COLLATERAL = keccak256('SD_COLLATERAL');
-    bytes32 public constant VAULT_FACTORY = keccak256('VAULT_FACTORY');
-    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
-    bytes32 public constant AUCTION_CONTRACT = keccak256('AuctionContract');
-    bytes32 public constant PENALTY_CONTRACT = keccak256('PENALTY_CONTRACT');
-    bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
-    bytes32 public constant STAKE_POOL_MANAGER = keccak256('STAKE_POOL_MANAGER');
-    bytes32 public constant ETH_DEPOSIT_CONTRACT = keccak256('ETH_DEPOSIT_CONTRACT');
-    bytes32 public constant PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
-    bytes32 public constant USER_WITHDRAW_MANAGER = keccak256('USER_WITHDRAW_MANAGER');
-    bytes32 public constant STADER_INSURANCE_FUND = keccak256('STADER_INSURANCE_FUND');
-    bytes32 public constant PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
-    bytes32 public constant PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
-    bytes32 public constant PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
-    bytes32 public constant PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
+    bytes32 public constant override POOL_FACTORY = keccak256('POOL_FACTORY');
+    bytes32 public constant override POOL_SELECTOR = keccak256('POOL_SELECTOR');
+    bytes32 public constant override SD_COLLATERAL = keccak256('SD_COLLATERAL');
+    bytes32 public constant override VAULT_FACTORY = keccak256('VAULT_FACTORY');
+    bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
+    bytes32 public constant override AUCTION_CONTRACT = keccak256('AuctionContract');
+    bytes32 public constant override PENALTY_CONTRACT = keccak256('PENALTY_CONTRACT');
+    bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
+    bytes32 public constant override STAKE_POOL_MANAGER = keccak256('STAKE_POOL_MANAGER');
+    bytes32 public constant override ETH_DEPOSIT_CONTRACT = keccak256('ETH_DEPOSIT_CONTRACT');
+    bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
+    bytes32 public constant override USER_WITHDRAW_MANAGER = keccak256('USER_WITHDRAW_MANAGER');
+    bytes32 public constant override STADER_INSURANCE_FUND = keccak256('STADER_INSURANCE_FUND');
+    bytes32 public constant override PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
+    bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
+    bytes32 public constant override PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
+    bytes32 public constant override PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
 
     //Roles
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
-    bytes32 public constant override STADER_OPERATOR = keccak256('STADER_OPERATOR');
+    bytes32 public constant override MANAGER = keccak256('MANAGER');
+    bytes32 public constant override OPERATOR = keccak256('OPERATOR');
 
     bytes32 public constant SD = keccak256('SD');
     bytes32 public constant WETH = keccak256('WETH');
@@ -85,21 +85,18 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Variables Setters
 
-    function updateSocializingPoolCycleDuration(uint256 _socializingPoolCycleDuration)
-        external
-        onlyRole(STADER_MANAGER)
-    {
+    function updateSocializingPoolCycleDuration(uint256 _socializingPoolCycleDuration) external onlyRole(MANAGER) {
         setVariable(SOCIALIZING_POOL_CYCLE_DURATION, _socializingPoolCycleDuration);
     }
 
     function updateSocializingPoolOptInCoolingPeriod(uint256 _SocializePoolOptInCoolingPeriod)
         external
-        onlyRole(STADER_MANAGER)
+        onlyRole(MANAGER)
     {
         setVariable(SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD, _SocializePoolOptInCoolingPeriod);
     }
 
-    function updateRewardsThreshold(uint256 _rewardsThreshold) external onlyRole(STADER_MANAGER) {
+    function updateRewardsThreshold(uint256 _rewardsThreshold) external onlyRole(MANAGER) {
         setVariable(REWARD_THRESHOLD, _rewardsThreshold);
     }
 
@@ -107,8 +104,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @dev update the minimum deposit amount
      * @param _minDepositAmount minimum deposit amount
      */
-    function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(STADER_MANAGER) {
-        if (_minDepositAmount == 0 || _minDepositAmount > getMaxDepositAmount()) {
+    function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(MANAGER) {
+        if (_minDepositAmount == 0 || _minDepositAmount > variablesMap[MAX_DEPOSIT_AMOUNT]) {
             revert InvalidMinDepositValue();
         }
         setVariable(MIN_DEPOSIT_AMOUNT, _minDepositAmount);
@@ -118,8 +115,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @dev update the maximum deposit amount
      * @param _maxDepositAmount maximum deposit amount
      */
-    function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(STADER_MANAGER) {
-        if (_maxDepositAmount < getMinDepositAmount()) {
+    function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(MANAGER) {
+        if (_maxDepositAmount < variablesMap[MIN_DEPOSIT_AMOUNT]) {
             revert InvalidMaxDepositValue();
         }
         setVariable(MAX_DEPOSIT_AMOUNT, _maxDepositAmount);
@@ -131,7 +128,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      */
     //TODO sanjay not clear on one review comment
     function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_minWithdrawAmount == 0 || _minWithdrawAmount > getMaxWithdrawAmount()) {
+        if (_minWithdrawAmount == 0 || _minWithdrawAmount > variablesMap[MAX_WITHDRAW_AMOUNT]) {
             revert InvalidMinWithdrawValue();
         }
         setVariable(MIN_WITHDRAW_AMOUNT, _minWithdrawAmount);
@@ -142,7 +139,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @param _maxWithdrawAmount maximum withdraw amount
      */
     function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_maxWithdrawAmount < getMinWithdrawAmount()) {
+        if (_maxWithdrawAmount < variablesMap[MIN_WITHDRAW_AMOUNT]) {
             revert InvalidMaxWithdrawValue();
         }
         setVariable(MAX_WITHDRAW_AMOUNT, _maxWithdrawAmount);
@@ -156,7 +153,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     // TODO: Manoj propose-accept two step required ??
     function updateAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        address oldAdmin = getAdmin();
+        address oldAdmin = accountsMap[ADMIN];
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         setAccount(ADMIN, _admin);
@@ -164,7 +161,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         _revokeRole(DEFAULT_ADMIN_ROLE, oldAdmin);
     }
 
-    function updateStaderTreasury(address _staderTreasury) external onlyRole(STADER_MANAGER) {
+    function updateStaderTreasury(address _staderTreasury) external onlyRole(MANAGER) {
         setAccount(STADER_TREASURY, _staderTreasury);
     }
 
@@ -271,7 +268,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Variables Getters
 
-    function getSocializingPoolCycleDuration() public view override returns (uint256) {
+    function getSocializingPoolCycleDuration() external view override returns (uint256) {
         return variablesMap[SOCIALIZING_POOL_CYCLE_DURATION];
     }
 
@@ -283,19 +280,19 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         return variablesMap[REWARD_THRESHOLD];
     }
 
-    function getMinDepositAmount() public view override returns (uint256) {
+    function getMinDepositAmount() external view override returns (uint256) {
         return variablesMap[MIN_DEPOSIT_AMOUNT];
     }
 
-    function getMaxDepositAmount() public view override returns (uint256) {
+    function getMaxDepositAmount() external view override returns (uint256) {
         return variablesMap[MAX_DEPOSIT_AMOUNT];
     }
 
-    function getMinWithdrawAmount() public view override returns (uint256) {
+    function getMinWithdrawAmount() external view override returns (uint256) {
         return variablesMap[MIN_WITHDRAW_AMOUNT];
     }
 
-    function getMaxWithdrawAmount() public view override returns (uint256) {
+    function getMaxWithdrawAmount() external view override returns (uint256) {
         return variablesMap[MAX_WITHDRAW_AMOUNT];
     }
 
@@ -305,7 +302,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Account Getters
 
-    function getAdmin() public view returns (address) {
+    function getAdmin() external view returns (address) {
         return accountsMap[ADMIN];
     }
 
@@ -424,5 +421,18 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         AddressLib.checkNonZeroAddress(val);
         tokensMap[key] = val;
         emit SetToken(key, val);
+    }
+
+    //only stader protocol contract check
+    function onlyStaderContract(address _addr, bytes32 _contractName) external view returns (bool) {
+        return (_addr == contractsMap[_contractName]);
+    }
+
+    function onlyManagerRole(address account) public view override returns (bool) {
+        return hasRole(MANAGER, account);
+    }
+
+    function onlyOperatorRole(address account) public view override returns (bool) {
+        return hasRole(OPERATOR, account);
     }
 }

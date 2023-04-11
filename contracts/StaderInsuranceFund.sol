@@ -28,8 +28,8 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
         emit ReceivedInsuranceFund(msg.value);
     }
 
-    // `STADER_MANAGER` can withdraw access fund
-    function withdrawFund(uint256 _amount) external override onlyRole(staderConfig.STADER_MANAGER()) {
+    // `MANAGER` can withdraw access fund
+    function withdrawFund(uint256 _amount) external override onlyRole(staderConfig.MANAGER()) {
         if (address(this).balance < _amount || _amount == 0) {
             revert InvalidAmountProvided();
         }

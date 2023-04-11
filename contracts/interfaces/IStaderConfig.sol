@@ -15,10 +15,45 @@ interface IStaderConfig {
     event SetContract(bytes32, address);
     event SetToken(bytes32, address);
 
-    //Roles
-    function STADER_MANAGER() external view returns (bytes32);
+    //Contracts
+    function POOL_FACTORY() external view returns (bytes32);
 
-    function STADER_OPERATOR() external view returns (bytes32);
+    function POOL_SELECTOR() external view returns (bytes32);
+
+    function SD_COLLATERAL() external view returns (bytes32);
+
+    function VAULT_FACTORY() external view returns (bytes32);
+
+    function STADER_ORACLE() external view returns (bytes32);
+
+    function AUCTION_CONTRACT() external view returns (bytes32);
+
+    function PENALTY_CONTRACT() external view returns (bytes32);
+
+    function PERMISSIONED_POOL() external view returns (bytes32);
+
+    function STAKE_POOL_MANAGER() external view returns (bytes32);
+
+    function ETH_DEPOSIT_CONTRACT() external view returns (bytes32);
+
+    function PERMISSIONLESS_POOL() external view returns (bytes32);
+
+    function USER_WITHDRAW_MANAGER() external view returns (bytes32);
+
+    function STADER_INSURANCE_FUND() external view returns (bytes32);
+
+    function PERMISSIONED_NODE_REGISTRY() external view returns (bytes32);
+
+    function PERMISSIONLESS_NODE_REGISTRY() external view returns (bytes32);
+
+    function PERMISSIONED_SOCIALIZING_POOL() external view returns (bytes32);
+
+    function PERMISSIONLESS_SOCIALIZING_POOL() external view returns (bytes32);
+
+    //Roles
+    function MANAGER() external view returns (bytes32);
+
+    function OPERATOR() external view returns (bytes32);
 
     // Constants
     function getStakedEthPerNode() external view returns (uint256);
@@ -90,4 +125,11 @@ interface IStaderConfig {
     function getWethToken() external view returns (address);
 
     function getETHxToken() external view returns (address);
+
+    //checks roles and stader contracts
+    function onlyStaderContract(address _addr, bytes32 _contractName) external view returns (bool);
+
+    function onlyManagerRole(address account) external view returns (bool);
+
+    function onlyOperatorRole(address account) external view returns (bool);
 }

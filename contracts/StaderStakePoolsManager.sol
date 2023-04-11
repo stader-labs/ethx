@@ -208,7 +208,7 @@ contract StaderStakePoolsManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(staderConfig.STADER_MANAGER()) {
+    function pause() external onlyRole(staderConfig.MANAGER()) {
         _pause();
     }
 
