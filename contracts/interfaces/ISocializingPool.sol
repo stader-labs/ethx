@@ -15,6 +15,7 @@ interface ISocializingPool {
     error InsufficientSDRewards();
     error InvalidAmount();
     error InvalidProof(uint256 cycle, address operator);
+    error InvalidCycleIndex();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);

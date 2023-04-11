@@ -209,6 +209,9 @@ contract SocializingPool is
 
     /// @param _index reward cycle index for which details is required
     function getRewardCycleDetails(uint256 _index) public view returns (uint256 _startBlock, uint256 _endBlock) {
+        if (_index == 0) {
+            revert InvalidCycleIndex();
+        }
         uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
         _startBlock = initialBlock + ((_index - 1) * cycleDuration);
         _endBlock = _startBlock + cycleDuration - 1;
