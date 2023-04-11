@@ -163,7 +163,8 @@ interface IStaderOracle {
         uint256 time
     );
     event WithdrawnValidatorsUpdated(uint256 block, address nodeRegistry, bytes[] pubkeys, uint256 time);
-    event UpdatedSafeMode(bool safeMode);
+    event SafeModeEnabled();
+    event SafeModeDisabled();
     event UpdatedStaderConfig(address staderConfig);
 
     // methods
@@ -219,8 +220,11 @@ interface IStaderOracle {
     function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd) external;
 
     // setters
-    // update the status of safeMode depending on network and protocol health
-    function setSafeMode(bool _safeMode) external;
+    // enable the safeMode depending on network and protocol health
+    function enableSafeMode() external;
+
+    // disable safe mode
+    function disableSafeMode() external;
 
     function updateStaderConfig(address _staderConfig) external;
 

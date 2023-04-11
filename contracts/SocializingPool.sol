@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IPoolFactory.sol';
 import './interfaces/ISocializingPool.sol';
@@ -28,8 +28,6 @@ contract SocializingPool is
     uint256 public override totalOperatorSDRewardsRemaining;
     uint256 public override initialBlock;
 
-    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
-
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
 
@@ -39,7 +37,7 @@ contract SocializingPool is
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
         __Pausable_init();
@@ -59,7 +57,9 @@ contract SocializingPool is
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
+    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
+
         if (handledRewards[_rewardsData.index]) {
             revert RewardAlreadyHandled();
         }
@@ -181,7 +181,7 @@ contract SocializingPool is
 
     // SETTERS
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -201,12 +201,19 @@ contract SocializingPool is
             uint256 nextEndBlock
         )
     {
-        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
         currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
-        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
-        currentEndBlock = currentStartBlock + cycleDuration - 1;
+        (currentStartBlock, currentEndBlock) = getRewardCycleDetails(currentIndex);
         nextIndex = currentIndex + 1;
-        nextStartBlock = currentEndBlock + 1;
-        nextEndBlock = nextStartBlock + cycleDuration - 1;
+        (nextStartBlock, nextEndBlock) = getRewardCycleDetails(nextIndex);
+    }
+
+    /// @param _index reward cycle index for which details is required
+    function getRewardCycleDetails(uint256 _index) public view returns (uint256 _startBlock, uint256 _endBlock) {
+        if (_index == 0) {
+            revert InvalidCycleIndex();
+        }
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        _startBlock = initialBlock + ((_index - 1) * cycleDuration);
+        _endBlock = _startBlock + cycleDuration - 1;
     }
 }

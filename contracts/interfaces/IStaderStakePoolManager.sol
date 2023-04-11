@@ -8,7 +8,6 @@ interface IStaderStakePoolManager {
     error UnsupportedOperation();
     error InsufficientBalance();
     error TransferFailed();
-    error CallerNotUserWithdrawManager();
     error UnsupportedOperationInSafeMode();
 
     // Events
@@ -22,8 +21,6 @@ interface IStaderStakePoolManager {
     event WithdrawVaultUserShareReceived(uint256 amount);
 
     function depositedPooledETH() external view returns (uint256);
-
-    function STADER_MANAGER() external view returns (bytes32);
 
     function deposit(address _receiver) external payable returns (uint256);
 

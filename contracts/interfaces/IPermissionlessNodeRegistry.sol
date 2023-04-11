@@ -19,13 +19,6 @@ interface IPermissionlessNodeRegistry {
     event TransferredCollateralToPool(uint256 amount);
 
     //Getters
-
-    function PERMISSIONLESS_NODE_REGISTRY_OWNER() external returns (bytes32);
-
-    function STADER_ORACLE() external view returns (bytes32);
-
-    function PERMISSIONLESS_POOL() external returns (bytes32);
-
     function poolId() external view returns (uint8);
 
     function nextOperatorId() external view returns (uint256);

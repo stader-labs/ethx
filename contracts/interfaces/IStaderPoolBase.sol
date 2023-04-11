@@ -5,10 +5,10 @@ import './INodeRegistry.sol';
 
 interface IStaderPoolBase {
     // Errors
-    error CommissionFeesMoreThanTOTAL_FEE();
     error ProtocolFeeUnchanged();
     error OperatorFeeUnchanged();
     error UnsupportedOperation();
+    error CommissionFeesMoreThanTOTAL_FEE();
 
     // Events
     event ValidatorPreDepositedOnBeaconChain(bytes indexed pubKey);

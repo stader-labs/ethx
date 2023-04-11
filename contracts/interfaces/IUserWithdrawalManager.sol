@@ -37,8 +37,6 @@ interface IUserWithdrawalManager {
     );
     event ReceivedETH(uint256 _amount);
 
-    function USER_WITHDRAWAL_MANAGER_ADMIN() external view returns (bytes32);
-
     function finalizationBatchLimit() external view returns (uint256);
 
     function nextRequestIdToFinalize() external view returns (uint256);
@@ -64,9 +62,9 @@ interface IUserWithdrawalManager {
 
     function updateFinalizationBatchLimit(uint256 _paginationLimit) external;
 
-    function withdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
+    function requestWithdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
 
     function finalizeUserWithdrawalRequest() external;
 
-    function redeem(uint256 _requestId) external;
+    function claim(uint256 _requestId) external;
 }

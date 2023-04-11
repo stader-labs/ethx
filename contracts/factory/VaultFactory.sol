@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import '../library/AddressLib.sol';
+import '../library/UtilLib.sol';
 
 import '../ValidatorWithdrawalVault.sol';
 import '../NodeELRewardVault.sol';
@@ -88,7 +88,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

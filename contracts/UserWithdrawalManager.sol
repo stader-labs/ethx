@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './ETHx.sol';
 import './interfaces/IStaderConfig.sol';
@@ -30,8 +30,6 @@ contract UserWithdrawalManager is
     //upper cap on user non redeemed withdraw request count
     uint256 public override maxNonRedeemedUserRequestCount;
 
-    bytes32 public constant override USER_WITHDRAWAL_MANAGER_ADMIN = keccak256('USER_WITHDRAWAL_MANAGER_ADMIN');
-
     /// @notice user withdrawal requests
     mapping(uint256 => UserWithdrawInfo) public override userWithdrawRequests;
 
@@ -52,7 +50,7 @@ contract UserWithdrawalManager is
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -73,18 +71,15 @@ contract UserWithdrawalManager is
      * @dev only admin of this contract can call
      * @param _finalizationBatchLimit value of finalizationBatchLimit
      */
-    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit)
-        external
-        override
-        onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN)
-    {
+    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         finalizationBatchLimit = _finalizationBatchLimit;
         emit UpdatedFinalizationBatchLimit(_finalizationBatchLimit);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -94,7 +89,7 @@ contract UserWithdrawalManager is
      * @param _ethXAmount amount of ethX shares to withdraw
      * @param _owner owner of withdraw request to redeem
      */
-    function withdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
+    function requestWithdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
         if (_owner == address(0)) revert ZeroAddressReceived();
         uint256 assets = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
         if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount()) {
@@ -169,7 +164,7 @@ contract UserWithdrawalManager is
      * @notice transfer the eth of finalized request to recipient and delete the request
      * @param _requestId request id to redeem
      */
-    function redeem(uint256 _requestId) external override {
+    function claim(uint256 _requestId) external override {
         if (_requestId >= nextRequestIdToFinalize) {
             revert requestIdNotFinalized(_requestId);
         }
@@ -191,7 +186,8 @@ contract UserWithdrawalManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         _pause();
     }
 
@@ -199,7 +195,7 @@ contract UserWithdrawalManager is
      * @dev Returns to normal state.
      * should not be paused
      */
-    function unpause() external onlyRole(USER_WITHDRAWAL_MANAGER_ADMIN) {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPermissionedPool.sol';
@@ -11,8 +11,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
-    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
-    bytes32 public constant PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -30,8 +28,9 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
         emit ReceivedInsuranceFund(msg.value);
     }
 
-    // `STADER_MANAGER` can withdraw access fund
-    function withdrawFund(uint256 _amount) external override onlyRole(STADER_MANAGER) {
+    // `MANAGER` can withdraw access fund
+    function withdrawFund(uint256 _amount) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (address(this).balance < _amount || _amount == 0) {
             revert InvalidAmountProvided();
         }
@@ -49,7 +48,8 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
      * @dev only permissioned pool can call
      * @param _amount amount of ETH to transfer to permissioned pool
      */
-    function reimburseUserFund(uint256 _amount) external override onlyRole(PERMISSIONED_POOL) {
+    function reimburseUserFund(uint256 _amount) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }
@@ -58,7 +58,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

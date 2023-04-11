@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IPenalty.sol';
 import './interfaces/IRatedV1.sol';
@@ -16,7 +16,6 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     uint256 public override mevTheftPenaltyPerStrike;
     uint256 public override missedAttestationPenaltyPerStrike;
     uint256 public override validatorExitPenaltyThreshold;
-    bytes32 public constant override STADER_DAO = keccak256('STADER_DAO');
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
     /// @inheritdoc IPenalty
@@ -30,8 +29,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
-        AddressLib.checkNonZeroAddress(_ratedOracleAddress);
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_ratedOracleAddress);
         __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
@@ -45,11 +44,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPenalty
-    function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount)
-        external
-        override
-        onlyRole(STADER_DAO)
-    {
+    function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
         additionalPenaltyAmount[pubkeyRoot] += _amount;
 
@@ -57,45 +53,37 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPenalty
-    function updateMEVTheftPenaltyPerStrike(uint256 _mevTheftPenaltyPerStrike)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateMEVTheftPenaltyPerStrike(uint256 _mevTheftPenaltyPerStrike) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         mevTheftPenaltyPerStrike = _mevTheftPenaltyPerStrike;
         emit UpdatedMEVTheftPenaltyPerStrike(_mevTheftPenaltyPerStrike);
     }
 
     /// @inheritdoc IPenalty
-    function updateMissedAttestationPenaltyPerStrike(uint256 _missedAttestationPenaltyPerStrike)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateMissedAttestationPenaltyPerStrike(uint256 _missedAttestationPenaltyPerStrike) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         missedAttestationPenaltyPerStrike = _missedAttestationPenaltyPerStrike;
         emit UpdatedMissedAttestationPenaltyPerStrike(_missedAttestationPenaltyPerStrike);
     }
 
     /// @inheritdoc IPenalty
-    function updateValidatorExitPenaltyThreshold(uint256 _validatorExitPenaltyThreshold)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateValidatorExitPenaltyThreshold(uint256 _validatorExitPenaltyThreshold) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         validatorExitPenaltyThreshold = _validatorExitPenaltyThreshold;
         emit UpdatedValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
     }
 
     /// @inheritdoc IPenalty
-    function updateRatedOracleAddress(address _ratedOracleAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_ratedOracleAddress);
+    function updateRatedOracleAddress(address _ratedOracleAddress) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        UtilLib.checkNonZeroAddress(_ratedOracleAddress);
         ratedOracleAddress = _ratedOracleAddress;
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

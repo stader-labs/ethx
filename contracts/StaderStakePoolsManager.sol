@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './ETHx.sol';
 import './interfaces/IPoolFactory.sol';
@@ -35,8 +35,6 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
 
-    bytes32 public constant override STADER_MANAGER = keccak256('STADER_MANAGER');
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -47,7 +45,7 @@ contract StaderStakePoolsManager is
      * @param _staderConfig config contract
      */
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -97,13 +95,10 @@ contract StaderStakePoolsManager is
      * @param _amount amount of ETH to transfer
      */
     function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
-        address userWithdrawManager = staderConfig.getUserWithdrawManager();
-        if (msg.sender != userWithdrawManager) {
-            revert CallerNotUserWithdrawManager();
-        }
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.USER_WITHDRAW_MANAGER());
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(userWithdrawManager).call{value: _amount}('');
+        (bool success, ) = payable(staderConfig.getUserWithdrawManager()).call{value: _amount}('');
         if (!success) {
             revert TransferFailed();
         }
@@ -112,7 +107,7 @@ contract StaderStakePoolsManager is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -213,7 +208,8 @@ contract StaderStakePoolsManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(STADER_MANAGER) {
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         _pause();
     }
 

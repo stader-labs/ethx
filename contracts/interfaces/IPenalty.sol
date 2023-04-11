@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 interface IPenalty {
     // Errors
     error InvalidPubkeyLength();
+
     // Events
     event UpdatedAdditionalPenaltyAmount(bytes indexed pubkey, uint256 amount);
     event UpdatedMEVTheftPenaltyPerStrike(uint256 mevTheftPenalty);
@@ -25,8 +26,6 @@ interface IPenalty {
 
     // returns the totalPenalty threshold after which validator is force exited
     function validatorExitPenaltyThreshold() external view returns (uint256);
-
-    function STADER_DAO() external view returns (bytes32);
 
     // returns the additional penalty amount of a validator given its pubkey root
     function additionalPenaltyAmount(bytes32 _pubkeyRoot) external view returns (uint256);

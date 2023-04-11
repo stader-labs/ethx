@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderPoolBase.sol';
@@ -24,7 +24,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         staderConfig = IStaderConfig(_staderConfig);
 
@@ -33,20 +33,17 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     /**
      * @notice Add a new pool.
-     * @dev This function should only be called by the owner of the contract.
+     * @dev This function should only be called by the `MANAGER` role
      * @param _poolName The name of the new pool.
      * @param _poolAddress The address of the new pool contract.
      */
     //TODO sanjay make sure pools are added in same order of poolId
-    function addNewPool(string calldata _poolName, address _poolAddress)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function addNewPool(string calldata _poolName, address _poolAddress) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (bytes(_poolName).length == 0) {
             revert EmptyString();
         }
-        AddressLib.checkNonZeroAddress(_poolAddress);
+        UtilLib.checkNonZeroAddress(_poolAddress);
 
         pools[poolCount + 1] = Pool({poolName: _poolName, poolAddress: _poolAddress});
         poolCount++;
@@ -56,7 +53,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
 
     /**
      * @notice Update the address of a pool.
-     * @dev This function should only be called by the owner of the contract.
+     * @dev This function should only be called by the `DEFAULT_ADMIN_ROLE` role
      * @param _poolId The ID of the pool to update.
      * @param _newPoolAddress The updated address of the pool.
      */
@@ -66,16 +63,14 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         validPoolId(_poolId)
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        AddressLib.checkNonZeroAddress(_newPoolAddress);
-
+        UtilLib.checkNonZeroAddress(_newPoolAddress);
         pools[_poolId].poolAddress = _newPoolAddress;
-
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

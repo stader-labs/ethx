@@ -35,14 +35,6 @@ interface IPermissionedNodeRegistry {
 
     function totalActiveOperatorCount() external view returns (uint256);
 
-    function STADER_DAO() external view returns (bytes32);
-
-    function STADER_ORACLE() external view returns (bytes32);
-
-    function PERMISSIONED_POOL() external view returns (bytes32);
-
-    function PERMISSIONED_NODE_REGISTRY_OWNER() external view returns (bytes32);
-
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
     function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);

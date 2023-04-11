@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IPoolFactory.sol';
 import './interfaces/IStaderOracle.sol';
@@ -24,9 +24,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     uint256 public override latestMissedAttestationConsensusIndex;
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
-    bytes32 public constant STADER_MANAGER = keccak256('STADER_MANAGER');
     // indicate the health of protocol on beacon chain
-    // set to true by `STADER_MANAGER_BOT` if heavy slashing on protocol on beacon chain
+    // set to true by `MANAGER` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
 
     /// @inheritdoc IStaderOracle
@@ -53,7 +52,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
 
@@ -63,8 +62,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function addTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_nodeAddress);
+    function addTrustedNode(address _nodeAddress) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        UtilLib.checkNonZeroAddress(_nodeAddress);
         if (isTrustedNode[_nodeAddress]) {
             revert NodeAlreadyTrusted();
         }
@@ -75,8 +75,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function removeTrustedNode(address _nodeAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_nodeAddress);
+    function removeTrustedNode(address _nodeAddress) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        UtilLib.checkNonZeroAddress(_nodeAddress);
         if (!isTrustedNode[_nodeAddress]) {
             revert NodeNotTrusted();
         }
@@ -444,14 +445,20 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function setSafeMode(bool _safeMode) external override onlyRole(STADER_MANAGER) {
-        safeMode = _safeMode;
-        emit UpdatedSafeMode(_safeMode);
+    function enableSafeMode() external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        safeMode = true;
+        emit SafeModeEnabled();
+    }
+
+    function disableSafeMode() external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        safeMode = false;
+        emit SafeModeDisabled();
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -460,31 +467,28 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 
-    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(MERKLE_UF, _updateFrequency);
     }
 
-    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
     }
 
-    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(VALIDATOR_STATS_UF, _updateFrequency);
     }
 
-    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, _updateFrequency);
     }
 
-    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, _updateFrequency);
     }
 

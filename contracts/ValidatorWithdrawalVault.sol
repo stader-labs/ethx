@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IPenalty.sol';
@@ -23,7 +23,6 @@ contract ValidatorWithdrawalVault is
 {
     using Math for uint256;
 
-    bytes32 public constant OPERATOR = keccak256('OPERATOR');
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
@@ -38,7 +37,7 @@ contract ValidatorWithdrawalVault is
         address _staderConfig,
         uint256 _validatorId
     ) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
@@ -57,7 +56,7 @@ contract ValidatorWithdrawalVault is
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
 
-        if (!hasRole(OPERATOR, msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
+        if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }
@@ -156,7 +155,7 @@ contract ValidatorWithdrawalVault is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }

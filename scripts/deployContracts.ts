@@ -145,7 +145,7 @@ async function main() {
   await vaultFactoryInstance.grantRole(staderNetworkPool, permissionedNodeRegistry.address)
   console.log('granted stader network role to different contracts')
 
-  const managerBot = await permissionedNodeRegistry.STADER_MANAGER_BOT()
+  const managerBot = await permissionedNodeRegistry.MANAGER_BOT()
   await permissionedNodeRegistry.grantRole(managerBot, staderOwner.address)
   await permissionlessNodeRegistry.grantRole(managerBot, staderOwner.address)
   console.log('granted manager bot role to owner')
