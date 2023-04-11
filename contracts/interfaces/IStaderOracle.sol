@@ -108,7 +108,6 @@ interface IStaderOracle {
     error NotATrustedNode();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();
-    error CallerNotManager();
 
     // Events
     event BalancesSubmitted(
