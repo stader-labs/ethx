@@ -80,7 +80,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setVariable(MAX_WITHDRAW_AMOUNT, 10000 ether);
         setContract(ETH_DEPOSIT_CONTRACT, _ethDepositContract);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        setAccount(ADMIN, _admin);
     }
 
     //Variables Setters

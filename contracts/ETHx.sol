@@ -24,7 +24,8 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __ERC20_init('Liquid Staking ETH', 'ETHx');
@@ -32,7 +33,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         __AccessControl_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**

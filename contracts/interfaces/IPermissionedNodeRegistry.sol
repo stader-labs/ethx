@@ -7,6 +7,8 @@ import './INodeRegistry.sol';
 interface IPermissionedNodeRegistry {
     // Errors
     error NotAPermissionedNodeOperator();
+    error OperatorAlreadyDeactivate();
+    error OperatorAlreadyActive();
 
     // Events
     event OperatorWhitelisted(address permissionedNO);

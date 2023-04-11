@@ -36,7 +36,8 @@ contract SDCollateral is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
@@ -44,7 +45,7 @@ contract SDCollateral is
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         emit UpdatedStaderConfig(_staderConfig);
     }

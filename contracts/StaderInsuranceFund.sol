@@ -17,10 +17,12 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     // function to add fund for insurance

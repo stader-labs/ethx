@@ -30,7 +30,12 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig, address _ratedOracleAddress) external initializer {
+    function initialize(
+        address _admin,
+        address _staderConfig,
+        address _ratedOracleAddress
+    ) external initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         UtilLib.checkNonZeroAddress(_ratedOracleAddress);
         __AccessControl_init_unchained();
@@ -40,7 +45,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         mevTheftPenaltyPerStrike = 1 ether;
         missedAttestationPenaltyPerStrike = 0.2 ether;
         validatorExitPenaltyThreshold = 2.5 ether;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
     }

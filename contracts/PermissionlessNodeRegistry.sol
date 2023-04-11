@@ -62,7 +62,8 @@ contract PermissionlessNodeRegistry is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
@@ -73,7 +74,7 @@ contract PermissionlessNodeRegistry is
         inputKeyCountLimit = 100;
         maxNonTerminalKeyPerOperator = 50;
         VERIFIED_KEYS_BATCH_SIZE = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**

@@ -49,7 +49,8 @@ contract UserWithdrawalManager is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
@@ -59,7 +60,7 @@ contract UserWithdrawalManager is
         nextRequestId = 1;
         finalizationBatchLimit = 50;
         maxNonRedeemedUserRequestCount = 1000;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     receive() external payable {

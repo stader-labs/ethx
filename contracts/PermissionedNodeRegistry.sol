@@ -59,7 +59,8 @@ contract PermissionedNodeRegistry is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
@@ -70,7 +71,7 @@ contract PermissionedNodeRegistry is
         inputKeyCountLimit = 100;
         maxNonTerminalKeyPerOperator = 1000;
         VERIFIED_KEYS_BATCH_SIZE = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -292,9 +293,11 @@ contract PermissionedNodeRegistry is
      * @dev only accept call from address having `MANAGER` role
      * @param _operatorID ID of the operator to deactivate
      */
-    //TODO make internal one, make sure state is changing
     function deactivateNodeOperator(uint256 _operatorID) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (!operatorStructById[_operatorID].active) {
+            revert OperatorAlreadyDeactivate();
+        }
         operatorStructById[_operatorID].active = false;
         totalActiveOperatorCount--;
         emit OperatorDeactivated(_operatorID);
@@ -307,6 +310,9 @@ contract PermissionedNodeRegistry is
      */
     function activateNodeOperator(uint256 _operatorID) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (operatorStructById[_operatorID].active) {
+            revert OperatorAlreadyActive();
+        }
         operatorStructById[_operatorID].active = true;
         totalActiveOperatorCount++;
         emit OperatorActivated(_operatorID);
@@ -593,7 +599,10 @@ contract PermissionedNodeRegistry is
     function _handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
-        operatorStructById[operatorId].active = false;
+        if (operatorStructById[operatorId].active) {
+            operatorStructById[operatorId].active = false;
+            totalActiveOperatorCount--;
+        }
     }
 
     // returns operator total queued validator count

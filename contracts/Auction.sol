@@ -27,11 +27,13 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
     }
 
     function initialize(
+        address _admin,
         address _staderConfig,
         address _manager,
         uint256 _duration,
         uint256 _bidIncrement
     ) external initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         UtilLib.checkNonZeroAddress(_manager);
         if (_duration < 24 hours) revert ShortDuration();
@@ -45,7 +47,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         bidIncrement = _bidIncrement;
         nextLot = 1;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(MANAGER, _manager);
 
         emit UpdatedStaderConfig(_staderConfig);

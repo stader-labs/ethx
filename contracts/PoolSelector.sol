@@ -32,15 +32,18 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     /**
      * @notice initialize with permissionless and permissioned Pool weights
      * @dev pool index start from 1 with permission less pool
+     * @param _admin admin address for this contract
      * @param _staderConfig config contract address
      * @param _permissionlessTarget target weight of permissionless pool
      * @param _permissionedTarget target weight of permissioned pool
      */
     function initialize(
+        address _admin,
         address _staderConfig,
         uint256 _permissionlessTarget,
         uint256 _permissionedTarget
     ) external initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) {
             revert InvalidTargetWeight();
@@ -54,7 +57,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         poolWeights[1] = _permissionlessTarget;
         poolWeights[2] = _permissionedTarget;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
