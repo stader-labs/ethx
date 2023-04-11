@@ -53,7 +53,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant override OPERATOR = keccak256('OPERATOR');
 
     bytes32 public constant SD = keccak256('SD');
-    bytes32 public constant WETH = keccak256('WETH');
     bytes32 public constant ETHx = keccak256('ETHx');
 
     mapping(bytes32 => uint256) private constantsMap;
@@ -241,10 +240,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setToken(SD, _staderToken);
     }
 
-    function updateWethToken(address _wethToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setToken(WETH, _wethToken);
-    }
-
     function updateETHxToken(address _ethX) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setToken(ETHx, _ethX);
     }
@@ -381,10 +376,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getStaderToken() external view override returns (address) {
         return tokensMap[SD];
-    }
-
-    function getWethToken() external view override returns (address) {
-        return tokensMap[WETH];
     }
 
     function getETHxToken() external view returns (address) {

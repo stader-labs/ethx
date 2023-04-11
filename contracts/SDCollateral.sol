@@ -21,9 +21,6 @@ contract SDCollateral is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    bytes32 public constant MANAGER = keccak256('MANAGER');
-    bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
-
     IStaderConfig public override staderConfig;
     uint256 public override totalSDCollateral;
     uint256 public override withdrawDelay; // in seconds
@@ -76,7 +73,7 @@ contract SDCollateral is
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
 
-        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
+        (uint8 poolId, , uint256 validatorCount) = _getOperatorInfo(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
         uint256 sdWithdrawableThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
@@ -114,36 +111,19 @@ contract SDCollateral is
     }
 
     /// @notice slashes one validator equi. SD amount
+    /// @dev callable only by respective withdrawVaults
     /// @param _validatorId validator SD collateral to slash
-    function slashValidatorSD(uint256 _validatorId, uint8 _poolId)
-        external
-        override
-        onlyRole(MANAGER)
-        returns (uint256 _sdSlashed)
-    {
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external override returns (uint256 _sdSlashed) {
         address operator = UtilLib.getOperatorForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
         uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
-        return slashSD(operator, sdToSlash);
-    }
-
-    /// @notice used to slash operator SD, incase of operator default
-    /// @dev do provide SD approval to auction contract using `maxApproveSD()`
-    /// @param _operator which operator SD collateral to slash
-    /// @param _sdToSlash amount of SD to slash
-    function slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
-        uint256 sdBalance = operatorSDBalance[_operator];
-        _sdSlashed = Math.min(_sdToSlash, sdBalance);
-        operatorSDBalance[_operator] -= _sdSlashed;
-        totalSDCollateral -= _sdSlashed;
-        IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
-
-        emit SDSlashed(_operator, staderConfig.getAuctionContract(), _sdToSlash);
+        return _slashSD(operator, sdToSlash);
     }
 
     /// @notice for max approval to auction contract for spending SD tokens
     /// @param spenderAddr contract to approve for spending SD
-    function maxApproveSD(address spenderAddr) external override onlyRole(MANAGER) {
+    function maxApproveSD(address spenderAddr) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         IERC20(staderConfig.getStaderToken()).approve(spenderAddr, type(uint256).max);
     }
 
@@ -162,7 +142,8 @@ contract SDCollateral is
         uint256 _minThreshold,
         uint256 _withdrawThreshold,
         string memory _units
-    ) external override onlyRole(MANAGER) {
+    ) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (_minThreshold > _withdrawThreshold) {
             revert InvalidPoolLimit();
         }
@@ -176,7 +157,8 @@ contract SDCollateral is
         emit UpdatedPoolThreshold(_poolId, _minThreshold, _withdrawThreshold);
     }
 
-    function setWithdrawDelay(uint256 _withdrawDelay) external override onlyRole(MANAGER) {
+    function setWithdrawDelay(uint256 _withdrawDelay) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (withdrawDelay == _withdrawDelay) {
             revert NoStateChange();
         }
@@ -251,7 +233,7 @@ contract SDCollateral is
 
     // HELPER
 
-    function getOperatorInfo(address _operator)
+    function _getOperatorInfo(address _operator)
         internal
         view
         returns (
@@ -271,5 +253,19 @@ contract SDCollateral is
             0,
             nodeRegistry.getOperatorTotalKeys(_operatorId)
         );
+    }
+
+    /// @notice used to slash operator SD, incase of operator default
+    /// @dev do provide SD approval to auction contract using `maxApproveSD()`
+    /// @param _operator which operator SD collateral to slash
+    /// @param _sdToSlash amount of SD to slash
+    function _slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
+        uint256 sdBalance = operatorSDBalance[_operator];
+        _sdSlashed = Math.min(_sdToSlash, sdBalance);
+        operatorSDBalance[_operator] -= _sdSlashed;
+        totalSDCollateral -= _sdSlashed;
+        IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
+
+        emit SDSlashed(_operator, staderConfig.getAuctionContract(), _sdToSlash);
     }
 }

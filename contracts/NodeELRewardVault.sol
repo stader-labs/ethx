@@ -61,9 +61,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         }
 
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = getNodeRecipient().call{value: operatorShare}('');
+        (success, ) = _getNodeRecipient().call{value: operatorShare}('');
         if (!success) {
-            revert ETHTransferFailed(getNodeRecipient(), operatorShare);
+            revert ETHTransferFailed(_getNodeRecipient(), operatorShare);
         }
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
@@ -83,10 +83,10 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         }
 
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
-        uint256 collateralETH = getCollateralETH();
+        uint256 collateralETH = _getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
-        uint256 protocolFeeBps = getProtocolFeeBps();
-        uint256 operatorFeeBps = getOperatorFeeBps();
+        uint256 protocolFeeBps = _getProtocolFeeBps();
+        uint256 operatorFeeBps = _getOperatorFeeBps();
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
@@ -98,26 +98,26 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
-    function getProtocolFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
-    }
-
-    function getOperatorFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
-    }
-
-    function getCollateralETH() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
-    }
-
-    function getNodeRecipient() internal view returns (address payable) {
-        return UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
-    }
-
     // SETTERS
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function _getProtocolFeeBps() internal view returns (uint256) {
+        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
+    }
+
+    function _getOperatorFeeBps() internal view returns (uint256) {
+        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
+    }
+
+    function _getCollateralETH() internal view returns (uint256) {
+        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
+    }
+
+    function _getNodeRecipient() internal view returns (address payable) {
+        return UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
     }
 }

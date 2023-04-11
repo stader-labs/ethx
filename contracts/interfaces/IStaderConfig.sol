@@ -122,8 +122,6 @@ interface IStaderConfig {
     // Tokens
     function getStaderToken() external view returns (address);
 
-    function getWethToken() external view returns (address);
-
     function getETHxToken() external view returns (address);
 
     //checks roles and stader contracts

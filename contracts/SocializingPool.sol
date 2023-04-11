@@ -28,8 +28,6 @@ contract SocializingPool is
     uint256 public override totalOperatorSDRewardsRemaining;
     uint256 public override initialBlock;
 
-    bytes32 public constant STADER_ORACLE = keccak256('STADER_ORACLE');
-
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
 
@@ -60,7 +58,9 @@ contract SocializingPool is
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant onlyRole(STADER_ORACLE) {
+    function handleRewards(RewardsData calldata _rewardsData) external override nonReentrant {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
+
         if (handledRewards[_rewardsData.index]) {
             revert RewardAlreadyHandled();
         }
@@ -113,7 +113,7 @@ contract SocializingPool is
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
 
         uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
-        address operatorRewardsAddr = getNodeRecipient(operator, poolId);
+        address operatorRewardsAddr = _getNodeRecipient(operator, poolId);
 
         bool success;
         if (totalAmountETH > 0) {
@@ -132,47 +132,6 @@ contract SocializingPool is
         }
 
         emit OperatorRewardsClaimed(operatorRewardsAddr, totalAmountETH, totalAmountSD);
-    }
-
-    function _claim(
-        uint256[] calldata _index,
-        address _operator,
-        uint256[] calldata _amountSD,
-        uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof
-    ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
-        for (uint256 i = 0; i < _index.length; i++) {
-            if (_amountSD[i] == 0 && _amountETH[i] == 0) {
-                revert InvalidAmount();
-            }
-            if (claimedRewards[_operator][_index[i]]) {
-                revert RewardAlreadyClaimed(_operator, _index[i]);
-            }
-
-            _totalAmountSD += _amountSD[i];
-            _totalAmountETH += _amountETH[i];
-            claimedRewards[_operator][_index[i]] = true;
-
-            if (!verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
-                revert InvalidProof(_index[i], _operator);
-            }
-        }
-    }
-
-    function verifyProof(
-        uint256 _index,
-        address _operator,
-        uint256 _amountSD,
-        uint256 _amountETH,
-        bytes32[] calldata _merkleProof
-    ) internal view returns (bool) {
-        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
-        bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
-        return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
-    }
-
-    function getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
-        return UtilLib.getNodeRecipientAddressByOperator(_poolId, _operator, staderConfig);
     }
 
     // SETTERS
@@ -197,12 +156,60 @@ contract SocializingPool is
             uint256 nextEndBlock
         )
     {
-        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
         currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
-        currentStartBlock = initialBlock + ((currentIndex - 1) * cycleDuration);
-        currentEndBlock = currentStartBlock + cycleDuration - 1;
+        (currentStartBlock, currentEndBlock) = getRewardCycleDetails(currentIndex);
         nextIndex = currentIndex + 1;
-        nextStartBlock = currentEndBlock + 1;
-        nextEndBlock = nextStartBlock + cycleDuration - 1;
+        (nextStartBlock, nextEndBlock) = getRewardCycleDetails(nextIndex);
+    }
+
+    /// @param _index reward cycle index for which details is required
+    function getRewardCycleDetails(uint256 _index) public view returns (uint256 _startBlock, uint256 _endBlock) {
+        if (_index == 0) {
+            revert InvalidCycleIndex();
+        }
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        _startBlock = initialBlock + ((_index - 1) * cycleDuration);
+        _endBlock = _startBlock + cycleDuration - 1;
+    }
+
+    function _claim(
+        uint256[] calldata _index,
+        address _operator,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof
+    ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
+        for (uint256 i = 0; i < _index.length; i++) {
+            if (_amountSD[i] == 0 && _amountETH[i] == 0) {
+                revert InvalidAmount();
+            }
+            if (claimedRewards[_operator][_index[i]]) {
+                revert RewardAlreadyClaimed(_operator, _index[i]);
+            }
+
+            _totalAmountSD += _amountSD[i];
+            _totalAmountETH += _amountETH[i];
+            claimedRewards[_operator][_index[i]] = true;
+
+            if (!_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
+                revert InvalidProof(_index[i], _operator);
+            }
+        }
+    }
+
+    function _verifyProof(
+        uint256 _index,
+        address _operator,
+        uint256 _amountSD,
+        uint256 _amountETH,
+        bytes32[] calldata _merkleProof
+    ) internal view returns (bool) {
+        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
+        bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
+        return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
+    }
+
+    function _getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
+        return UtilLib.getNodeRecipientAddressByOperator(_poolId, _operator, staderConfig);
     }
 }

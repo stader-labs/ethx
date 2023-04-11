@@ -12,8 +12,6 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
-    bytes32 public constant MANAGER = keccak256('MANAGER');
-
     IStaderConfig public override staderConfig;
     uint256 public override nextLot;
     uint256 public override bidIncrement;
@@ -29,13 +27,11 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
     function initialize(
         address _admin,
         address _staderConfig,
-        address _manager,
         uint256 _duration,
         uint256 _bidIncrement
     ) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
-        UtilLib.checkNonZeroAddress(_manager);
         if (_duration < 24 hours) revert ShortDuration();
 
         __AccessControl_init();
@@ -48,14 +44,12 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         nextLot = 1;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(MANAGER, _manager);
-
         emit UpdatedStaderConfig(_staderConfig);
         emit AuctionDurationUpdated(duration);
         emit BidInrementUpdated(bidIncrement);
     }
 
-    function createLot(uint256 _sdAmount) external override whenNotPaused onlyRole(MANAGER) {
+    function createLot(uint256 _sdAmount) external override whenNotPaused {
         lots[nextLot].startBlock = block.number;
         lots[nextLot].endBlock = block.number + duration;
         lots[nextLot].sdAmount = _sdAmount;
@@ -150,13 +144,15 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function updateDuration(uint256 _duration) external override onlyRole(MANAGER) {
+    function updateDuration(uint256 _duration) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (_duration < 24 hours) revert ShortDuration();
         duration = _duration;
         emit AuctionDurationUpdated(duration);
     }
 
-    function updateBidIncrement(uint256 _bidIncrement) external override onlyRole(MANAGER) {
+    function updateBidIncrement(uint256 _bidIncrement) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         bidIncrement = _bidIncrement;
         emit BidInrementUpdated(_bidIncrement);
     }

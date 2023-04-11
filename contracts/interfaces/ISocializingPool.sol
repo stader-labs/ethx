@@ -15,6 +15,7 @@ interface ISocializingPool {
     error InsufficientSDRewards();
     error InvalidAmount();
     error InvalidProof(uint256 cycle, address operator);
+    error InvalidCycleIndex();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -69,4 +70,6 @@ interface ISocializingPool {
             uint256 nextStartBlock,
             uint256 nextEndBlock
         );
+
+    function getRewardCycleDetails(uint256 _index) external view returns (uint256 _startBlock, uint256 _endBlock);
 }

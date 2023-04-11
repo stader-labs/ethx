@@ -26,7 +26,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
     // indicate the health of protocol on beacon chain
-    // set to true by `MANAGER_BOT` if heavy slashing on protocol on beacon chain
+    // set to true by `MANAGER` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
 
     /// @inheritdoc IStaderOracle
@@ -119,7 +119,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
                 _exchangeRate.totalETHXSupply
             )
         );
-        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit balances submitted event
         emit BalancesSubmitted(
             msg.sender,
@@ -200,7 +200,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             block.number
         );
 
-        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
             // Update merkle root
@@ -228,8 +228,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber));
         bytes32 submissionCountKey = keccak256(abi.encodePacked(_sdPriceData.reportingBlockNumber));
-        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
-        insertSDPrice(_sdPriceData.sdPriceInETH);
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
+        _insertSDPrice(_sdPriceData.sdPriceInETH);
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
@@ -239,7 +239,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             _sdPriceData.reportingBlockNumber > lastReportedSDPriceData.reportingBlockNumber
         ) {
             lastReportedSDPriceData = _sdPriceData;
-            lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
+            lastReportedSDPriceData.sdPriceInETH = _getMedianValue(sdPrices);
             uint256 len = sdPrices.length;
             while (len > 0) {
                 sdPrices.pop();
@@ -249,23 +249,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             // Emit SD Price updated event
             emit SDPriceUpdated(_sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
         }
-    }
-
-    function insertSDPrice(uint256 _sdPrice) internal {
-        sdPrices.push(_sdPrice);
-        if (sdPrices.length == 1) return;
-
-        uint256 j = sdPrices.length - 1;
-        while ((j >= 1) && (_sdPrice < sdPrices[j - 1])) {
-            sdPrices[j] = sdPrices[j - 1];
-            j--;
-        }
-        sdPrices[j] = _sdPrice;
-    }
-
-    function getMedianValue(uint256[] storage dataArray) internal view returns (uint256 _medianValue) {
-        uint256 len = dataArray.length;
-        return (dataArray[(len - 1) / 2] + dataArray[len / 2]) / 2;
     }
 
     /// @inheritdoc IStaderOracle
@@ -307,7 +290,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             )
         );
 
-        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit validator stats submitted event
         emit ValidatorStatsSubmitted(
             msg.sender,
@@ -355,11 +338,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             revert InvalidReportingBlock();
         }
 
-        // Ensure the pubkeys array is sorted
-        if (!isSorted(_withdrawnValidators.sortedPubkeys)) {
-            revert PubkeysNotSorted();
-        }
-
         bytes memory encodedPubkeys = abi.encode(_withdrawnValidators.sortedPubkeys);
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
@@ -378,7 +356,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             )
         );
 
-        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit withdrawn validators submitted event
         emit WithdrawnValidatorsSubmitted(
             msg.sender,
@@ -440,7 +418,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, _mapd.pageNumber, _mapd.pubkeys));
 
         missedAttestationDataByTrustedNode[msg.sender] = MissedAttestationReportInfo(_mapd.index, _mapd.pageNumber);
-        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        uint8 submissionCount = _attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         // Emit missed attestation penalty submitted event
         emit MissedAttestationPenaltySubmitted(
@@ -484,79 +462,56 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     function setERUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
+        _setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 
-    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        setUpdateFrequency(MERKLE_UF, _updateFrequency);
+    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _setUpdateFrequency(MERKLE_UF, _updateFrequency);
     }
 
-    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
+    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
     }
 
-    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        setUpdateFrequency(VALIDATOR_STATS_UF, _updateFrequency);
+    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _setUpdateFrequency(VALIDATOR_STATS_UF, _updateFrequency);
     }
 
-    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, _updateFrequency);
+    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, _updateFrequency);
     }
 
-    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, _updateFrequency);
-    }
-
-    function setUpdateFrequency(bytes32 _key, uint256 _updateFrequency) internal {
-        if (_updateFrequency == 0) {
-            revert ZeroFrequency();
-        }
-        if (_updateFrequency == updateFrequencyMap[_key]) {
-            revert FrequencyUnchanged();
-        }
-        updateFrequencyMap[_key] = _updateFrequency;
-
-        emit UpdateFrequencyUpdated(_updateFrequency);
+    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, _updateFrequency);
     }
 
     function getERReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(ETHX_ER_UF);
+        return _getReportableBlockFor(ETHX_ER_UF);
     }
 
     function getMerkleRootReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(MERKLE_UF);
+        return _getReportableBlockFor(MERKLE_UF);
     }
 
     function getSDPriceReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(SD_PRICE_UF);
+        return _getReportableBlockFor(SD_PRICE_UF);
     }
 
     function getValidatorStatsReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(VALIDATOR_STATS_UF);
+        return _getReportableBlockFor(VALIDATOR_STATS_UF);
     }
 
     function getWithdrawnValidatorReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(WITHDRAWN_VALIDATORS_UF);
+        return _getReportableBlockFor(WITHDRAWN_VALIDATORS_UF);
     }
 
     function getMissedAttestationPenaltyReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(MISSED_ATTESTATION_PENALTY_UF);
-    }
-
-    function getReportableBlockFor(bytes32 _key) internal view returns (uint256) {
-        uint256 updateFrequency = updateFrequencyMap[_key];
-        if (updateFrequency == 0) {
-            revert UpdateFrequencyNotSet();
-        }
-        return (block.number / updateFrequency) * updateFrequency;
+        return _getReportableBlockFor(MISSED_ATTESTATION_PENALTY_UF);
     }
 
     function getCurrentRewardsIndex() external view returns (uint256) {
@@ -580,31 +535,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return (exchangeRate);
     }
 
-    function attestSubmission(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
-        internal
-        returns (uint8 _submissionCount)
-    {
-        // Check & update node submission status
-        if (nodeSubmissionKeys[_nodeSubmissionKey]) {
-            revert DuplicateSubmissionFromNode();
-        }
-        nodeSubmissionKeys[_nodeSubmissionKey] = true;
-        submissionCountKeys[_submissionCountKey]++;
-        _submissionCount = submissionCountKeys[_submissionCountKey];
-    }
-
-    /// @notice Check if the array of pubkeys is sorted.
-    /// @param pubkeys The array of pubkeys to check.
-    /// @return True if the array is sorted, false otherwise.
-    function isSorted(bytes[] memory pubkeys) internal pure returns (bool) {
-        for (uint256 i = 0; i < pubkeys.length - 1; i++) {
-            if (keccak256(pubkeys[i]) > keccak256(pubkeys[i + 1])) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     /**
      * @dev Triggers stopped state.
      * should not be paused
@@ -624,6 +554,68 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     function getSDPriceInETH() external view override returns (uint256) {
         return lastReportedSDPriceData.sdPriceInETH;
+    }
+
+    function _setUpdateFrequency(bytes32 _key, uint256 _updateFrequency) internal {
+        if (_updateFrequency == 0) {
+            revert ZeroFrequency();
+        }
+        if (_updateFrequency == updateFrequencyMap[_key]) {
+            revert FrequencyUnchanged();
+        }
+        updateFrequencyMap[_key] = _updateFrequency;
+
+        emit UpdateFrequencyUpdated(_updateFrequency);
+    }
+
+    function _getReportableBlockFor(bytes32 _key) internal view returns (uint256) {
+        uint256 updateFrequency = updateFrequencyMap[_key];
+        if (updateFrequency == 0) {
+            revert UpdateFrequencyNotSet();
+        }
+        return (block.number / updateFrequency) * updateFrequency;
+    }
+
+    function _attestSubmission(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
+        internal
+        returns (uint8 _submissionCount)
+    {
+        // Check & update node submission status
+        if (nodeSubmissionKeys[_nodeSubmissionKey]) {
+            revert DuplicateSubmissionFromNode();
+        }
+        nodeSubmissionKeys[_nodeSubmissionKey] = true;
+        submissionCountKeys[_submissionCountKey]++;
+        _submissionCount = submissionCountKeys[_submissionCountKey];
+    }
+
+    /// @notice Check if the array of pubkeys is sorted.
+    /// @param pubkeys The array of pubkeys to check.
+    /// @return True if the array is sorted, false otherwise.
+    function _isSorted(bytes[] memory pubkeys) internal pure returns (bool) {
+        for (uint256 i = 0; i < pubkeys.length - 1; i++) {
+            if (keccak256(pubkeys[i]) > keccak256(pubkeys[i + 1])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function _insertSDPrice(uint256 _sdPrice) internal {
+        sdPrices.push(_sdPrice);
+        if (sdPrices.length == 1) return;
+
+        uint256 j = sdPrices.length - 1;
+        while ((j >= 1) && (_sdPrice < sdPrices[j - 1])) {
+            sdPrices[j] = sdPrices[j - 1];
+            j--;
+        }
+        sdPrices[j] = _sdPrice;
+    }
+
+    function _getMedianValue(uint256[] storage dataArray) internal view returns (uint256 _medianValue) {
+        uint256 len = dataArray.length;
+        return (dataArray[(len - 1) / 2] + dataArray[len / 2]) / 2;
     }
 
     modifier trustedNodeOnly() {

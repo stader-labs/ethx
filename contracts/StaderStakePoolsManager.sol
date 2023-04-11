@@ -223,6 +223,15 @@ contract StaderStakePoolsManager is
     }
 
     /**
+     * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
+     */
+    function isVaultHealthy() private view returns (bool) {
+        return
+            (totalAssets() > 0 ||
+                IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply == 0) && (!paused());
+    }
+
+    /**
      * @dev Internal conversion function (from assets to shares) with support for rounding direction.
      *
      * Will revert if assets > 0, totalSupply > 0 and totalAssets = 0. That corresponds to a case where any asset
@@ -232,7 +241,7 @@ contract StaderStakePoolsManager is
         uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply;
         return
             (_assets == 0 || supply == 0)
-                ? initialConvertToShares(_assets, rounding)
+                ? _initialConvertToShares(_assets, rounding)
                 : _assets.mulDiv(supply, totalAssets(), rounding);
     }
 
@@ -241,7 +250,7 @@ contract StaderStakePoolsManager is
      *
      * NOTE: Make sure to keep this function consistent with {_initialConvertToAssets} when overriding it.
      */
-    function initialConvertToShares(
+    function _initialConvertToShares(
         uint256 _assets,
         Math.Rounding /*rounding*/
     ) internal pure returns (uint256 shares) {
@@ -254,7 +263,9 @@ contract StaderStakePoolsManager is
     function _convertToAssets(uint256 _shares, Math.Rounding rounding) internal view returns (uint256) {
         uint256 supply = IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply;
         return
-            (supply == 0) ? initialConvertToAssets(_shares, rounding) : _shares.mulDiv(totalAssets(), supply, rounding);
+            (supply == 0)
+                ? _initialConvertToAssets(_shares, rounding)
+                : _shares.mulDiv(totalAssets(), supply, rounding);
     }
 
     /**
@@ -262,7 +273,7 @@ contract StaderStakePoolsManager is
      *
      * NOTE: Make sure to keep this function consistent with {initialConvertToShares} when overriding it.
      */
-    function initialConvertToAssets(
+    function _initialConvertToAssets(
         uint256 _shares,
         Math.Rounding /*rounding*/
     ) internal pure returns (uint256) {
@@ -281,14 +292,5 @@ contract StaderStakePoolsManager is
         ETHx(staderConfig.getETHxToken()).mint(_receiver, _shares);
         depositedPooledETH += _assets;
         emit Deposited(_caller, _receiver, _assets, _shares);
-    }
-
-    /**
-     * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
-     */
-    function isVaultHealthy() private view returns (bool) {
-        return
-            (totalAssets() > 0 ||
-                IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply == 0) && (!paused());
     }
 }
