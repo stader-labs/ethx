@@ -6,6 +6,8 @@ interface IPoolSelector {
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
     error InvalidSumOfPoolWeights();
+    error CallerNotManager();
+    error CallerNotOperator();
     error CallerNotPoolManager();
 
     // Events

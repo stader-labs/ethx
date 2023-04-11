@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IStaderConfig.sol';
@@ -38,7 +38,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
@@ -56,7 +56,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     // receive `DEPOSIT_NODE_BOND` collateral ETH from permissionless node registry
-    function receiveRemainingCollateralETH() external payable onlyPermissionlessNodeRegistry {
+    function receiveRemainingCollateralETH() external payable {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         emit ReceivedCollateralETH(msg.value);
     }
 
@@ -91,7 +92,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         bytes[] calldata _preDepositSignature,
         uint256 _operatorId,
         uint256 _operatorTotalKeys
-    ) external payable onlyPermissionlessNodeRegistry {
+    ) external payable {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         address vaultFactory = staderConfig.getVaultFactory();
         for (uint256 i = 0; i < _pubkey.length; i++) {
             address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(
@@ -122,7 +124,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit validator taking care of pool capacity
      */
-    function stakeUserETHToBeaconChain() external payable override onlyPoolManager {
+    function stakeUserETHToBeaconChain() external payable override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
         uint256 requiredValidators = msg.value / (FULL_DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         address nodeRegistryAddress = staderConfig.getPermissionlessNodeRegistry();
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
@@ -238,7 +241,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -316,18 +319,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         ret[7] = bytesValue[0];
     }
 
-    //modifier
-    modifier onlyPoolManager() {
-        if (msg.sender != staderConfig.getStakePoolManager()) {
-            revert CallerNotPoolManager();
-        }
-        _;
-    }
-
-    modifier onlyPermissionlessNodeRegistry() {
-        if (msg.sender != staderConfig.getPermissionlessNodeRegistry()) {
-            revert CallerNotPermissionlessNodeRegistry();
-        }
-        _;
-    }
+    // modifier onlyPermissionlessNodeRegistry() {
+    //     if (msg.sender != staderConfig.getPermissionlessNodeRegistry()) {
+    //         revert CallerNotPermissionlessNodeRegistry();
+    //     }
+    //     _;
+    // }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 
@@ -68,8 +68,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     function initialize(address _admin, address _ethDepositContract) external initializer {
-        AddressLib.checkNonZeroAddress(_admin);
-        AddressLib.checkNonZeroAddress(_ethDepositContract);
+        UtilLib.checkNonZeroAddress(_admin);
+        UtilLib.checkNonZeroAddress(_ethDepositContract);
         __AccessControl_init();
         setConstant(ETH_PER_NODE, 32 ether);
         setConstant(DECIMALS, 10**18);
@@ -405,19 +405,19 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     }
 
     function setAccount(bytes32 key, address val) internal {
-        AddressLib.checkNonZeroAddress(val);
+        UtilLib.checkNonZeroAddress(val);
         accountsMap[key] = val;
         emit SetAccount(key, val);
     }
 
     function setContract(bytes32 key, address val) internal {
-        AddressLib.checkNonZeroAddress(val);
+        UtilLib.checkNonZeroAddress(val);
         contractsMap[key] = val;
         emit SetContract(key, val);
     }
 
     function setToken(bytes32 key, address val) internal {
-        AddressLib.checkNonZeroAddress(val);
+        UtilLib.checkNonZeroAddress(val);
         tokensMap[key] = val;
         emit SetToken(key, val);
     }

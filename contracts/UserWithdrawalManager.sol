@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './ETHx.sol';
 import './interfaces/IStaderConfig.sol';
@@ -50,7 +50,7 @@ contract UserWithdrawalManager is
     }
 
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -71,18 +71,15 @@ contract UserWithdrawalManager is
      * @dev only admin of this contract can call
      * @param _finalizationBatchLimit value of finalizationBatchLimit
      */
-    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit)
-        external
-        override
-        onlyRole(staderConfig.MANAGER())
-    {
+    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         finalizationBatchLimit = _finalizationBatchLimit;
         emit UpdatedFinalizationBatchLimit(_finalizationBatchLimit);
     }
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -189,7 +186,8 @@ contract UserWithdrawalManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(staderConfig.MANAGER()) {
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         _pause();
     }
 

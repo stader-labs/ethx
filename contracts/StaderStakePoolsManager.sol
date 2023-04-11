@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './ETHx.sol';
 import './interfaces/IPoolFactory.sol';
@@ -45,7 +45,7 @@ contract StaderStakePoolsManager is
      * @param _staderConfig config contract
      */
     function initialize(address _staderConfig) external initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -94,7 +94,8 @@ contract StaderStakePoolsManager is
      * @dev only user withdraw manager allowed to call
      * @param _amount amount of ETH to transfer
      */
-    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant onlyUserWithdrawManager {
+    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.USER_WITHDRAW_MANAGER());
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = payable(staderConfig.getUserWithdrawManager()).call{value: _amount}('');
@@ -106,7 +107,7 @@ contract StaderStakePoolsManager is
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -207,7 +208,8 @@ contract StaderStakePoolsManager is
      * @dev Triggers stopped state.
      * should not be paused
      */
-    function pause() external onlyRole(staderConfig.MANAGER()) {
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         _pause();
     }
 
@@ -287,13 +289,5 @@ contract StaderStakePoolsManager is
         return
             (totalAssets() > 0 ||
                 IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply == 0) && (!paused());
-    }
-
-    //modifier
-    modifier onlyUserWithdrawManager() {
-        if (msg.sender != staderConfig.getUserWithdrawManager()) {
-            revert CallerNotUserWithdrawManager();
-        }
-        _;
     }
 }

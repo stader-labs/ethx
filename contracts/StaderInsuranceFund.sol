@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-import './library/AddressLib.sol';
+import './library/UtilLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPermissionedPool.sol';
@@ -29,7 +29,8 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
     }
 
     // `MANAGER` can withdraw access fund
-    function withdrawFund(uint256 _amount) external override onlyRole(staderConfig.MANAGER()) {
+    function withdrawFund(uint256 _amount) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (address(this).balance < _amount || _amount == 0) {
             revert InvalidAmountProvided();
         }
@@ -47,7 +48,8 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
      * @dev only permissioned pool can call
      * @param _amount amount of ETH to transfer to permissioned pool
      */
-    function reimburseUserFund(uint256 _amount) external override onlyPermissionedPool {
+    function reimburseUserFund(uint256 _amount) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }
@@ -56,16 +58,8 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
 
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
-    }
-
-    //modifier
-    modifier onlyPermissionedPool() {
-        if (msg.sender != staderConfig.getPermissionedPool()) {
-            revert CallerNotPermissionedPool();
-        }
-        _;
     }
 }

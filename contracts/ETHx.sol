@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
-import './library/AddressLib.sol';
+
+import './library/UtilLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 
@@ -25,7 +26,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
     }
 
     function initialize(address _staderConfig) public initializer {
-        AddressLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_staderConfig);
 
         __ERC20_init('Liquid Staking ETH', 'ETHx');
         __Pausable_init();
