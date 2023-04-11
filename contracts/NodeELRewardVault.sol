@@ -50,7 +50,6 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     function withdraw() external override nonReentrant {
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
 
-        // TODO: Manoj is it safe to distribute rewards to all in a single method ?
         // Distribute rewards
         bool success;
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
@@ -111,11 +110,8 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
     }
 
-    //TODO sanjay move to node registry
     function getNodeRecipient() internal view returns (address payable) {
-        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
-        address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
-        return operatorRewardAddress;
+        return UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
     }
 
     // SETTERS

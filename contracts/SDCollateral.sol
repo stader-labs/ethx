@@ -26,9 +26,10 @@ contract SDCollateral is
 
     IStaderConfig public override staderConfig;
     uint256 public override totalSDCollateral;
+    uint256 public override withdrawDelay; // in seconds
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
-    mapping(address => uint8) public override poolIdByOperator;
     mapping(address => uint256) public override operatorSDBalance;
+    mapping(address => WithdrawRequestInfo) private withdrawReq;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -66,55 +67,74 @@ contract SDCollateral is
         emit SDDeposited(operator, _sdAmount);
     }
 
-    function withdraw(uint256 _requestedSD) external override {
+    /// @notice for operator to request withdraw of sd
+    /// @dev it does not transfer sd tokens immediately
+    /// operator should come back after withdrawal-delay time to claim
+    /// this requested sd is subject to slashes
+    function requestWithdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
-        uint256 sdBalance = operatorSDBalance[operator];
+        uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
 
-        uint8 poolId = getOperatorPoolId(operator);
+        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
-        // TODO: Manoj update startIndex, endIndex
-        uint256 validatorCount = IPoolFactory(staderConfig.getPoolFactory()).getOperatorTotalNonTerminalKeys(
-            poolId,
-            operator,
-            0,
-            1000
-        );
-
-        uint256 sdCumulativeThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
-        if (sdBalance <= sdCumulativeThreshold) {
-            revert InsufficientSDCollateral(sdBalance);
-        }
-        uint256 withdrawableSD = sdBalance - sdCumulativeThreshold;
-
-        if (_requestedSD > withdrawableSD) {
-            revert InsufficientWithdrawableSD(withdrawableSD);
+        uint256 sdWithdrawableThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+        if (sdBalance < sdWithdrawableThreshold + _requestedSD) {
+            revert InsufficientSDToWithdraw(sdBalance);
         }
 
-        totalSDCollateral -= _requestedSD;
-        operatorSDBalance[operator] -= _requestedSD;
+        withdrawReq[operator].lastWithdrawReqTimestamp = block.timestamp;
+        withdrawReq[operator].totalSDWithdrawReqAmount += _requestedSD;
+
+        emit SDWithdrawRequested(operator, _requestedSD);
+    }
+
+    function claimWithdraw() external override {
+        address operator = msg.sender;
+        // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, operatorSDBalance)
+        uint256 requestedSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, operatorSDBalance[operator]);
+        if (requestedSD == 0) {
+            revert AlreadyClaimed();
+        }
+        if (block.timestamp < (withdrawReq[operator].lastWithdrawReqTimestamp + withdrawDelay)) {
+            revert ClaimNotReady();
+        }
+
+        totalSDCollateral -= requestedSD;
+        operatorSDBalance[operator] -= requestedSD;
+        withdrawReq[operator].totalSDWithdrawReqAmount = 0;
 
         // cannot use safeERC20 as this contract is an upgradeable contract
-        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
+        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), requestedSD)) {
             revert SDTransferFailed();
         }
 
-        emit SDWithdraw(operator, _requestedSD);
+        emit SDClaimed(operator, requestedSD);
+    }
+
+    /// @notice slashes one validator equi. SD amount
+    /// @param _validatorId validator SD collateral to slash
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId)
+        external
+        override
+        onlyRole(MANAGER)
+        returns (uint256 _sdSlashed)
+    {
+        address operator = UtilLib.getOperatorForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
+        uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
+        return slashSD(operator, sdToSlash);
     }
 
     /// @notice used to slash operator SD, incase of operator default
     /// @dev do provide SD approval to auction contract using `maxApproveSD()`
     /// @param _operator which operator SD collateral to slash
     /// @param _sdToSlash amount of SD to slash
-    function slashSD(address _operator, uint256 _sdToSlash)
-        external
-        override
-        onlyRole(MANAGER)
-        returns (uint256 _sdSlashed)
-    {
+    function slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         operatorSDBalance[_operator] -= _sdSlashed;
+        totalSDCollateral -= _sdSlashed;
         IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
 
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), _sdToSlash);
@@ -129,6 +149,9 @@ contract SDCollateral is
     // SETTERS
     function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
+        if (_staderConfig == address(staderConfig)) {
+            revert NoStateChange();
+        }
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -138,7 +161,7 @@ contract SDCollateral is
         uint256 _minThreshold,
         uint256 _withdrawThreshold,
         string memory _units
-    ) public override onlyRole(MANAGER) {
+    ) external override onlyRole(MANAGER) {
         if (_minThreshold > _withdrawThreshold) {
             revert InvalidPoolLimit();
         }
@@ -152,19 +175,12 @@ contract SDCollateral is
         emit UpdatedPoolThreshold(_poolId, _minThreshold, _withdrawThreshold);
     }
 
-    function updatePoolIdForOperator(uint8 _poolId, address _operator)
-        external
-        override
-        onlyRole(NODE_REGISTRY_CONTRACT)
-    {
-        UtilLib.checkNonZeroAddress(_operator);
-        if (_poolId == 0) revert InvalidPoolId();
-        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
-            revert InvalidPoolId();
+    function setWithdrawDelay(uint256 _withdrawDelay) external override onlyRole(MANAGER) {
+        if (withdrawDelay == _withdrawDelay) {
+            revert NoStateChange();
         }
-        poolIdByOperator[_operator] = _poolId;
-
-        emit UpdatedPoolIdForOperator(_poolId, _operator);
+        withdrawDelay = _withdrawDelay;
+        emit WithdrawDelayUpdated(_withdrawDelay);
     }
 
     // GETTERS
@@ -179,12 +195,6 @@ contract SDCollateral is
         uint256 _numValidator
     ) external view override returns (bool) {
         return (getRemainingSDToBond(_operator, _poolId, _numValidator) == 0);
-    }
-
-    function getOperatorPoolId(address _operator) public view override returns (uint8 _poolId) {
-        _poolId = poolIdByOperator[_operator];
-        // TODO: this check is not required as I am checking this while setting
-        if (_poolId == 0) revert InvalidPoolId();
     }
 
     /// @notice returns minimum amount of SD required to onboard _numValidators in a pool
@@ -236,5 +246,29 @@ contract SDCollateral is
     function convertETHToSD(uint256 _ethAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
         return (_ethAmount / sdPriceInETH);
+    }
+
+    // HELPER
+
+    function getOperatorInfo(address _operator)
+        internal
+        view
+        returns (
+            uint8 _poolId,
+            uint256 _operatorId,
+            uint256 _validatorCount
+        )
+    {
+        _poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(_operator);
+        INodeRegistry nodeRegistry = INodeRegistry(
+            IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId)
+        );
+        _operatorId = nodeRegistry.operatorIDByAddress(_operator);
+        _validatorCount = IPoolFactory(staderConfig.getPoolFactory()).getOperatorTotalNonTerminalKeys(
+            _poolId,
+            _operator,
+            0,
+            nodeRegistry.getOperatorTotalKeys(_operatorId)
+        );
     }
 }

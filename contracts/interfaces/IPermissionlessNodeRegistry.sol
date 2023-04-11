@@ -19,33 +19,16 @@ interface IPermissionlessNodeRegistry {
     event TransferredCollateralToPool(uint256 amount);
 
     //Getters
-    function poolId() external view returns (uint8);
-
-    function nextOperatorId() external view returns (uint256);
-
-    function nextValidatorId() external view returns (uint256);
 
     function validatorQueueSize() external view returns (uint256);
 
     function nextQueuedValidatorIndex() external view returns (uint256);
 
-    function totalActiveValidatorCount() external view returns (uint256);
-
-    function inputKeyCountLimit() external view returns (uint16);
-
-    function maxNonTerminalKeyPerOperator() external view returns (uint64);
-
     function PRE_DEPOSIT() external view returns (uint256);
 
     function FRONT_RUN_PENALTY() external view returns (uint256);
 
-    function collateralETH() external view returns (uint256);
-
-    function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
-
     function queuedValidators(uint256) external view returns (uint256);
-
-    function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
     function nodeELRewardVaultByOperatorId(uint256) external view returns (address);
 
@@ -67,12 +50,6 @@ interface IPermissionlessNodeRegistry {
         bytes[] calldata _preDepositSignature,
         bytes[] calldata _depositSignature
     ) external payable;
-
-    function markValidatorReadyToDeposit(
-        bytes[] calldata _readyToDepositPubkey,
-        bytes[] calldata _frontRunnedPubkey,
-        bytes[] calldata _invalidSignaturePubkey
-    ) external;
 
     function updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) external;
 

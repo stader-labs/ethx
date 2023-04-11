@@ -6,7 +6,8 @@ import './IStaderConfig.sol';
 interface IValidatorWithdrawalVault {
     // Errors
     error InvalidRewardAmount();
-    error ValidatorNotWithdrawn();
+    error WithdrawVaultSettled();
+    error ValidatorNotWithdrawnOrSettled();
     error InsufficientBalance();
     error ETHTransferFailed(address recipient, uint256 amount);
 
@@ -26,7 +27,7 @@ interface IValidatorWithdrawalVault {
     function updateStaderConfig(address _staderConfig) external;
 
     // getters
-    function isSettled() external view returns (bool);
+    function vaultSettleStatus() external view returns (bool);
 
     function poolId() external view returns (uint8);
 

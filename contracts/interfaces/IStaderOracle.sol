@@ -106,6 +106,8 @@ interface IStaderOracle {
     error InvalidData();
     error InvalidPubkeyLength();
     error NotATrustedNode();
+    error UpdateFrequencyNotSet();
+    error InvalidReportingBlock();
 
     // Events
     event BalancesSubmitted(
@@ -172,8 +174,6 @@ interface IStaderOracle {
 
     function removeTrustedNode(address _nodeAddress) external;
 
-    function setUpdateFrequency(uint256 _balanceUpdateFrequency) external;
-
     /**
     @dev Submits the given balances for a specified block number.
     @param _exchangeRate The exchange rate to submit.
@@ -229,11 +229,20 @@ interface IStaderOracle {
 
     function updateStaderConfig(address _staderConfig) external;
 
+    function setERUpdateFrequency(uint256 _updateFrequency) external;
+
+    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external;
+
+    function setSDPriceUpdateFrequency(uint256 _updateFrequency) external;
+
+    function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external;
+
+    function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency) external;
+
+    function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external;
+
     // getters
     function staderConfig() external view returns (IStaderConfig);
-
-    // The frequency in blocks at which network updates should be submitted by trusted nodes
-    function updateFrequency() external view returns (uint256);
 
     function reportingBlockNumberForWithdrawnValidators() external view returns (uint256);
 
@@ -255,7 +264,17 @@ interface IStaderOracle {
     // The last updated merkle tree index
     function getCurrentRewardsIndex() external view returns (uint256);
 
-    function getLatestReportableBlock() external view returns (uint256);
+    function getERReportableBlock() external view returns (uint256);
+
+    function getMerkleRootReportableBlock() external view returns (uint256);
+
+    function getSDPriceReportableBlock() external view returns (uint256);
+
+    function getValidatorStatsReportableBlock() external view returns (uint256);
+
+    function getWithdrawnValidatorReportableBlock() external view returns (uint256);
+
+    function getMissedAttestationPenaltyReportableBlock() external view returns (uint256);
 
     function getPubkeyRoot(bytes calldata _pubkey) external pure returns (bytes32);
 

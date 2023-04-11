@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 // Interface for the Penalty contract
 interface IPenalty {
     // Errors
+    error ValidatorSettled();
     error InvalidPubkeyLength();
 
     // Events
@@ -14,6 +15,7 @@ interface IPenalty {
     event UpdatedValidatorExitPenaltyThreshold(uint256 totalPenaltyThreshold);
     event ExitValidator(bytes pubkey);
     event UpdatedStaderConfig(address staderConfig);
+    event ValidatorMarkedAsSettled(bytes pubkey);
 
     // returns the address of the Rated.network penalty oracle
     function ratedOracleAddress() external view returns (address);
@@ -32,6 +34,9 @@ interface IPenalty {
 
     // returns the total penalty amount of a validator given its pubkey
     function totalPenaltyAmount(bytes calldata _pubkey) external view returns (uint256);
+
+    //return the settle status of a validator pubkey
+    function validatorSettleStatus(bytes calldata _pubkey) external view returns (bool);
 
     // Setters
 
@@ -90,4 +95,12 @@ interface IPenalty {
      * @return penalty for missing attestation
      */
     function calculateMissedAttestationPenalty(bytes32 _pubkeyRoot) external returns (uint256);
+
+    /**
+     * @notice make the totalPenalty amount as 0 and marked validator as settled
+     * @param _poolId pool Id of the validator
+     * @param _validatorId validator Id of a validator
+     * @dev only validator withdraw vault can call
+     */
+    function markValidatorSettled(uint8 _poolId, uint256 _validatorId) external;
 }

@@ -36,9 +36,10 @@ interface INodeRegistry {
     error UNEXPECTED_STATUS();
     error PubkeyAlreadyExist();
     error NotEnoughSDCollateral();
+    error TooManyVerifiedKeysToDeposit();
 
     // Events
-    event OnboardedOperator(address indexed nodeOperator, uint256 operatorId);
+    event OnboardedOperator(address indexed nodeOperator, address nodeRewardAddress, uint256 operatorId);
     event AddedValidatorKey(address indexed nodeOperator, bytes pubkey, uint256 validatorId);
     event ValidatorMarkedAsFrontRunned(bytes indexed pubkey, uint256 validatorId);
     event ValidatorWithdrawn(bytes indexed pubkey, uint256 validatorId);
@@ -49,8 +50,16 @@ interface INodeRegistry {
     event UpdatedStaderConfig(address staderConfig);
     event UpdatedOperatorDetails(address indexed nodeOperator, string operatorName, address rewardAddress);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
+    event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
+    event DecreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
 
     function withdrawnValidators(bytes[] calldata _pubkeys) external;
+
+    function markValidatorReadyToDeposit(
+        bytes[] calldata _readyToDepositPubkey,
+        bytes[] calldata _frontRunPubkey,
+        bytes[] calldata _invalidSignaturePubkey
+    ) external;
 
     // return validator struct for a validator Id
     function validatorRegistry(uint256)
@@ -124,4 +133,22 @@ interface INodeRegistry {
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 
     function isExistingOperator(address _operAddr) external view returns (bool);
+
+    function poolId() external view returns (uint8);
+
+    function inputKeyCountLimit() external view returns (uint16);
+
+    function nextOperatorId() external view returns (uint256);
+
+    function nextValidatorId() external view returns (uint256);
+
+    function maxNonTerminalKeyPerOperator() external view returns (uint64);
+
+    function VERIFIED_KEYS_BATCH_SIZE() external view returns (uint256);
+
+    function totalActiveValidatorCount() external view returns (uint256);
+
+    function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
+
+    function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 }

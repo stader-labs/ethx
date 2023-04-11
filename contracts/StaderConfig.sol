@@ -56,7 +56,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant WETH = keccak256('WETH');
     bytes32 public constant ETHx = keccak256('ETHx');
 
-    mapping(bytes32 => uint256) private constantsMap; // TODO: Manoj discuss losing flexibility on constant/variable type allowed
+    mapping(bytes32 => uint256) private constantsMap;
     mapping(bytes32 => uint256) private variablesMap;
     mapping(bytes32 => address) private accountsMap;
     mapping(bytes32 => address) private contractsMap;
@@ -126,7 +126,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @dev update the minimum withdraw amount
      * @param _minWithdrawAmount minimum withdraw amount
      */
-    //TODO sanjay not clear on one review comment
     function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_minWithdrawAmount == 0 || _minWithdrawAmount > variablesMap[MAX_WITHDRAW_AMOUNT]) {
             revert InvalidMinWithdrawValue();
@@ -151,7 +150,6 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Accounts Setters
 
-    // TODO: Manoj propose-accept two step required ??
     function updateAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
         address oldAdmin = accountsMap[ADMIN];
 

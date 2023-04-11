@@ -23,6 +23,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPenalty
     mapping(bytes => uint256) public override totalPenaltyAmount;
 
+    mapping(bytes => bool) public override validatorSettleStatus;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -90,6 +92,9 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function calculatePenalty(bytes calldata _pubkey) external override returns (uint256) {
+        if (validatorSettleStatus[_pubkey]) {
+            revert ValidatorSettled();
+        }
         bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
         // Retrieve the penalty for changing the fee recipient address based on Rated.network data.
         uint256 _mevTheftPenalty = calculateMEVTheftPenalty(pubkeyRoot);
@@ -108,7 +113,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPenalty
     function calculateMEVTheftPenalty(bytes32 _pubkeyRoot) public override returns (uint256) {
         // Retrieve the epochs in which the validator violated the fee recipient change rule.
-        uint256[] memory violatedEpochs = IRatedV1(ratedOracleAddress).getViolatedEpochForValidator(_pubkeyRoot);
+        uint256[] memory violatedEpochs = IRatedV1(ratedOracleAddress).getViolationsForValidator(_pubkeyRoot);
 
         // first strike is not penalized, after that each strike will attract `mevTheftPenaltyPerStrike` penalty
         return violatedEpochs.length > 1 ? (violatedEpochs.length - 1) * mevTheftPenaltyPerStrike : 0;
@@ -124,6 +129,14 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPenalty
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view override returns (uint256) {
         return additionalPenaltyAmount[getPubkeyRoot(_pubkey)];
+    }
+
+    /// @inheritdoc IPenalty
+    function markValidatorSettled(uint8 _poolId, uint256 _validatorId) external override {
+        bytes memory pubkey = UtilLib.getPubkeyForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
+        validatorSettleStatus[pubkey] = true;
+        totalPenaltyAmount[pubkey] = 0;
+        emit ValidatorMarkedAsSettled(pubkey);
     }
 
     /// @inheritdoc IPenalty

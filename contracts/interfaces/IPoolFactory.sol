@@ -19,6 +19,7 @@ interface IPoolFactory {
     error NameCrossedMaxLength();
     error InvalidLengthOfPubkey();
     error InvalidLengthOfSignature();
+    error OperatorIsNotOnboarded();
 
     // Events
     event PoolAdded(string poolName, address poolAddress);
@@ -72,6 +73,8 @@ interface IPoolFactory {
 
     // check for duplicate operator across all pools
     function isExistingOperator(address _operAddr) external view returns (bool);
+
+    function getOperatorPoolId(address _operAddr) external view returns (uint8);
 
     function onlyValidName(string calldata _name) external;
 

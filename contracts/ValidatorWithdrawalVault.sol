@@ -9,6 +9,7 @@ import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -22,7 +23,7 @@ contract ValidatorWithdrawalVault is
 {
     using Math for uint256;
 
-    bool public override isSettled;
+    bool public override vaultSettleStatus;
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
@@ -55,9 +56,10 @@ contract ValidatorWithdrawalVault is
 
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
-
-        // TODO: in below condition, let staderManager handle it, impl to byPass below revert for staderManager
-        if (totalRewards > staderConfig.getRewardsThreshold()) {
+        if (vaultSettleStatus) {
+            revert WithdrawVaultSettled();
+        }
+        if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }
@@ -97,18 +99,24 @@ contract ValidatorWithdrawalVault is
     }
 
     function settleFunds() external override nonReentrant {
-        if (!isWithdrawnValidator()) {
-            revert ValidatorNotWithdrawn();
+        if (!isWithdrawnValidator() || vaultSettleStatus) {
+            revert ValidatorNotWithdrawnOrSettled();
         }
-        (uint256 userShare_prelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
+        (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getPenaltyAmount();
-        //TODO liquidate SD if operatorShare < penaltyAmount
 
-        penaltyAmount = Math.min(penaltyAmount, operatorShare);
-        uint256 userShare = userShare_prelim + penaltyAmount;
+        if (operatorShare < penaltyAmount) {
+            ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(validatorId, poolId);
+            penaltyAmount = operatorShare;
+        }
+
+        uint256 userShare = userSharePrelim + penaltyAmount;
         operatorShare = operatorShare - penaltyAmount;
+
         // Final settlement
+        vaultSettleStatus = true;
+        IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         sendValue(getNodeRecipient(), operatorShare);
         sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
@@ -143,11 +151,12 @@ contract ValidatorWithdrawalVault is
             _operatorShare = collateralETH;
             _userShare = usersETH;
         }
-
-        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = calculateRewardShare(totalRewards);
-        _userShare += userReward;
-        _operatorShare += operatorReward;
-        _protocolShare += protocolReward;
+        if (totalRewards > 0) {
+            (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = calculateRewardShare(totalRewards);
+            _userShare += userReward;
+            _operatorShare += operatorReward;
+            _protocolShare += protocolReward;
+        }
     }
 
     //update the address of staderConfig
@@ -187,10 +196,7 @@ contract ValidatorWithdrawalVault is
     }
 
     function getNodeRecipient() internal view returns (address payable) {
-        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
-        (, , , , , uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-        address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
-        return operatorRewardAddress;
+        return UtilLib.getNodeRecipientAddressByValidatorId(poolId, validatorId, staderConfig);
     }
 
     function getPenaltyAmount() internal returns (uint256) {

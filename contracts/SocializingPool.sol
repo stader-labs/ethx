@@ -102,39 +102,35 @@ contract SocializingPool is
         emit ProtocolETHRewardsTransferred(_rewardsData.protocolETHRewards);
     }
 
-    // TODO: fetch _operatorRewardAddr from operatorID, once sanjay merges the impl
     function claim(
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof,
-        address _operatorRewardsAddr
+        bytes32[][] calldata _merkleProof
     ) external override nonReentrant whenNotPaused {
-        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
-            _index,
-            msg.sender,
-            _amountSD,
-            _amountETH,
-            _merkleProof
-        );
+        address operator = msg.sender;
+        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
+
+        uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
+        address operatorRewardsAddr = getNodeRecipient(operator, poolId);
 
         bool success;
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
-            (success, ) = payable(_operatorRewardsAddr).call{value: totalAmountETH}('');
+            (success, ) = payable(operatorRewardsAddr).call{value: totalAmountETH}('');
             if (!success) {
-                revert ETHTransferFailed(_operatorRewardsAddr, totalAmountETH);
+                revert ETHTransferFailed(operatorRewardsAddr, totalAmountETH);
             }
         }
 
         if (totalAmountSD > 0) {
             totalOperatorSDRewardsRemaining -= totalAmountSD;
-            if (!IERC20(staderConfig.getStaderToken()).transfer(_operatorRewardsAddr, totalAmountSD)) {
+            if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardsAddr, totalAmountSD)) {
                 revert SDTransferFailed();
             }
         }
 
-        emit OperatorRewardsClaimed(_operatorRewardsAddr, totalAmountETH, totalAmountSD);
+        emit OperatorRewardsClaimed(operatorRewardsAddr, totalAmountETH, totalAmountSD);
     }
 
     function _claim(
@@ -172,6 +168,10 @@ contract SocializingPool is
         bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
+    }
+
+    function getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
+        return UtilLib.getNodeRecipientAddressByOperator(_poolId, _operator, staderConfig);
     }
 
     // SETTERS

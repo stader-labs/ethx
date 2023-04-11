@@ -135,7 +135,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistryAddress).nextQueuedValidatorIndex();
         for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
-            fullDepositOnBeaconChain(
+            _fullDepositOnBeaconChain(
                 nodeRegistryAddress,
                 vaultFactoryAddress,
                 ethDepositContract,
@@ -173,19 +173,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function getTotalActiveValidatorCount() external view override returns (uint256) {
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getTotalActiveValidatorCount();
-    }
-
-    /**
-     * @notice get all validator which has user balance on beacon chain
-     */
-    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        override
-        returns (Validator[] memory)
-    {
-        return
-            INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
     }
 
     // returns array of nodeELRewardVault address for opt out of socializing pool operators
@@ -269,7 +256,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             );
     }
 
-    function fullDepositOnBeaconChain(
+    function _fullDepositOnBeaconChain(
         address _nodeRegistryAddress,
         address _vaultFactoryAddress,
         address _ethDepositContract,
@@ -316,11 +303,4 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         ret[6] = bytesValue[1];
         ret[7] = bytesValue[0];
     }
-
-    // modifier onlyPermissionlessNodeRegistry() {
-    //     if (msg.sender != staderConfig.getPermissionlessNodeRegistry()) {
-    //         revert CallerNotPermissionlessNodeRegistry();
-    //     }
-    //     _;
-    // }
 }
