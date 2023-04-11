@@ -25,7 +25,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
     // indicate the health of protocol on beacon chain
-    // set to true by `MANAGER_BOT` if heavy slashing on protocol on beacon chain
+    // set to true by `MANAGER` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
 
     /// @inheritdoc IStaderOracle

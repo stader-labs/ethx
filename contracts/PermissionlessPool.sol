@@ -318,11 +318,4 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         ret[6] = bytesValue[1];
         ret[7] = bytesValue[0];
     }
-
-    // modifier onlyPermissionlessNodeRegistry() {
-    //     if (msg.sender != staderConfig.getPermissionlessNodeRegistry()) {
-    //         revert CallerNotPermissionlessNodeRegistry();
-    //     }
-    //     _;
-    // }
 }

@@ -183,11 +183,11 @@ contract PermissionlessNodeRegistry is
             emit ValidatorMarkedReadyToDeposit(_readyToDepositPubkey[i], validatorId);
         }
 
-        address staderPenaltyFund = staderConfig.getStaderInsuranceFund();
+        address staderInsuranceFund = staderConfig.getStaderInsuranceFund();
         for (uint256 i = 0; i < _frontRunnedPubkey.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_frontRunnedPubkey[i]];
             onlyInitializedValidator(validatorId);
-            handleFrontRun(staderPenaltyFund, validatorId);
+            handleFrontRun(staderInsuranceFund, validatorId);
             emit ValidatorMarkedAsFrontRunned(_frontRunnedPubkey[i], validatorId);
         }
 
