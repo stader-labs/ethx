@@ -69,4 +69,6 @@ interface ISocializingPool {
             uint256 nextStartBlock,
             uint256 nextEndBlock
         );
+
+    function getRewardCycleDetails(uint256 _index) external view returns (uint256 _startBlock, uint256 _endBlock);
 }

@@ -18,7 +18,6 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 contract ValidatorWithdrawalVault is IValidatorWithdrawalVault, Initializable, ReentrancyGuardUpgradeable {
     using Math for uint256;
 
-    bytes32 public constant OPERATOR = keccak256('OPERATOR');
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
@@ -50,7 +49,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault, Initializable, R
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
 
-        if (!hasRole(OPERATOR, msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
+        if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }

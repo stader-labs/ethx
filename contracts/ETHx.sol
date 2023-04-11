@@ -33,6 +33,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         __AccessControl_init();
 
         staderConfig = IStaderConfig(_staderConfig);
+        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
     /**
