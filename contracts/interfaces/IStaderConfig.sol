@@ -132,6 +132,4 @@ interface IStaderConfig {
     function onlyManagerRole(address account) external view returns (bool);
 
     function onlyOperatorRole(address account) external view returns (bool);
-
-    function onlyDefaultAdminRole(address account) external view returns (bool);
 }

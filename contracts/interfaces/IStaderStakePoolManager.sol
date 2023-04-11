@@ -8,8 +8,6 @@ interface IStaderStakePoolManager {
     error UnsupportedOperation();
     error InsufficientBalance();
     error TransferFailed();
-    error CallerNotManager();
-    error CallerNotUserWithdrawManager();
     error UnsupportedOperationInSafeMode();
 
     // Events

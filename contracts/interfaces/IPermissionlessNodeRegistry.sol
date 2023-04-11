@@ -11,7 +11,6 @@ interface IPermissionlessNodeRegistry {
     error InSufficientBalance();
     error CooldownNotComplete();
     error NoChangeInState();
-    error CallerNotPermissionlessPool();
 
     // Events
     event ValidatorMarkedReadyToDeposit(bytes indexed pubkey, uint256 validatorId);
