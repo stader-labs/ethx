@@ -120,7 +120,7 @@ contract UserWithdrawalManager is
      * @notice finalize user requests
      * @dev check for safeMode to finalizeRequest
      */
-    function finalizeUserWithdrawalRequest() external override nonReentrant {
+    function finalizeUserWithdrawalRequest() external override nonReentrant whenNotPaused {
         if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
             revert UnsupportedOperationInSafeMode();
         }
