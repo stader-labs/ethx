@@ -5,7 +5,9 @@ import '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '../contracts/interfaces/SDCollateral/ITWAPGetter.sol';
 
-contract PriceFetcher is Initializable {
+contract PriceFetcher is Initializable, AccessControlUpgradeable {
+    bytes32 public constant MANAGER = keccak256('MANAGER');
+
     address public sdERC20;
     address public usdcERC20;
     address public wethERC20;
@@ -47,15 +49,18 @@ contract PriceFetcher is Initializable {
         checkZeroAddress(_wethUSDCPool)
         checkZeroAddress(_twapGetterAddr)
     {
+        __AccessControl_init();
+
         sdERC20 = _sdERC20Addr;
         usdcERC20 = _usdcERC20Addr;
         wethERC20 = _wethERC20Addr;
         wethUSDCPool = _wethUSDCPool;
         sdUSDCPool = _sdUSDCPool;
         twapGetter = ITWAPGetter(_twapGetterAddr);
+        twapInterval = 25000;
     }
 
-    function setTwapInterval(uint32 _twapInterval) external {
+    function setTwapInterval(uint32 _twapInterval) external onlyRole(MANAGER) {
         twapInterval = _twapInterval;
     }
 

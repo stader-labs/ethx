@@ -48,8 +48,7 @@ contract TWAPGetter {
         returns (uint160 sqrtPriceX96)
     {
         if (_twapInterval == 0) {
-            // return the current price if twapInterval == 0
-            (sqrtPriceX96, , , , , , ) = IUniswapV3Pool(_uniswapV3Pool).slot0();
+            revert('twap interval 0 not allowed');
         } else {
             uint32[] memory secondsAgos = new uint32[](2);
             secondsAgos[0] = _twapInterval; // from (before)
