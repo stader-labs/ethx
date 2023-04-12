@@ -15,6 +15,7 @@ interface IPoolFactory {
     error EmptyString();
     error InvalidPoolID();
     error EmptyNameString();
+    error PubkeyDoesNotExit();
     error PubkeyAlreadyExist();
     error NameCrossedMaxLength();
     error InvalidLengthOfPubkey();
@@ -75,6 +76,8 @@ interface IPoolFactory {
     function isExistingOperator(address _operAddr) external view returns (bool);
 
     function getOperatorPoolId(address _operAddr) external view returns (uint8);
+
+    function getValidatorPoolId(bytes calldata _pubkey) external view returns (uint8);
 
     function onlyValidName(string calldata _name) external;
 

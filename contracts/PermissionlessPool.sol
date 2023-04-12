@@ -36,6 +36,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         _disableInitializers();
     }
 
+    //TODO sanjay do we need __ReentrancyGuard_init in most contracts
     function initialize(address _admin, address _staderConfig) public initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);

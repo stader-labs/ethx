@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import '../interfaces/IStaderConfig.sol';
 import '../interfaces/INodeRegistry.sol';
 import '../interfaces/IPoolFactory.sol';
+import '../interfaces/IValidatorWithdrawalVault.sol';
 
 library UtilLib {
     error ZeroAddress();
@@ -131,5 +132,17 @@ library UtilLib {
 
         // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
         return sha256(abi.encodePacked(_pubkey, bytes16(0)));
+    }
+
+    function getValidatorSettleStatus(bytes calldata _pubkey, IStaderConfig _staderConfig)
+        internal
+        view
+        returns (bool)
+    {
+        uint8 poolId = IPoolFactory(_staderConfig.getPoolFactory()).getValidatorPoolId(_pubkey);
+        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        uint256 validatorId = INodeRegistry(nodeRegistry).validatorIdByPubkey(_pubkey);
+        (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
+        return IValidatorWithdrawalVault(withdrawVaultAddress).vaultSettleStatus();
     }
 }

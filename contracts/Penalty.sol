@@ -22,8 +22,6 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPenalty
     mapping(bytes => uint256) public override totalPenaltyAmount;
 
-    mapping(bytes => bool) public override validatorSettleStatus;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -96,7 +94,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function updateTotalPenaltyAmount(bytes calldata _pubkey) external override returns (uint256) {
-        if (validatorSettleStatus[_pubkey]) {
+        if (UtilLib.getValidatorSettleStatus(_pubkey, staderConfig)) {
             revert ValidatorSettled();
         }
         bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_pubkey);
@@ -138,7 +136,6 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPenalty
     function markValidatorSettled(uint8 _poolId, uint256 _validatorId) external override {
         bytes memory pubkey = UtilLib.getPubkeyForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
-        validatorSettleStatus[pubkey] = true;
         totalPenaltyAmount[pubkey] = 0;
         emit ValidatorMarkedAsSettled(pubkey);
     }

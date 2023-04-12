@@ -57,7 +57,8 @@ contract ValidatorWithdrawalVault is
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
         if (vaultSettleStatus) {
-            revert WithdrawVaultSettled();
+            sendValue(payable(staderConfig.getStaderTreasury()), address(this).balance);
+            return;
         }
         if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
@@ -67,6 +68,7 @@ contract ValidatorWithdrawalVault is
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
 
         // Distribute rewards
+        //TODO sanjay make sure we are not sending 0 balance
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         sendValue(getNodeRecipient(), operatorShare);
         sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);

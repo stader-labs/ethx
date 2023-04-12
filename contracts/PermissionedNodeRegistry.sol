@@ -222,7 +222,7 @@ contract PermissionedNodeRegistry is
      * @notice move validator state from PRE_DEPOSIT to DEPOSIT
      * after verifying pre-sign message, front running and deposit signature.
      * report front run and invalid signature pubkeys
-     * @dev only `STADER_ORACLE` role can call
+     * @dev only `OPERATOR` role can call
      * @param _readyToDepositPubkey array of pubkeys ready to be moved to DEPOSIT state
      * @param _frontRunPubkey array for pubkeys which got front deposit
      * @param _invalidSignaturePubkey array of pubkey which has invalid signature for deposit
@@ -231,15 +231,18 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _readyToDepositPubkey,
         bytes[] calldata _frontRunPubkey,
         bytes[] calldata _invalidSignaturePubkey
-    ) external override {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
-        uint256 verifiedValidatorsLength = _readyToDepositPubkey.length;
-        if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) {
-            revert TooManyVerifiedKeysToDeposit();
-        }
-
+    ) external override whenNotPaused {
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        uint256 readyToDepositValidatorsLength = _readyToDepositPubkey.length;
         uint256 frontRunValidatorsLength = _frontRunPubkey.length;
         uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkey.length;
+
+        if (
+            readyToDepositValidatorsLength + frontRunValidatorsLength + invalidSignatureValidatorsLength >
+            VERIFIED_KEYS_BATCH_SIZE
+        ) {
+            revert TooManyVerifiedKeysReported();
+        }
 
         //handle the front run validators
         for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
@@ -278,6 +281,9 @@ contract PermissionedNodeRegistry is
     function withdrawnValidators(bytes[] calldata _pubkeys) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
         uint256 withdrawnValidatorCount = _pubkeys.length;
+        if (withdrawnValidatorCount > staderConfig.getWithdrawnKeyBatchSize()) {
+            revert TooManyWithdrawnKeysReported();
+        }
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!isNonTerminalValidator(validatorId)) {
@@ -391,7 +397,7 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice update the max number of verified validator keys reported by oracle
+     * @notice update the max number of verified validator keys reported by oracle in single tx
      * @dev only `OPERATOR` can call
      * @param _verifiedKeysBatchSize updated maximum verified key limit in the oracle input
      */

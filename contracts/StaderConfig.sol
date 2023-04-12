@@ -26,6 +26,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     //minimum delay between user requesting withdraw and request finalization
     bytes32 public constant MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST =
         keccak256('MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST');
+    bytes32 public constant WITHDRAWN_KEYS_BATCH_SIZE = keccak256('WITHDRAWN_KEYS_BATCH_SIZE');
 
     bytes32 public constant ADMIN = keccak256('ADMIN');
     bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
@@ -77,6 +78,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setVariable(MAX_DEPOSIT_AMOUNT, 10000 ether);
         setVariable(MIN_WITHDRAW_AMOUNT, 100);
         setVariable(MAX_WITHDRAW_AMOUNT, 10000 ether);
+        setVariable(WITHDRAWN_KEYS_BATCH_SIZE, 100);
         setContract(ETH_DEPOSIT_CONTRACT, _ethDepositContract);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -144,6 +146,15 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function updateMinDelayToFinalizeWithdrawRequest(uint256 _minDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setVariable(MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minDelay);
+    }
+
+    /**
+     * @notice update the max number of withdrawn validator keys reported by oracle in single tx
+     * @dev only `OPERATOR` can call
+     * @param _withdrawnKeysBatchSize updated maximum withdrawn key limit in the oracle input
+     */
+    function updateWithdrawnKeysBatchSize(uint256 _withdrawnKeysBatchSize) external onlyRole(OPERATOR) {
+        setVariable(WITHDRAWN_KEYS_BATCH_SIZE, _withdrawnKeysBatchSize);
     }
 
     //Accounts Setters
@@ -290,6 +301,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getMinDelayToFinalizeWithdrawRequest() external view override returns (uint256) {
         return variablesMap[MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST];
+    }
+
+    function getWithdrawnKeyBatchSize() external view override returns (uint256) {
+        return variablesMap[WITHDRAWN_KEYS_BATCH_SIZE];
     }
 
     //Account Getters

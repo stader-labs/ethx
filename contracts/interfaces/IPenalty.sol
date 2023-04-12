@@ -35,9 +35,6 @@ interface IPenalty {
     // returns the total penalty amount of a validator given its pubkey
     function totalPenaltyAmount(bytes calldata _pubkey) external view returns (uint256);
 
-    //return the settle status of a validator pubkey
-    function validatorSettleStatus(bytes calldata _pubkey) external view returns (bool);
-
     // Setters
 
     // Sets the address of the Rated.network penalty oracle.

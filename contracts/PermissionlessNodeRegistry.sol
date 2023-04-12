@@ -169,7 +169,7 @@ contract PermissionlessNodeRegistry is
      * @notice move validator state from INITIALIZE to PRE_DEPOSIT
      * after verifying pre-sign message, front running and deposit signature.
      * report front run and invalid signature pubkeys
-     * @dev only `STADER_ORACLE` role can call
+     * @dev only `OPERATOR` role can call
      * @param _readyToDepositPubkey array of pubkeys ready to be moved to PRE_DEPOSIT state
      * @param _frontRunPubkey array for pubkeys which got front deposit
      * @param _invalidSignaturePubkey array of pubkey which has invalid signature for deposit
@@ -178,15 +178,18 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _readyToDepositPubkey,
         bytes[] calldata _frontRunPubkey,
         bytes[] calldata _invalidSignaturePubkey
-    ) external override nonReentrant {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
-        uint256 verifiedValidatorsLength = _readyToDepositPubkey.length;
+    ) external override nonReentrant whenNotPaused {
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        uint256 readyToDepositValidatorsLength = _readyToDepositPubkey.length;
         uint256 frontRunValidatorsLength = _frontRunPubkey.length;
         uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkey.length;
-        if (verifiedValidatorsLength > VERIFIED_KEYS_BATCH_SIZE) {
-            revert TooManyVerifiedKeysToDeposit();
+        if (
+            readyToDepositValidatorsLength + frontRunValidatorsLength + invalidSignatureValidatorsLength >
+            VERIFIED_KEYS_BATCH_SIZE
+        ) {
+            revert TooManyVerifiedKeysReported();
         }
-        for (uint256 i = 0; i < verifiedValidatorsLength; i++) {
+        for (uint256 i = 0; i < readyToDepositValidatorsLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             onlyInitializedValidator(validatorId);
             markKeyReadyToDeposit(validatorId);
@@ -225,6 +228,9 @@ contract PermissionlessNodeRegistry is
     function withdrawnValidators(bytes[] calldata _pubkeys) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
         uint256 withdrawnValidatorCount = _pubkeys.length;
+        if (withdrawnValidatorCount > staderConfig.getWithdrawnKeyBatchSize()) {
+            revert TooManyWithdrawnKeysReported();
+        }
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!isNonTerminalValidator(validatorId)) {

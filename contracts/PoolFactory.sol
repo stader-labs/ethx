@@ -215,6 +215,15 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         revert OperatorIsNotOnboarded();
     }
 
+    function getValidatorPoolId(bytes calldata _pubkey) external view override returns (uint8) {
+        for (uint8 i = 1; i <= poolCount; i++) {
+            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) {
+                return i;
+            }
+        }
+        revert PubkeyDoesNotExit();
+    }
+
     // only valid name with string length limit
     function onlyValidName(string calldata _name) external view {
         if (bytes(_name).length == 0) {

@@ -36,7 +36,8 @@ interface INodeRegistry {
     error UNEXPECTED_STATUS();
     error PubkeyAlreadyExist();
     error NotEnoughSDCollateral();
-    error TooManyVerifiedKeysToDeposit();
+    error TooManyVerifiedKeysReported();
+    error TooManyWithdrawnKeysReported();
 
     // Events
     event OnboardedOperator(address indexed nodeOperator, address nodeRewardAddress, uint256 operatorId);
@@ -51,6 +52,7 @@ interface INodeRegistry {
     event UpdatedOperatorDetails(address indexed nodeOperator, string operatorName, address rewardAddress);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
     event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
+    event UpdatedWithdrawnKeyBatchSize(uint256 withdrawnKeysBatchSize);
     event DecreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
 
     function withdrawnValidators(bytes[] calldata _pubkeys) external;
