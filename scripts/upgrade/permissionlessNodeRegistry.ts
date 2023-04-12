@@ -1,5 +1,4 @@
 import { ethers, upgrades } from 'hardhat'
-const hre = require('hardhat')
 
 async function main() {
   const permissionlessNodeRegistry = process.env.PERMISSIONLESS_NODE_REGISTRY ?? ''
@@ -11,9 +10,9 @@ async function main() {
     permissionlessNodeRegistryFactory
   )
 
-  console.log('new implementation address ', permissionlessNodeRegistryUpgraded.address)
+  console.log('permissionless node registry proxy address ', permissionlessNodeRegistryUpgraded.address)
 
-  console.log('upgraded permission less Node Registry')
+  console.log('upgraded permissionless node registry')
 }
 
 main()

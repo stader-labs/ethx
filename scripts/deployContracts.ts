@@ -5,9 +5,7 @@ async function main() {
   const [staderOwner] = await ethers.getSigners()
 
   const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT ?? ''
-  const ETHDeposit = await ethers.getContractFactory('DepositContract')
-  const ethDeposit = await ETHDeposit.attach(ethDepositContract)
-  console.log('ethDeposit is ', ethDeposit.address)
+  const ratedOracle = process.env.RATED_ORACLE ?? ''
 
   const StaderConfig = await ethers.getContractFactory('StaderConfig')
   const staderConfig = await upgrades.deployProxy(StaderConfig, [staderOwner.address, ethDepositContract])
@@ -31,7 +29,11 @@ async function main() {
   console.log('ETHx deployed at ', ETHxToken.address)
 
   const penaltyFactory = await ethers.getContractFactory('Penalty')
-  const penaltyInstance = await upgrades.deployProxy(penaltyFactory, [staderOwner.address, staderConfig.address])
+  const penaltyInstance = await upgrades.deployProxy(penaltyFactory, [
+    staderOwner.address,
+    staderConfig.address,
+    ratedOracle,
+  ])
   console.log('penalty contract deployed at ', penaltyInstance.address)
 
   const PermissionedNodeRegistryFactory = await ethers.getContractFactory('PermissionedNodeRegistry')

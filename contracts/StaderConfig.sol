@@ -24,8 +24,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant MIN_WITHDRAW_AMOUNT = keccak256('MIN_WITHDRAW_AMOUNT');
     bytes32 public constant MAX_WITHDRAW_AMOUNT = keccak256('MAX_WITHDRAW_AMOUNT');
     //minimum delay between user requesting withdraw and request finalization
-    bytes32 public constant MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST =
-        keccak256('MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST');
+    bytes32 public constant MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST =
+        keccak256('MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST');
     bytes32 public constant WITHDRAWN_KEYS_BATCH_SIZE = keccak256('WITHDRAWN_KEYS_BATCH_SIZE');
 
     bytes32 public constant ADMIN = keccak256('ADMIN');
@@ -144,8 +144,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setVariable(MAX_WITHDRAW_AMOUNT, _maxWithdrawAmount);
     }
 
-    function updateMinDelayToFinalizeWithdrawRequest(uint256 _minDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setVariable(MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minDelay);
+    function updateMinBlockDelayToFinalizeWithdrawRequest(uint256 _minDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setVariable(MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minDelay);
     }
 
     /**
@@ -299,8 +299,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         return variablesMap[MAX_WITHDRAW_AMOUNT];
     }
 
-    function getMinDelayToFinalizeWithdrawRequest() external view override returns (uint256) {
-        return variablesMap[MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST];
+    function getMinBlockDelayToFinalizeWithdrawRequest() external view override returns (uint256) {
+        return variablesMap[MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST];
     }
 
     function getWithdrawnKeyBatchSize() external view override returns (uint256) {

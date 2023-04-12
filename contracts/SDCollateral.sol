@@ -256,9 +256,7 @@ contract SDCollateral is
         )
     {
         _poolId = IPoolUtils(staderConfig.getPoolUtils()).getOperatorPoolId(_operator);
-        INodeRegistry nodeRegistry = INodeRegistry(
-            IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId)
-        );
+        INodeRegistry nodeRegistry = INodeRegistry(IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId));
         _operatorId = nodeRegistry.operatorIDByAddress(_operator);
         _validatorCount = IPoolUtils(staderConfig.getPoolUtils()).getOperatorTotalNonTerminalKeys(
             _poolId,

@@ -190,7 +190,7 @@ contract StaderStakePoolsManager is
         }
         uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
             .computePoolAllocationForDeposit(availableETHForNewDeposit);
-        
+
         uint256 selectedPoolCapacityLength = selectedPoolCapacity.length;
         // i is pool Id
         for (uint8 i = 1; i < selectedPoolCapacityLength; i++) {

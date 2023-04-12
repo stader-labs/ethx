@@ -142,7 +142,8 @@ contract UserWithdrawalManager is
             uint256 minEThRequiredToFinalizeRequest = Math.min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
             if (
                 (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) ||
-                (userWithdrawInfo.requestBlock + staderConfig.getMinDelayToFinalizeWithdrawRequest() > block.timestamp)
+                (userWithdrawInfo.requestBlock + staderConfig.getMinBlockDelayToFinalizeWithdrawRequest() >
+                    block.timestamp)
             ) {
                 requestId -= 1;
                 break;

@@ -77,7 +77,7 @@ interface IStaderConfig {
 
     function getMaxWithdrawAmount() external view returns (uint256);
 
-    function getMinDelayToFinalizeWithdrawRequest() external view returns (uint256);
+    function getMinBlockDelayToFinalizeWithdrawRequest() external view returns (uint256);
 
     function getWithdrawnKeyBatchSize() external view returns (uint256);
 
