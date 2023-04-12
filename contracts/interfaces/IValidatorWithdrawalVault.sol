@@ -6,7 +6,6 @@ import './IStaderConfig.sol';
 interface IValidatorWithdrawalVault {
     // Errors
     error InvalidRewardAmount();
-    error WithdrawVaultSettled();
     error ValidatorNotWithdrawnOrSettled();
     error InsufficientBalance();
     error ETHTransferFailed(address recipient, uint256 amount);
