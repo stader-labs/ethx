@@ -60,9 +60,9 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
      */
     function depositSDAsCollateral(uint256 _sdAmount) external {
         address operator = msg.sender;
-        totalSDCollateral += _sdAmount;
-
         uint256 numShares = convertSDToShares(_sdAmount);
+
+        totalSDCollateral += _sdAmount;
         totalShares += numShares;
         operatorShares[operator] += numShares;
 
