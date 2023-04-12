@@ -116,7 +116,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @param _minDepositAmount minimum deposit value
      */
     function updateMinDepositAmount(uint256 _minDepositAmount) external override onlyRole(EXECUTOR_ROLE) {
-        if (_minDepositAmount == 0) revert InvalidMinDepositValue();
+        if ((_minDepositAmount == 0) || (_minDepositAmount >= maxDepositAmount)) revert InvalidMinDepositValue();
         minDepositAmount = _minDepositAmount;
         emit UpdatedMinDepositAmount(minDepositAmount);
     }
@@ -136,7 +136,7 @@ contract StaderStakePoolsManager is IStaderStakePoolManager, TimelockControllerU
      * @param _minWithdrawAmount minimum withdraw value
      */
     function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external override onlyRole(EXECUTOR_ROLE) {
-        if (_minWithdrawAmount == 0) revert InvalidMinWithdrawValue();
+        if ((_minWithdrawAmount == 0) || (_minWithdrawAmount >= maxWithdrawAmount)) revert InvalidMinWithdrawValue();
         minWithdrawAmount = _minWithdrawAmount;
         emit UpdatedMinWithdrawAmount(minWithdrawAmount);
     }
