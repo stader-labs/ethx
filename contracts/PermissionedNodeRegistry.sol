@@ -144,7 +144,9 @@ contract PermissionedNodeRegistry is
         if ((totalNonWithdrawnKeys + keyCount) > maxKeyPerOperator) revert maxKeyLimitReached();
 
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount);
+        if (!ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, totalNonWithdrawnKeys + keyCount)) {
+            revert NotEnoughSDCollateral();
+        }
 
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_pubkey[i], _preDepositSignature[i], _depositSignature[i], operatorId);

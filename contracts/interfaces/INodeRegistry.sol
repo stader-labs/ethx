@@ -23,6 +23,9 @@ struct Operator {
 
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
+    // errors
+    error NotEnoughSDCollateral();
+
     // Returns the timestamp of the last time the operator changed the opt-in status for socializing pool
     function getSocializingPoolStateChangeTimestamp(uint256 _operatorId) external view returns (uint256);
 

@@ -146,7 +146,15 @@ contract PermissionlessNodeRegistry is
         uint256 operatorTotalKeys = this.getOperatorTotalKeys(operatorId);
         uint256 operatorTotalNonWithdrawnKeys = this.getOperatorTotalNonWithdrawnKeys(msg.sender, 0, operatorTotalKeys);
         //check if operator has enough SD collateral for adding `keyCount` keys
-        ISDCollateral(sdCollateral).hasEnoughSDCollateral(msg.sender, poolId, operatorTotalNonWithdrawnKeys + keyCount);
+        if (
+            !ISDCollateral(sdCollateral).hasEnoughSDCollateral(
+                msg.sender,
+                poolId,
+                operatorTotalNonWithdrawnKeys + keyCount
+            )
+        ) {
+            revert NotEnoughSDCollateral();
+        }
 
         for (uint256 i = 0; i < keyCount; i++) {
             _addValidatorKey(_pubkey[i], _preDepositSignature[i], _depositSignature[i], operatorId);
