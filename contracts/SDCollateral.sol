@@ -57,7 +57,6 @@ contract SDCollateral is
         totalSDCollateral += _sdAmount;
         operatorSDBalance[operator] += _sdAmount;
 
-        // cannot use safeERC20 as this contract is an upgradeable contract
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
@@ -87,7 +86,7 @@ contract SDCollateral is
         emit SDWithdrawRequested(operator, _requestedSD);
     }
 
-    function claimWithdraw() external override {
+    function claimWithdraw() external override nonReentrant {
         address operator = msg.sender;
         // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, operatorSDBalance)
         uint256 requestedSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, operatorSDBalance[operator]);

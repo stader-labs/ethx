@@ -48,7 +48,11 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
+        uint256 totalRewards = address(this).balance;
+        if (totalRewards == 0) {
+            revert NotEnoughRewardToWithdraw();
+        }
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
 
         // Distribute rewards
         bool success;

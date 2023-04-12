@@ -64,11 +64,12 @@ contract ValidatorWithdrawalVault is
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }
-
+        if (totalRewards == 0) {
+            revert NotEnoughRewardToDistribute();
+        }
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
 
         // Distribute rewards
-        //TODO sanjay make sure we are not sending 0 balance
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         sendValue(getNodeRecipient(), operatorShare);
         sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);

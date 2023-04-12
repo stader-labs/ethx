@@ -5,6 +5,7 @@ import './IStaderConfig.sol';
 
 interface INodeELRewardVault {
     // errors
+    error NotEnoughRewardToWithdraw();
     error ETHTransferFailed(address recipient, uint256 amount);
 
     // events

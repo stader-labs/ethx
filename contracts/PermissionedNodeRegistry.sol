@@ -15,13 +15,15 @@ import './interfaces/IPermissionedNodeRegistry.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract PermissionedNodeRegistry is
     INodeRegistry,
     IPermissionedNodeRegistry,
     Initializable,
     AccessControlUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     using Math for uint256;
 
@@ -64,6 +66,7 @@ contract PermissionedNodeRegistry is
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
+        __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
         nextOperatorId = 1;
         nextValidatorId = 1;
@@ -92,7 +95,7 @@ contract PermissionedNodeRegistry is
      * @dev only whitelisted NOs can call
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
-     * @return feeRecipientAddress fee recipient address for all validator clients
+     * @return feeRecipientAddress fee recipient address for all validator clients of a operator
      */
     function onboardNodeOperator(string calldata _operatorName, address payable _operatorRewardAddress)
         external
@@ -231,7 +234,7 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _readyToDepositPubkey,
         bytes[] calldata _frontRunPubkey,
         bytes[] calldata _invalidSignaturePubkey
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         UtilLib.onlyOperatorRole(msg.sender, staderConfig);
         uint256 readyToDepositValidatorsLength = _readyToDepositPubkey.length;
         uint256 frontRunValidatorsLength = _frontRunPubkey.length;

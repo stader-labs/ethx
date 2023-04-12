@@ -63,7 +63,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     // transfer the 32ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
-    function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount) external {
+    function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount) external nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_NODE_REGISTRY());
         //get 1ETH from insurance fund
         IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).reimburseUserFund(
@@ -83,7 +83,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit PRE_DEPOSIT_SIZE of ETH for validators while adhering to pool capacity.
      */
-    function stakeUserETHToBeaconChain() external payable override {
+    function stakeUserETHToBeaconChain() external payable override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
         //TODO sanjay how to make sure pool capacity remain same at this point compared to pool selection
         uint256 requiredValidators = msg.value / staderConfig.getStakedEthPerNode();
@@ -119,7 +119,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     // deposit `FULL_DEPOSIT_SIZE` for the verified preDeposited Validator
-    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external {
+    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_NODE_REGISTRY());
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();

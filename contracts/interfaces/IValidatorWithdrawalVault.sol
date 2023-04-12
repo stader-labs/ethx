@@ -8,6 +8,7 @@ interface IValidatorWithdrawalVault {
     error InvalidRewardAmount();
     error ValidatorNotWithdrawnOrSettled();
     error InsufficientBalance();
+    error NotEnoughRewardToDistribute();
     error ETHTransferFailed(address recipient, uint256 amount);
 
     // Events

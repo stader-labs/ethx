@@ -83,7 +83,7 @@ contract PermissionlessNodeRegistry is
      * @param _optInForSocializingPool opted in or not to socialize mev and priority fee
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
-     * @return feeRecipientAddress fee recipient address for all validator clients
+     * @return feeRecipientAddress fee recipient address for all validator clients of a operator
      */
     function onboardNodeOperator(
         bool _optInForSocializingPool,
@@ -384,7 +384,7 @@ contract PermissionlessNodeRegistry is
      * @dev only permissionless pool can call
      * @param _amount amount of eth to send to permissionless pool
      */
-    function transferCollateralToPool(uint256 _amount) external override {
+    function transferCollateralToPool(uint256 _amount) external override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_POOL());
         IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{value: _amount}();
         emit TransferredCollateralToPool(_amount);
@@ -596,6 +596,7 @@ contract PermissionlessNodeRegistry is
     }
 
     // handle validator with invalid signature for 1ETH deposit
+    //send back remaining ETH to operator address
     function handleInvalidSignature(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
