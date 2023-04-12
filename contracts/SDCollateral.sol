@@ -96,7 +96,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     function hasEnoughSDCollateral(
         address _operator,
         uint8 _poolId,
-        uint32 _numValidators
+        uint256 _numValidators
     ) external view returns (bool) {
         uint256 numShares = operatorShares[_operator];
         uint256 sdBalance = convertSharesToSD(numShares);
