@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 // Interface for the Penalty contract
 interface IPenalty {
     // Errors
+    error ValidatorSettled();
     error InvalidPubkeyLength();
 
     // Events
@@ -14,6 +15,7 @@ interface IPenalty {
     event UpdatedValidatorExitPenaltyThreshold(uint256 totalPenaltyThreshold);
     event ExitValidator(bytes pubkey);
     event UpdatedStaderConfig(address staderConfig);
+    event ValidatorMarkedAsSettled(bytes pubkey);
 
     // returns the address of the Rated.network penalty oracle
     function ratedOracleAddress() external view returns (address);
@@ -63,18 +65,11 @@ interface IPenalty {
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view returns (uint256);
 
     /**
-     * @notice Computes the public key root.
-     * @param _pubkey The validator public key for which to compute the root.
-     * @return The root of the public key.
-     */
-    function getPubkeyRoot(bytes calldata _pubkey) external pure returns (bytes32);
-
-    /**
-     * @notice Calculates the total MEV penalty for a given public key.
+     * @notice update the total penalty amount for a given public key.
      * @param _pubkey The public key of the validator for which to calculate the penalty.
      * @return The total MEV penalty.
      */
-    function calculatePenalty(bytes calldata _pubkey) external returns (uint256);
+    function updateTotalPenaltyAmount(bytes calldata _pubkey) external returns (uint256);
 
     /**
      * @notice Calculates the penalty for changing the fee recipient address for a given public key
@@ -90,4 +85,12 @@ interface IPenalty {
      * @return penalty for missing attestation
      */
     function calculateMissedAttestationPenalty(bytes32 _pubkeyRoot) external returns (uint256);
+
+    /**
+     * @notice make the totalPenalty amount as 0 and marked validator as settled
+     * @param _poolId pool Id of the validator
+     * @param _validatorId validator Id of a validator
+     * @dev only validator withdraw vault can call
+     */
+    function markValidatorSettled(uint8 _poolId, uint256 _validatorId) external;
 }

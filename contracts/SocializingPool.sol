@@ -36,7 +36,8 @@ contract SocializingPool is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
@@ -46,7 +47,7 @@ contract SocializingPool is
         staderConfig = IStaderConfig(_staderConfig);
         initialBlock = block.number;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -112,7 +113,7 @@ contract SocializingPool is
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
 
         uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
-        address operatorRewardsAddr = getNodeRecipient(operator, poolId);
+        address operatorRewardsAddr = UtilLib.getNodeRecipientAddressByOperator(poolId, operator, staderConfig);
 
         bool success;
         if (totalAmountETH > 0) {
@@ -168,15 +169,6 @@ contract SocializingPool is
         bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
-    }
-
-    // TODO sanjay move to NodeRegistry?
-    function getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
-        INodeRegistry nodeRegistry = INodeRegistry(
-            IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId)
-        );
-        uint256 operatorId = nodeRegistry.operatorIDByAddress(_operator);
-        return nodeRegistry.getOperatorRewardAddress(operatorId);
     }
 
     // SETTERS

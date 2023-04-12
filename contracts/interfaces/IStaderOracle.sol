@@ -275,8 +275,6 @@ interface IStaderOracle {
 
     function getMissedAttestationPenaltyReportableBlock() external view returns (uint256);
 
-    function getPubkeyRoot(bytes calldata _pubkey) external pure returns (bytes32);
-
     function getExchangeRate() external view returns (ExchangeRate memory);
 
     function getValidatorStats() external view returns (ValidatorStats memory);

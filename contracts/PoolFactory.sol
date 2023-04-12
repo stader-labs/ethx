@@ -23,12 +23,13 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         staderConfig = IStaderConfig(_staderConfig);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -212,6 +213,15 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
             }
         }
         revert OperatorIsNotOnboarded();
+    }
+
+    function getValidatorPoolId(bytes calldata _pubkey) external view override returns (uint8) {
+        for (uint8 i = 1; i <= poolCount; i++) {
+            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) {
+                return i;
+            }
+        }
+        revert PubkeyDoesNotExit();
     }
 
     // only valid name with string length limit

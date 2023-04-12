@@ -16,16 +16,9 @@ import './interfaces/IPermissionedNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract PermissionedPool is
-    IStaderPoolBase,
-    Initializable,
-    AccessControlUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
 
     IStaderConfig public staderConfig;
@@ -46,13 +39,13 @@ contract PermissionedPool is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
-        __Pausable_init();
         __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     // protection against accidental submissions by calling non-existent function
@@ -70,7 +63,7 @@ contract PermissionedPool is
     }
 
     // transfer the 32ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
-    function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount) external {
+    function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount) external nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_NODE_REGISTRY());
         //get 1ETH from insurance fund
         IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).reimburseUserFund(
@@ -90,7 +83,7 @@ contract PermissionedPool is
      * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit PRE_DEPOSIT_SIZE of ETH for validators while adhering to pool capacity.
      */
-    function stakeUserETHToBeaconChain() external payable override {
+    function stakeUserETHToBeaconChain() external payable override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
         //TODO sanjay how to make sure pool capacity remain same at this point compared to pool selection
         uint256 requiredValidators = msg.value / staderConfig.getStakedEthPerNode();
@@ -114,7 +107,7 @@ contract PermissionedPool is
                 index < nextQueuedValidatorIndex + validatorToDeposit;
                 index++
             ) {
-                uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
+                uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
                 preDepositOnBeaconChain(nodeRegistryAddress, vaultFactory, ethDepositContract, validatorId);
             }
             IPermissionedNodeRegistry(nodeRegistryAddress).updateQueuedValidatorIndex(
@@ -126,14 +119,14 @@ contract PermissionedPool is
     }
 
     // deposit `FULL_DEPOSIT_SIZE` for the verified preDeposited Validator
-    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external {
+    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_NODE_REGISTRY());
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
         for (uint256 i = 0; i < _pubkey.length; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
-            uint256 validatorId = IPermissionedNodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
+            uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
                 nodeRegistryAddress
             ).validatorRegistry(validatorId);
@@ -187,15 +180,6 @@ contract PermissionedPool is
                 _startIndex,
                 _endIndex
             );
-    }
-
-    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        override
-        returns (Validator[] memory)
-    {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
     }
 
     function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {

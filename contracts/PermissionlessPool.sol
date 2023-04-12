@@ -14,9 +14,9 @@ import './interfaces/IPermissionlessNodeRegistry.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
     uint8 public constant poolId = 1;
     IStaderConfig public staderConfig;
@@ -37,12 +37,14 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    //TODO sanjay do we need __ReentrancyGuard_init in most contracts
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
-        __Pausable_init();
+        __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     // protection against accidental submissions by calling non-existent function
@@ -56,7 +58,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     // receive `DEPOSIT_NODE_BOND` collateral ETH from permissionless node registry
-    function receiveRemainingCollateralETH() external payable {
+    function receiveRemainingCollateralETH() external payable nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         emit ReceivedCollateralETH(msg.value);
     }
@@ -92,7 +94,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         bytes[] calldata _preDepositSignature,
         uint256 _operatorId,
         uint256 _operatorTotalKeys
-    ) external payable {
+    ) external payable nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         address vaultFactory = staderConfig.getVaultFactory();
         for (uint256 i = 0; i < _pubkey.length; i++) {
@@ -124,7 +126,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * @notice receives eth from pool manager to deposit for validators on beacon chain
      * @dev deposit validator taking care of pool capacity
      */
-    function stakeUserETHToBeaconChain() external payable override {
+    function stakeUserETHToBeaconChain() external payable override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
         uint256 requiredValidators = msg.value / (FULL_DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         address nodeRegistryAddress = staderConfig.getPermissionlessNodeRegistry();
@@ -175,19 +177,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function getTotalActiveValidatorCount() external view override returns (uint256) {
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getTotalActiveValidatorCount();
-    }
-
-    /**
-     * @notice get all validator which has user balance on beacon chain
-     */
-    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        override
-        returns (Validator[] memory)
-    {
-        return
-            INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getAllActiveValidators(_pageNumber, _pageSize);
     }
 
     // returns array of nodeELRewardVault address for opt out of socializing pool operators

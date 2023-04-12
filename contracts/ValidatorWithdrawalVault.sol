@@ -23,6 +23,7 @@ contract ValidatorWithdrawalVault is
 {
     using Math for uint256;
 
+    bool public override vaultSettleStatus;
     uint8 public override poolId; // No Setter as this is supposed to be set once
     IStaderConfig public override staderConfig;
     uint256 public override validatorId; // No Setter as this is supposed to be set once
@@ -55,12 +56,17 @@ contract ValidatorWithdrawalVault is
 
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
-
+        if (vaultSettleStatus) {
+            sendValue(payable(staderConfig.getStaderTreasury()), address(this).balance);
+            return;
+        }
         if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }
-
+        if (totalRewards == 0) {
+            revert NotEnoughRewardToDistribute();
+        }
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
 
         // Distribute rewards
@@ -95,10 +101,9 @@ contract ValidatorWithdrawalVault is
         userShare = _totalRewards - protocolShare - operatorShare;
     }
 
-    // TODO sanjay mark this vault settled?
     function settleFunds() external override nonReentrant {
-        if (!isWithdrawnValidator()) {
-            revert ValidatorNotWithdrawn();
+        if (!isWithdrawnValidator() || vaultSettleStatus) {
+            revert ValidatorNotWithdrawnOrSettled();
         }
         (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
@@ -111,7 +116,10 @@ contract ValidatorWithdrawalVault is
 
         uint256 userShare = userSharePrelim + penaltyAmount;
         operatorShare = operatorShare - penaltyAmount;
+
         // Final settlement
+        vaultSettleStatus = true;
+        IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         sendValue(getNodeRecipient(), operatorShare);
         sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
@@ -146,11 +154,12 @@ contract ValidatorWithdrawalVault is
             _operatorShare = collateralETH;
             _userShare = usersETH;
         }
-
-        (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = calculateRewardShare(totalRewards);
-        _userShare += userReward;
-        _operatorShare += operatorReward;
-        _protocolShare += protocolReward;
+        if (totalRewards > 0) {
+            (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = calculateRewardShare(totalRewards);
+            _userShare += userReward;
+            _operatorShare += operatorReward;
+            _protocolShare += protocolReward;
+        }
     }
 
     //update the address of staderConfig
@@ -190,16 +199,13 @@ contract ValidatorWithdrawalVault is
     }
 
     function getNodeRecipient() internal view returns (address payable) {
-        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
-        (, , , , , uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-        address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
-        return operatorRewardAddress;
+        return UtilLib.getNodeRecipientAddressByValidatorId(poolId, validatorId, staderConfig);
     }
 
     function getPenaltyAmount() internal returns (uint256) {
         address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
         (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-        return IPenalty(staderConfig.getPenaltyContract()).calculatePenalty(pubkey);
+        return IPenalty(staderConfig.getPenaltyContract()).updateTotalPenaltyAmount(pubkey);
     }
 
     function isWithdrawnValidator() internal view returns (bool) {

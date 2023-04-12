@@ -33,8 +33,6 @@ interface IStaderPoolBase {
 
     function getTotalQueuedValidatorCount() external view returns (uint256); // returns the total number of queued validators across all operators
 
-    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
-
     function getOperatorTotalNonTerminalKeys(
         address _nodeOperator,
         uint256 _startIndex,

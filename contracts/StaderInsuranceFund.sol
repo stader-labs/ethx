@@ -8,8 +8,14 @@ import './interfaces/IPermissionedPool.sol';
 import './interfaces/IStaderInsuranceFund.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessControlUpgradeable {
+contract StaderInsuranceFund is
+    IStaderInsuranceFund,
+    Initializable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     IStaderConfig public staderConfig;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -17,10 +23,13 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
+        UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
+        __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     // function to add fund for insurance
@@ -29,7 +38,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
     }
 
     // `MANAGER` can withdraw access fund
-    function withdrawFund(uint256 _amount) external override {
+    function withdrawFund(uint256 _amount) external override nonReentrant {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (address(this).balance < _amount || _amount == 0) {
             revert InvalidAmountProvided();
@@ -48,7 +57,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, Initializable, AccessContr
      * @dev only permissioned pool can call
      * @param _amount amount of ETH to transfer to permissioned pool
      */
-    function reimburseUserFund(uint256 _amount) external override {
+    function reimburseUserFund(uint256 _amount) external override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         if (address(this).balance < _amount) {
             revert InSufficientBalance();

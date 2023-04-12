@@ -44,13 +44,14 @@ contract StaderStakePoolsManager is
      * @dev Stader initialized with following variables
      * @param _staderConfig config contract
      */
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     // protection against accidental submissions by calling non-existent function
@@ -94,7 +95,7 @@ contract StaderStakePoolsManager is
      * @dev only user withdraw manager allowed to call
      * @param _amount amount of ETH to transfer
      */
-    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
+    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant whenNotPaused {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.USER_WITHDRAW_MANAGER());
         depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
@@ -189,6 +190,7 @@ contract StaderStakePoolsManager is
         }
         uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
             .computePoolAllocationForDeposit(availableETHForNewDeposit);
+        // i is pool Id
         for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) {
@@ -197,16 +199,16 @@ contract StaderStakePoolsManager is
             (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
             uint256 poolDepositSize = ETH_PER_NODE - IPoolFactory(poolFactory).getCollateralETH(i);
 
+            depositedPooledETH -= validatorToDeposit * poolDepositSize;
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();
-            depositedPooledETH -= validatorToDeposit * poolDepositSize;
-            emit ETHTransferredToPool(poolName, poolAddress, validatorToDeposit * poolDepositSize);
+            emit ETHTransferredToPool(i, poolAddress, validatorToDeposit * poolDepositSize);
         }
     }
 
     /**
      * @dev Triggers stopped state.
-     * should not be paused
+     * Contract must not be paused
      */
     function pause() external {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
@@ -215,7 +217,7 @@ contract StaderStakePoolsManager is
 
     /**
      * @dev Returns to normal state.
-     * should not be paused
+     * Contract must be paused
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
@@ -285,7 +287,7 @@ contract StaderStakePoolsManager is
     /**
      * @dev Checks if vault is "healthy" in the sense of having assets backing the circulating shares.
      */
-    function isVaultHealthy() private view returns (bool) {
+    function isVaultHealthy() public view override returns (bool) {
         return
             (totalAssets() > 0 ||
                 IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply == 0) && (!paused());

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
-
 import './library/UtilLib.sol';
 
 import './interfaces/IStaderConfig.sol';
@@ -18,14 +17,14 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
     IStaderConfig staderConfig;
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
-    bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __ERC20_init('Liquid Staking ETH', 'ETHx');
@@ -33,7 +32,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         __AccessControl_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -54,9 +53,21 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         _burn(account, amount);
     }
 
-    /// @notice Flips the pause state
-    function togglePause() external onlyRole(PAUSER_ROLE) {
-        paused() ? _unpause() : _pause();
+    /**
+     * @dev Triggers stopped state.
+     * Contract must not be paused.
+     */
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * Contract must be paused
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     function _beforeTokenTransfer(

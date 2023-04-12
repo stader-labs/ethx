@@ -10,6 +10,7 @@ import './interfaces/IPoolFactory.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionlessPool.sol';
 import './interfaces/INodeELRewardVault.sol';
+import './interfaces/IStaderInsuranceFund.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
@@ -30,6 +31,7 @@ contract PermissionlessNodeRegistry is
 
     IStaderConfig public staderConfig;
 
+    uint256 public override VERIFIED_KEYS_BATCH_SIZE;
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
     uint256 public override validatorQueueSize;
@@ -37,7 +39,7 @@ contract PermissionlessNodeRegistry is
     uint256 public override totalActiveValidatorCount;
     uint256 public constant override PRE_DEPOSIT = 1 ether;
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
-    uint256 public constant override collateralETH = 4 ether;
+    uint256 public constant collateralETH = 4 ether;
 
     // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
@@ -60,7 +62,8 @@ contract PermissionlessNodeRegistry is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
@@ -70,7 +73,8 @@ contract PermissionlessNodeRegistry is
         nextValidatorId = 1;
         inputKeyCountLimit = 100;
         maxNonTerminalKeyPerOperator = 50;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        VERIFIED_KEYS_BATCH_SIZE = 50;
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -79,7 +83,7 @@ contract PermissionlessNodeRegistry is
      * @param _optInForSocializingPool opted in or not to socialize mev and priority fee
      * @param _operatorName name of operator
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
-     * @return feeRecipientAddress fee recipient address for all validator clients
+     * @return feeRecipientAddress fee recipient address for all validator clients of a operator
      */
     function onboardNodeOperator(
         bool _optInForSocializingPool,
@@ -90,7 +94,7 @@ contract PermissionlessNodeRegistry is
         IPoolFactory(poolFactory).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_operatorRewardAddress);
 
-        //checks if operator already onboarded in any pool of protocol
+        //checks if operator already onboarded in any pool of stader protocol
         if (IPoolFactory(poolFactory).isExistingOperator(msg.sender)) {
             revert OperatorAlreadyOnBoardedInProtocol();
         }
@@ -165,49 +169,68 @@ contract PermissionlessNodeRegistry is
      * @notice move validator state from INITIALIZE to PRE_DEPOSIT
      * after verifying pre-sign message, front running and deposit signature.
      * report front run and invalid signature pubkeys
-     * @dev only `STADER_ORACLE` role can call
+     * @dev only `OPERATOR` role can call
      * @param _readyToDepositPubkey array of pubkeys ready to be moved to PRE_DEPOSIT state
-     * @param _frontRunnedPubkey array for pubkeys which got front deposit
+     * @param _frontRunPubkey array for pubkeys which got front deposit
      * @param _invalidSignaturePubkey array of pubkey which has invalid signature for deposit
      */
     function markValidatorReadyToDeposit(
         bytes[] calldata _readyToDepositPubkey,
-        bytes[] calldata _frontRunnedPubkey,
+        bytes[] calldata _frontRunPubkey,
         bytes[] calldata _invalidSignaturePubkey
-    ) external override nonReentrant {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
-        for (uint256 i = 0; i < _readyToDepositPubkey.length; i++) {
+    ) external override nonReentrant whenNotPaused {
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        uint256 readyToDepositValidatorsLength = _readyToDepositPubkey.length;
+        uint256 frontRunValidatorsLength = _frontRunPubkey.length;
+        uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkey.length;
+        if (
+            readyToDepositValidatorsLength + frontRunValidatorsLength + invalidSignatureValidatorsLength >
+            VERIFIED_KEYS_BATCH_SIZE
+        ) {
+            revert TooManyVerifiedKeysReported();
+        }
+        for (uint256 i = 0; i < readyToDepositValidatorsLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             onlyInitializedValidator(validatorId);
             markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_readyToDepositPubkey[i], validatorId);
         }
 
-        address staderInsuranceFund = staderConfig.getStaderInsuranceFund();
-        for (uint256 i = 0; i < _frontRunnedPubkey.length; i++) {
-            uint256 validatorId = validatorIdByPubkey[_frontRunnedPubkey[i]];
+        if (frontRunValidatorsLength > 0) {
+            IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).depositFund{
+                value: frontRunValidatorsLength * FRONT_RUN_PENALTY
+            }();
+        }
+        for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
+            uint256 validatorId = validatorIdByPubkey[_frontRunPubkey[i]];
             onlyInitializedValidator(validatorId);
-            handleFrontRun(staderInsuranceFund, validatorId);
-            emit ValidatorMarkedAsFrontRunned(_frontRunnedPubkey[i], validatorId);
+            handleFrontRun(validatorId);
+            emit ValidatorMarkedAsFrontRunned(_frontRunPubkey[i], validatorId);
         }
 
-        for (uint256 i = 0; i < _invalidSignaturePubkey.length; i++) {
+        for (uint256 i = 0; i < invalidSignatureValidatorsLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkey[i]];
             onlyInitializedValidator(validatorId);
             handleInvalidSignature(validatorId);
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
         }
-        decreaseTotalActiveValidatorCount(_frontRunnedPubkey.length + _invalidSignaturePubkey.length);
+        uint256 totalDefectedKeys = frontRunValidatorsLength + invalidSignatureValidatorsLength;
+        if (totalDefectedKeys > 0) {
+            decreaseTotalActiveValidatorCount(totalDefectedKeys);
+        }
     }
 
     /**
      * @notice handling of fully withdrawn validators
      * @dev list of pubkeys reported by oracle
-     * @param  _pubkeys array of withdrawn validator's pubkey
+     * @param  _pubkeys array of withdrawn validators pubkey
      */
     function withdrawnValidators(bytes[] calldata _pubkeys) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
         uint256 withdrawnValidatorCount = _pubkeys.length;
+        if (withdrawnValidatorCount > staderConfig.getWithdrawnKeyBatchSize()) {
+            revert TooManyWithdrawnKeysReported();
+        }
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!isNonTerminalValidator(validatorId)) {
@@ -234,7 +257,7 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice sets the deposit block for a validator
      * @dev only permissionless pool can call
-     * @param _validatorId ID of the validator
+     * @param _validatorId Id of the validator
      */
     function updateDepositStatusAndBlock(uint256 _validatorId) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_POOL());
@@ -243,7 +266,7 @@ contract PermissionlessNodeRegistry is
         emit UpdatedValidatorDepositBlock(_validatorId, block.number);
     }
 
-    // allow NOs to opt in/out of socialize pool after twice of coolDownPeriod i.e `getSocializingPoolCoolingPeriod`
+    // allow NOs to opt in/out of socialize pool after coolDownPeriod
     function changeSocializingPoolState(bool _optInForSocializingPool)
         external
         override
@@ -311,6 +334,17 @@ contract PermissionlessNodeRegistry is
         emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
     }
 
+    /**
+     * @notice update the max number of verified validator keys reported by oracle
+     * @dev only `OPERATOR` can call
+     * @param _verifiedKeysBatchSize updated maximum verified key limit in the oracle input
+     */
+    function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external {
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
+        emit UpdatedVerifiedKeyBatchSize(_verifiedKeysBatchSize);
+    }
+
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
@@ -350,7 +384,7 @@ contract PermissionlessNodeRegistry is
      * @dev only permissionless pool can call
      * @param _amount amount of eth to send to permissionless pool
      */
-    function transferCollateralToPool(uint256 _amount) external override {
+    function transferCollateralToPool(uint256 _amount) external override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_POOL());
         IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{value: _amount}();
         emit TransferredCollateralToPool(_amount);
@@ -385,7 +419,7 @@ contract PermissionlessNodeRegistry is
     /**
      * @notice get the total added keys for an operator
      * @dev length of the validatorIds array for an operator
-     * @param _operatorId ID of node operator
+     * @param _operatorId Id of node operator
      */
     function getOperatorTotalKeys(uint256 _operatorId) public view override returns (uint256 _totalKeys) {
         _totalKeys = validatorIdsByOperatorId[_operatorId].length;
@@ -413,7 +447,7 @@ contract PermissionlessNodeRegistry is
 
     /**
      * @notice returns the operator reward address
-     * @param _operatorId operator ID
+     * @param _operatorId operator Id
      */
     function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
         return operatorStructById[_operatorId].operatorRewardAddress;
@@ -421,7 +455,7 @@ contract PermissionlessNodeRegistry is
 
     /**
      * @dev Triggers stopped state.
-     * should not be paused
+     * Contract must not be paused
      */
     function pause() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
@@ -430,7 +464,7 @@ contract PermissionlessNodeRegistry is
 
     /**
      * @dev Returns to normal state.
-     * should not be paused
+     * Contract must be paused
      */
     function unpause() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
@@ -544,7 +578,7 @@ contract PermissionlessNodeRegistry is
         socializingPoolStateChangeBlock[nextOperatorId] = block.number;
         nextOperatorId++;
 
-        emit OnboardedOperator(msg.sender, nextOperatorId - 1);
+        emit OnboardedOperator(msg.sender, _operatorRewardAddress, nextOperatorId - 1);
     }
 
     // mark validator  `PRE_DEPOSIT` after successful key verification and front run check
@@ -555,14 +589,14 @@ contract PermissionlessNodeRegistry is
     }
 
     // handle front run validator by changing their status, deactivating operator and imposing penalty
-    function handleFrontRun(address _staderPenaltyFund, uint256 _validatorId) internal {
+    function handleFrontRun(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
-        sendValue(_staderPenaltyFund, FRONT_RUN_PENALTY);
     }
 
     // handle validator with invalid signature for 1ETH deposit
+    //send back remaining ETH to operator address
     function handleInvalidSignature(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
@@ -655,6 +689,7 @@ contract PermissionlessNodeRegistry is
     // decreases the pool total active validator count
     function decreaseTotalActiveValidatorCount(uint256 _count) internal {
         totalActiveValidatorCount -= _count;
+        emit DecreasedTotalActiveValidatorCount(totalActiveValidatorCount);
     }
 
     function onlyInitializedValidator(uint256 _validatorId) internal view {

@@ -33,7 +33,8 @@ contract SDCollateral is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
@@ -41,7 +42,7 @@ contract SDCollateral is
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -56,7 +57,6 @@ contract SDCollateral is
         totalSDCollateral += _sdAmount;
         operatorSDBalance[operator] += _sdAmount;
 
-        // cannot use safeERC20 as this contract is an upgradeable contract
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
@@ -86,7 +86,7 @@ contract SDCollateral is
         emit SDWithdrawRequested(operator, _requestedSD);
     }
 
-    function claimWithdraw() external override {
+    function claimWithdraw() external override nonReentrant {
         address operator = msg.sender;
         // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, operatorSDBalance)
         uint256 requestedSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, operatorSDBalance[operator]);
@@ -113,16 +113,7 @@ contract SDCollateral is
     /// @dev callable only by respective withdrawVaults
     /// @param _validatorId validator SD collateral to slash
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external override returns (uint256 _sdSlashed) {
-        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
-        (, , , , address withdrawVaultAddress, uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(
-            _validatorId
-        );
-        (, , , , address operator) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
-
-        if (msg.sender != withdrawVaultAddress) {
-            revert InvalidExecutor();
-        }
-
+        address operator = UtilLib.getOperatorForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
         uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
         return slashSD(operator, sdToSlash);

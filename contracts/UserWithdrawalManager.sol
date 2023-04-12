@@ -10,6 +10,7 @@ import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IUserWithdrawalManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
+import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -22,6 +23,7 @@ contract UserWithdrawalManager is
     ReentrancyGuardUpgradeable
 {
     using Math for uint256;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     IStaderConfig public staderConfig;
     uint256 public override nextRequestIdToFinalize;
     uint256 public override nextRequestId;
@@ -49,7 +51,8 @@ contract UserWithdrawalManager is
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __Pausable_init();
@@ -59,7 +62,7 @@ contract UserWithdrawalManager is
         nextRequestId = 1;
         finalizationBatchLimit = 50;
         maxNonRedeemedUserRequestCount = 1000;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     receive() external payable {
@@ -98,9 +101,7 @@ contract UserWithdrawalManager is
         if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
         }
-        if (!ETHx(staderConfig.getETHxToken()).transferFrom(msg.sender, (address(this)), _ethXAmount)) {
-            revert ETHTransferFailed();
-        }
+        IERC20Upgradeable(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
         ethRequestedForWithdraw += assets;
         userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
             payable(_owner),
@@ -119,17 +120,16 @@ contract UserWithdrawalManager is
      * @notice finalize user requests
      * @dev check for safeMode to finalizeRequest
      */
-    function finalizeUserWithdrawalRequest() external override whenNotPaused {
+    function finalizeUserWithdrawalRequest() external override nonReentrant whenNotPaused {
         if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
             revert UnsupportedOperationInSafeMode();
+        }
+        if (!IStaderStakePoolManager(staderConfig.getStakePoolManager()).isVaultHealthy()) {
+            revert ProtocolNotHealthy();
         }
         address poolManager = staderConfig.getStakePoolManager();
         uint256 DECIMALS = staderConfig.getDecimals();
         uint256 exchangeRate = IStaderStakePoolManager(poolManager).getExchangeRate();
-        if (exchangeRate == 0) {
-            revert ProtocolNotHealthy();
-        }
-
         uint256 maxRequestIdToFinalize = Math.min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit) - 1;
         uint256 lockedEthXToBurn;
         uint256 ethToSendToFinalizeRequest;
@@ -153,8 +153,8 @@ contract UserWithdrawalManager is
             ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
         }
         if (requestId >= nextRequestIdToFinalize) {
-            ETHx(staderConfig.getETHxToken()).burnFrom(address(this), lockedEthXToBurn);
             nextRequestIdToFinalize = requestId + 1;
+            ETHx(staderConfig.getETHxToken()).burnFrom(address(this), lockedEthXToBurn);
             IStaderStakePoolManager(poolManager).transferETHToUserWithdrawManager(ethToSendToFinalizeRequest);
             emit FinalizedWithdrawRequest(requestId);
         }
@@ -164,7 +164,7 @@ contract UserWithdrawalManager is
      * @notice transfer the eth of finalized request to recipient and delete the request
      * @param _requestId request id to redeem
      */
-    function claim(uint256 _requestId) external override {
+    function claim(uint256 _requestId) external override nonReentrant {
         if (_requestId >= nextRequestIdToFinalize) {
             revert requestIdNotFinalized(_requestId);
         }
@@ -184,7 +184,7 @@ contract UserWithdrawalManager is
 
     /**
      * @dev Triggers stopped state.
-     * should not be paused
+     * Contract must not be paused
      */
     function pause() external {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
@@ -193,7 +193,7 @@ contract UserWithdrawalManager is
 
     /**
      * @dev Returns to normal state.
-     * should not be paused
+     * Contract must be paused
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();

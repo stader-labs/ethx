@@ -7,41 +7,25 @@ import './INodeRegistry.sol';
 interface IPermissionedNodeRegistry {
     // Errors
     error NotAPermissionedNodeOperator();
-    error TooManyVerifiedKeysToDeposit();
+    error OperatorAlreadyDeactivate();
+    error OperatorAlreadyActive();
 
     // Events
     event OperatorWhitelisted(address permissionedNO);
     event OperatorDeactivated(uint256 operatorID);
     event OperatorActivated(uint256 operatorID);
     event MarkedValidatorStatusAsPreDeposit(bytes indexed pubkey);
-    event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
     event UpdatedQueuedValidatorIndex(uint256 indexed operatorId, uint256 nextQueuedValidatorIndex);
 
     // Getters
 
-    function poolId() external view returns (uint8);
-
-    function nextOperatorId() external view returns (uint256);
-
-    function nextValidatorId() external view returns (uint256);
-
-    function maxNonTerminalKeyPerOperator() external view returns (uint64);
-
-    function inputKeyCountLimit() external view returns (uint16);
-
     function operatorIdForExcessDeposit() external view returns (uint256);
 
-    function totalActiveValidatorCount() external view returns (uint256);
-
     function totalActiveOperatorCount() external view returns (uint256);
-
-    function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
     function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);
 
     function permissionList(address) external view returns (bool);
-
-    function validatorIdsByOperatorId(uint256, uint256) external view returns (uint256);
 
     function onlyPreDepositValidator(bytes calldata _pubkey) external view;
 
@@ -62,12 +46,6 @@ interface IPermissionedNodeRegistry {
     function computeOperatorAllocationForDeposit(uint256 _numValidators)
         external
         returns (uint256[] memory selectedOperatorCapacity);
-
-    function markValidatorReadyToDeposit(
-        bytes[] calldata _readyToDepositPubkeys,
-        bytes[] calldata _frontRunPubkeys,
-        bytes[] calldata _invalidSignaturePubkeys
-    ) external;
 
     function activateNodeOperator(uint256 _operatorId) external;
 

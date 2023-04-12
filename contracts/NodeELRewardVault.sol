@@ -48,7 +48,11 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function withdraw() external override nonReentrant {
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(address(this).balance);
+        uint256 totalRewards = address(this).balance;
+        if (totalRewards == 0) {
+            revert NotEnoughRewardToWithdraw();
+        }
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
 
         // Distribute rewards
         bool success;
@@ -60,10 +64,11 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             revert ETHTransferFailed(staderConfig.getStaderTreasury(), protocolShare);
         }
 
+        address payable nodeRecipient = UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = getNodeRecipient().call{value: operatorShare}('');
+        (success, ) = nodeRecipient.call{value: operatorShare}('');
         if (!success) {
-            revert ETHTransferFailed(getNodeRecipient(), operatorShare);
+            revert ETHTransferFailed(nodeRecipient, operatorShare);
         }
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
@@ -98,6 +103,13 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         _userShare = _totalRewards - _protocolShare - _operatorShare;
     }
 
+    // SETTERS
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
     function getProtocolFeeBps() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
     }
@@ -108,19 +120,5 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
 
     function getCollateralETH() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
-    }
-
-    //TODO sanjay move to node registry
-    function getNodeRecipient() internal view returns (address payable) {
-        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
-        address payable operatorRewardAddress = INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
-        return operatorRewardAddress;
-    }
-
-    // SETTERS
-    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        UtilLib.checkNonZeroAddress(_staderConfig);
-        staderConfig = IStaderConfig(_staderConfig);
-        emit UpdatedStaderConfig(_staderConfig);
     }
 }

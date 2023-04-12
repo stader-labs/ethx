@@ -79,6 +79,8 @@ interface IStaderConfig {
 
     function getMinDelayToFinalizeWithdrawRequest() external view returns (uint256);
 
+    function getWithdrawnKeyBatchSize() external view returns (uint256);
+
     // Accounts
     function getAdmin() external view returns (address);
 

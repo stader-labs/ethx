@@ -8,9 +8,10 @@ import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/INodeRegistry.sol';
 
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
+contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable {
     RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
@@ -25,7 +26,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
     // indicate the health of protocol on beacon chain
-    // set to true by `MANAGER` if heavy slashing on protocol on beacon chain
+    // enabled by `MANAGER` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
 
     /// @inheritdoc IStaderOracle
@@ -51,13 +52,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) public initializer {
+        UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
-
+        __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
     }
 
@@ -88,7 +90,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly {
+    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly whenNotPaused {
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -151,7 +153,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     /// updates operator reward balances on socializing pool
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
     /// @dev _rewardsData.index should not be zero
-    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData) external override trustedNodeOnly {
+    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData)
+        external
+        override
+        trustedNodeOnly
+        whenNotPaused
+    {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -261,7 +268,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IStaderOracle
-    function submitValidatorStats(ValidatorStats calldata _validatorStats) external override trustedNodeOnly {
+    function submitValidatorStats(ValidatorStats calldata _validatorStats)
+        external
+        override
+        trustedNodeOnly
+        whenNotPaused
+    {
         if (_validatorStats.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -333,6 +345,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         external
         override
         trustedNodeOnly
+        whenNotPaused
     {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -391,6 +404,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
         external
         override
         trustedNodeOnly
+        whenNotPaused
     {
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -435,7 +449,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
             latestMissedAttestationConsensusIndex = _mapd.index;
             uint16 keyCount = _mapd.keyCount;
             for (uint256 i = 0; i < keyCount; i++) {
-                bytes32 pubkeyRoot = getPubkeyRoot(
+                bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(
                     _mapd.pubkeys[i * VALIDATOR_PUBKEY_LENGTH:(i + 1) * VALIDATOR_PUBKEY_LENGTH]
                 );
                 missedAttestationPenalty[pubkeyRoot]++;
@@ -538,15 +552,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable {
 
     function getCurrentRewardsIndex() external view returns (uint256) {
         return rewardsData.index + 1; // rewardsData.index is the last updated index
-    }
-
-    function getPubkeyRoot(bytes calldata _pubkey) public pure override returns (bytes32) {
-        if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
-            revert InvalidPubkeyLength();
-        }
-
-        // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
-        return sha256(abi.encodePacked(_pubkey, bytes16(0)));
     }
 
     function getValidatorStats() external view override returns (ValidatorStats memory) {
