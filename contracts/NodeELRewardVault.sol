@@ -60,10 +60,11 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             revert ETHTransferFailed(staderConfig.getStaderTreasury(), protocolShare);
         }
 
+        address payable nodeRecipient = UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = _getNodeRecipient().call{value: operatorShare}('');
+        (success, ) = nodeRecipient.call{value: operatorShare}('');
         if (!success) {
-            revert ETHTransferFailed(_getNodeRecipient(), operatorShare);
+            revert ETHTransferFailed(nodeRecipient, operatorShare);
         }
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
@@ -83,10 +84,10 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         }
 
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
-        uint256 collateralETH = _getCollateralETH();
+        uint256 collateralETH = getCollateralETH();
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
-        uint256 protocolFeeBps = _getProtocolFeeBps();
-        uint256 operatorFeeBps = _getOperatorFeeBps();
+        uint256 protocolFeeBps = getProtocolFeeBps();
+        uint256 operatorFeeBps = getOperatorFeeBps();
 
         uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
@@ -105,19 +106,15 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function _getProtocolFeeBps() internal view returns (uint256) {
+    function getProtocolFeeBps() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
     }
 
-    function _getOperatorFeeBps() internal view returns (uint256) {
+    function getOperatorFeeBps() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
     }
 
-    function _getCollateralETH() internal view returns (uint256) {
+    function getCollateralETH() internal view returns (uint256) {
         return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
-    }
-
-    function _getNodeRecipient() internal view returns (address payable) {
-        return UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
     }
 }

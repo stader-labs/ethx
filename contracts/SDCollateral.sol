@@ -73,7 +73,7 @@ contract SDCollateral is
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
 
-        (uint8 poolId, , uint256 validatorCount) = _getOperatorInfo(operator);
+        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
         uint256 sdWithdrawableThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
@@ -117,7 +117,21 @@ contract SDCollateral is
         address operator = UtilLib.getOperatorForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
         uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
-        return _slashSD(operator, sdToSlash);
+        return slashSD(operator, sdToSlash);
+    }
+
+    /// @notice used to slash operator SD, incase of operator default
+    /// @dev do provide SD approval to auction contract using `maxApproveSD()`
+    /// @param _operator which operator SD collateral to slash
+    /// @param _sdToSlash amount of SD to slash
+    function slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
+        uint256 sdBalance = operatorSDBalance[_operator];
+        _sdSlashed = Math.min(_sdToSlash, sdBalance);
+        operatorSDBalance[_operator] -= _sdSlashed;
+        totalSDCollateral -= _sdSlashed;
+        IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
+
+        emit SDSlashed(_operator, staderConfig.getAuctionContract(), _sdToSlash);
     }
 
     /// @notice for max approval to auction contract for spending SD tokens
@@ -233,7 +247,7 @@ contract SDCollateral is
 
     // HELPER
 
-    function _getOperatorInfo(address _operator)
+    function getOperatorInfo(address _operator)
         internal
         view
         returns (
@@ -253,19 +267,5 @@ contract SDCollateral is
             0,
             nodeRegistry.getOperatorTotalKeys(_operatorId)
         );
-    }
-
-    /// @notice used to slash operator SD, incase of operator default
-    /// @dev do provide SD approval to auction contract using `maxApproveSD()`
-    /// @param _operator which operator SD collateral to slash
-    /// @param _sdToSlash amount of SD to slash
-    function _slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
-        uint256 sdBalance = operatorSDBalance[_operator];
-        _sdSlashed = Math.min(_sdToSlash, sdBalance);
-        operatorSDBalance[_operator] -= _sdSlashed;
-        totalSDCollateral -= _sdSlashed;
-        IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
-
-        emit SDSlashed(_operator, staderConfig.getAuctionContract(), _sdToSlash);
     }
 }

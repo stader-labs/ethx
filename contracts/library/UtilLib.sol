@@ -13,6 +13,8 @@ library UtilLib {
     error CallerNotStaderContract();
     error CallerNotWithdrawVault();
 
+    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
+
     /// @notice zero address check modifier
     function checkNonZeroAddress(address _address) internal pure {
         if (_address == address(0)) revert ZeroAddress();
@@ -115,5 +117,19 @@ library UtilLib {
         address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
         uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(_operator);
         return INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
+    }
+
+    /**
+     * @notice Computes the public key root.
+     * @param _pubkey The validator public key for which to compute the root.
+     * @return The root of the public key.
+     */
+    function getPubkeyRoot(bytes calldata _pubkey) internal pure returns (bytes32) {
+        if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
+            revert InvalidPubkeyLength();
+        }
+
+        // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
+        return sha256(abi.encodePacked(_pubkey, bytes16(0)));
     }
 }

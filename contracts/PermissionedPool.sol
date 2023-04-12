@@ -108,7 +108,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 index++
             ) {
                 uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdsByOperatorId(i, index);
-                _preDepositOnBeaconChain(nodeRegistryAddress, vaultFactory, ethDepositContract, validatorId);
+                preDepositOnBeaconChain(nodeRegistryAddress, vaultFactory, ethDepositContract, validatorId);
             }
             IPermissionedNodeRegistry(nodeRegistryAddress).updateQueuedValidatorIndex(
                 i,
@@ -247,7 +247,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         bytes calldata _withdrawCredential,
         uint256 _depositAmount
     ) external pure returns (bytes32) {
-        bytes memory amount = _to_little_endian_64(_depositAmount);
+        bytes memory amount = to_little_endian_64(_depositAmount);
         bytes32 pubkey_root = sha256(abi.encodePacked(_pubkey, bytes16(0)));
         bytes32 signature_root = sha256(
             abi.encodePacked(
@@ -265,7 +265,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     // deposit `PRE_DEPOSIT_SIZE` for validator
-    function _preDepositOnBeaconChain(
+    function preDepositOnBeaconChain(
         address _nodeRegistryAddress,
         address _vaultFactory,
         address _ethDepositContract,
@@ -297,7 +297,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     //ethereum deposit contract function to get amount into little_endian_64
-    function _to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
+    function to_little_endian_64(uint256 _depositAmount) internal pure returns (bytes memory ret) {
         uint64 value = uint64(_depositAmount / 1 gwei);
 
         ret = new bytes(8);

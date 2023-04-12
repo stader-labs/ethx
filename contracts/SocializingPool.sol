@@ -113,7 +113,7 @@ contract SocializingPool is
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
 
         uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
-        address operatorRewardsAddr = _getNodeRecipient(operator, poolId);
+        address operatorRewardsAddr = UtilLib.getNodeRecipientAddressByOperator(poolId, operator, staderConfig);
 
         bool success;
         if (totalAmountETH > 0) {
@@ -132,6 +132,43 @@ contract SocializingPool is
         }
 
         emit OperatorRewardsClaimed(operatorRewardsAddr, totalAmountETH, totalAmountSD);
+    }
+
+    function _claim(
+        uint256[] calldata _index,
+        address _operator,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof
+    ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
+        for (uint256 i = 0; i < _index.length; i++) {
+            if (_amountSD[i] == 0 && _amountETH[i] == 0) {
+                revert InvalidAmount();
+            }
+            if (claimedRewards[_operator][_index[i]]) {
+                revert RewardAlreadyClaimed(_operator, _index[i]);
+            }
+
+            _totalAmountSD += _amountSD[i];
+            _totalAmountETH += _amountETH[i];
+            claimedRewards[_operator][_index[i]] = true;
+
+            if (!verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
+                revert InvalidProof(_index[i], _operator);
+            }
+        }
+    }
+
+    function verifyProof(
+        uint256 _index,
+        address _operator,
+        uint256 _amountSD,
+        uint256 _amountETH,
+        bytes32[] calldata _merkleProof
+    ) internal view returns (bool) {
+        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
+        bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
+        return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
 
     // SETTERS
@@ -170,46 +207,5 @@ contract SocializingPool is
         uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
         _startBlock = initialBlock + ((_index - 1) * cycleDuration);
         _endBlock = _startBlock + cycleDuration - 1;
-    }
-
-    function _claim(
-        uint256[] calldata _index,
-        address _operator,
-        uint256[] calldata _amountSD,
-        uint256[] calldata _amountETH,
-        bytes32[][] calldata _merkleProof
-    ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
-        for (uint256 i = 0; i < _index.length; i++) {
-            if (_amountSD[i] == 0 && _amountETH[i] == 0) {
-                revert InvalidAmount();
-            }
-            if (claimedRewards[_operator][_index[i]]) {
-                revert RewardAlreadyClaimed(_operator, _index[i]);
-            }
-
-            _totalAmountSD += _amountSD[i];
-            _totalAmountETH += _amountETH[i];
-            claimedRewards[_operator][_index[i]] = true;
-
-            if (!_verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
-                revert InvalidProof(_index[i], _operator);
-            }
-        }
-    }
-
-    function _verifyProof(
-        uint256 _index,
-        address _operator,
-        uint256 _amountSD,
-        uint256 _amountETH,
-        bytes32[] calldata _merkleProof
-    ) internal view returns (bool) {
-        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
-        bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
-        return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
-    }
-
-    function _getNodeRecipient(address _operator, uint8 _poolId) internal view returns (address) {
-        return UtilLib.getNodeRecipientAddressByOperator(_poolId, _operator, staderConfig);
     }
 }

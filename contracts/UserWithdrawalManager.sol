@@ -178,14 +178,14 @@ contract UserWithdrawalManager is
             revert RequestAlreadyRedeemed(_requestId);
         }
         uint256 etherToTransfer = userRequest.ethFinalized;
-        _deleteRequestId(_requestId, userRequest.owner);
-        _sendValue(userRequest.owner, etherToTransfer);
+        deleteRequestId(_requestId, userRequest.owner);
+        sendValue(userRequest.owner, etherToTransfer);
         emit RequestRedeemed(msg.sender, userRequest.owner, etherToTransfer);
     }
 
     /**
      * @dev Triggers stopped state.
-     * should not be paused
+     * Contract must not be paused
      */
     function pause() external {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
@@ -194,14 +194,14 @@ contract UserWithdrawalManager is
 
     /**
      * @dev Returns to normal state.
-     * should not be paused
+     * Contract must be paused
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
     // delete entry from userWithdrawRequests mapping and in requestIdsByUserAddress mapping
-    function _deleteRequestId(uint256 _requestId, address _owner) internal {
+    function deleteRequestId(uint256 _requestId, address _owner) internal {
         delete (userWithdrawRequests[_requestId]);
         uint256 userRequestCount = requestIdsByUserAddress[_owner].length;
         uint256[] storage requestIds = requestIdsByUserAddress[_owner];
@@ -215,7 +215,7 @@ contract UserWithdrawalManager is
         revert CannotFindRequestId();
     }
 
-    function _sendValue(address payable _recipient, uint256 _amount) internal {
+    function sendValue(address payable _recipient, uint256 _amount) internal {
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }

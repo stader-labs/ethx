@@ -16,7 +16,6 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     uint256 public override mevTheftPenaltyPerStrike;
     uint256 public override missedAttestationPenaltyPerStrike;
     uint256 public override validatorExitPenaltyThreshold;
-    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
     /// @inheritdoc IPenalty
     mapping(bytes32 => uint256) public override additionalPenaltyAmount;
@@ -53,7 +52,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPenalty
     function setAdditionalPenaltyAmount(bytes calldata _pubkey, uint256 _amount) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
+        bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_pubkey);
         additionalPenaltyAmount[pubkeyRoot] += _amount;
 
         emit UpdatedAdditionalPenaltyAmount(_pubkey, _amount);
@@ -96,11 +95,11 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPenalty
-    function calculatePenalty(bytes calldata _pubkey) external override returns (uint256) {
+    function updateTotalPenaltyAmount(bytes calldata _pubkey) external override returns (uint256) {
         if (validatorSettleStatus[_pubkey]) {
             revert ValidatorSettled();
         }
-        bytes32 pubkeyRoot = getPubkeyRoot(_pubkey);
+        bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_pubkey);
         // Retrieve the penalty for changing the fee recipient address based on Rated.network data.
         uint256 _mevTheftPenalty = calculateMEVTheftPenalty(pubkeyRoot);
         uint256 _missedAttestationPenalty = calculateMissedAttestationPenalty(pubkeyRoot);
@@ -133,7 +132,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPenalty
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view override returns (uint256) {
-        return additionalPenaltyAmount[getPubkeyRoot(_pubkey)];
+        return additionalPenaltyAmount[UtilLib.getPubkeyRoot(_pubkey)];
     }
 
     /// @inheritdoc IPenalty
@@ -142,15 +141,5 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         validatorSettleStatus[pubkey] = true;
         totalPenaltyAmount[pubkey] = 0;
         emit ValidatorMarkedAsSettled(pubkey);
-    }
-
-    /// @inheritdoc IPenalty
-    function getPubkeyRoot(bytes calldata _pubkey) public pure override returns (bytes32) {
-        if (_pubkey.length != VALIDATOR_PUBKEY_LENGTH) {
-            revert InvalidPubkeyLength();
-        }
-
-        // Append 16 bytes of zero padding to the pubkey and compute its hash to get the pubkey root.
-        return sha256(abi.encodePacked(_pubkey, bytes16(0)));
     }
 }

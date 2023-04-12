@@ -68,18 +68,11 @@ interface IPenalty {
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view returns (uint256);
 
     /**
-     * @notice Computes the public key root.
-     * @param _pubkey The validator public key for which to compute the root.
-     * @return The root of the public key.
-     */
-    function getPubkeyRoot(bytes calldata _pubkey) external pure returns (bytes32);
-
-    /**
-     * @notice Calculates the total MEV penalty for a given public key.
+     * @notice update the total penalty amount for a given public key.
      * @param _pubkey The public key of the validator for which to calculate the penalty.
      * @return The total MEV penalty.
      */
-    function calculatePenalty(bytes calldata _pubkey) external returns (uint256);
+    function updateTotalPenaltyAmount(bytes calldata _pubkey) external returns (uint256);
 
     /**
      * @notice Calculates the penalty for changing the fee recipient address for a given public key
