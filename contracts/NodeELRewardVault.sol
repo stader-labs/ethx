@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
 
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
@@ -111,14 +111,14 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
     }
 
     function getProtocolFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
+        return IPoolUtils(staderConfig.getPoolUtils()).getProtocolFee(poolId);
     }
 
     function getOperatorFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
+        return IPoolUtils(staderConfig.getPoolUtils()).getOperatorFee(poolId);
     }
 
     function getCollateralETH() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
+        return IPoolUtils(staderConfig.getPoolUtils()).getCollateralETH(poolId);
     }
 }

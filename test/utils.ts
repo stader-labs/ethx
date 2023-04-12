@@ -60,8 +60,8 @@ const setupEnvironment = async (staderOwner: any) => {
 
   console.log(' staderStakingPoolManager deployed at ', staderStakingPoolManager.address)
 
-  const socializingPoolFactory = await ethers.getContractFactory('SocializingPool')
-  const socializingPoolContract = await upgrades.deployProxy(socializingPoolFactory, [
+  const socializingPoolUtils = await ethers.getContractFactory('SocializingPool')
+  const socializingPoolContract = await upgrades.deployProxy(socializingPoolUtils, [
     staderOwner.address,
     staderStakingPoolManager.address,
     staderOwner.address,
@@ -78,8 +78,8 @@ const setupEnvironment = async (staderOwner: any) => {
 
   console.log(' vaultFactoryInstance deployed at ', vaultFactoryInstance.address)
 
-  const poolFactory = await ethers.getContractFactory('PoolFactory')
-  const poolFactoryInstance = await upgrades.deployProxy(poolFactory, [staderOwner.address])
+  const poolUtils = await ethers.getContractFactory('PoolUtils')
+  const poolUtilsInstance = await upgrades.deployProxy(poolUtils, [staderOwner.address])
 
   const PermissionedNodeRegistryFactory = await ethers.getContractFactory('PermissionedNodeRegistry')
   const permissionedNodeRegistry = await upgrades.deployProxy(PermissionedNodeRegistryFactory, [
@@ -98,13 +98,13 @@ const setupEnvironment = async (staderOwner: any) => {
     staderOwner.address,
     vaultFactoryInstance.address,
     socializingPoolContract.address,
-    poolFactoryInstance.address,
+    poolUtilsInstance.address,
   ])
 
   console.log(' permissionlessNodeRegistry deployed at ', permissionlessNodeRegistry.address)
 
-  const staderPermissinedPoolFactory = await ethers.getContractFactory('PermissionedPool')
-  const staderPermissionedPool = await upgrades.deployProxy(staderPermissinedPoolFactory, [
+  const staderPermissinedPoolUtils = await ethers.getContractFactory('PermissionedPool')
+  const staderPermissionedPool = await upgrades.deployProxy(staderPermissinedPoolUtils, [
     staderOwner.address,
     permissionedNodeRegistry.address,
     ethDeposit.address,
@@ -114,8 +114,8 @@ const setupEnvironment = async (staderOwner: any) => {
 
   console.log(' staderPermissionedPool deployed at ', staderPermissionedPool.address)
 
-  const staderPermissionLessPoolFactory = await ethers.getContractFactory('PermissionlessPool')
-  const staderPermissionLessPool = await upgrades.deployProxy(staderPermissionLessPoolFactory, [
+  const staderPermissionLessPoolUtils = await ethers.getContractFactory('PermissionlessPool')
+  const staderPermissionLessPool = await upgrades.deployProxy(staderPermissionLessPoolUtils, [
     staderOwner.address,
     permissionlessNodeRegistry.address,
     ethDeposit.address,
@@ -130,16 +130,16 @@ const setupEnvironment = async (staderOwner: any) => {
     100,
     0,
     staderOwner.address,
-    poolFactoryInstance.address,
+    poolUtilsInstance.address,
   ])
 
   console.log(' poolSelector deployed at ', poolSelector.address)
 
   // Grant Role
 
-  const poolFactoryAdmin = await poolFactoryInstance.POOL_FACTORY_ADMIN()
+  const poolUtilsAdmin = await poolUtilsInstance.POOL_FACTORY_ADMIN()
 
-  await poolFactoryInstance.grantRole(poolFactoryAdmin, staderOwner.address)
+  await poolUtilsInstance.grantRole(poolUtilsAdmin, staderOwner.address)
 
   console.log('granted pool factory admin role to owner')
 
@@ -174,14 +174,14 @@ const setupEnvironment = async (staderOwner: any) => {
 
   //Setter
 
-  const addPool1Txn = await poolFactoryInstance
+  const addPool1Txn = await poolUtilsInstance
     .connect(staderOwner)
     .addNewPool('PERMISSIONLESS', staderPermissionLessPool.address)
   addPool1Txn.wait()
 
   console.log('permission less pool added')
 
-  const addPool2Txn = await poolFactoryInstance
+  const addPool2Txn = await poolUtilsInstance
     .connect(staderOwner)
     .addNewPool('PERMISSIONED', staderPermissionedPool.address)
   addPool2Txn.wait()
@@ -196,7 +196,7 @@ const setupEnvironment = async (staderOwner: any) => {
     staderStakingPoolManager,
     socializingPoolContract,
     vaultFactoryInstance,
-    poolFactoryInstance,
+    poolUtilsInstance,
     permissionedNodeRegistry,
     permissionlessNodeRegistry,
     staderPermissionedPool,

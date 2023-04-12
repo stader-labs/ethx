@@ -43,7 +43,7 @@ contract UserWithdrawalManager is
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
         uint256 ethExpected; //eth requested according to given share and exchangeRate
         uint256 ethFinalized; // final eth for claiming according to finalize exchange rate
-        uint256 requestTime; // timestamp of withdraw request
+        uint256 requestBlock; // block number of withdraw request
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -142,7 +142,7 @@ contract UserWithdrawalManager is
             uint256 minEThRequiredToFinalizeRequest = Math.min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
             if (
                 (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) ||
-                (userWithdrawInfo.requestTime + staderConfig.getMinDelayToFinalizeWithdrawRequest() > block.timestamp)
+                (userWithdrawInfo.requestBlock + staderConfig.getMinDelayToFinalizeWithdrawRequest() > block.timestamp)
             ) {
                 requestId -= 1;
                 break;

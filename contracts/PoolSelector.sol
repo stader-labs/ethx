@@ -5,7 +5,7 @@ import './library/UtilLib.sol';
 
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IPoolSelector.sol';
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
@@ -74,13 +74,13 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         returns (uint256[] memory selectedPoolCapacity)
     {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
-        address poolFactoryAddress = staderConfig.getPoolFactory();
+        address poolUtilsAddress = staderConfig.getPoolUtils();
         uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
-        uint8 poolCount = IPoolFactory(poolFactoryAddress).poolCount();
+        uint8 poolCount = IPoolUtils(poolUtilsAddress).poolCount();
 
         uint256 depositedETh;
         for (uint8 i = 1; i <= poolCount; i++) {
-            depositedETh += (IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i)) * ETH_PER_NODE;
+            depositedETh += (IPoolUtils(poolUtilsAddress).getActiveValidatorCountByPool(i)) * ETH_PER_NODE;
         }
         uint256 totalEth = depositedETh + _pooledEth;
         uint256 totalValidatorsRequired = totalEth / ETH_PER_NODE;
@@ -93,8 +93,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
         uint256 validatorSpunCount;
         for (uint8 i = 1; i <= poolCount && validatorSpunCount < newValidatorsToDeposit; i++) {
-            remainingPoolCapacity[i] = IPoolFactory(poolFactoryAddress).getQueuedValidatorCountByPool(i);
-            uint256 currentActiveValidators = IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i);
+            remainingPoolCapacity[i] = IPoolUtils(poolUtilsAddress).getQueuedValidatorCountByPool(i);
+            uint256 currentActiveValidators = IPoolUtils(poolUtilsAddress).getActiveValidatorCountByPool(i);
             uint256 poolTotalTarget = (poolWeights[i] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
             (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
             selectedPoolCapacity[i] = Math.min(
@@ -132,7 +132,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      */
     function updatePoolWeights(uint8[] calldata _poolTargets) external {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (IPoolFactory(staderConfig.getPoolFactory()).poolCount() != _poolTargets.length) {
+        if (IPoolUtils(staderConfig.getPoolUtils()).poolCount() != _poolTargets.length) {
             revert InvalidNewTargetInput();
         }
 

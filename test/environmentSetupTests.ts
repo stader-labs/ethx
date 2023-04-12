@@ -42,7 +42,7 @@ describe('environmentSetupTest', () => {
       })
 
       it('should not revert', async () => {
-        await expect(env.poolFactoryInstance.address).to.not.be.empty
+        await expect(env.poolUtilsInstance.address).to.not.be.empty
       })
 
       it('should not revert', async () => {

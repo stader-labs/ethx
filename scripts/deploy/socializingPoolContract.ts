@@ -1,18 +1,12 @@
 import { ethers, upgrades } from 'hardhat'
-const hre = require('hardhat')
 
 async function main() {
   const [owner] = await ethers.getSigners()
-  const stakePoolManager = process.env.STADER_STAKING_POOL_MANAGER
-  const socializingPoolFactory = await ethers.getContractFactory('SocializingPool')
-  const socializingPoolContract = await upgrades.deployProxy(socializingPoolFactory, [
-    owner.address,
-    stakePoolManager,
-    owner.address,
-  ])
+  const staderConfigAddr = process.env.STADER_CONFIG ?? ''
 
-  await socializingPoolContract.deployed()
-  console.log('socializingPool deployed to:', socializingPoolContract.address)
+  const socializingPoolFactory = await ethers.getContractFactory('SocializingPool')
+  const socializingPool = await upgrades.deployProxy(socializingPoolFactory, [owner.address, staderConfigAddr])
+  console.log('socializingPool deployed to: ', socializingPool.address)
 }
 
 main()

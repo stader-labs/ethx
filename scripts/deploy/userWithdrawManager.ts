@@ -1,13 +1,15 @@
 import { ethers, upgrades } from 'hardhat'
-const hre = require('hardhat')
 
 async function main() {
   const [owner] = await ethers.getSigners()
-  const userWithdrawFactory = await ethers.getContractFactory('UserWithdrawalManager')
-  const userWithdrawManager = await upgrades.deployProxy(userWithdrawFactory, [owner.address])
+  const staderConfigAddr = process.env.STADER_CONFIG ?? ''
 
-  await userWithdrawManager.deployed()
-  console.log('user Withdraw Manager deployed to:', userWithdrawManager.address)
+  const userWithdrawalManagerFactory = await ethers.getContractFactory('UserWithdrawalManager')
+  const userWithdrawalManager = await upgrades.deployProxy(userWithdrawalManagerFactory, [
+    owner.address,
+    staderConfigAddr,
+  ])
+  console.log('userWithdrawalManager deployed to: ', userWithdrawalManager.address)
 }
 
 main()

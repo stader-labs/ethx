@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
 
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/INodeRegistry.sol';
@@ -207,7 +207,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
             rewardsData = _rewardsData;
 
-            address socializingPool = IPoolFactory(staderConfig.getPoolFactory()).getSocializingPoolAddress(
+            address socializingPool = IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(
                 _rewardsData.poolId
             );
             ISocializingPool(socializingPool).handleRewards(_rewardsData);

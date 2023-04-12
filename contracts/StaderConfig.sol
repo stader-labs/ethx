@@ -31,7 +31,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant ADMIN = keccak256('ADMIN');
     bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
 
-    bytes32 public constant override POOL_FACTORY = keccak256('POOL_FACTORY');
+    bytes32 public constant override POOL_UTILS = keccak256('POOL_UTILS');
     bytes32 public constant override POOL_SELECTOR = keccak256('POOL_SELECTOR');
     bytes32 public constant override SD_COLLATERAL = keccak256('SD_COLLATERAL');
     bytes32 public constant override VAULT_FACTORY = keccak256('VAULT_FACTORY');
@@ -174,8 +174,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     // Contracts Setters
 
-    function updatePoolFactory(address _poolFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setContract(POOL_FACTORY, _poolFactory);
+    function updatePoolUtils(address _poolUtils) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(POOL_UTILS, _poolUtils);
     }
 
     function updatePoolSelector(address _poolSelector) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -319,8 +319,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Contracts Getters
 
-    function getPoolFactory() external view override returns (address) {
-        return contractsMap[POOL_FACTORY];
+    function getPoolUtils() external view override returns (address) {
+        return contractsMap[POOL_UTILS];
     }
 
     function getPoolSelector() external view override returns (address) {

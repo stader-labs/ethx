@@ -3,10 +3,10 @@ const hre = require('hardhat')
 
 async function main() {
   const socializePool = process.env.SOCIALIZING_POOL ?? ''
-  const socializePoolFactory = await ethers.getContractFactory('SocializingPoolContract')
-  const socializePoolInstance = await socializePoolFactory.attach(socializePool)
+  const socializePoolUtils = await ethers.getContractFactory('SocializingPoolContract')
+  const socializePoolInstance = await socializePoolUtils.attach(socializePool)
 
-  const staderContractUpgraded = await upgrades.upgradeProxy(socializePoolInstance, socializePoolFactory)
+  const staderContractUpgraded = await upgrades.upgradeProxy(socializePoolInstance, socializePoolUtils)
 
   console.log('new implementation address ', staderContractUpgraded.address)
 

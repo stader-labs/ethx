@@ -1,17 +1,12 @@
 import { ethers, upgrades } from 'hardhat'
-const hre = require('hardhat')
 
 async function main() {
   const [owner] = await ethers.getSigners()
-  const rewardContractFactory = await ethers.getContractFactory('VaultFactory')
-  const rewardFactoryInstance = await upgrades.deployProxy(rewardContractFactory, [
-    owner.address,
-    owner.address,
-    owner.address,
-  ])
+  const staderConfigAddr = process.env.STADER_CONFIG ?? ''
 
-  await rewardFactoryInstance.deployed()
-  console.log('reward Factory deployed to:', rewardFactoryInstance.address)
+  const VaultFactoryContractFactory = await ethers.getContractFactory('VaultFactory')
+  const vaultFactory = await upgrades.deployProxy(VaultFactoryContractFactory, [owner.address, staderConfigAddr])
+  console.log('vaultFactory deployed to: ', vaultFactory.address)
 }
 
 main()

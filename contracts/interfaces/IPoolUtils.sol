@@ -9,8 +9,8 @@ struct Pool {
     address poolAddress;
 }
 
-// Interface for the PoolFactory contract
-interface IPoolFactory {
+// Interface for the PoolUtils contract
+interface IPoolUtils {
     // Errors
     error EmptyString();
     error InvalidPoolID();

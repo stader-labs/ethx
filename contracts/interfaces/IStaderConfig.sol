@@ -16,7 +16,7 @@ interface IStaderConfig {
     event SetToken(bytes32, address);
 
     //Contracts
-    function POOL_FACTORY() external view returns (bytes32);
+    function POOL_UTILS() external view returns (bytes32);
 
     function POOL_SELECTOR() external view returns (bytes32);
 
@@ -87,7 +87,7 @@ interface IStaderConfig {
     function getStaderTreasury() external view returns (address);
 
     // Contracts
-    function getPoolFactory() external view returns (address);
+    function getPoolUtils() external view returns (address);
 
     function getPoolSelector() external view returns (address);
 

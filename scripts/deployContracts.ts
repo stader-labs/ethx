@@ -1,169 +1,151 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
+  console.log('starting deployment process...')
   const [staderOwner] = await ethers.getSigners()
-  const staderOracleFactory = await ethers.getContractFactory('StaderOracle')
-  const staderOracle = await upgrades.deployProxy(staderOracleFactory)
-
-  console.log('stader oracle deployed at ', staderOracle.address)
-
-  const ETHxToken = await ethers.getContractFactory('ETHX')
-  const ethxToken = await ETHxToken.connect(staderOwner).deploy()
-
-  console.log(' ethX deployed at ', ethxToken.address)
-
-  //console.log("ethx is ", ethxToken.address);
-
-  // const ETHDepositFactory = await ethers.getContractFactory('DepositContract')
-  // const ethDeposit = await ETHDepositFactory.deploy()
 
   const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT ?? ''
-
   const ETHDeposit = await ethers.getContractFactory('DepositContract')
   const ethDeposit = await ETHDeposit.attach(ethDepositContract)
+  console.log('ethDeposit is ', ethDeposit.address)
 
-  //console.log("ethDeposit is ", ethDeposit.address);
-
-  const userWithdrawFactory = await ethers.getContractFactory('UserWithdrawalManager')
-  const userWithdrawManager = await upgrades.deployProxy(userWithdrawFactory, [staderOwner.address])
-  console.log(' userWithdrawManager deployed at ', userWithdrawManager.address)
-
-  const stakingManagerFactory = await ethers.getContractFactory('StaderStakePoolsManager')
-  const staderStakingPoolManager = await upgrades.deployProxy(stakingManagerFactory, [
-    ethxToken.address,
-    staderOracle.address,
-    userWithdrawManager.address,
-    [staderOwner.address, staderOwner.address],
-    [staderOwner.address, staderOwner.address],
-    staderOwner.address,
-    10,
-  ])
-
-  console.log(' staderStakingPoolManager deployed at ', staderStakingPoolManager.address)
-
-  const socializingPoolFactory = await ethers.getContractFactory('SocializingPool')
-  const socializingPoolContract = await upgrades.deployProxy(socializingPoolFactory, [
-    staderOwner.address,
-    staderStakingPoolManager.address,
-    staderOwner.address,
-  ])
-
-  console.log(' socializingPoolContract deployed at ', socializingPoolContract.address)
+  const StaderConfig = await ethers.getContractFactory('StaderConfig')
+  const staderConfig = await upgrades.deployProxy(StaderConfig, [staderOwner.address, ethDepositContract])
+  console.log('stader config deployed at ', staderConfig.address)
 
   const vaultFactory = await ethers.getContractFactory('VaultFactory')
-  const vaultFactoryInstance = await upgrades.deployProxy(vaultFactory, [
+  const vaultFactoryInstance = await upgrades.deployProxy(vaultFactory, [staderOwner.address, staderConfig.address])
+  console.log('vaultFactoryInstance deployed at ', vaultFactoryInstance.address)
+
+  const auctionFactory = await ethers.getContractFactory('Auction')
+  const auctionInstance = await upgrades.deployProxy(auctionFactory, [
     staderOwner.address,
-    staderOwner.address,
-    staderOwner.address,
+    staderConfig.address,
+    ethers.BigNumber.from('86400'),
+    ethers.utils.parseEther('0.001'),
   ])
+  console.log('auction contract deployed at ', auctionInstance.address)
 
-  console.log(' vaultFactoryInstance deployed at ', vaultFactoryInstance.address)
+  const ETHxFactory = await ethers.getContractFactory('ETHx')
+  const ETHxToken = await upgrades.deployProxy(ETHxFactory, [staderOwner.address, staderConfig.address])
+  console.log('ETHx deployed at ', ETHxToken.address)
 
-  const poolFactory = await ethers.getContractFactory('PoolFactory')
-  const poolFactoryInstance = await upgrades.deployProxy(poolFactory, [staderOwner.address])
+  const penaltyFactory = await ethers.getContractFactory('Penalty')
+  const penaltyInstance = await upgrades.deployProxy(penaltyFactory, [staderOwner.address, staderConfig.address])
+  console.log('penalty contract deployed at ', penaltyInstance.address)
 
   const PermissionedNodeRegistryFactory = await ethers.getContractFactory('PermissionedNodeRegistry')
   const permissionedNodeRegistry = await upgrades.deployProxy(PermissionedNodeRegistryFactory, [
     staderOwner.address,
-    vaultFactoryInstance.address,
-    socializingPoolContract.address,
+    staderConfig.address,
   ])
+  console.log('permissionedNodeRegistry deployed at ', permissionedNodeRegistry.address)
 
-  console.log(' permissionedNodeRegistry deployed at ', permissionedNodeRegistry.address)
+  const permissinedPoolFactory = await ethers.getContractFactory('PermissionedPool')
+  const permissionedPool = await upgrades.deployProxy(permissinedPoolFactory, [
+    staderOwner.address,
+    staderConfig.address,
+  ])
+  console.log('permissionedPool deployed at ', permissionedPool.address)
 
   const PermissionlessNodeRegistryFactory = await ethers.getContractFactory('PermissionlessNodeRegistry')
   const permissionlessNodeRegistry = await upgrades.deployProxy(PermissionlessNodeRegistryFactory, [
     staderOwner.address,
-    vaultFactoryInstance.address,
-    socializingPoolContract.address,
-    poolFactoryInstance.address,
+    staderConfig.address,
   ])
+  console.log('permissionlessNodeRegistry deployed at ', permissionlessNodeRegistry.address)
 
-  console.log(' permissionlessNodeRegistry deployed at ', permissionlessNodeRegistry.address)
-
-  const staderPermissinedPoolFactory = await ethers.getContractFactory('PermissionedPool')
-  const staderPermissionedPool = await upgrades.deployProxy(staderPermissinedPoolFactory, [
+  const permissionlessPoolFactory = await ethers.getContractFactory('PermissionlessPool')
+  const permissionlessPool = await upgrades.deployProxy(permissionlessPoolFactory, [
     staderOwner.address,
-    permissionedNodeRegistry.address,
-    ethDeposit.address,
-    vaultFactoryInstance.address,
-    staderStakingPoolManager.address,
+    staderConfig.address,
   ])
+  console.log('permissionlessPool deployed at ', permissionlessPool.address)
 
-  console.log(' staderPermissionedPool deployed at ', staderPermissionedPool.address)
-
-  const staderPermissionLessPoolFactory = await ethers.getContractFactory('PermissionlessPool')
-  const staderPermissionLessPool = await upgrades.deployProxy(staderPermissionLessPoolFactory, [
+  const poolSelectorFactory = await ethers.getContractFactory('PoolSelector')
+  const poolSelector = await upgrades.deployProxy(poolSelectorFactory, [
     staderOwner.address,
-    permissionlessNodeRegistry.address,
-    ethDeposit.address,
-    vaultFactoryInstance.address,
-    staderStakingPoolManager.address,
+    staderConfig.address,
+    5000,
+    5000,
   ])
-
-  console.log(' staderPermissionLessPool deployed at ', staderPermissionLessPool.address)
-
-  const staderPoolSelectorFactory = await ethers.getContractFactory('PoolSelector')
-  const poolSelector = await upgrades.deployProxy(staderPoolSelectorFactory, [
-    100,
-    0,
-    staderOwner.address,
-    poolFactoryInstance.address,
-  ])
-
   console.log(' poolSelector deployed at ', poolSelector.address)
 
+  const poolUtilsFactory = await ethers.getContractFactory('PoolUtils')
+  const poolUtilsInstance = await upgrades.deployProxy(poolUtilsFactory, [staderOwner.address, staderConfig.address])
+  console.log('poolUtils deployed at ', poolUtilsInstance.address)
+
+  const SDCollateralFactory = await ethers.getContractFactory('SDCollateral')
+  const SDCollateral = await upgrades.deployProxy(SDCollateralFactory, [staderOwner.address, staderConfig.address])
+  console.log('SDCollateral deployed at ', SDCollateral.address)
+
+  const socializingPoolFactory = await ethers.getContractFactory('SocializingPool')
+  const permissionedSocializingPoolContract = await upgrades.deployProxy(socializingPoolFactory, [
+    staderOwner.address,
+    staderConfig.address,
+  ])
+  console.log('permissioned socializingPoolContract deployed at ', permissionedSocializingPoolContract.address)
+
+  const permissionlessSocializingPoolContract = await upgrades.deployProxy(socializingPoolFactory, [
+    staderOwner.address,
+    staderConfig.address,
+  ])
+  console.log('permissionless socializingPoolContract deployed at ', permissionlessSocializingPoolContract.address)
+
+  const insuranceFundFactory = await ethers.getContractFactory('StaderInsuranceFund')
+  const insuranceFund = await upgrades.deployProxy(insuranceFundFactory, [staderOwner.address, staderConfig.address])
+  console.log('insurance fund deployed at ', insuranceFund.address)
+
+  const staderOracleFactory = await ethers.getContractFactory('StaderOracle')
+  const staderOracle = await upgrades.deployProxy(staderOracleFactory, [staderOwner.address, staderConfig.address])
+  console.log('stader oracle deployed at ', staderOracle.address)
+
+  const poolManagerFactory = await ethers.getContractFactory('StaderStakePoolsManager')
+  const staderStakingPoolManager = await upgrades.deployProxy(poolManagerFactory, [
+    staderOwner.address,
+    staderConfig.address,
+  ])
+  console.log('staderStakingPoolManager deployed at ', staderStakingPoolManager.address)
+
+  const userWithdrawFactory = await ethers.getContractFactory('UserWithdrawalManager')
+  const userWithdrawManager = await upgrades.deployProxy(userWithdrawFactory, [
+    staderOwner.address,
+    staderConfig.address,
+  ])
+  console.log(' userWithdrawManager deployed at ', userWithdrawManager.address)
+
   // Grant Role
-
-  const poolFactoryAdmin = await poolFactoryInstance.POOL_FACTORY_ADMIN()
-
-  await poolFactoryInstance.grantRole(poolFactoryAdmin, staderOwner.address)
-
-  console.log('granted pool factory admin role to owner')
-
-  const minterRole = await ethxToken.MINTER_ROLE()
-
-  await ethxToken.grantRole(minterRole, staderStakingPoolManager.address)
+  const minterRole = await ETHxToken.MINTER_ROLE()
+  await ETHxToken.grantRole(minterRole, staderStakingPoolManager.address)
   console.log('granted minter role to pool manager')
 
-  const poolManager = await poolSelector.STADER_STAKE_POOL_MANAGER()
-  await poolSelector.grantRole(poolManager, staderStakingPoolManager.address)
-  console.log('granted pool manager role to stader pool manager')
+  const burnerRole = await ETHxToken.BURNER_ROLE()
+  await ETHxToken.grantRole(burnerRole, userWithdrawManager.address)
+  console.log('granted burner role to user withdraw manager')
 
-  const permissionlessPool = await permissionlessNodeRegistry.PERMISSIONLESS_POOL()
-  await permissionlessNodeRegistry.grantRole(permissionlessPool, staderPermissionLessPool.address)
-  console.log('granted permissionlessPool role to permissionless contract')
+  const nodeRegistryContract = await vaultFactoryInstance.NODE_REGISTRY_CONTRACT()
+  await vaultFactoryInstance.grantRole(nodeRegistryContract, permissionlessNodeRegistry.address)
+  await vaultFactoryInstance.grantRole(nodeRegistryContract, permissionedNodeRegistry.address)
+  console.log('granted node registry role to permissioned and permissionless node registries')
 
-  const permissionedPool = await permissionedNodeRegistry.PERMISSIONED_POOL_CONTRACT()
-  await permissionedNodeRegistry.grantRole(permissionedPool, staderPermissionedPool.address)
-  console.log('granted permissionedPool role to permissioned contract')
+  const managerRole = await staderConfig.MANAGER()
+  await staderConfig.grantRole(managerRole, staderOwner.address)
+  console.log('granted manager role to stader owner')
 
-  const staderNetworkPool = await permissionedNodeRegistry.STADER_NETWORK_POOL()
-  await permissionedNodeRegistry.grantRole(staderNetworkPool, staderPermissionedPool.address)
-  await permissionlessNodeRegistry.grantRole(staderNetworkPool, staderPermissionLessPool.address)
-  await vaultFactoryInstance.grantRole(staderNetworkPool, permissionlessNodeRegistry.address)
-  await vaultFactoryInstance.grantRole(staderNetworkPool, permissionedNodeRegistry.address)
-  console.log('granted stader network role to different contracts')
-
-  const managerBot = await permissionedNodeRegistry.MANAGER_BOT()
-  await permissionedNodeRegistry.grantRole(managerBot, staderOwner.address)
-  await permissionlessNodeRegistry.grantRole(managerBot, staderOwner.address)
-  console.log('granted manager bot role to owner')
+  const operatorRole = await staderConfig.OPERATOR()
+  await staderConfig.grantRole(operatorRole, staderOwner.address)
+  console.log('granted operator role to stader owner')
 
   //Setter
 
-  const addPool1Txn = await poolFactoryInstance
+  const addPool1Txn = await poolUtilsInstance
     .connect(staderOwner)
-    .addNewPool('PERMISSIONLESS', staderPermissionLessPool.address)
+    .addNewPool('PERMISSIONLESS', permissionlessPool.address)
   addPool1Txn.wait()
-
   console.log('permission less pool added')
 
-  const addPool2Txn = await poolFactoryInstance
-    .connect(staderOwner)
-    .addNewPool('PERMISSIONED', staderPermissionedPool.address)
+  const addPool2Txn = await poolUtilsInstance.connect(staderOwner).addNewPool('PERMISSIONED', permissionedPool.address)
   addPool2Txn.wait()
-
   console.log('permissioned pool added')
 }
 

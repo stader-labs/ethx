@@ -5,7 +5,7 @@ import './library/UtilLib.sol';
 import './library/ValidatorStatus.sol';
 
 import './interfaces/IPenalty.sol';
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
@@ -186,16 +186,16 @@ contract ValidatorWithdrawalVault is
     // HELPER METHODS
 
     function getProtocolFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getProtocolFee(poolId);
+        return IPoolUtils(staderConfig.getPoolUtils()).getProtocolFee(poolId);
     }
 
     // should return 0, for permissioned NOs
     function getOperatorFeeBps() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getOperatorFee(poolId);
+        return IPoolUtils(staderConfig.getPoolUtils()).getOperatorFee(poolId);
     }
 
     function getCollateralETH() internal view returns (uint256) {
-        return IPoolFactory(staderConfig.getPoolFactory()).getCollateralETH(poolId);
+        return IPoolUtils(staderConfig.getPoolUtils()).getCollateralETH(poolId);
     }
 
     function getNodeRecipient() internal view returns (address payable) {
@@ -203,13 +203,13 @@ contract ValidatorWithdrawalVault is
     }
 
     function getPenaltyAmount() internal returns (uint256) {
-        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return IPenalty(staderConfig.getPenaltyContract()).updateTotalPenaltyAmount(pubkey);
     }
 
     function isWithdrawnValidator() internal view returns (bool) {
-        address nodeRegistry = IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         (ValidatorStatus status, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return status == ValidatorStatus.WITHDRAWN;
     }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import '../interfaces/IStaderConfig.sol';
 import '../interfaces/INodeRegistry.sol';
-import '../interfaces/IPoolFactory.sol';
+import '../interfaces/IPoolUtils.sol';
 import '../interfaces/IValidatorWithdrawalVault.sol';
 
 library UtilLib {
@@ -51,7 +51,7 @@ library UtilLib {
         address _addr,
         IStaderConfig _staderConfig
     ) internal view returns (bytes memory) {
-        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
         (, bytes memory pubkey, , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(
             _validatorId
         );
@@ -67,7 +67,7 @@ library UtilLib {
         address _addr,
         IStaderConfig _staderConfig
     ) internal view returns (address) {
-        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
         (, , , , address withdrawVaultAddress, uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(
             _validatorId
         );
@@ -84,7 +84,7 @@ library UtilLib {
         address _addr,
         IStaderConfig _staderConfig
     ) internal view {
-        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
         (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(_validatorId);
         if (_addr != withdrawVaultAddress) {
             revert CallerNotWithdrawVault();
@@ -96,7 +96,7 @@ library UtilLib {
         uint256 _validatorId,
         IStaderConfig _staderConfig
     ) internal view returns (address payable) {
-        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
         (, , , , , uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(_validatorId);
         return INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
     }
@@ -106,7 +106,7 @@ library UtilLib {
         uint256 _operatorId,
         IStaderConfig _staderConfig
     ) internal view returns (address payable) {
-        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
         return INodeRegistry(nodeRegistry).getOperatorRewardAddress(_operatorId);
     }
 
@@ -115,7 +115,7 @@ library UtilLib {
         address _operator,
         IStaderConfig _staderConfig
     ) internal view returns (address payable) {
-        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(_poolId);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
         uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(_operator);
         return INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
     }
@@ -139,8 +139,8 @@ library UtilLib {
         view
         returns (bool)
     {
-        uint8 poolId = IPoolFactory(_staderConfig.getPoolFactory()).getValidatorPoolId(_pubkey);
-        address nodeRegistry = IPoolFactory(_staderConfig.getPoolFactory()).getNodeRegistry(poolId);
+        uint8 poolId = IPoolUtils(_staderConfig.getPoolUtils()).getValidatorPoolId(_pubkey);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         uint256 validatorId = INodeRegistry(nodeRegistry).validatorIdByPubkey(_pubkey);
         (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return IValidatorWithdrawalVault(withdrawVaultAddress).vaultSettleStatus();

@@ -1,26 +1,12 @@
 import { ethers, upgrades } from 'hardhat'
-const hre = require('hardhat')
 
 async function main() {
   const [owner] = await ethers.getSigners()
-  const permissionlessPool = process.env.PERMISSION_LESS_POOL
-  const permissionlessNodeRegistry = process.env.PERMISSIONLESS_NODE_REGISTRY
+  const staderConfigAddr = process.env.STADER_CONFIG ?? ''
 
-  const permissionedPool = process.env.PERMISSIONED_POOL
-  const permissionedNodeRegistry = process.env.PERMISSIONED_NODE_REGISTRY
-
-  const staderPoolHelperFactory = await ethers.getContractFactory('PoolSelector')
-  const poolHelper = await upgrades.deployProxy(staderPoolHelperFactory, [
-    100,
-    0,
-    owner.address,
-    permissionlessPool,
-    permissionlessNodeRegistry,
-    permissionedPool,
-    permissionedNodeRegistry,
-  ])
-  await poolHelper.deployed()
-  console.log('Stader pool selector deployed to:', poolHelper.address)
+  const poolSelectorFactory = await ethers.getContractFactory('PoolSelector')
+  const poolSelector = await upgrades.deployProxy(poolSelectorFactory, [owner.address, staderConfigAddr])
+  console.log('pool selector deployed to: ', poolSelector.address)
 }
 
 main()
