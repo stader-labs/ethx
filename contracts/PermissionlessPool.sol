@@ -117,7 +117,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      * send back the excess amount of ETH back to poolManager
      */
     function registerOnBeaconChain() external payable onlyRole(POOL_MANAGER) {
-        uint256 requiredValidators = address(this).balance / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
+        uint256 requiredValidators = msg.value / (DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
             requiredValidators * DEPOSIT_NODE_BOND
         );
