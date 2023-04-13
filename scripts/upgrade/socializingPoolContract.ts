@@ -1,12 +1,18 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-  const [owner] = await ethers.getSigners()
-  const staderConfigAddr = process.env.STADER_CONFIG ?? ''
-
+  const permissionedSocializingPool = process.env.PERMISSIONED_SOCIALIZING_POOL ?? ''
   const socializingPoolFactory = await ethers.getContractFactory('SocializingPool')
-  const socializingPool = await upgrades.deployProxy(socializingPoolFactory, [owner.address, staderConfigAddr])
-  console.log('socializingPool deployed to: ', socializingPool.address)
+  const permissionedSocializingPoolInstance = await socializingPoolFactory.attach(permissionedSocializingPool)
+
+  const permissionedSocializingPoolUpgraded = await upgrades.upgradeProxy(
+    permissionedSocializingPoolInstance,
+    socializingPoolFactory
+  )
+
+  console.log('permissioned socializing pool proxy address ', permissionedSocializingPoolUpgraded.address)
+
+  console.log('upgraded permissioned socializing pool contract')
 }
 
 main()

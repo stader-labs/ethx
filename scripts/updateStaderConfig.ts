@@ -20,14 +20,14 @@ async function main() {
   const sdCollateral = process.env.SD_COLLATERAL ?? ''
   const permissionedSocializingPool = process.env.PERMISSIONED_SOCIALIZING_POOL ?? ''
   const permissionlessSocializingPool = process.env.PERMISSIONLESS_SOCIALIZING_POOL ?? ''
-  const staderConfigAdd = process.env.STADER_CONFIG ?? ''
-  const insuranceFund = process.env.INSURANCE_FUND ?? ''
+  const staderConfig = process.env.STADER_CONFIG ?? ''
+  const insuranceFund = process.env.STADER_INSURANCE_FUND ?? ''
   const staderOracle = process.env.STADER_ORACLE ?? ''
   const stakePoolManager = process.env.STAKE_POOL_MANAGER ?? ''
   const userWithdrawManager = process.env.USER_WITHDRAW_MANAGER ?? ''
 
-  const staderConfig = await ethers.getContractFactory('StaderConfig')
-  const staderConfigInstance = await staderConfig.attach('')
+  const staderConfigFactory = await ethers.getContractFactory('StaderConfig')
+  const staderConfigInstance = await staderConfigFactory.attach(staderConfig)
 
   const updateSocializingCycleTx = await staderConfigInstance.updateSocializingPoolCycleDuration(socializingCycleValue)
   updateSocializingCycleTx.wait()

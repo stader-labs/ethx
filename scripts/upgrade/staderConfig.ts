@@ -1,12 +1,15 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-  const [owner] = await ethers.getSigners()
-  const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT ?? ''
-
+  const staderConfig = process.env.STADER_CONFIG ?? ''
   const staderConfigFactory = await ethers.getContractFactory('StaderConfig')
-  const staderConfig = await upgrades.deployProxy(staderConfigFactory, [owner.address, ethDepositContract])
-  console.log('staderConfig deployed to: ', staderConfig.address)
+  const staderConfiglInstance = await staderConfigFactory.attach(staderConfig)
+
+  const staderConfigUpgraded = await upgrades.upgradeProxy(staderConfiglInstance, staderConfigFactory)
+
+  console.log('stader config proxy address ', staderConfigUpgraded.address)
+
+  console.log('upgraded stader config contract')
 }
 
 main()
