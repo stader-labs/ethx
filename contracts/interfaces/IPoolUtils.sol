@@ -6,15 +6,15 @@ import './INodeRegistry.sol';
 // Interface for the PoolUtils contract
 interface IPoolUtils {
     // Errors
-    error InvalidNewPool();
     error EmptyNameString();
     error PoolIdNotPresent();
     error PubkeyDoesNotExit();
     error PubkeyAlreadyExist();
     error NameCrossedMaxLength();
     error InvalidLengthOfPubkey();
-    error InvalidLengthOfSignature();
     error OperatorIsNotOnboarded();
+    error InvalidLengthOfSignature();
+    error ExistingOrMismatchingPoolId();
 
     // Events
     event PoolAdded(uint8 indexed poolId, address poolAddress);

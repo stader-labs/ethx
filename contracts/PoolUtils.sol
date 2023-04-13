@@ -313,9 +313,9 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         return false;
     }
 
-    function verifyNewPool(uint8 _poolId, address _poolAddress) internal {
+    function verifyNewPool(uint8 _poolId, address _poolAddress) internal view {
         if (IStaderPoolBase(_poolAddress).poolId() != _poolId || isExistingPoolId(_poolId)) {
-            revert InvalidNewPool();
+            revert ExistingOrMismatchingPoolId();
         }
     }
 
