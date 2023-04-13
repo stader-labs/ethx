@@ -103,13 +103,7 @@ contract UserWithdrawalManager is
         }
         IERC20Upgradeable(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
         ethRequestedForWithdraw += assets;
-        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
-            payable(_owner),
-            _ethXAmount,
-            assets,
-            0,
-            block.timestamp
-        );
+        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(payable(_owner), _ethXAmount, assets, 0, block.number);
         requestIdsByUserAddress[_owner].push(nextRequestId);
         emit WithdrawRequestReceived(msg.sender, _owner, nextRequestId, _ethXAmount, assets);
         nextRequestId++;
@@ -120,7 +114,7 @@ contract UserWithdrawalManager is
      * @notice finalize user requests
      * @dev check for safeMode to finalizeRequest
      */
-    function finalizeUserWithdrawalRequest() external override nonReentrant {
+    function finalizeUserWithdrawalRequest() external override nonReentrant whenNotPaused {
         if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
             revert UnsupportedOperationInSafeMode();
         }
@@ -143,7 +137,7 @@ contract UserWithdrawalManager is
             if (
                 (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) ||
                 (userWithdrawInfo.requestBlock + staderConfig.getMinBlockDelayToFinalizeWithdrawRequest() >
-                    block.timestamp)
+                    block.number)
             ) {
                 requestId -= 1;
                 break;

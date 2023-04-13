@@ -24,7 +24,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
-    uint256 public constant TOTAL_FEE = 10000;
 
     /// @inheritdoc IStaderPoolBase
     uint256 public override protocolFee;
@@ -65,7 +64,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
 
     /// @inheritdoc IStaderPoolBase
     function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_protocolFee + _operatorFee > TOTAL_FEE) {
+        if (_protocolFee + _operatorFee > staderConfig.getTotalFee()) {
             revert CommissionFeesMoreThanTOTAL_FEE();
         }
         if (protocolFee == _protocolFee) {
@@ -97,7 +96,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     ) external payable nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         address vaultFactory = staderConfig.getVaultFactory();
-        for (uint256 i = 0; i < _pubkey.length; i++) {
+        uint256 pubkeyCount = _pubkey.length;
+        for (uint256 i = 0; i < pubkeyCount; i++) {
             address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(
                 poolId,
                 _operatorId,

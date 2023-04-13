@@ -77,12 +77,12 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolUtils
-    function getProtocolFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+    function getProtocolFee(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).protocolFee();
     }
 
     /// @inheritdoc IPoolUtils
-    function getOperatorFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+    function getOperatorFee(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).operatorFee();
     }
 
@@ -180,7 +180,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
             );
     }
 
-    function getCollateralETH(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+    function getCollateralETH(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
     }
 
@@ -252,6 +252,33 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         if (isExistingPubkey(_pubkey)) {
             revert PubkeyAlreadyExist();
         }
+    }
+
+    //compute the share of rewards between user, protocol and operator
+    function calculateRewardShare(uint8 _poolId, uint256 _totalRewards)
+        external
+        view
+        override
+        returns (
+            uint256 userShare,
+            uint256 operatorShare,
+            uint256 protocolShare
+        )
+    {
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
+        uint256 collateralETH = getCollateralETH(_poolId);
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 protocolFeeBps = getProtocolFee(_poolId);
+        uint256 operatorFeeBps = getOperatorFee(_poolId);
+
+        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
+
+        protocolShare = (protocolFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+
+        operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
+        operatorShare += (operatorFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+
+        userShare = _totalRewards - protocolShare - operatorShare;
     }
 
     // Modifiers

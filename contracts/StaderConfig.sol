@@ -12,6 +12,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
     // ETH to WEI ratio i.e 10**18
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
+    //Total fee bips
+    bytes32 public constant TOTAL_FEE = keccak256('TOTAL_FEE');
     //maximum length of operator name string
     bytes32 public constant OPERATOR_MAX_NAME_LENGTH = keccak256('OPERATOR_MAX_NAME_LENGTH');
 
@@ -72,6 +74,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         UtilLib.checkNonZeroAddress(_ethDepositContract);
         __AccessControl_init();
         setConstant(ETH_PER_NODE, 32 ether);
+        setConstant(TOTAL_FEE, 10000);
         setConstant(DECIMALS, 10**18);
         setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
         setVariable(MIN_DEPOSIT_AMOUNT, 100);
@@ -144,8 +147,11 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setVariable(MAX_WITHDRAW_AMOUNT, _maxWithdrawAmount);
     }
 
-    function updateMinBlockDelayToFinalizeWithdrawRequest(uint256 _minDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setVariable(MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minDelay);
+    function updateMinBlockDelayToFinalizeWithdrawRequest(uint256 _minBlockDelay)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setVariable(MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minBlockDelay);
     }
 
     /**
@@ -263,6 +269,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getDecimals() external view override returns (uint256) {
         return constantsMap[DECIMALS];
+    }
+
+    function getTotalFee() external view override returns (uint256) {
+        return constantsMap[TOTAL_FEE];
     }
 
     function getOperatorMaxNameLength() external view override returns (uint256) {

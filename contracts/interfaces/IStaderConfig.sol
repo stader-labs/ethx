@@ -60,6 +60,8 @@ interface IStaderConfig {
 
     function getDecimals() external view returns (uint256);
 
+    function getTotalFee() external view returns (uint256);
+
     function getOperatorMaxNameLength() external view returns (uint256);
 
     // Variables

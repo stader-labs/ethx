@@ -84,7 +84,8 @@ contract PermissionedNodeRegistry is
      */
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        for (uint256 i = 0; i < _permissionedNOs.length; i++) {
+        uint256 permissionedNosLength = _permissionedNOs.length;
+        for (uint256 i = 0; i < permissionedNosLength; i++) {
             permissionList[_permissionedNOs[i]] = true;
             emit OperatorWhitelisted(_permissionedNOs[i]);
         }

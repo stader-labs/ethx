@@ -67,38 +67,14 @@ contract ValidatorWithdrawalVault is
         if (totalRewards == 0) {
             revert NotEnoughRewardToDistribute();
         }
-        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = calculateRewardShare(totalRewards);
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = IPoolUtils(staderConfig.getPoolUtils())
+            .calculateRewardShare(poolId, totalRewards);
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         sendValue(getNodeRecipient(), operatorShare);
         sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit DistributedRewards(userShare, operatorShare, protocolShare);
-    }
-
-    function calculateRewardShare(uint256 _totalRewards)
-        public
-        view
-        returns (
-            uint256 userShare,
-            uint256 operatorShare,
-            uint256 protocolShare
-        )
-    {
-        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
-        uint256 collateralETH = getCollateralETH();
-        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
-        uint256 protocolFeeBps = getProtocolFeeBps();
-        uint256 operatorFeeBps = getOperatorFeeBps();
-
-        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
-
-        protocolShare = (protocolFeeBps * _userShareBeforeCommision) / 10000;
-
-        operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        operatorShare += (operatorFeeBps * _userShareBeforeCommision) / 10000;
-
-        userShare = _totalRewards - protocolShare - operatorShare;
     }
 
     function settleFunds() external override nonReentrant {
@@ -155,7 +131,9 @@ contract ValidatorWithdrawalVault is
             _userShare = usersETH;
         }
         if (totalRewards > 0) {
-            (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = calculateRewardShare(totalRewards);
+            (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = IPoolUtils(
+                staderConfig.getPoolUtils()
+            ).calculateRewardShare(poolId, totalRewards);
             _userShare += userReward;
             _operatorShare += operatorReward;
             _protocolShare += protocolReward;
@@ -184,15 +162,6 @@ contract ValidatorWithdrawalVault is
     }
 
     // HELPER METHODS
-
-    function getProtocolFeeBps() internal view returns (uint256) {
-        return IPoolUtils(staderConfig.getPoolUtils()).getProtocolFee(poolId);
-    }
-
-    // should return 0, for permissioned NOs
-    function getOperatorFeeBps() internal view returns (uint256) {
-        return IPoolUtils(staderConfig.getPoolUtils()).getOperatorFee(poolId);
-    }
 
     function getCollateralETH() internal view returns (uint256) {
         return IPoolUtils(staderConfig.getPoolUtils()).getCollateralETH(poolId);

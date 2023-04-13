@@ -198,7 +198,7 @@ contract StaderStakePoolsManager is
             if (validatorToDeposit == 0) {
                 continue;
             }
-            (string memory poolName, address poolAddress) = IPoolUtils(poolUtils).pools(i);
+            (, address poolAddress) = IPoolUtils(poolUtils).pools(i);
             uint256 poolDepositSize = ETH_PER_NODE - IPoolUtils(poolUtils).getCollateralETH(i);
 
             depositedPooledETH -= validatorToDeposit * poolDepositSize;

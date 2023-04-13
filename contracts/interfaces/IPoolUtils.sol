@@ -86,4 +86,13 @@ interface IPoolUtils {
         bytes calldata _preDepositSignature,
         bytes calldata _depositSignature
     ) external;
+
+    function calculateRewardShare(uint8 _poolId, uint256 _totalRewards)
+        external
+        view
+        returns (
+            uint256 userShare,
+            uint256 operatorShare,
+            uint256 protocolShare
+        );
 }

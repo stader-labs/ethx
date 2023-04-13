@@ -26,7 +26,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
-    uint256 public constant TOTAL_FEE = 10000;
 
     // @inheritdoc IStaderPoolBase
     uint256 public override protocolFee;
@@ -94,7 +93,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             .computeOperatorAllocationForDeposit(requiredValidators);
 
         // i is the operator Id
-        for (uint16 i = 1; i < selectedOperatorCapacity.length; i++) {
+        uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;
+        for (uint16 i = 1; i < selectedOperatorCapacityLength; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;
@@ -124,7 +124,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
-        for (uint256 i = 0; i < _pubkey.length; i++) {
+        uint256 pubkeyCount = _pubkey.length;
+        for (uint256 i = 0; i < pubkeyCount; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
@@ -216,7 +217,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
     // @inheritdoc IStaderPoolBase
     function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_protocolFee + _operatorFee > TOTAL_FEE) {
+        if (_protocolFee + _operatorFee > staderConfig.getTotalFee()) {
             revert CommissionFeesMoreThanTOTAL_FEE();
         }
         if (protocolFee == _protocolFee) {
