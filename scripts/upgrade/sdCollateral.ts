@@ -1,12 +1,15 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-  const [owner] = await ethers.getSigners()
-  const staderConfigAddr = process.env.STADER_CONFIG ?? ''
-
+  const sdCollateral = process.env.SD_COLLATERAL ?? ''
   const sdCollateralFactory = await ethers.getContractFactory('SDCollateral')
-  const sdCollateral = await upgrades.deployProxy(sdCollateralFactory, [owner.address, staderConfigAddr])
-  console.log('SD Collateral deployed to: ', sdCollateral.address)
+  const sdCollateralInstance = await sdCollateralFactory.attach(sdCollateral)
+
+  const sdCollateralUpgraded = await upgrades.upgradeProxy(sdCollateralInstance, sdCollateralFactory)
+
+  console.log('sd collateral proxy address ', sdCollateralUpgraded.address)
+
+  console.log('upgraded sd collateral contract')
 }
 
 main()

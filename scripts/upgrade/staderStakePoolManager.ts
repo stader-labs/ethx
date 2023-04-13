@@ -1,12 +1,15 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-  const [owner] = await ethers.getSigners()
-  const staderConfigAddr = process.env.STADER_CONFIG ?? ''
-
+  const poolManager = process.env.STAKE_POOL_MANAGER ?? ''
   const poolManagerFactory = await ethers.getContractFactory('StaderStakePoolsManager')
-  const poolManager = await upgrades.deployProxy(poolManagerFactory, [owner.address, staderConfigAddr])
-  console.log('stader stake pool manager deployed to: ', poolManager.address)
+  const poolManagerInstance = await poolManagerFactory.attach(poolManager)
+
+  const poolManagerUpgraded = await upgrades.upgradeProxy(poolManagerInstance, poolManagerFactory)
+
+  console.log('stader stake pool manager proxy address ', poolManagerUpgraded.address)
+
+  console.log('upgraded stader stake pool manager contract')
 }
 
 main()
