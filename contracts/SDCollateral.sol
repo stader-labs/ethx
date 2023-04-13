@@ -47,6 +47,7 @@ contract SDCollateral is Initializable, AccessControlUpgradeable, PausableUpgrad
     ) external initializer checkZeroAddress(_admin) checkZeroAddress(_sdERC20Addr) checkZeroAddress(_priceFetcherAddr) {
         __AccessControl_init();
         __Pausable_init();
+        __ReentrancyGuard_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
 
