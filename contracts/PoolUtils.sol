@@ -325,7 +325,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     function isExistingPoolId(uint8 _poolId) internal view returns (bool) {
         uint256 poolIdArrayLength = poolCount();
-        for (uint8 i = 0; i < poolIdArrayLength; i++) {
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
             if (poolIdArray[i] == _poolId) {
                 return true;
             }

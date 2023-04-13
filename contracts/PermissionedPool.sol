@@ -94,7 +94,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
         // i is the operator Id
         uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;
-        for (uint16 i = 1; i < selectedOperatorCapacityLength; i++) {
+        for (uint256 i = 1; i < selectedOperatorCapacityLength; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;

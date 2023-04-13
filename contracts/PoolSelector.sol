@@ -136,13 +136,14 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         uint8[] memory poolIdArray = IPoolUtils(staderConfig.getPoolUtils()).getPoolIdArray();
         uint256 poolCount = poolIdArray.length;
-        if (poolCount != _poolTargets.length) {
+        uint256 poolTargetLength = _poolTargets.length;
+
+        if (poolCount != poolTargetLength) {
             revert InvalidNewTargetInput();
         }
 
         uint256 totalWeight;
-        uint256 poolTargetLength = _poolTargets.length;
-        for (uint8 i = 0; i < poolTargetLength; i++) {
+        for (uint256 i = 0; i < poolTargetLength; i++) {
             totalWeight += _poolTargets[i];
             poolWeights[poolIdArray[i]] = _poolTargets[i];
             emit UpdatedPoolWeight(poolIdArray[i], _poolTargets[i]);
