@@ -5,7 +5,7 @@ pragma solidity ^0.8.16;
 import './library/UtilLib.sol';
 
 import './ETHx.sol';
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 import './interfaces/IPoolSelector.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IStaderOracle.sol';
@@ -183,21 +183,23 @@ contract StaderStakePoolsManager is
         }
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
-        address poolFactory = staderConfig.getPoolFactory();
+        address poolUtils = staderConfig.getPoolUtils();
         uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
         if (availableETHForNewDeposit < ETH_PER_NODE) {
             revert InsufficientBalance();
         }
         uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
             .computePoolAllocationForDeposit(availableETHForNewDeposit);
+
+        uint256 selectedPoolCapacityLength = selectedPoolCapacity.length;
         // i is pool Id
-        for (uint8 i = 1; i < selectedPoolCapacity.length; i++) {
+        for (uint8 i = 1; i < selectedPoolCapacityLength; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;
             }
-            (string memory poolName, address poolAddress) = IPoolFactory(poolFactory).pools(i);
-            uint256 poolDepositSize = ETH_PER_NODE - IPoolFactory(poolFactory).getCollateralETH(i);
+            (, address poolAddress) = IPoolUtils(poolUtils).pools(i);
+            uint256 poolDepositSize = ETH_PER_NODE - IPoolUtils(poolUtils).getCollateralETH(i);
 
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             //slither-disable-next-line arbitrary-send-eth

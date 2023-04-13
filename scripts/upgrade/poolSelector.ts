@@ -1,16 +1,15 @@
 import { ethers, upgrades } from 'hardhat'
-const hre = require('hardhat')
 
 async function main() {
   const poolSelector = process.env.POOL_SELECTOR ?? ''
   const poolSelectorFactory = await ethers.getContractFactory('PoolSelector')
-  const poolSelectorFactoryInstance = await poolSelectorFactory.attach(poolSelector)
+  const poolSelectorInstance = await poolSelectorFactory.attach(poolSelector)
 
-  const poolSelectorFactoryUpgraded = await upgrades.upgradeProxy(poolSelectorFactoryInstance, poolSelectorFactory)
+  const poolSelectorUpgraded = await upgrades.upgradeProxy(poolSelectorInstance, poolSelectorFactory)
 
-  console.log('new implementation address ', poolSelectorFactoryUpgraded.address)
+  console.log('pool selector proxy address ', poolSelectorUpgraded.address)
 
-  console.log('upgraded pool Selector')
+  console.log('upgraded pool selector contract')
 }
 
 main()

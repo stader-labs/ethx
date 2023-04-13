@@ -6,7 +6,7 @@ import './library/UtilLib.sol';
 import './library/ValidatorStatus.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/IVaultFactory.sol';
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionlessPool.sol';
 import './interfaces/INodeELRewardVault.sol';
@@ -90,12 +90,12 @@ contract PermissionlessNodeRegistry is
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) external override whenNotPaused returns (address feeRecipientAddress) {
-        address poolFactory = staderConfig.getPoolFactory();
-        IPoolFactory(poolFactory).onlyValidName(_operatorName);
+        address poolUtils = staderConfig.getPoolUtils();
+        IPoolUtils(poolUtils).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_operatorRewardAddress);
 
         //checks if operator already onboarded in any pool of stader protocol
-        if (IPoolFactory(poolFactory).isExistingOperator(msg.sender)) {
+        if (IPoolUtils(poolUtils).isExistingOperator(msg.sender)) {
             revert OperatorAlreadyOnBoardedInProtocol();
         }
         //deploy NodeELRewardVault for NO
@@ -133,9 +133,9 @@ contract PermissionlessNodeRegistry is
         );
 
         address vaultFactory = staderConfig.getVaultFactory();
-        address poolFactory = staderConfig.getPoolFactory();
+        address poolUtils = staderConfig.getPoolUtils();
         for (uint256 i = 0; i < keyCount; i++) {
-            IPoolFactory(poolFactory).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
+            IPoolUtils(poolUtils).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 poolId,
                 operatorId,
@@ -359,7 +359,7 @@ contract PermissionlessNodeRegistry is
      * @param _rewardAddress new reward address
      */
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
-        IPoolFactory(staderConfig.getPoolFactory()).onlyValidName(_operatorName);
+        IPoolUtils(staderConfig.getPoolUtils()).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_rewardAddress);
         onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];

@@ -9,8 +9,8 @@ struct Pool {
     address poolAddress;
 }
 
-// Interface for the PoolFactory contract
-interface IPoolFactory {
+// Interface for the PoolUtils contract
+interface IPoolUtils {
     // Errors
     error EmptyString();
     error InvalidPoolID();
@@ -86,4 +86,13 @@ interface IPoolFactory {
         bytes calldata _preDepositSignature,
         bytes calldata _depositSignature
     ) external;
+
+    function calculateRewardShare(uint8 _poolId, uint256 _totalRewards)
+        external
+        view
+        returns (
+            uint256 userShare,
+            uint256 operatorShare,
+            uint256 protocolShare
+        );
 }

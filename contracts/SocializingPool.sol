@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
 
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
@@ -112,7 +112,7 @@ contract SocializingPool is
         address operator = msg.sender;
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
 
-        uint8 poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(operator);
+        uint8 poolId = IPoolUtils(staderConfig.getPoolUtils()).getOperatorPoolId(operator);
         address operatorRewardsAddr = UtilLib.getNodeRecipientAddressByOperator(poolId, operator, staderConfig);
 
         bool success;
@@ -141,7 +141,8 @@ contract SocializingPool is
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
     ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
-        for (uint256 i = 0; i < _index.length; i++) {
+        uint256 indexLength = _index.length;
+        for (uint256 i = 0; i < indexLength; i++) {
             if (_amountSD[i] == 0 && _amountETH[i] == 0) {
                 revert InvalidAmount();
             }

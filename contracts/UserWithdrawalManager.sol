@@ -43,7 +43,7 @@ contract UserWithdrawalManager is
         uint256 ethXAmount; //amount of ethX share locked for withdrawal
         uint256 ethExpected; //eth requested according to given share and exchangeRate
         uint256 ethFinalized; // final eth for claiming according to finalize exchange rate
-        uint256 requestTime; // timestamp of withdraw request
+        uint256 requestBlock; // block number of withdraw request
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -103,13 +103,7 @@ contract UserWithdrawalManager is
         }
         IERC20Upgradeable(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
         ethRequestedForWithdraw += assets;
-        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(
-            payable(_owner),
-            _ethXAmount,
-            assets,
-            0,
-            block.timestamp
-        );
+        userWithdrawRequests[nextRequestId] = UserWithdrawInfo(payable(_owner), _ethXAmount, assets, 0, block.number);
         requestIdsByUserAddress[_owner].push(nextRequestId);
         emit WithdrawRequestReceived(msg.sender, _owner, nextRequestId, _ethXAmount, assets);
         nextRequestId++;
@@ -142,7 +136,8 @@ contract UserWithdrawalManager is
             uint256 minEThRequiredToFinalizeRequest = Math.min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
             if (
                 (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) ||
-                (userWithdrawInfo.requestTime + staderConfig.getMinDelayToFinalizeWithdrawRequest() > block.timestamp)
+                (userWithdrawInfo.requestBlock + staderConfig.getMinBlockDelayToFinalizeWithdrawRequest() >
+                    block.number)
             ) {
                 requestId -= 1;
                 break;

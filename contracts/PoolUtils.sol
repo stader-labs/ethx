@@ -3,14 +3,14 @@ pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
 
-import './interfaces/IPoolFactory.sol';
+import './interfaces/IPoolUtils.sol';
 import './interfaces/IStaderPoolBase.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
+contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     mapping(uint8 => Pool) public override pools;
 
     uint8 public override poolCount;
@@ -76,17 +76,17 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    /// @inheritdoc IPoolFactory
-    function getProtocolFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+    /// @inheritdoc IPoolUtils
+    function getProtocolFee(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).protocolFee();
     }
 
-    /// @inheritdoc IPoolFactory
-    function getOperatorFee(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+    /// @inheritdoc IPoolUtils
+    function getOperatorFee(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).operatorFee();
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function getTotalActiveValidatorCount() public view override returns (uint256) {
         uint256 totalActiveValidatorCount;
         for (uint8 i = 1; i <= poolCount; i++) {
@@ -96,7 +96,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return totalActiveValidatorCount;
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function getQueuedValidatorCountByPool(uint8 _poolId)
         external
         view
@@ -107,12 +107,12 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getTotalQueuedValidatorCount();
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function getActiveValidatorCountByPool(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getTotalActiveValidatorCount();
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
@@ -125,7 +125,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return emptyValidator;
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey)
         public
         view
@@ -136,7 +136,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function retrieveOperator(bytes calldata _pubkey) public view override returns (Operator memory) {
         for (uint8 i = 1; i <= poolCount; i++) {
             if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
@@ -149,7 +149,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return emptyOperator;
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function getOperator(uint8 _poolId, bytes calldata _pubkey)
         public
         view
@@ -160,12 +160,12 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         return IStaderPoolBase(pools[_poolId].poolAddress).getOperator(_pubkey);
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function getSocializingPoolAddress(uint8 _poolId) public view override validPoolId(_poolId) returns (address) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getSocializingPoolAddress();
     }
 
-    /// @inheritdoc IPoolFactory
+    /// @inheritdoc IPoolUtils
     function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
         address _nodeOperator,
@@ -180,7 +180,7 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
             );
     }
 
-    function getCollateralETH(uint8 _poolId) external view override validPoolId(_poolId) returns (uint256) {
+    function getCollateralETH(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
     }
 
@@ -252,6 +252,33 @@ contract PoolFactory is IPoolFactory, Initializable, AccessControlUpgradeable {
         if (isExistingPubkey(_pubkey)) {
             revert PubkeyAlreadyExist();
         }
+    }
+
+    //compute the share of rewards between user, protocol and operator
+    function calculateRewardShare(uint8 _poolId, uint256 _totalRewards)
+        external
+        view
+        override
+        returns (
+            uint256 userShare,
+            uint256 operatorShare,
+            uint256 protocolShare
+        )
+    {
+        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
+        uint256 collateralETH = getCollateralETH(_poolId);
+        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 protocolFeeBps = getProtocolFee(_poolId);
+        uint256 operatorFeeBps = getOperatorFee(_poolId);
+
+        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
+
+        protocolShare = (protocolFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+
+        operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
+        operatorShare += (operatorFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+
+        userShare = _totalRewards - protocolShare - operatorShare;
     }
 
     // Modifiers

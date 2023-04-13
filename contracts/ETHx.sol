@@ -17,6 +17,7 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
     IStaderConfig staderConfig;
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
+    bytes32 public constant BURNER_ROLE = keccak256('BURNER_ROLE');
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -49,7 +50,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
      * @param account the account to burn from
      * @param amount the amount of ethX to burn
      */
-    function burnFrom(address account, uint256 amount) external onlyRole(MINTER_ROLE) whenNotPaused {
+    function burnFrom(address account, uint256 amount) external onlyRole(BURNER_ROLE) whenNotPaused {
         _burn(account, amount);
     }
 

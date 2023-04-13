@@ -16,7 +16,7 @@ interface IStaderConfig {
     event SetToken(bytes32, address);
 
     //Contracts
-    function POOL_FACTORY() external view returns (bytes32);
+    function POOL_UTILS() external view returns (bytes32);
 
     function POOL_SELECTOR() external view returns (bytes32);
 
@@ -60,6 +60,8 @@ interface IStaderConfig {
 
     function getDecimals() external view returns (uint256);
 
+    function getTotalFee() external view returns (uint256);
+
     function getOperatorMaxNameLength() external view returns (uint256);
 
     // Variables
@@ -77,7 +79,7 @@ interface IStaderConfig {
 
     function getMaxWithdrawAmount() external view returns (uint256);
 
-    function getMinDelayToFinalizeWithdrawRequest() external view returns (uint256);
+    function getMinBlockDelayToFinalizeWithdrawRequest() external view returns (uint256);
 
     function getWithdrawnKeyBatchSize() external view returns (uint256);
 
@@ -87,7 +89,7 @@ interface IStaderConfig {
     function getStaderTreasury() external view returns (address);
 
     // Contracts
-    function getPoolFactory() external view returns (address);
+    function getPoolUtils() external view returns (address);
 
     function getPoolSelector() external view returns (address);
 

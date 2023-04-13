@@ -12,6 +12,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
     // ETH to WEI ratio i.e 10**18
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
+    //Total fee bips
+    bytes32 public constant TOTAL_FEE = keccak256('TOTAL_FEE');
     //maximum length of operator name string
     bytes32 public constant OPERATOR_MAX_NAME_LENGTH = keccak256('OPERATOR_MAX_NAME_LENGTH');
 
@@ -24,14 +26,14 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant MIN_WITHDRAW_AMOUNT = keccak256('MIN_WITHDRAW_AMOUNT');
     bytes32 public constant MAX_WITHDRAW_AMOUNT = keccak256('MAX_WITHDRAW_AMOUNT');
     //minimum delay between user requesting withdraw and request finalization
-    bytes32 public constant MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST =
-        keccak256('MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST');
+    bytes32 public constant MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST =
+        keccak256('MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST');
     bytes32 public constant WITHDRAWN_KEYS_BATCH_SIZE = keccak256('WITHDRAWN_KEYS_BATCH_SIZE');
 
     bytes32 public constant ADMIN = keccak256('ADMIN');
     bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
 
-    bytes32 public constant override POOL_FACTORY = keccak256('POOL_FACTORY');
+    bytes32 public constant override POOL_UTILS = keccak256('POOL_UTILS');
     bytes32 public constant override POOL_SELECTOR = keccak256('POOL_SELECTOR');
     bytes32 public constant override SD_COLLATERAL = keccak256('SD_COLLATERAL');
     bytes32 public constant override VAULT_FACTORY = keccak256('VAULT_FACTORY');
@@ -72,6 +74,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         UtilLib.checkNonZeroAddress(_ethDepositContract);
         __AccessControl_init();
         setConstant(ETH_PER_NODE, 32 ether);
+        setConstant(TOTAL_FEE, 10000);
         setConstant(DECIMALS, 10**18);
         setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
         setVariable(MIN_DEPOSIT_AMOUNT, 100);
@@ -144,8 +147,11 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setVariable(MAX_WITHDRAW_AMOUNT, _maxWithdrawAmount);
     }
 
-    function updateMinDelayToFinalizeWithdrawRequest(uint256 _minDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setVariable(MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minDelay);
+    function updateMinBlockDelayToFinalizeWithdrawRequest(uint256 _minBlockDelay)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setVariable(MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minBlockDelay);
     }
 
     /**
@@ -174,8 +180,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     // Contracts Setters
 
-    function updatePoolFactory(address _poolFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setContract(POOL_FACTORY, _poolFactory);
+    function updatePoolUtils(address _poolUtils) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(POOL_UTILS, _poolUtils);
     }
 
     function updatePoolSelector(address _poolSelector) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -265,6 +271,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         return constantsMap[DECIMALS];
     }
 
+    function getTotalFee() external view override returns (uint256) {
+        return constantsMap[TOTAL_FEE];
+    }
+
     function getOperatorMaxNameLength() external view override returns (uint256) {
         return constantsMap[OPERATOR_MAX_NAME_LENGTH];
     }
@@ -299,8 +309,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         return variablesMap[MAX_WITHDRAW_AMOUNT];
     }
 
-    function getMinDelayToFinalizeWithdrawRequest() external view override returns (uint256) {
-        return variablesMap[MIN_DELAY_TO_FINALIZE_WITHDRAW_REQUEST];
+    function getMinBlockDelayToFinalizeWithdrawRequest() external view override returns (uint256) {
+        return variablesMap[MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST];
     }
 
     function getWithdrawnKeyBatchSize() external view override returns (uint256) {
@@ -319,8 +329,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     //Contracts Getters
 
-    function getPoolFactory() external view override returns (address) {
-        return contractsMap[POOL_FACTORY];
+    function getPoolUtils() external view override returns (address) {
+        return contractsMap[POOL_UTILS];
     }
 
     function getPoolSelector() external view override returns (address) {

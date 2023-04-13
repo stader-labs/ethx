@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
 
-import '../contracts/interfaces/IPoolFactory.sol';
+import '../contracts/interfaces/IPoolUtils.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
@@ -255,12 +255,10 @@ contract SDCollateral is
             uint256 _validatorCount
         )
     {
-        _poolId = IPoolFactory(staderConfig.getPoolFactory()).getOperatorPoolId(_operator);
-        INodeRegistry nodeRegistry = INodeRegistry(
-            IPoolFactory(staderConfig.getPoolFactory()).getNodeRegistry(_poolId)
-        );
+        _poolId = IPoolUtils(staderConfig.getPoolUtils()).getOperatorPoolId(_operator);
+        INodeRegistry nodeRegistry = INodeRegistry(IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId));
         _operatorId = nodeRegistry.operatorIDByAddress(_operator);
-        _validatorCount = IPoolFactory(staderConfig.getPoolFactory()).getOperatorTotalNonTerminalKeys(
+        _validatorCount = IPoolUtils(staderConfig.getPoolUtils()).getOperatorTotalNonTerminalKeys(
             _poolId,
             _operator,
             0,
