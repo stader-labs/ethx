@@ -109,23 +109,18 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         if (validatorSpunCount < newValidatorsToDeposit) {
             uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
             uint256 i = poolIdArrayIndexForExcessDeposit;
-            //if some pool gets deactivate, reset the index of poolIdArray for excess deposit
-            //if index greater or equal to poolCount
-            if (i >= poolCount) {
-                i = 0;
-            }
-            do {
+            for (uint256 j = 0; j < poolCount; j++) {
                 uint256 newSelectedCapacity = Math.min(remainingPoolCapacity[i], remainingValidatorsToDeposit);
                 selectedPoolCapacity[i] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
-                // Don't have to update poolID if the `remainingValidatorsToDeposit` does not become 0
-                // As we have scanned through all pool, will start from same pool in same iteration
+                // Don't have to update poolIdIndex if the `remainingValidatorsToDeposit` does not become 0
+                // As we have scanned through all pool, will start from the same pool index in the next iteration
                 i = (i + 1) % poolCount;
                 if (remainingValidatorsToDeposit == 0) {
                     poolIdArrayIndexForExcessDeposit = i;
                     break;
                 }
-            } while (i != poolIdArrayIndexForExcessDeposit);
+            }
         }
     }
 

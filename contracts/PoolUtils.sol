@@ -38,14 +38,10 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
      * @param _poolId Id of the pool.
      * @param _poolAddress The address of the new pool contract.
      */
-    function addNewPool(uint8 _poolId, address _poolAddress)
-        external
-        override
-        verifyNewPoolInput(_poolId, _poolAddress)
-        onlyNonExistingPoolId(_poolId)
-    {
+    function addNewPool(uint8 _poolId, address _poolAddress) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         UtilLib.checkNonZeroAddress(_poolAddress);
+        verifyNewPool(_poolId, _poolAddress);
         poolIdArray.push(_poolId);
         poolAddressById[_poolId] = _poolAddress;
         emit PoolAdded(_poolId, _poolAddress);
@@ -66,23 +62,6 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         UtilLib.checkNonZeroAddress(_newPoolAddress);
         poolAddressById[_poolId] = _newPoolAddress;
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
-    }
-
-    /**
-     * @notice deactivate a poolId from receiving new user stakes
-     * @dev only `DEFAULT_ADMIN_ROLE` can call
-     * @param _poolId pool Id of the pool to deactivate
-     */
-    function deactivatePool(uint8 _poolId) external onlyExistingPoolId(_poolId) onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
-            if (_poolId == poolIdArray[i]) {
-                poolIdArray[i] = poolIdArray[poolCount - 1];
-                poolIdArray.pop();
-                emit DeactivatedPool(_poolId, poolAddressById[_poolId]);
-                return;
-            }
-        }
     }
 
     //update the address of staderConfig
@@ -334,25 +313,16 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         return false;
     }
 
-    // Modifiers
-
-    modifier verifyNewPoolInput(uint8 _poolId, address _poolAddress) {
-        if (IStaderPoolBase(_poolAddress).poolId() != _poolId) {
-            revert InvalidPoolId();
+    function verifyNewPool(uint8 _poolId, address _poolAddress) internal {
+        if (IStaderPoolBase(_poolAddress).poolId() != _poolId || isExistingPoolId(_poolId)) {
+            revert InvalidNewPool();
         }
-        _;
     }
 
+    // Modifiers
     modifier onlyExistingPoolId(uint8 _poolId) {
         if (!isExistingPoolId(_poolId)) {
             revert PoolIdNotPresent();
-        }
-        _;
-    }
-
-    modifier onlyNonExistingPoolId(uint8 _poolId) {
-        if (isExistingPoolId(_poolId)) {
-            revert PoolIdAlreadyPresent();
         }
         _;
     }
