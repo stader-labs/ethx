@@ -18,8 +18,9 @@ interface IPoolUtils {
     error OperatorIsNotOnboarded();
 
     // Events
-    event PoolAdded(uint8 poolId, address poolAddress);
+    event PoolAdded(uint8 indexed poolId, address poolAddress);
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);
+    event DeactivatedPool(uint8 indexed poolId, address poolAddress);
     event UpdatedStaderConfig(address staderConfig);
 
     // returns the details of a specific pool
@@ -56,7 +57,7 @@ interface IPoolUtils {
 
     function getOperatorFee(uint8 _poolId) external view returns (uint256); // returns the operator fee (0-10000)
 
-    function poolCount() external view returns (uint256); // returns the number of pools in the poolUtils
+    function getPoolCount() external view returns (uint256); // returns the number of pools in the poolUtils
 
     function getTotalActiveValidatorCount() external view returns (uint256); //returns total active validators across all pools
 

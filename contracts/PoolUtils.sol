@@ -74,11 +74,12 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
      * @param _poolId pool Id of the pool to deactivate
      */
     function deactivatePool(uint8 _poolId) external onlyExistingPoolId(_poolId) onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (_poolId == poolIdArray[i]) {
-                poolIdArray[i] = poolIdArray[poolIdArrayLength - 1];
+                poolIdArray[i] = poolIdArray[poolCount - 1];
                 poolIdArray.pop();
+                emit DeactivatedPool(_poolId, poolAddressById[_poolId]);
                 return;
             }
         }
@@ -91,7 +92,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function poolCount() public view override returns (uint256) {
+    function getPoolCount() public view override returns (uint256) {
         return poolIdArray.length;
     }
 
@@ -108,8 +109,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     /// @inheritdoc IPoolUtils
     function getTotalActiveValidatorCount() public view override returns (uint256) {
         uint256 totalActiveValidatorCount;
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             totalActiveValidatorCount += getActiveValidatorCountByPool(poolIdArray[i]);
         }
 
@@ -140,8 +141,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPoolUtils
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (getValidatorByPool(poolIdArray[i], _pubkey).pubkey.length == 0) {
                 continue;
             }
@@ -165,8 +166,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPoolUtils
     function retrieveOperator(bytes calldata _pubkey) public view override returns (Operator memory) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (getValidatorByPool(poolIdArray[i], _pubkey).pubkey.length == 0) {
                 continue;
             }
@@ -223,8 +224,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function isExistingPubkey(bytes calldata _pubkey) public view override returns (bool) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingPubkey(_pubkey)) {
                 return true;
             }
@@ -233,8 +234,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function isExistingOperator(address _operAddr) external view override returns (bool) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingOperator(_operAddr)) {
                 return true;
             }
@@ -243,8 +244,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function getOperatorPoolId(address _operAddr) external view override returns (uint8) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingOperator(_operAddr)) {
                 return poolIdArray[i];
             }
@@ -253,8 +254,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function getValidatorPoolId(bytes calldata _pubkey) external view override returns (uint8) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingPubkey(_pubkey)) {
                 return poolIdArray[i];
             }
@@ -324,8 +325,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function isExistingPoolId(uint8 _poolId) internal view returns (bool) {
-        uint256 poolIdArrayLength = poolCount();
-        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+        uint256 poolCount = getPoolCount();
+        for (uint256 i = 0; i < poolCount; i++) {
             if (poolIdArray[i] == _poolId) {
                 return true;
             }
