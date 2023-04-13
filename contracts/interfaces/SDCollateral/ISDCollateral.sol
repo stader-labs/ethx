@@ -67,6 +67,11 @@ interface ISDCollateral {
 
     function operatorSDBalance(address) external view returns (uint256);
 
+    function withdrawReq(address _operator)
+        external
+        view
+        returns (uint256 _lastWithdrawReqTimestamp, uint256 _totalSDWithdrawReqAmount);
+
     function hasEnoughSDCollateral(
         address _operator,
         uint8 _poolId,
