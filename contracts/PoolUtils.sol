@@ -11,12 +11,12 @@ import './interfaces/IStaderConfig.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
-    mapping(uint8 => Pool) public override pools;
-
-    uint8 public override poolCount;
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
     IStaderConfig public staderConfig;
+
+    mapping(uint8 => address) public override poolAddressById;
+    uint8[] public override poolIdArray;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -35,38 +35,53 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     /**
      * @notice Add a new pool.
      * @dev This function should only be called by the `MANAGER` role
-     * @param _poolName The name of the new pool.
+     * @param _poolId Id of the pool.
      * @param _poolAddress The address of the new pool contract.
      */
-    //TODO sanjay make sure pools are added in same order of poolId
-    function addNewPool(string calldata _poolName, address _poolAddress) external override {
+    function addNewPool(uint8 _poolId, address _poolAddress)
+        external
+        override
+        verifyNewPoolInput(_poolId, _poolAddress)
+        onlyNonExistingPoolId(_poolId)
+    {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (bytes(_poolName).length == 0) {
-            revert EmptyString();
-        }
         UtilLib.checkNonZeroAddress(_poolAddress);
-
-        pools[poolCount + 1] = Pool({poolName: _poolName, poolAddress: _poolAddress});
-        poolCount++;
-
-        emit PoolAdded(_poolName, _poolAddress);
+        poolIdArray.push(_poolId);
+        poolAddressById[_poolId] = _poolAddress;
+        emit PoolAdded(_poolId, _poolAddress);
     }
 
     /**
      * @notice Update the address of a pool.
      * @dev This function should only be called by the `DEFAULT_ADMIN_ROLE` role
-     * @param _poolId The ID of the pool to update.
+     * @param _poolId The Id of the pool to update.
      * @param _newPoolAddress The updated address of the pool.
      */
     function updatePoolAddress(uint8 _poolId, address _newPoolAddress)
         external
         override
-        validPoolId(_poolId)
+        onlyExistingPoolId(_poolId)
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UtilLib.checkNonZeroAddress(_newPoolAddress);
-        pools[_poolId].poolAddress = _newPoolAddress;
+        poolAddressById[_poolId] = _newPoolAddress;
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
+    }
+
+    /**
+     * @notice deactivate a poolId from receiving new user stakes
+     * @dev only `DEFAULT_ADMIN_ROLE` can call
+     * @param _poolId pool Id of the pool to deactivate
+     */
+    function deactivatePool(uint8 _poolId) external onlyExistingPoolId(_poolId) onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            if (_poolId == poolIdArray[i]) {
+                poolIdArray[i] = poolIdArray[poolIdArrayLength - 1];
+                poolIdArray.pop();
+                return;
+            }
+        }
     }
 
     //update the address of staderConfig
@@ -76,21 +91,26 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    /// @inheritdoc IPoolUtils
-    function getProtocolFee(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).protocolFee();
+    function poolCount() public view override returns (uint256) {
+        return poolIdArray.length;
     }
 
     /// @inheritdoc IPoolUtils
-    function getOperatorFee(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).operatorFee();
+    function getProtocolFee(uint8 _poolId) public view override onlyExistingPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(poolAddressById[_poolId]).protocolFee();
+    }
+
+    /// @inheritdoc IPoolUtils
+    function getOperatorFee(uint8 _poolId) public view override onlyExistingPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(poolAddressById[_poolId]).operatorFee();
     }
 
     /// @inheritdoc IPoolUtils
     function getTotalActiveValidatorCount() public view override returns (uint256) {
         uint256 totalActiveValidatorCount;
-        for (uint8 i = 1; i <= poolCount; i++) {
-            totalActiveValidatorCount += getActiveValidatorCountByPool(i);
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            totalActiveValidatorCount += getActiveValidatorCountByPool(poolIdArray[i]);
         }
 
         return totalActiveValidatorCount;
@@ -101,24 +121,31 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         external
         view
         override
-        validPoolId(_poolId)
+        onlyExistingPoolId(_poolId)
         returns (uint256)
     {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalQueuedValidatorCount();
+        return IStaderPoolBase(poolAddressById[_poolId]).getTotalQueuedValidatorCount();
     }
 
     /// @inheritdoc IPoolUtils
-    function getActiveValidatorCountByPool(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getTotalActiveValidatorCount();
+    function getActiveValidatorCountByPool(uint8 _poolId)
+        public
+        view
+        override
+        onlyExistingPoolId(_poolId)
+        returns (uint256)
+    {
+        return IStaderPoolBase(poolAddressById[_poolId]).getTotalActiveValidatorCount();
     }
 
     /// @inheritdoc IPoolUtils
     function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
-        for (uint8 i = 1; i <= poolCount; i++) {
-            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            if (getValidatorByPool(poolIdArray[i], _pubkey).pubkey.length == 0) {
                 continue;
             }
-            return getValidatorByPool(i, _pubkey);
+            return getValidatorByPool(poolIdArray[i], _pubkey);
         }
         Validator memory emptyValidator;
 
@@ -130,19 +157,20 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         public
         view
         override
-        validPoolId(_poolId)
+        onlyExistingPoolId(_poolId)
         returns (Validator memory)
     {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getValidator(_pubkey);
+        return IStaderPoolBase(poolAddressById[_poolId]).getValidator(_pubkey);
     }
 
     /// @inheritdoc IPoolUtils
     function retrieveOperator(bytes calldata _pubkey) public view override returns (Operator memory) {
-        for (uint8 i = 1; i <= poolCount; i++) {
-            if (getValidatorByPool(i, _pubkey).pubkey.length == 0) {
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            if (getValidatorByPool(poolIdArray[i], _pubkey).pubkey.length == 0) {
                 continue;
             }
-            return getOperator(i, _pubkey);
+            return getOperator(poolIdArray[i], _pubkey);
         }
 
         Operator memory emptyOperator;
@@ -154,15 +182,21 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         public
         view
         override
-        validPoolId(_poolId)
+        onlyExistingPoolId(_poolId)
         returns (Operator memory)
     {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getOperator(_pubkey);
+        return IStaderPoolBase(poolAddressById[_poolId]).getOperator(_pubkey);
     }
 
     /// @inheritdoc IPoolUtils
-    function getSocializingPoolAddress(uint8 _poolId) public view override validPoolId(_poolId) returns (address) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getSocializingPoolAddress();
+    function getSocializingPoolAddress(uint8 _poolId)
+        public
+        view
+        override
+        onlyExistingPoolId(_poolId)
+        returns (address)
+    {
+        return IStaderPoolBase(poolAddressById[_poolId]).getSocializingPoolAddress();
     }
 
     /// @inheritdoc IPoolUtils
@@ -171,26 +205,27 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
-    ) public view override validPoolId(_poolId) returns (uint256) {
+    ) public view override onlyExistingPoolId(_poolId) returns (uint256) {
         return
-            IStaderPoolBase(pools[_poolId].poolAddress).getOperatorTotalNonTerminalKeys(
+            IStaderPoolBase(poolAddressById[_poolId]).getOperatorTotalNonTerminalKeys(
                 _nodeOperator,
                 _startIndex,
                 _endIndex
             );
     }
 
-    function getCollateralETH(uint8 _poolId) public view override validPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getCollateralETH();
+    function getCollateralETH(uint8 _poolId) public view override onlyExistingPoolId(_poolId) returns (uint256) {
+        return IStaderPoolBase(poolAddressById[_poolId]).getCollateralETH();
     }
 
-    function getNodeRegistry(uint8 _poolId) external view override validPoolId(_poolId) returns (address) {
-        return IStaderPoolBase(pools[_poolId].poolAddress).getNodeRegistry();
+    function getNodeRegistry(uint8 _poolId) external view override onlyExistingPoolId(_poolId) returns (address) {
+        return IStaderPoolBase(poolAddressById[_poolId]).getNodeRegistry();
     }
 
     function isExistingPubkey(bytes calldata _pubkey) public view override returns (bool) {
-        for (uint8 i = 1; i <= poolCount; i++) {
-            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) {
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingPubkey(_pubkey)) {
                 return true;
             }
         }
@@ -198,8 +233,9 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function isExistingOperator(address _operAddr) external view override returns (bool) {
-        for (uint8 i = 1; i <= poolCount; i++) {
-            if (IStaderPoolBase(pools[i].poolAddress).isExistingOperator(_operAddr)) {
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingOperator(_operAddr)) {
                 return true;
             }
         }
@@ -207,21 +243,27 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function getOperatorPoolId(address _operAddr) external view override returns (uint8) {
-        for (uint8 i = 1; i <= poolCount; i++) {
-            if (IStaderPoolBase(pools[i].poolAddress).isExistingOperator(_operAddr)) {
-                return i;
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingOperator(_operAddr)) {
+                return poolIdArray[i];
             }
         }
         revert OperatorIsNotOnboarded();
     }
 
     function getValidatorPoolId(bytes calldata _pubkey) external view override returns (uint8) {
-        for (uint8 i = 1; i <= poolCount; i++) {
-            if (IStaderPoolBase(pools[i].poolAddress).isExistingPubkey(_pubkey)) {
-                return i;
+        uint256 poolIdArrayLength = poolCount();
+        for (uint256 i = 0; i < poolIdArrayLength; i++) {
+            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingPubkey(_pubkey)) {
+                return poolIdArray[i];
             }
         }
         revert PubkeyDoesNotExit();
+    }
+
+    function getPoolIdArray() external view override returns (uint8[] memory) {
+        return poolIdArray;
     }
 
     // only valid name with string length limit
@@ -281,10 +323,35 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         userShare = _totalRewards - protocolShare - operatorShare;
     }
 
+    function isExistingPoolId(uint8 _poolId) internal view returns (bool) {
+        uint256 poolIdArrayLength = poolCount();
+        for (uint8 i = 0; i < poolIdArrayLength; i++) {
+            if (poolIdArray[i] == _poolId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Modifiers
-    modifier validPoolId(uint8 _poolId) {
-        if (_poolId == 0 && _poolId > poolCount) {
-            revert InvalidPoolID();
+
+    modifier verifyNewPoolInput(uint8 _poolId, address _poolAddress) {
+        if (IStaderPoolBase(_poolAddress).poolId() != _poolId) {
+            revert InvalidPoolId();
+        }
+        _;
+    }
+
+    modifier onlyExistingPoolId(uint8 _poolId) {
+        if (!isExistingPoolId(_poolId)) {
+            revert PoolIdNotPresent();
+        }
+        _;
+    }
+
+    modifier onlyNonExistingPoolId(uint8 _poolId) {
+        if (isExistingPoolId(_poolId)) {
+            revert PoolIdAlreadyPresent();
         }
         _;
     }

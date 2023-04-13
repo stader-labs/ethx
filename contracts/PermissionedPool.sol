@@ -22,7 +22,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     using Math for uint256;
 
     IStaderConfig public staderConfig;
-    uint8 public constant poolId = 2;
+    uint8 public constant override poolId = 2;
 
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;

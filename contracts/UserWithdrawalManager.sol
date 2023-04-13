@@ -71,7 +71,7 @@ contract UserWithdrawalManager is
 
     /**
      * @notice update the finalizationBatchLimit value
-     * @dev only admin of this contract can call
+     * @dev only `Manager` can call
      * @param _finalizationBatchLimit value of finalizationBatchLimit
      */
     function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
