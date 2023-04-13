@@ -8,8 +8,8 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     address public override penaltyOracleAddress;
-    uint256 public override maxPenalty = 4 ether;
-    uint256 public override onePenalty = 0.5 ether;
+    uint256 public override maxPenalty;
+    uint256 public override onePenalty;
     mapping(bytes32 => uint256) public penaltyReversalAmount;
     mapping(bytes32 => uint256) public additionalPenaltyAmount;
 
@@ -17,6 +17,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         __AccessControl_init_unchained();
 
         penaltyOracleAddress = _penaltyOracleAddress;
+        maxPenalty = 4 ether;
+        onePenalty = 0.5 ether;
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
