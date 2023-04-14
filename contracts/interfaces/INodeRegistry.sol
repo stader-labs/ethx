@@ -136,7 +136,7 @@ interface INodeRegistry {
 
     function isExistingOperator(address _operAddr) external view returns (bool);
 
-    function poolId() external view returns (uint8);
+    function POOL_ID() external view returns (uint8);
 
     function inputKeyCountLimit() external view returns (uint16);
 
@@ -146,7 +146,7 @@ interface INodeRegistry {
 
     function maxNonTerminalKeyPerOperator() external view returns (uint64);
 
-    function VERIFIED_KEYS_BATCH_SIZE() external view returns (uint256);
+    function verifiedKeyBatchSize() external view returns (uint256);
 
     function totalActiveValidatorCount() external view returns (uint256);
 

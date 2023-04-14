@@ -24,7 +24,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     /// @inheritdoc IStaderOracle
     uint256 public override latestMissedAttestationConsensusIndex;
 
-    uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
     // indicate the health of protocol on beacon chain
     // enabled by `MANAGER` if heavy slashing on protocol on beacon chain
     bool public override safeMode;
@@ -423,15 +422,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_mapd.pageNumber <= reportInfo.pageNumber) {
             revert PageNumberAlreadyReported();
         }
-        if (_mapd.keyCount * VALIDATOR_PUBKEY_LENGTH != _mapd.pubkeys.length) {
-            revert InvalidData();
-        }
+
+        bytes memory encodedPubkeys = abi.encode(_mapd.sortedPubkeys);
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _mapd.index, _mapd.pageNumber, _mapd.pubkeys)
+            abi.encodePacked(msg.sender, _mapd.index, _mapd.pageNumber, encodedPubkeys)
         );
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, _mapd.pageNumber, _mapd.pubkeys));
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, _mapd.pageNumber, encodedPubkeys));
 
         missedAttestationDataByTrustedNode[msg.sender] = MissedAttestationReportInfo(_mapd.index, _mapd.pageNumber);
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
@@ -442,19 +440,18 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             _mapd.index,
             _mapd.pageNumber,
             block.number,
-            _mapd.reportingBlockNumber
+            _mapd.reportingBlockNumber,
+            _mapd.sortedPubkeys
         );
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
             latestMissedAttestationConsensusIndex = _mapd.index;
-            uint16 keyCount = _mapd.keyCount;
+            uint256 keyCount = _mapd.sortedPubkeys.length;
             for (uint256 i = 0; i < keyCount; i++) {
-                bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(
-                    _mapd.pubkeys[i * VALIDATOR_PUBKEY_LENGTH:(i + 1) * VALIDATOR_PUBKEY_LENGTH]
-                );
+                bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_mapd.sortedPubkeys[i]);
                 missedAttestationPenalty[pubkeyRoot]++;
             }
-            emit MissedAttestationPenaltyUpdated(_mapd.index, block.number);
+            emit MissedAttestationPenaltyUpdated(_mapd.index, block.number, _mapd.sortedPubkeys);
         }
     }
 

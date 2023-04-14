@@ -9,7 +9,7 @@ interface IPermissionlessNodeRegistry {
     error TransferFailed();
     error InvalidBondEthValue();
     error InSufficientBalance();
-    error CooldownNotComplete();
+    error CoolDownNotComplete();
     error NoChangeInState();
 
     // Events
@@ -23,8 +23,6 @@ interface IPermissionlessNodeRegistry {
     function validatorQueueSize() external view returns (uint256);
 
     function nextQueuedValidatorIndex() external view returns (uint256);
-
-    function PRE_DEPOSIT() external view returns (uint256);
 
     function FRONT_RUN_PENALTY() external view returns (uint256);
 

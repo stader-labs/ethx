@@ -25,21 +25,20 @@ contract PermissionlessNodeRegistry is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    uint8 public constant override poolId = 1;
+    uint8 public constant override POOL_ID = 1;
     uint16 public override inputKeyCountLimit;
     uint64 public override maxNonTerminalKeyPerOperator;
 
     IStaderConfig public staderConfig;
 
-    uint256 public override VERIFIED_KEYS_BATCH_SIZE;
+    uint256 public override verifiedKeyBatchSize;
     uint256 public override nextOperatorId;
     uint256 public override nextValidatorId;
     uint256 public override validatorQueueSize;
     uint256 public override nextQueuedValidatorIndex;
     uint256 public override totalActiveValidatorCount;
-    uint256 public constant override PRE_DEPOSIT = 1 ether;
     uint256 public constant override FRONT_RUN_PENALTY = 3 ether;
-    uint256 public constant collateralETH = 4 ether;
+    uint256 public constant COLLATERAL_ETH = 4 ether;
 
     // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
@@ -73,7 +72,7 @@ contract PermissionlessNodeRegistry is
         nextValidatorId = 1;
         inputKeyCountLimit = 100;
         maxNonTerminalKeyPerOperator = 50;
-        VERIFIED_KEYS_BATCH_SIZE = 50;
+        verifiedKeyBatchSize = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
@@ -100,7 +99,7 @@ contract PermissionlessNodeRegistry is
         }
         //deploy NodeELRewardVault for NO
         address nodeELRewardVault = IVaultFactory(staderConfig.getVaultFactory()).deployNodeELRewardVault(
-            poolId,
+            POOL_ID,
             nextOperatorId
         );
         nodeELRewardVaultByOperatorId[nextOperatorId] = nodeELRewardVault;
@@ -125,7 +124,6 @@ contract PermissionlessNodeRegistry is
     ) external payable override nonReentrant whenNotPaused {
         uint256 operatorId = onlyActiveOperator(msg.sender);
         (uint256 keyCount, uint256 operatorTotalKeys) = checkInputKeysCountAndCollateral(
-            poolId,
             _pubkey.length,
             _preDepositSignature.length,
             _depositSignature.length,
@@ -137,7 +135,7 @@ contract PermissionlessNodeRegistry is
         for (uint256 i = 0; i < keyCount; i++) {
             IPoolUtils(poolUtils).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
-                poolId,
+                POOL_ID,
                 operatorId,
                 operatorTotalKeys + i, //operator totalKeys
                 nextValidatorId
@@ -161,7 +159,7 @@ contract PermissionlessNodeRegistry is
 
         //slither-disable-next-line arbitrary-send-eth
         IPermissionlessPool(staderConfig.getPermissionlessPool()).preDepositOnBeaconChain{
-            value: PRE_DEPOSIT * keyCount
+            value: staderConfig.getPreDepositSize() * keyCount
         }(_pubkey, _preDepositSignature, operatorId, operatorTotalKeys);
     }
 
@@ -185,7 +183,7 @@ contract PermissionlessNodeRegistry is
         uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkey.length;
         if (
             readyToDepositValidatorsLength + frontRunValidatorsLength + invalidSignatureValidatorsLength >
-            VERIFIED_KEYS_BATCH_SIZE
+            verifiedKeyBatchSize
         ) {
             revert TooManyVerifiedKeysReported();
         }
@@ -281,7 +279,7 @@ contract PermissionlessNodeRegistry is
             block.number <
             socializingPoolStateChangeBlock[operatorId] + staderConfig.getSocializingPoolOptInCoolingPeriod()
         ) {
-            revert CooldownNotComplete();
+            revert CoolDownNotComplete();
         }
         feeRecipientAddress = nodeELRewardVaultByOperatorId[operatorId];
         if (_optInForSocializingPool) {
@@ -341,7 +339,7 @@ contract PermissionlessNodeRegistry is
      */
     function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external {
         UtilLib.onlyOperatorRole(msg.sender, staderConfig);
-        VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
+        verifiedKeyBatchSize = _verifiedKeysBatchSize;
         emit UpdatedVerifiedKeyBatchSize(_verifiedKeysBatchSize);
     }
 
@@ -442,7 +440,7 @@ contract PermissionlessNodeRegistry is
     }
 
     function getCollateralETH() external pure override returns (uint256) {
-        return collateralETH;
+        return COLLATERAL_ETH;
     }
 
     /**
@@ -601,12 +599,11 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
-        sendValue(operatorAddress, collateralETH - PRE_DEPOSIT);
+        sendValue(operatorAddress, COLLATERAL_ETH - staderConfig.getPreDepositSize());
     }
 
     // validate the input of `addValidatorKeys` function
     function checkInputKeysCountAndCollateral(
-        uint8 _poolId,
         uint256 _pubkeyLength,
         uint256 _preDepositSignatureLength,
         uint256 _depositSignatureLength,
@@ -627,14 +624,14 @@ contract PermissionlessNodeRegistry is
         }
 
         // check for collateral ETH for adding keys
-        if (msg.value != keyCount * collateralETH) {
+        if (msg.value != keyCount * COLLATERAL_ETH) {
             revert InvalidBondEthValue();
         }
         //checks if operator has enough SD collateral for adding `keyCount` keys
         if (
             !ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
                 msg.sender,
-                _poolId,
+                POOL_ID,
                 totalNonTerminalKeys + keyCount
             )
         ) {

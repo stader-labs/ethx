@@ -5,7 +5,6 @@ import './library/UtilLib.sol';
 
 import './interfaces/IPoolUtils.sol';
 import './interfaces/IStaderPoolBase.sol';
-import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -303,7 +302,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         userShare = _totalRewards - protocolShare - operatorShare;
     }
 
-    function isExistingPoolId(uint8 _poolId) internal view returns (bool) {
+    function isExistingPoolId(uint8 _poolId) public view override returns (bool) {
         uint256 poolCount = getPoolCount();
         for (uint256 i = 0; i < poolCount; i++) {
             if (poolIdArray[i] == _poolId) {
@@ -314,7 +313,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function verifyNewPool(uint8 _poolId, address _poolAddress) internal view {
-        if (IStaderPoolBase(_poolAddress).poolId() != _poolId || isExistingPoolId(_poolId)) {
+        if (IStaderPoolBase(_poolAddress).POOL_ID() != _poolId || isExistingPoolId(_poolId)) {
             revert ExistingOrMismatchingPoolId();
         }
     }
