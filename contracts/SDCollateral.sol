@@ -26,7 +26,7 @@ contract SDCollateral is
     uint256 public override withdrawDelay; // in seconds
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;
-    mapping(address => WithdrawRequestInfo) private withdrawReq;
+    mapping(address => WithdrawRequestInfo) public override withdrawReq;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

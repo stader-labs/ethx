@@ -166,7 +166,7 @@ contract SocializingPool is
         uint256 _amountSD,
         uint256 _amountETH,
         bytes32[] calldata _merkleProof
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);

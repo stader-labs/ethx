@@ -59,6 +59,14 @@ interface ISocializingPool {
 
     function initialBlock() external view returns (uint256);
 
+    function verifyProof(
+        uint256 _index,
+        address _operator,
+        uint256 _amountSD,
+        uint256 _amountETH,
+        bytes32[] calldata _merkleProof
+    ) external view returns (bool);
+
     function getRewardDetails()
         external
         view
