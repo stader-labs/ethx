@@ -15,7 +15,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     using Math for uint256;
     using SafeMath for uint256;
 
-    uint16 public poolAllocationMaxSize; //TODO need to decide if we need
+    uint16 public poolAllocationMaxSize;
     IStaderConfig public staderConfig;
     uint256 public poolIdArrayIndexForExcessDeposit;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
