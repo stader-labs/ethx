@@ -6,10 +6,12 @@ import './interfaces/IPoolSelector.sol';
 import './interfaces/IPoolFactory.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable {
     using Math for uint256;
+    using SafeMath for uint256;
 
     uint8 public poolIdForExcessDeposit;
     uint8 public constant TOTAL_TARGET = 100;
@@ -90,8 +92,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
             remainingPoolCapacity[i] = IPoolFactory(poolFactoryAddress).getQueuedValidatorCountByPool(i);
             uint256 currentActiveValidators = IPoolFactory(poolFactoryAddress).getActiveValidatorCountByPool(i);
             uint256 poolTotalTarget = (poolTargets[i] * totalValidatorsRequired) / 100;
+            (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
             selectedPoolCapacity[i] = Math.min(
-                Math.min(remainingPoolCapacity[i], poolTotalTarget - currentActiveValidators),
+                Math.min(remainingPoolCapacity[i], remainingPoolTarget),
                 newValidatorsToDeposit - validatorSpunCount
             );
             remainingPoolCapacity[i] -= selectedPoolCapacity[i];
