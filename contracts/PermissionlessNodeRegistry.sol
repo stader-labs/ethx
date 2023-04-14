@@ -60,7 +60,8 @@ contract PermissionlessNodeRegistry is
     mapping(address => uint256) public override operatorIDByAddress;
     //mapping of operator wise validator IDs arrays
     mapping(uint256 => uint256[]) public override validatorIdsByOperatorId;
-    mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp;
+    mapping(uint256 => uint256) public socializingPoolStateChangeTimestamp; //mapping of operator address with nodeELReward vault address
+    mapping(uint256 => address) public nodeELRewardVaultByOperatorId;
 
     /**
      * @dev Stader Staking Pool validator registry is initialized with following variables
@@ -110,14 +111,14 @@ contract PermissionlessNodeRegistry is
         uint256 operatorId = operatorIDByAddress[msg.sender];
         if (operatorId != 0) revert OperatorAlreadyOnBoarded();
 
-        mevFeeRecipientAddress = elRewardSocializePool;
-        if (!_optInForMevSocialize) {
-            mevFeeRecipientAddress = IVaultFactory(vaultFactoryAddress).deployNodeELRewardVault(
-                poolId,
-                nextOperatorId,
-                payable(_operatorRewardAddress)
-            );
-        }
+        //deploy NodeELRewardVault for NO
+        address nodeELRewardVault = IVaultFactory(vaultFactoryAddress).deployNodeELRewardVault(
+            poolId,
+            nextOperatorId,
+            payable(_operatorRewardAddress)
+        );
+        nodeELRewardVaultByOperatorId[nextOperatorId] = nodeELRewardVault;
+        mevFeeRecipientAddress = _optInForMevSocialize ? elRewardSocializePool : nodeELRewardVault;
         _onboardOperator(_optInForMevSocialize, _operatorName, _operatorRewardAddress);
         return mevFeeRecipientAddress;
     }
@@ -203,14 +204,20 @@ contract PermissionlessNodeRegistry is
         emit UpdatedNextQueuedValidatorIndex(nextQueuedValidatorIndex);
     }
 
-    function changeSocializingPoolState(bool _optedForSocializingPool) external {
+    function changeSocializingPoolState(bool _optedForSocializingPool)
+        external
+        returns (address mevFeeRecipientAddress)
+    {
         _onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
         require(
             operatorStructById[operatorId].optedForSocializingPool != _optedForSocializingPool,
             'No change in state'
         );
-
+        mevFeeRecipientAddress = nodeELRewardVaultByOperatorId[operatorId];
+        if (_optedForSocializingPool) {
+            mevFeeRecipientAddress = elRewardSocializePool;
+        }
         operatorStructById[operatorId].optedForSocializingPool = _optedForSocializingPool;
         socializingPoolStateChangeTimestamp[operatorId] = block.timestamp;
         emit UpdatedSocializingPoolState(operatorId, _optedForSocializingPool, block.timestamp);

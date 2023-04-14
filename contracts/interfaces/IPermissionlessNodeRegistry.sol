@@ -158,7 +158,7 @@ interface IPermissionlessNodeRegistry {
 
     function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
 
-    function changeSocializingPoolState(bool _optedForSocializingPool) external;
+    function changeSocializingPoolState(bool _optedForSocializingPool) external returns (address);
 
     function pause() external;
 
