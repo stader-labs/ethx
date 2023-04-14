@@ -18,7 +18,7 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
-    uint8 public constant poolId = 1;
+    uint8 public constant override poolId = 1;
     IStaderConfig public staderConfig;
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;

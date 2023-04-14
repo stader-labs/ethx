@@ -5,7 +5,6 @@ pragma solidity ^0.8.16;
 interface IPenalty {
     // Errors
     error ValidatorSettled();
-    error InvalidPubkeyLength();
 
     // Events
     event UpdatedAdditionalPenaltyAmount(bytes indexed pubkey, uint256 amount);

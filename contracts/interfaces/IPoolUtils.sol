@@ -3,35 +3,34 @@ pragma solidity ^0.8.16;
 
 import './INodeRegistry.sol';
 
-// Struct representing a pool
-struct Pool {
-    string poolName;
-    address poolAddress;
-}
-
 // Interface for the PoolUtils contract
 interface IPoolUtils {
     // Errors
-    error EmptyString();
-    error InvalidPoolID();
     error EmptyNameString();
+    error PoolIdNotPresent();
     error PubkeyDoesNotExit();
     error PubkeyAlreadyExist();
     error NameCrossedMaxLength();
     error InvalidLengthOfPubkey();
-    error InvalidLengthOfSignature();
     error OperatorIsNotOnboarded();
+    error InvalidLengthOfSignature();
+    error ExistingOrMismatchingPoolId();
 
     // Events
-    event PoolAdded(string poolName, address poolAddress);
+    event PoolAdded(uint8 indexed poolId, address poolAddress);
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);
+    event DeactivatedPool(uint8 indexed poolId, address poolAddress);
     event UpdatedStaderConfig(address staderConfig);
 
     // returns the details of a specific pool
-    function pools(uint8) external view returns (string calldata poolName, address poolAddress);
+    function poolAddressById(uint8) external view returns (address poolAddress);
+
+    function poolIdArray(uint256) external view returns (uint8);
+
+    function getPoolIdArray() external view returns (uint8[] memory);
 
     // Pool functions
-    function addNewPool(string calldata _poolName, address _poolAddress) external;
+    function addNewPool(uint8 _poolId, address _poolAddress) external;
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
 
@@ -57,7 +56,7 @@ interface IPoolUtils {
 
     function getOperatorFee(uint8 _poolId) external view returns (uint256); // returns the operator fee (0-10000)
 
-    function poolCount() external view returns (uint8); // returns the number of pools in the factory
+    function getPoolCount() external view returns (uint256); // returns the number of pools in the poolUtils
 
     function getTotalActiveValidatorCount() external view returns (uint256); //returns total active validators across all pools
 

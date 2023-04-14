@@ -188,18 +188,18 @@ contract StaderStakePoolsManager is
         if (availableETHForNewDeposit < ETH_PER_NODE) {
             revert InsufficientBalance();
         }
-        uint256[] memory selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector())
-            .computePoolAllocationForDeposit(availableETHForNewDeposit);
+        (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) = IPoolSelector(
+            staderConfig.getPoolSelector()
+        ).computePoolAllocationForDeposit(availableETHForNewDeposit);
 
-        uint256 selectedPoolCapacityLength = selectedPoolCapacity.length;
-        // i is pool Id
-        for (uint8 i = 1; i < selectedPoolCapacityLength; i++) {
+        uint256 poolCount = poolIdArray.length;
+        for (uint256 i = 0; i < poolCount; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;
             }
-            (, address poolAddress) = IPoolUtils(poolUtils).pools(i);
-            uint256 poolDepositSize = ETH_PER_NODE - IPoolUtils(poolUtils).getCollateralETH(i);
+            address poolAddress = IPoolUtils(poolUtils).poolAddressById(poolIdArray[i]);
+            uint256 poolDepositSize = ETH_PER_NODE - IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
 
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             //slither-disable-next-line arbitrary-send-eth

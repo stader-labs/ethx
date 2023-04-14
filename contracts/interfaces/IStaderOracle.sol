@@ -103,7 +103,6 @@ interface IStaderOracle {
     error StaleData();
     error PageNumberAlreadyReported();
     error InvalidData();
-    error InvalidPubkeyLength();
     error NotATrustedNode();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();

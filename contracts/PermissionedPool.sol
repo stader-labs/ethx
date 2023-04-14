@@ -22,7 +22,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     using Math for uint256;
 
     IStaderConfig public staderConfig;
-    uint8 public constant poolId = 2;
+    uint8 public constant override poolId = 2;
 
     uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
     uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
@@ -94,7 +94,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
         // i is the operator Id
         uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;
-        for (uint16 i = 1; i < selectedOperatorCapacityLength; i++) {
+        for (uint256 i = 1; i < selectedOperatorCapacityLength; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;

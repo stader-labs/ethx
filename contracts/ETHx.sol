@@ -28,7 +28,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
-        __ERC20_init('Liquid Staking ETH', 'ETHx');
+        __ERC20_init('ETHx', 'ETHx');
         __Pausable_init();
         __AccessControl_init();
 

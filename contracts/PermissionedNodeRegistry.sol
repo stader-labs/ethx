@@ -86,8 +86,10 @@ contract PermissionedNodeRegistry is
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         uint256 permissionedNosLength = _permissionedNOs.length;
         for (uint256 i = 0; i < permissionedNosLength; i++) {
-            permissionList[_permissionedNOs[i]] = true;
-            emit OperatorWhitelisted(_permissionedNOs[i]);
+            address operator = _permissionedNOs[i];
+            UtilLib.checkNonZeroAddress(operator);
+            permissionList[operator] = true;
+            emit OperatorWhitelisted(operator);
         }
     }
 
