@@ -233,12 +233,14 @@ contract SDCollateral is
 
     function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
-        return ((_sdAmount * sdPriceInETH) / 1e18);
+        uint256 decimals = staderConfig.getDecimals();
+        return ((_sdAmount * sdPriceInETH) / (10**decimals));
     }
 
     function convertETHToSD(uint256 _ethAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
-        return ((_ethAmount * 1e18) / sdPriceInETH);
+        uint256 decimals = staderConfig.getDecimals();
+        return (_ethAmount * (10**decimals)) / sdPriceInETH;
     }
 
     // HELPER
