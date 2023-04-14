@@ -7,13 +7,14 @@ import './INodeRegistry.sol';
 interface IPermissionedNodeRegistry {
     // Error events
     error EmptyNameString();
+    error UNEXPECTED_STATUS();
+    error InvalidLengthOfpubkey();
     error InvalidCountOfKeys();
     error maxKeyLimitReached();
     error OperatorNotOnBoarded();
     error NameCrossedMaxLength();
     error pubkeyAlreadyExist();
     error OperatorIsDeactivate();
-    error InvalidLengthOfpubkey();
     error InvalidStartAndEndIndex();
     error InvalidLengthOfSignature();
     error InvalidSizeOfInputKeys();
@@ -156,4 +157,6 @@ interface IPermissionedNodeRegistry {
     function pause() external;
 
     function unpause() external;
+
+    function onlyPreDepositValidator(bytes calldata _pubkey) external view;
 }

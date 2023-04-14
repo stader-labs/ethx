@@ -223,6 +223,7 @@ contract PermissionedNodeRegistry is
         uint256 pubkeyLength = _pubkeys.length;
         for (uint256 i = 0; i < pubkeyLength; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            _onlyPreDepositValidator(validatorId);
             _handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_pubkeys[i], validatorId);
         }
@@ -236,6 +237,7 @@ contract PermissionedNodeRegistry is
     function reportInvalidSignatureValidator(bytes[] calldata _pubkeys) external override onlyRole(PERMISSIONED_POOL) {
         for (uint256 i = 0; i < _pubkeys.length; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
+            _onlyPreDepositValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
             emit ValidatorStatusMarkedAsInvalidSignature(_pubkeys[i], validatorId);
         }
@@ -526,6 +528,12 @@ contract PermissionedNodeRegistry is
         return validatorRegistry[_validatorId];
     }
 
+    // check for only PRE_DEPOSIT state validators
+    function onlyPreDepositValidator(bytes calldata _pubkey) external view override {
+        uint256 validatorId = validatorIdByPubkey[_pubkey];
+        _onlyPreDepositValidator(validatorId);
+    }
+
     function _onboardOperator(string calldata _operatorName, address payable _operatorRewardAddress) internal {
         operatorStructById[nextOperatorId] = Operator(true, true, _operatorName, _operatorRewardAddress, msg.sender);
         operatorIDByAddress[msg.sender] = nextOperatorId;
@@ -609,6 +617,12 @@ contract PermissionedNodeRegistry is
         Validator memory validator = validatorRegistry[_validatorId];
         if (validator.status == ValidatorStatus.WITHDRAWN) return true;
         return false;
+    }
+
+    function _onlyPreDepositValidator(uint256 _validatorId) internal view {
+        if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT) {
+            revert UNEXPECTED_STATUS();
+        }
     }
 
     // only valid name with string length limit

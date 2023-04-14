@@ -93,6 +93,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         }
 
         for (uint256 i = 0; i < verifiedValidatorLength; i++) {
+            IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_readyToDepositPubkey[i]);
             readyToDepositValidator[readyToDepositValidatorSize] = _readyToDepositPubkey[i];
             readyToDepositValidatorSize++;
         }
