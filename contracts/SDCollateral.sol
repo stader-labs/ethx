@@ -73,6 +73,7 @@ contract SDCollateral is
         uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
 
         (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
+        isPoolThresholdValid(poolId);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
 
         uint256 sdWithdrawableThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
@@ -114,6 +115,7 @@ contract SDCollateral is
     /// @param _validatorId validator SD collateral to slash
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external override returns (uint256 _sdSlashed) {
         address operator = UtilLib.getOperatorForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
+        isPoolThresholdValid(_poolId);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
         uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
         return slashSD(operator, sdToSlash);
@@ -202,9 +204,7 @@ contract SDCollateral is
         override
         returns (uint256 _minSDToBond)
     {
-        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
-            revert InvalidPoolId();
-        }
+        isPoolThresholdValid(_poolId);
         PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
 
         _minSDToBond = convertETHToSD(poolThresholdInfo.minThreshold);
@@ -226,22 +226,21 @@ contract SDCollateral is
     }
 
     function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) external view override returns (uint256) {
-        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
-            revert InvalidPoolId();
-        }
-
+        isPoolThresholdValid(_poolId);
         uint256 ethAmount = convertSDToETH(_sdAmount);
         return ethAmount / poolThresholdbyPoolId[_poolId].minThreshold;
     }
 
     function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
-        return (_sdAmount * sdPriceInETH);
+        uint256 decimals = staderConfig.getDecimals();
+        return ((_sdAmount * sdPriceInETH) / (10**decimals));
     }
 
     function convertETHToSD(uint256 _ethAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
-        return (_ethAmount / sdPriceInETH);
+        uint256 decimals = staderConfig.getDecimals();
+        return (_ethAmount * (10**decimals)) / sdPriceInETH;
     }
 
     // HELPER
@@ -264,5 +263,11 @@ contract SDCollateral is
             0,
             nodeRegistry.getOperatorTotalKeys(_operatorId)
         );
+    }
+
+    function isPoolThresholdValid(uint8 _poolId) internal view {
+        if (bytes(poolThresholdbyPoolId[_poolId].units).length == 0) {
+            revert InvalidPoolId();
+        }
     }
 }
