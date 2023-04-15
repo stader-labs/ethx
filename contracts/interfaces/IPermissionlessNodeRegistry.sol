@@ -24,8 +24,6 @@ interface IPermissionlessNodeRegistry {
 
     function nextQueuedValidatorIndex() external view returns (uint256);
 
-    function PRE_DEPOSIT() external view returns (uint256);
-
     function FRONT_RUN_PENALTY() external view returns (uint256);
 
     function queuedValidators(uint256) external view returns (uint256);

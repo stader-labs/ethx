@@ -34,6 +34,8 @@ contract StaderStakePoolsManager is
     using Math for uint256;
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
+    uint256 public lastExcessETHDepositBlock;
+    uint256 public constant excessETHDepositCoolDown = 7200;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -50,6 +52,7 @@ contract StaderStakePoolsManager is
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
+        lastExcessETHDepositBlock = block.number;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -173,24 +176,54 @@ contract StaderStakePoolsManager is
     }
 
     /**
-     * @notice spinning off validators in different pools
-     * @dev get pool wise validator to deposit from pool helper and
-     * transfer that much eth to individual pool to register on beacon chain
+     * @notice spinning off validators in pool `_poolId`
+     * @dev gets the count of validator to deposit for pool from pool selector logic
      */
-    function validatorBatchDeposit() external override nonReentrant whenNotPaused {
+    function validatorBatchDeposit(uint8 _poolId) external override nonReentrant whenNotPaused {
         if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
             revert UnsupportedOperationInSafeMode();
         }
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        if (!poolUtils.isExistingPoolId(_poolId)) {
+            revert PoolIdDoesNotExit();
+        }
         uint256 availableETHForNewDeposit = depositedPooledETH -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
-        address poolUtils = staderConfig.getPoolUtils();
-        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
-        if (availableETHForNewDeposit < ETH_PER_NODE) {
+        uint256 poolDepositSize = staderConfig.getStakedEthPerNode() - poolUtils.getCollateralETH(_poolId);
+
+        if (availableETHForNewDeposit < poolDepositSize) {
             revert InsufficientBalance();
         }
+        uint256 selectedPoolCapacity = IPoolSelector(staderConfig.getPoolSelector()).computePoolAllocationForDeposit(
+            _poolId,
+            (availableETHForNewDeposit / poolDepositSize)
+        );
+
+        if (selectedPoolCapacity == 0) {
+            return;
+        }
+        address poolAddress = poolUtils.poolAddressById(_poolId);
+        depositedPooledETH -= selectedPoolCapacity * poolDepositSize;
+        //slither-disable-next-line arbitrary-send-eth
+        IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: selectedPoolCapacity * poolDepositSize}();
+        emit ETHTransferredToPool(_poolId, poolAddress, selectedPoolCapacity * poolDepositSize);
+    }
+
+    /**
+     * @notice pool selection for excess ETH supply after running `validatorBatchDeposit` for each pool
+     * @dev only `MANAGER` role can call after coolDown period to make sure it runs once in a day cycle
+     */
+    function depositETHOverTargetWeight() external override nonReentrant {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (block.number < lastExcessETHDepositBlock + excessETHDepositCoolDown) {
+            revert CooldownNotComplete();
+        }
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        uint256 availableETHForNewDeposit = depositedPooledETH -
+            IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
         (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) = IPoolSelector(
             staderConfig.getPoolSelector()
-        ).computePoolAllocationForDeposit(availableETHForNewDeposit);
+        ).poolAllocationForExcessETHDeposit(availableETHForNewDeposit);
 
         uint256 poolCount = poolIdArray.length;
         for (uint256 i = 0; i < poolCount; i++) {
@@ -199,8 +232,10 @@ contract StaderStakePoolsManager is
                 continue;
             }
             address poolAddress = IPoolUtils(poolUtils).poolAddressById(poolIdArray[i]);
-            uint256 poolDepositSize = ETH_PER_NODE - IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
+            uint256 poolDepositSize = staderConfig.getStakedEthPerNode() -
+                IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
 
+            lastExcessETHDepositBlock = block.number;
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();

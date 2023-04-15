@@ -31,19 +31,17 @@ struct RewardsData {
     uint256 operatorSDRewards;
 }
 
-/// @title RewardsData
+/// @title MissedAttestationPenaltyData
 /// @notice This struct holds missed attestation penalty data
 struct MissedAttestationPenaltyData {
-    /// @notice count of validator missing attestation penalty
-    uint16 keyCount;
     /// @notice The block number when the missed attestation penalty data is reported
     uint256 reportingBlockNumber;
     /// @notice The index of missed attestation penalty data
     uint256 index;
     /// @notice page number of the the data
     uint256 pageNumber;
-    /// @bytes missed attestation validator's concatenated pubkey
-    bytes pubkeys;
+    /// @notice missed attestation validator pubkeys
+    bytes[] sortedPubkeys;
 }
 
 struct MissedAttestationReportInfo {
@@ -102,7 +100,6 @@ interface IStaderOracle {
     error ReportingPreviousCycleData();
     error StaleData();
     error PageNumberAlreadyReported();
-    error InvalidData();
     error NotATrustedNode();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();
@@ -129,9 +126,10 @@ interface IStaderOracle {
         uint256 index,
         uint256 pageNumber,
         uint256 block,
-        uint256 reportingBlockNumber
+        uint256 reportingBlockNumber,
+        bytes[] pubkeys
     );
-    event MissedAttestationPenaltyUpdated(uint256 index, uint256 block);
+    event MissedAttestationPenaltyUpdated(uint256 index, uint256 block, bytes[] pubkeys);
     event UpdateFrequencyUpdated(uint256 updateFrequency);
     event ValidatorStatsSubmitted(
         address indexed from,

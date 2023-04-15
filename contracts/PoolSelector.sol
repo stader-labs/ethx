@@ -15,12 +15,11 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     using Math for uint256;
     using SafeMath for uint256;
 
-    uint16 public POOL_ALLOCATION_MAX_SIZE;
+    uint16 public poolAllocationMaxSize;
     IStaderConfig public staderConfig;
     uint256 public poolIdArrayIndexForExcessDeposit;
     uint256 public constant POOL_WEIGHTS_SUM = 10000;
 
-    //TODO make sure weight are in order of pool Id
     mapping(uint8 => uint256) public poolWeights;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -50,7 +49,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
         __AccessControl_init_unchained();
 
-        POOL_ALLOCATION_MAX_SIZE = 100;
+        poolAllocationMaxSize = 100;
         staderConfig = IStaderConfig(_staderConfig);
         poolWeights[1] = _permissionlessTarget;
         poolWeights[2] = _permissionedTarget;
@@ -59,67 +58,66 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
     }
 
     /**
-     * @notice calculates the amount of validator number to be deposited on beacon chain based on target weight
-     * @dev first loop allot validators to match the target share with the constraint of capacity and
-     * second loop uses sequential looping over all pool starting from a particular poolId and keep on exhausting the capacity
-     * and updating the starting poolId for next iteration
-     * @param _pooledEth amount of eth ready to deposit on pool manager
+     * @notice calculates the count of validator to deposit on beacon chain for a pool based on target weight and supply
+     * @param _newValidatorToRegister new validator that can be deposited for pool `_poolId` based on supply
+     * @return selectedPoolCapacity validator count to deposit for pool
      */
-    function computePoolAllocationForDeposit(uint256 _pooledEth)
+    function computePoolAllocationForDeposit(uint8 _poolId, uint256 _newValidatorToRegister)
+        external
+        view
+        override
+        returns (uint256 selectedPoolCapacity)
+    {
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        uint8[] memory poolIdArray = poolUtils.getPoolIdArray();
+        uint256 poolCount = poolIdArray.length;
+
+        uint256 activeValidatorCount;
+        for (uint256 i = 0; i < poolCount; i++) {
+            activeValidatorCount += (poolUtils.getActiveValidatorCountByPool(poolIdArray[i]));
+        }
+        uint256 totalValidatorsRequired = (activeValidatorCount + _newValidatorToRegister);
+        uint256 remainingPoolCapacity = poolUtils.getQueuedValidatorCountByPool(_poolId);
+        uint256 currentActiveValidators = poolUtils.getActiveValidatorCountByPool(_poolId);
+        uint256 poolTotalTarget = (poolWeights[_poolId] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
+        (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
+        //
+        selectedPoolCapacity = Math.min(poolAllocationMaxSize, Math.min(remainingPoolCapacity, remainingPoolTarget));
+    }
+
+    /**
+     * @notice allocate pool wise validator count to deposit for excess supply starting from `poolIdArrayIndexForExcessDeposit`
+     * @dev only stader stake pool manager contract can call, update the `poolIdArrayIndexForExcessDeposit` for next cycle calculation
+     * @param _excessETHAmount amount of excess ETH ready to stake on beacon chain
+     * @return selectedPoolCapacity array of pool wise validator count to deposit
+     * @return poolIdArray array of poolIDs
+     */
+    function poolAllocationForExcessETHDeposit(uint256 _excessETHAmount)
         external
         override
         returns (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray)
     {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
-        address poolUtilsAddress = staderConfig.getPoolUtils();
-        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
-
-        poolIdArray = IPoolUtils(poolUtilsAddress).getPoolIdArray();
+        uint256 ethToDeposit = _excessETHAmount;
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        poolIdArray = poolUtils.getPoolIdArray();
         uint256 poolCount = poolIdArray.length;
-
-        uint256 depositedETh;
-        for (uint256 i = 0; i < poolCount; i++) {
-            depositedETh += (IPoolUtils(poolUtilsAddress).getActiveValidatorCountByPool(poolIdArray[i])) * ETH_PER_NODE;
-        }
-        uint256 totalValidatorsRequired = (depositedETh + _pooledEth) / ETH_PER_NODE;
-        // new validators to register on beacon chain with `_pooledEth` taking `POOL_ALLOCATION_MAX_SIZE` into consideration
-        uint256 newValidatorsToDeposit = Math.min(POOL_ALLOCATION_MAX_SIZE, _pooledEth / ETH_PER_NODE);
-
+        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
         selectedPoolCapacity = new uint256[](poolCount);
-        uint256[] memory remainingPoolCapacity = new uint256[](poolCount);
 
-        uint256 validatorSpunCount;
-        for (uint256 i = 0; i < poolCount && validatorSpunCount < newValidatorsToDeposit; i++) {
-            remainingPoolCapacity[i] = IPoolUtils(poolUtilsAddress).getQueuedValidatorCountByPool(poolIdArray[i]);
-            uint256 currentActiveValidators = IPoolUtils(poolUtilsAddress).getActiveValidatorCountByPool(
-                poolIdArray[i]
-            );
-            uint256 poolTotalTarget = (poolWeights[poolIdArray[i]] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
-            (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
-            selectedPoolCapacity[i] = Math.min(
-                Math.min(remainingPoolCapacity[i], remainingPoolTarget),
-                newValidatorsToDeposit - validatorSpunCount
-            );
-            remainingPoolCapacity[i] -= selectedPoolCapacity[i];
-            validatorSpunCount += selectedPoolCapacity[i];
-        }
-
-        // check for more validators to deposit and select pool with excess supply in a sequential order
-        // and update the starting index of pool for next sequence after every iteration
-        if (validatorSpunCount < newValidatorsToDeposit) {
-            uint256 remainingValidatorsToDeposit = newValidatorsToDeposit - validatorSpunCount;
-            uint256 i = poolIdArrayIndexForExcessDeposit;
-            for (uint256 j = 0; j < poolCount; j++) {
-                uint256 newSelectedCapacity = Math.min(remainingPoolCapacity[i], remainingValidatorsToDeposit);
-                selectedPoolCapacity[i] += newSelectedCapacity;
-                remainingValidatorsToDeposit -= newSelectedCapacity;
-                // Don't have to update poolIdIndex if the `remainingValidatorsToDeposit` does not become 0
-                // As we have scanned through all pool, will start from the same pool index in the next iteration
-                i = (i + 1) % poolCount;
-                if (remainingValidatorsToDeposit == 0) {
-                    poolIdArrayIndexForExcessDeposit = i;
-                    break;
-                }
+        uint256 i = poolIdArrayIndexForExcessDeposit;
+        for (uint256 j = 0; j < poolCount; j++) {
+            uint256 poolCapacity = poolUtils.getQueuedValidatorCountByPool(poolIdArray[i]);
+            uint256 poolDepositSize = ETH_PER_NODE - poolUtils.getCollateralETH(poolIdArray[i]);
+            uint256 remainingValidatorsToDeposit = ethToDeposit / poolDepositSize;
+            selectedPoolCapacity[i] = Math.min(poolCapacity, remainingValidatorsToDeposit);
+            ethToDeposit -= selectedPoolCapacity[i] * poolDepositSize;
+            i = (i + 1) % poolCount;
+            //For ethToDeposit < ETH_PER_NODE, we will be able to at best deposit one more validator
+            //but that will introduce complex logic, hence we are not solving that
+            if (ethToDeposit < ETH_PER_NODE) {
+                poolIdArrayIndexForExcessDeposit = i;
+                break;
             }
         }
     }
@@ -152,7 +150,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
     function updatePoolAllocationMaxSize(uint16 _poolAllocationMaxSize) external {
         UtilLib.onlyOperatorRole(msg.sender, staderConfig);
-        POOL_ALLOCATION_MAX_SIZE = _poolAllocationMaxSize;
+        poolAllocationMaxSize = _poolAllocationMaxSize;
         emit UpdatedPoolAllocationMaxSize(_poolAllocationMaxSize);
     }
 

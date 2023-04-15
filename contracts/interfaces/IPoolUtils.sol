@@ -74,6 +74,8 @@ interface IPoolUtils {
     // check for duplicate operator across all pools
     function isExistingOperator(address _operAddr) external view returns (bool);
 
+    function isExistingPoolId(uint8 _poolId) external view returns (bool);
+
     function getOperatorPoolId(address _operAddr) external view returns (uint8);
 
     function getValidatorPoolId(bytes calldata _pubkey) external view returns (uint8);

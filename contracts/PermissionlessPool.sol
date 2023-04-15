@@ -18,12 +18,10 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
-    uint8 public constant override poolId = 1;
+    uint8 public constant override POOL_ID = 1;
     IStaderConfig public staderConfig;
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
-    uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
-    uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
 
     /// @inheritdoc IStaderPoolBase
     uint256 public override protocolFee;
@@ -36,7 +34,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         _disableInitializers();
     }
 
-    //TODO sanjay do we need __ReentrancyGuard_init in most contracts
     function initialize(address _admin, address _staderConfig) public initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
@@ -99,7 +96,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 pubkeyCount = _pubkey.length;
         for (uint256 i = 0; i < pubkeyCount; i++) {
             address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(
-                poolId,
+                POOL_ID,
                 _operatorId,
                 _operatorTotalKeys + i
             );
@@ -109,10 +106,10 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 _pubkey[i],
                 _preDepositSignature[i],
                 withdrawCredential,
-                PRE_DEPOSIT_SIZE
+                staderConfig.getPreDepositSize()
             );
             //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(staderConfig.getETHDepositContract()).deposit{value: PRE_DEPOSIT_SIZE}(
+            IDepositContract(staderConfig.getETHDepositContract()).deposit{value: staderConfig.getPreDepositSize()}(
                 _pubkey[i],
                 withdrawCredential,
                 _preDepositSignature[i],
@@ -128,7 +125,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function stakeUserETHToBeaconChain() external payable override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
-        uint256 requiredValidators = msg.value / (FULL_DEPOSIT_SIZE - DEPOSIT_NODE_BOND);
+        uint256 requiredValidators = msg.value / (staderConfig.getFullDepositSize() - DEPOSIT_NODE_BOND);
         address nodeRegistryAddress = staderConfig.getPermissionlessNodeRegistry();
         IPermissionlessNodeRegistry(nodeRegistryAddress).transferCollateralToPool(
             requiredValidators * DEPOSIT_NODE_BOND
@@ -144,7 +141,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 vaultFactoryAddress,
                 ethDepositContract,
                 validatorId,
-                FULL_DEPOSIT_SIZE
+                staderConfig.getFullDepositSize()
             );
         }
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(

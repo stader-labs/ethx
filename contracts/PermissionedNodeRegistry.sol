@@ -27,7 +27,7 @@ contract PermissionedNodeRegistry is
 {
     using Math for uint256;
 
-    uint8 public constant override poolId = 2;
+    uint8 public constant override POOL_ID = 2;
     uint16 public override inputKeyCountLimit;
     uint64 public override maxNonTerminalKeyPerOperator;
 
@@ -35,10 +35,11 @@ contract PermissionedNodeRegistry is
 
     uint256 public override nextValidatorId;
     uint256 public override totalActiveValidatorCount;
-    uint256 public override VERIFIED_KEYS_BATCH_SIZE;
+    uint256 public override verifiedKeyBatchSize;
     uint256 public override nextOperatorId;
     uint256 public override operatorIdForExcessDeposit;
     uint256 public override totalActiveOperatorCount;
+    uint256 public override maxOperatorId;
 
     // mapping of validator Id and Validator struct
     mapping(uint256 => Validator) public override validatorRegistry;
@@ -72,8 +73,9 @@ contract PermissionedNodeRegistry is
         nextValidatorId = 1;
         operatorIdForExcessDeposit = 1;
         inputKeyCountLimit = 100;
+        maxOperatorId = 50;
         maxNonTerminalKeyPerOperator = 1000;
-        VERIFIED_KEYS_BATCH_SIZE = 50;
+        verifiedKeyBatchSize = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
@@ -109,6 +111,9 @@ contract PermissionedNodeRegistry is
         address poolUtils = staderConfig.getPoolUtils();
         IPoolUtils(poolUtils).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_operatorRewardAddress);
+        if (nextOperatorId > maxOperatorId) {
+            revert MaxOperatorLimitReached();
+        }
         if (!permissionList[msg.sender]) {
             revert NotAPermissionedNodeOperator();
         }
@@ -146,7 +151,7 @@ contract PermissionedNodeRegistry is
         for (uint256 i = 0; i < keyCount; i++) {
             IPoolUtils(poolUtils).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
-                poolId,
+                POOL_ID,
                 operatorId,
                 operatorTotalKeys + i, //operator totalKeys
                 nextValidatorId
@@ -177,7 +182,7 @@ contract PermissionedNodeRegistry is
      * @param _numValidators validator to deposit with permissioned pool
      * @return selectedOperatorCapacity operator wise count of validator to deposit
      */
-    function computeOperatorAllocationForDeposit(uint256 _numValidators)
+    function allocateValidatorsAndUpdateOperatorId(uint256 _numValidators)
         external
         override
         returns (uint256[] memory selectedOperatorCapacity)
@@ -245,7 +250,7 @@ contract PermissionedNodeRegistry is
 
         if (
             readyToDepositValidatorsLength + frontRunValidatorsLength + invalidSignatureValidatorsLength >
-            VERIFIED_KEYS_BATCH_SIZE
+            verifiedKeyBatchSize
         ) {
             revert TooManyVerifiedKeysReported();
         }
@@ -409,11 +414,25 @@ contract PermissionedNodeRegistry is
      */
     function updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) external {
         UtilLib.onlyOperatorRole(msg.sender, staderConfig);
-        VERIFIED_KEYS_BATCH_SIZE = _verifiedKeysBatchSize;
+        verifiedKeyBatchSize = _verifiedKeysBatchSize;
         emit UpdatedVerifiedKeyBatchSize(_verifiedKeysBatchSize);
     }
 
-    //update the address of staderConfig
+    /**
+     * @notice update the max operator Id value
+     * @dev only `OPERATOR` can call
+     * @param _maxOperatorId value of new max operator Id
+     */
+    function updateMaxOperatorId(uint256 _maxOperatorId) external {
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        maxOperatorId = _maxOperatorId;
+        emit MaxOperatorIdLimitChanged(_maxOperatorId);
+    }
+
+    /**
+     * @notice update the address of staderConfig
+     * @dev only `DEFAULT_ADMIN_ROLE` role can update
+     */
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
@@ -646,7 +665,7 @@ contract PermissionedNodeRegistry is
         if (
             !ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
                 msg.sender,
-                poolId,
+                POOL_ID,
                 totalNonTerminalKeys + keyCount
             )
         ) {

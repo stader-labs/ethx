@@ -58,6 +58,10 @@ interface IStaderConfig {
     // Constants
     function getStakedEthPerNode() external view returns (uint256);
 
+    function getPreDepositSize() external view returns (uint256);
+
+    function getFullDepositSize() external view returns (uint256);
+
     function getDecimals() external view returns (uint256);
 
     function getTotalFee() external view returns (uint256);

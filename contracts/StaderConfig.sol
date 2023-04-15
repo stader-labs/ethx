@@ -10,6 +10,10 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
     // staked ETH per node on beacon chain i.e. 32 ETH
     bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
+    //amount of ETH for pre-deposit on beacon chain i.e 1 ETH
+    bytes32 public constant PRE_DEPOSIT_SIZE = keccak256('PRE_DEPOSIT_SIZE');
+    //amount of ETH for full deposit on beacon chain i.e 31 ETH
+    bytes32 public constant FULL_DEPOSIT_SIZE = keccak256('FULL_DEPOSIT_SIZE');
     // ETH to WEI ratio i.e 10**18
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
     //Total fee bips
@@ -74,6 +78,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         UtilLib.checkNonZeroAddress(_ethDepositContract);
         __AccessControl_init();
         setConstant(ETH_PER_NODE, 32 ether);
+        setConstant(PRE_DEPOSIT_SIZE, 1 ether);
+        setConstant(FULL_DEPOSIT_SIZE, 31 ether);
         setConstant(TOTAL_FEE, 10000);
         setConstant(DECIMALS, 10**18);
         setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
@@ -265,6 +271,14 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getStakedEthPerNode() external view override returns (uint256) {
         return constantsMap[ETH_PER_NODE];
+    }
+
+    function getPreDepositSize() external view override returns (uint256) {
+        return constantsMap[PRE_DEPOSIT_SIZE];
+    }
+
+    function getFullDepositSize() external view override returns (uint256) {
+        return constantsMap[FULL_DEPOSIT_SIZE];
     }
 
     function getDecimals() external view override returns (uint256) {

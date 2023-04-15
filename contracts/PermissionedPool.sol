@@ -22,10 +22,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     using Math for uint256;
 
     IStaderConfig public staderConfig;
-    uint8 public constant override poolId = 2;
-
-    uint256 public constant PRE_DEPOSIT_SIZE = 1 ether;
-    uint256 public constant FULL_DEPOSIT_SIZE = 31 ether;
+    uint8 public constant override POOL_ID = 2;
 
     // @inheritdoc IStaderPoolBase
     uint256 public override protocolFee;
@@ -66,7 +63,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_NODE_REGISTRY());
         //get 1ETH from insurance fund
         IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).reimburseUserFund(
-            _defectiveKeyCount * PRE_DEPOSIT_SIZE
+            _defectiveKeyCount * staderConfig.getPreDepositSize()
         );
         // send back 32 ETH for front run and invalid signature validators back to pool manager
         // These counts are correct because any double reporting of frontrun/invalid statuses results in an error.
@@ -74,7 +71,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: amountToSendToPoolManager
-        }(poolId);
+        }(POOL_ID);
         emit TransferredETHToSSPMForDefectiveKeys(amountToSendToPoolManager);
     }
 
@@ -84,13 +81,12 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      */
     function stakeUserETHToBeaconChain() external payable override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
-        //TODO sanjay how to make sure pool capacity remain same at this point compared to pool selection
         uint256 requiredValidators = msg.value / staderConfig.getStakedEthPerNode();
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
-            .computeOperatorAllocationForDeposit(requiredValidators);
+            .allocateValidatorsAndUpdateOperatorId(requiredValidators);
 
         // i is the operator Id
         uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;
@@ -134,15 +130,16 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             bytes memory withdrawCredential = IVaultFactory(vaultFactory).getValidatorWithdrawCredential(
                 withdrawVaultAddress
             );
+            uint256 fullDepositSize = staderConfig.getFullDepositSize();
             bytes32 depositDataRoot = this.computeDepositDataRoot(
                 _pubkey[i],
                 depositSignature,
                 withdrawCredential,
-                FULL_DEPOSIT_SIZE
+                fullDepositSize
             );
 
             //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(ethDepositContract).deposit{value: FULL_DEPOSIT_SIZE}(
+            IDepositContract(ethDepositContract).deposit{value: fullDepositSize}(
                 _pubkey[i],
                 withdrawCredential,
                 depositSignature,
@@ -279,15 +276,16 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         bytes memory withdrawCredential = IVaultFactory(_vaultFactory).getValidatorWithdrawCredential(
             withdrawVaultAddress
         );
+        uint256 preDepositSize = staderConfig.getPreDepositSize();
         bytes32 depositDataRoot = this.computeDepositDataRoot(
             pubkey,
             preDepositSignature,
             withdrawCredential,
-            PRE_DEPOSIT_SIZE
+            preDepositSize
         );
 
         //slither-disable-next-line arbitrary-send-eth
-        IDepositContract(_ethDepositContract).deposit{value: PRE_DEPOSIT_SIZE}(
+        IDepositContract(_ethDepositContract).deposit{value: preDepositSize}(
             pubkey,
             withdrawCredential,
             preDepositSignature,

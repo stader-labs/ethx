@@ -25,7 +25,7 @@ interface IStaderPoolBase {
 
     //Getters
 
-    function poolId() external view returns (uint8);
+    function POOL_ID() external view returns (uint8);
 
     function protocolFee() external view returns (uint256); // returns the protocol fee
 

@@ -9,11 +9,13 @@ interface IPermissionedNodeRegistry {
     error NotAPermissionedNodeOperator();
     error OperatorAlreadyDeactivate();
     error OperatorAlreadyActive();
+    error MaxOperatorLimitReached();
 
     // Events
     event OperatorWhitelisted(address permissionedNO);
     event OperatorDeactivated(uint256 operatorID);
     event OperatorActivated(uint256 operatorID);
+    event MaxOperatorIdLimitChanged(uint256 maxOperatorId);
     event MarkedValidatorStatusAsPreDeposit(bytes indexed pubkey);
     event UpdatedQueuedValidatorIndex(uint256 indexed operatorId, uint256 nextQueuedValidatorIndex);
 
@@ -22,6 +24,8 @@ interface IPermissionedNodeRegistry {
     function operatorIdForExcessDeposit() external view returns (uint256);
 
     function totalActiveOperatorCount() external view returns (uint256);
+
+    function maxOperatorId() external view returns (uint256);
 
     function nextQueuedValidatorIndexByOperatorId(uint256) external view returns (uint256);
 
@@ -43,7 +47,7 @@ interface IPermissionedNodeRegistry {
         bytes[] calldata _depositSignature
     ) external;
 
-    function computeOperatorAllocationForDeposit(uint256 _numValidators)
+    function allocateValidatorsAndUpdateOperatorId(uint256 _numValidators)
         external
         returns (uint256[] memory selectedOperatorCapacity);
 

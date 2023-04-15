@@ -18,5 +18,7 @@ interface IPoolSelector {
     // returns the index in poolIdArray of the pool with excess supply
     function poolIdArrayIndexForExcessDeposit() external view returns (uint256);
 
-    function computePoolAllocationForDeposit(uint256 _pooledEth) external returns (uint256[] memory, uint8[] memory);
+    function computePoolAllocationForDeposit(uint8, uint256) external view returns (uint256);
+
+    function poolAllocationForExcessETHDeposit(uint256 _excessETH) external returns (uint256[] memory, uint8[] memory);
 }
