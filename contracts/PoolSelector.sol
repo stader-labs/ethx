@@ -98,6 +98,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         returns (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray)
     {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
+        uint256 ethToDeposit = _excessETHAmount;
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         poolIdArray = poolUtils.getPoolIdArray();
         uint256 poolCount = poolIdArray.length;
@@ -108,13 +109,13 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         for (uint256 j = 0; j < poolCount; j++) {
             uint256 poolCapacity = poolUtils.getQueuedValidatorCountByPool(poolIdArray[i]);
             uint256 poolDepositSize = ETH_PER_NODE - poolUtils.getCollateralETH(poolIdArray[i]);
-            uint256 remainingValidatorsToDeposit = _excessETHAmount / poolDepositSize;
+            uint256 remainingValidatorsToDeposit = ethToDeposit / poolDepositSize;
             selectedPoolCapacity[i] = Math.min(poolCapacity, remainingValidatorsToDeposit);
-            _excessETHAmount -= selectedPoolCapacity[i] * poolDepositSize;
+            ethToDeposit -= selectedPoolCapacity[i] * poolDepositSize;
             i = (i + 1) % poolCount;
-            //For _excessETHAmount < ETH_PER_NODE, we will be able to at best deposit one more validator
+            //For ethToDeposit < ETH_PER_NODE, we will be able to at best deposit one more validator
             //but that will introduce complex logic, hence we are not solving that
-            if (_excessETHAmount < ETH_PER_NODE) {
+            if (ethToDeposit < ETH_PER_NODE) {
                 poolIdArrayIndexForExcessDeposit = i;
                 break;
             }
