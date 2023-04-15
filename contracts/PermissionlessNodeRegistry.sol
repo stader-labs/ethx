@@ -298,18 +298,6 @@ contract PermissionlessNodeRegistry is
         return socializingPoolStateChangeBlock[_operatorId];
     }
 
-    // @inheritdoc INodeRegistry
-    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
-        uint256 validatorId = validatorIdByPubkey[_pubkey];
-        if (validatorId == 0) {
-            Operator memory emptyOperator;
-            return emptyOperator;
-        }
-
-        uint256 operatorId = validatorRegistry[validatorId].operatorId;
-        return operatorStructById[operatorId];
-    }
-
     /**
      * @notice update maximum key to be added in a batch
      * @dev only `OPERATOR` role can call
@@ -540,10 +528,6 @@ contract PermissionlessNodeRegistry is
         }
 
         return nodeELRewardVault;
-    }
-
-    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
-        return validatorRegistry[validatorIdByPubkey[_pubkey]];
     }
 
     // check for duplicate keys in permissionless node registry
