@@ -18,6 +18,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     IStaderConfig public override staderConfig;
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
+
+    uint256 public constant MAX_ER_UPDATE_FREQUENCY = 7200 * 7; // 7 days
+
     /// @inheritdoc IStaderOracle
     uint256 public override reportingBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
@@ -478,7 +481,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function setERUpdateFrequency(uint256 _updateFrequency) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setERUpdateFrequency(uint256 _updateFrequency) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (_updateFrequency > MAX_ER_UPDATE_FREQUENCY) {
+            revert InvalidUpdate();
+        }
         setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 

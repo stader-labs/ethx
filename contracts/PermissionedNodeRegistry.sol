@@ -444,17 +444,6 @@ contract PermissionedNodeRegistry is
         return socializingPoolStateChangeBlock[_operatorId];
     }
 
-    // @inheritdoc INodeRegistry
-    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
-        uint256 validatorId = validatorIdByPubkey[_pubkey];
-        if (validatorId == 0) {
-            Operator memory emptyOperator;
-            return emptyOperator;
-        }
-        uint256 operatorId = validatorRegistry[validatorId].operatorId;
-        return operatorStructById[operatorId];
-    }
-
     /**
      * @notice increase the total active validator count
      * @dev only permissioned pool calls it when it does the deposit of 1 ETH for validator
@@ -589,10 +578,6 @@ contract PermissionedNodeRegistry is
         }
 
         return validators;
-    }
-
-    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
-        return validatorRegistry[validatorIdByPubkey[_pubkey]];
     }
 
     // check for duplicate keys in permissioned node registry
