@@ -67,6 +67,8 @@ interface IStaderConfig {
 
     function getTotalFee() external view returns (uint256);
 
+    function getMaxCommissionFee() external view returns (uint256);
+
     function getOperatorMaxNameLength() external view returns (uint256);
 
     // Variables

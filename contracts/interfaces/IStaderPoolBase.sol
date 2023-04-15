@@ -8,7 +8,7 @@ interface IStaderPoolBase {
     error ProtocolFeeUnchanged();
     error OperatorFeeUnchanged();
     error UnsupportedOperation();
-    error CommissionFeesMoreThanTOTAL_FEE();
+    error CrossedCommissionLimit();
 
     // Events
     event ValidatorPreDepositedOnBeaconChain(bytes indexed pubKey);
