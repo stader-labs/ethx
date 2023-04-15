@@ -10,8 +10,9 @@ import './interfaces/INodeRegistry.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable {
+contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
@@ -57,6 +58,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         __AccessControl_init();
         __Pausable_init();
+        __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -157,6 +159,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         override
         trustedNodeOnly
         whenNotPaused
+        nonReentrant
     {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -345,6 +348,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         override
         trustedNodeOnly
         whenNotPaused
+        nonReentrant
     {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();

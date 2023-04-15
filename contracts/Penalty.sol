@@ -9,8 +9,9 @@ import './interfaces/IStaderOracle.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
+contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public staderConfig;
     address public override ratedOracleAddress;
     uint256 public override mevTheftPenaltyPerStrike;
@@ -36,6 +37,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
         UtilLib.checkNonZeroAddress(_staderConfig);
         UtilLib.checkNonZeroAddress(_ratedOracleAddress);
         __AccessControl_init_unchained();
+        __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
         ratedOracleAddress = _ratedOracleAddress;
@@ -113,7 +115,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPenalty
-    function calculateMEVTheftPenalty(bytes32 _pubkeyRoot) public override returns (uint256) {
+    function calculateMEVTheftPenalty(bytes32 _pubkeyRoot) public override nonReentrant returns (uint256) {
         // Retrieve the epochs in which the validator violated the fee recipient change rule.
         uint256[] memory violatedEpochs = IRatedV1(ratedOracleAddress).getViolationsForValidator(_pubkeyRoot);
 
