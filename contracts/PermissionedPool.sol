@@ -86,7 +86,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
-            .operatorAllocationForDeposit(requiredValidators);
+            .allocateValidatorsAndUpdateOperatorId(requiredValidators);
 
         // i is the operator Id
         uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;

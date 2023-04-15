@@ -213,10 +213,10 @@ contract StaderStakePoolsManager is
      * @notice pool selection for excess ETH supply after running `validatorBatchDeposit` for each pool
      * @dev only `MANAGER` role can call after coolDown period to make sure it runs once in a day cycle
      */
-    function depositExcessETH() external override nonReentrant {
+    function depositETHOverTargetWeight() external override nonReentrant {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (block.number < lastExcessETHDepositBlock + excessETHDepositCoolDown) {
-            revert CoolDownNotComplete();
+            revert CooldownNotComplete();
         }
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         uint256 availableETHForNewDeposit = depositedPooledETH -
@@ -235,6 +235,7 @@ contract StaderStakePoolsManager is
             uint256 poolDepositSize = staderConfig.getStakedEthPerNode() -
                 IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
 
+            lastExcessETHDepositBlock = block.number;
             depositedPooledETH -= validatorToDeposit * poolDepositSize;
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();

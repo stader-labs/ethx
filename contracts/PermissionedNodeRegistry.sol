@@ -182,7 +182,7 @@ contract PermissionedNodeRegistry is
      * @param _numValidators validator to deposit with permissioned pool
      * @return selectedOperatorCapacity operator wise count of validator to deposit
      */
-    function operatorAllocationForDeposit(uint256 _numValidators)
+    function allocateValidatorsAndUpdateOperatorId(uint256 _numValidators)
         external
         override
         returns (uint256[] memory selectedOperatorCapacity)

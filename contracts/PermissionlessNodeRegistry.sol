@@ -279,7 +279,7 @@ contract PermissionlessNodeRegistry is
             block.number <
             socializingPoolStateChangeBlock[operatorId] + staderConfig.getSocializingPoolOptInCoolingPeriod()
         ) {
-            revert CoolDownNotComplete();
+            revert CooldownNotComplete();
         }
         feeRecipientAddress = nodeELRewardVaultByOperatorId[operatorId];
         if (_optInForSocializingPool) {

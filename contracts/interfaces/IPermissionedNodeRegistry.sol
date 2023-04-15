@@ -47,7 +47,7 @@ interface IPermissionedNodeRegistry {
         bytes[] calldata _depositSignature
     ) external;
 
-    function operatorAllocationForDeposit(uint256 _numValidators)
+    function allocateValidatorsAndUpdateOperatorId(uint256 _numValidators)
         external
         returns (uint256[] memory selectedOperatorCapacity);
 

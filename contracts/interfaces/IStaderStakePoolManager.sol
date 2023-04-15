@@ -9,7 +9,7 @@ interface IStaderStakePoolManager {
     error InsufficientBalance();
     error TransferFailed();
     error PoolIdDoesNotExit();
-    error CoolDownNotComplete();
+    error CooldownNotComplete();
     error UnsupportedOperationInSafeMode();
 
     // Events
@@ -54,7 +54,7 @@ interface IStaderStakePoolManager {
 
     function validatorBatchDeposit(uint8 _poolId) external;
 
-    function depositExcessETH() external;
+    function depositETHOverTargetWeight() external;
 
     function isVaultHealthy() external view returns (bool);
 }
