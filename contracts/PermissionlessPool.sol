@@ -54,7 +54,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
     }
 
     // receive `DEPOSIT_NODE_BOND` collateral ETH from permissionless node registry
-    function receiveRemainingCollateralETH() external payable nonReentrant {
+    function receiveRemainingCollateralETH() external payable {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         emit ReceivedCollateralETH(msg.value);
     }

@@ -105,7 +105,12 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     /// @notice slashes one validator equi. SD amount
     /// @dev callable only by respective withdrawVaults
     /// @param _validatorId validator SD collateral to slash
-    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external override returns (uint256 _sdSlashed) {
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId)
+        external
+        override
+        nonReentrant
+        returns (uint256 _sdSlashed)
+    {
         address operator = UtilLib.getOperatorForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
         isPoolThresholdValid(_poolId);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];

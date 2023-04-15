@@ -93,7 +93,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit SDClaimed(lotId, lotItem.highestBidder, lotItem.sdAmount);
     }
 
-    function transferHighestBidToSSPM(uint256 lotId) external override {
+    function transferHighestBidToSSPM(uint256 lotId) external override nonReentrant {
         LotItem storage lotItem = lots[lotId];
         uint256 ethAmount = lotItem.highestBidAmount;
 
@@ -120,7 +120,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit UnsuccessfulSDAuctionExtracted(lotId, _sdAmount, staderConfig.getStaderTreasury());
     }
 
-    function withdrawUnselectedBid(uint256 lotId) external override {
+    function withdrawUnselectedBid(uint256 lotId) external override nonReentrant {
         LotItem storage lotItem = lots[lotId];
         if (block.number <= lotItem.endBlock) revert AuctionNotEnded();
         if (msg.sender == lotItem.highestBidder) revert BidWasSuccessful();
