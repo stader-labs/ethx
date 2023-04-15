@@ -125,7 +125,7 @@ contract StaderStakePoolsManager is
         uint256 totalETHx = IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply;
 
         if (totalETH == 0 || totalETHx == 0) {
-            return 1 * DECIMALS;
+            return DECIMALS;
         }
         return (totalETH * DECIMALS) / totalETHx;
     }
