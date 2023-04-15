@@ -204,9 +204,10 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     // @inheritdoc IStaderPoolBase
-    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_protocolFee + _operatorFee > staderConfig.getTotalFee()) {
-            revert CommissionFeesMoreThanTOTAL_FEE();
+    function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (_protocolFee + _operatorFee > staderConfig.getMaxCommissionFee()) {
+            revert CrossedCommissionLimit();
         }
         if (protocolFee == _protocolFee) {
             revert ProtocolFeeUnchanged();

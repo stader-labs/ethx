@@ -18,6 +18,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
     //Total fee bips
     bytes32 public constant TOTAL_FEE = keccak256('TOTAL_FEE');
+    //maximum protocol + operator fee value
+    bytes32 public constant MAX_COMMISSION_FEE = keccak256('MAX_COMMISSION_FEE');
     //maximum length of operator name string
     bytes32 public constant OPERATOR_MAX_NAME_LENGTH = keccak256('OPERATOR_MAX_NAME_LENGTH');
 
@@ -81,6 +83,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setConstant(PRE_DEPOSIT_SIZE, 1 ether);
         setConstant(FULL_DEPOSIT_SIZE, 31 ether);
         setConstant(TOTAL_FEE, 10000);
+        setConstant(MAX_COMMISSION_FEE, 1500);
         setConstant(DECIMALS, 10**18);
         setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
         setVariable(MIN_DEPOSIT_AMOUNT, 100);
@@ -279,6 +282,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getTotalFee() external view override returns (uint256) {
         return constantsMap[TOTAL_FEE];
+    }
+
+    function getMaxCommissionFee() external view override returns (uint256) {
+        return constantsMap[MAX_COMMISSION_FEE];
     }
 
     function getOperatorMaxNameLength() external view override returns (uint256) {

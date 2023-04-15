@@ -32,28 +32,13 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
      * @dev pool index start from 1 with permission less pool
      * @param _admin admin address for this contract
      * @param _staderConfig config contract address
-     * @param _permissionlessTarget target weight of permissionless pool
-     * @param _permissionedTarget target weight of permissioned pool
      */
-    function initialize(
-        address _admin,
-        address _staderConfig,
-        uint256 _permissionlessTarget,
-        uint256 _permissionedTarget
-    ) external initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
-        if (_permissionlessTarget + _permissionedTarget != POOL_WEIGHTS_SUM) {
-            revert InvalidTargetWeight();
-        }
-
         __AccessControl_init_unchained();
-
         poolAllocationMaxSize = 100;
         staderConfig = IStaderConfig(_staderConfig);
-        poolWeights[1] = _permissionlessTarget;
-        poolWeights[2] = _permissionedTarget;
-
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
@@ -121,8 +106,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
 
     /**
      * @notice update the target weights of existing pools
-     * @dev only `Manager` can call
+     * @dev only `Manager` can call,
      * @param _poolTargets new target weights of pools
+     * `_poolTargets` array provide pool target in the same order of poolIDs that are stored in poolIdArray of poolUtils
      */
     function updatePoolWeights(uint256[] calldata _poolTargets) external {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
