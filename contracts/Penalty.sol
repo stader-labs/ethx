@@ -95,7 +95,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
     }
 
     /// @inheritdoc IPenalty
-    function updateTotalPenaltyAmount(bytes calldata _pubkey) external override returns (uint256) {
+    function updateTotalPenaltyAmount(bytes calldata _pubkey) external override nonReentrant returns (uint256) {
         if (UtilLib.getValidatorSettleStatus(_pubkey, staderConfig)) {
             revert ValidatorSettled();
         }
@@ -115,7 +115,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
     }
 
     /// @inheritdoc IPenalty
-    function calculateMEVTheftPenalty(bytes32 _pubkeyRoot) public override nonReentrant returns (uint256) {
+    function calculateMEVTheftPenalty(bytes32 _pubkeyRoot) public override returns (uint256) {
         // Retrieve the epochs in which the validator violated the fee recipient change rule.
         uint256[] memory violatedEpochs = IRatedV1(ratedOracleAddress).getViolationsForValidator(_pubkeyRoot);
 
