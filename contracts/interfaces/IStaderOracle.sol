@@ -89,6 +89,7 @@ struct WithdrawnValidators {
 
 interface IStaderOracle {
     // Error
+    error InvalidUpdate();
     error NodeAlreadyTrusted();
     error NodeNotTrusted();
     error ZeroFrequency();
