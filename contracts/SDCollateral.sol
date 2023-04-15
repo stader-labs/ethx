@@ -230,14 +230,12 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
 
     function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
-        uint256 decimals = staderConfig.getDecimals();
-        return ((_sdAmount * sdPriceInETH) / (10**decimals));
+        return (_sdAmount * sdPriceInETH) / staderConfig.getDecimals();
     }
 
     function convertETHToSD(uint256 _ethAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
-        uint256 decimals = staderConfig.getDecimals();
-        return (_ethAmount * (10**decimals)) / sdPriceInETH;
+        return (_ethAmount * staderConfig.getDecimals()) / sdPriceInETH;
     }
 
     // HELPER
