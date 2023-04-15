@@ -9,18 +9,11 @@ import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-contract SDCollateral is
-    ISDCollateral,
-    Initializable,
-    AccessControlUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
     uint256 public override totalSDCollateral;
     uint256 public override withdrawDelay; // in seconds
@@ -38,7 +31,6 @@ contract SDCollateral is
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
-        __Pausable_init();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);

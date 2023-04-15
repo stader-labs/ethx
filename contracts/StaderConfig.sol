@@ -114,10 +114,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @param _minDepositAmount minimum deposit amount
      */
     function updateMinDepositAmount(uint256 _minDepositAmount) external onlyRole(MANAGER) {
-        if (_minDepositAmount == 0 || _minDepositAmount > variablesMap[MAX_DEPOSIT_AMOUNT]) {
-            revert InvalidMinDepositValue();
-        }
         setVariable(MIN_DEPOSIT_AMOUNT, _minDepositAmount);
+        verifyDepositAndWithdrawLimits();
     }
 
     /**
@@ -125,10 +123,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @param _maxDepositAmount maximum deposit amount
      */
     function updateMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(MANAGER) {
-        if (_maxDepositAmount < variablesMap[MIN_DEPOSIT_AMOUNT]) {
-            revert InvalidMaxDepositValue();
-        }
         setVariable(MAX_DEPOSIT_AMOUNT, _maxDepositAmount);
+        verifyDepositAndWithdrawLimits();
     }
 
     /**
@@ -136,10 +132,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @param _minWithdrawAmount minimum withdraw amount
      */
     function updateMinWithdrawAmount(uint256 _minWithdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_minWithdrawAmount == 0 || _minWithdrawAmount > variablesMap[MAX_WITHDRAW_AMOUNT]) {
-            revert InvalidMinWithdrawValue();
-        }
         setVariable(MIN_WITHDRAW_AMOUNT, _minWithdrawAmount);
+        verifyDepositAndWithdrawLimits();
     }
 
     /**
@@ -147,10 +141,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
      * @param _maxWithdrawAmount maximum withdraw amount
      */
     function updateMaxWithdrawAmount(uint256 _maxWithdrawAmount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_maxWithdrawAmount < variablesMap[MIN_WITHDRAW_AMOUNT]) {
-            revert InvalidMaxWithdrawValue();
-        }
         setVariable(MAX_WITHDRAW_AMOUNT, _maxWithdrawAmount);
+        verifyDepositAndWithdrawLimits();
     }
 
     function updateMinBlockDelayToFinalizeWithdrawRequest(uint256 _minBlockDelay)
@@ -461,5 +453,18 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function onlyOperatorRole(address account) public view override returns (bool) {
         return hasRole(OPERATOR, account);
+    }
+
+    function verifyDepositAndWithdrawLimits() internal view {
+        if (
+            !(variablesMap[MIN_DEPOSIT_AMOUNT] != 0 &&
+                variablesMap[MIN_WITHDRAW_AMOUNT] != 0 &&
+                variablesMap[MIN_DEPOSIT_AMOUNT] <= variablesMap[MAX_DEPOSIT_AMOUNT] &&
+                variablesMap[MIN_WITHDRAW_AMOUNT] <= variablesMap[MAX_WITHDRAW_AMOUNT] &&
+                variablesMap[MIN_WITHDRAW_AMOUNT] <= variablesMap[MIN_DEPOSIT_AMOUNT] &&
+                variablesMap[MAX_WITHDRAW_AMOUNT] >= variablesMap[MAX_DEPOSIT_AMOUNT])
+        ) {
+            revert InvalidLimits();
+        }
     }
 }

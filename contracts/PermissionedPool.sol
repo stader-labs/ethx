@@ -180,15 +180,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
     }
 
-    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getValidator(_pubkey);
-    }
-
-    // @inheritdoc IStaderPoolBase
-    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
-        return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getOperator(_pubkey);
-    }
-
     // @inheritdoc IStaderPoolBase
     function getSocializingPoolAddress() external view returns (address) {
         return staderConfig.getPermissionedSocializingPool();

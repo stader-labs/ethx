@@ -95,17 +95,6 @@ interface INodeRegistry {
 
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
 
-    function getValidator(bytes calldata _pubkey) external view returns (Validator memory);
-
-    function getValidator(uint256 _validatorId) external view returns (Validator memory);
-
-    /**
-    @notice Returns the details of a specific operator.
-    @param _pubkey The public key of the validator whose operator details are to be retrieved.
-    @return An Operator struct containing the details of the specified operator.
-    */
-    function getOperator(bytes calldata _pubkey) external view returns (Operator memory);
-
     /**
      *
      * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
