@@ -30,7 +30,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     // @inheritdoc IStaderPoolBase
     uint256 public override operatorFee;
 
-    uint256 public constant MAX_COMMISSION_LIMIT = 1500;
+    uint256 public constant MAX_COMMISSION_LIMIT_BIPS = 1500;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -208,8 +208,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     // @inheritdoc IStaderPoolBase
     function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (_protocolFee + _operatorFee > MAX_COMMISSION_LIMIT) {
-            revert CrossedCommissionLimit();
+        if (_protocolFee + _operatorFee > MAX_COMMISSION_LIMIT_BIPS) {
+            revert InvalidCommission();
         }
         if (protocolFee == _protocolFee) {
             revert ProtocolFeeUnchanged();
