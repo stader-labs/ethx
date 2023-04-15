@@ -69,19 +69,12 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         returns (uint256 selectedPoolCapacity)
     {
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
-        uint8[] memory poolIdArray = poolUtils.getPoolIdArray();
-        uint256 poolCount = poolIdArray.length;
-
-        uint256 activeValidatorCount;
-        for (uint256 i = 0; i < poolCount; i++) {
-            activeValidatorCount += (poolUtils.getActiveValidatorCountByPool(poolIdArray[i]));
-        }
-        uint256 totalValidatorsRequired = (activeValidatorCount + _newValidatorToRegister);
+        uint256 totalActiveValidatorCount = poolUtils.getTotalActiveValidatorCount();
+        uint256 totalValidatorsRequired = (totalActiveValidatorCount + _newValidatorToRegister);
         uint256 remainingPoolCapacity = poolUtils.getQueuedValidatorCountByPool(_poolId);
         uint256 currentActiveValidators = poolUtils.getActiveValidatorCountByPool(_poolId);
         uint256 poolTotalTarget = (poolWeights[_poolId] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
         (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
-        //
         selectedPoolCapacity = Math.min(poolAllocationMaxSize, Math.min(remainingPoolCapacity, remainingPoolTarget));
     }
 
@@ -104,18 +97,22 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256 poolCount = poolIdArray.length;
         uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
         selectedPoolCapacity = new uint256[](poolCount);
-
+        uint256 selectedValidatorCount;
         uint256 i = poolIdArrayIndexForExcessDeposit;
         for (uint256 j = 0; j < poolCount; j++) {
             uint256 poolCapacity = poolUtils.getQueuedValidatorCountByPool(poolIdArray[i]);
             uint256 poolDepositSize = ETH_PER_NODE - poolUtils.getCollateralETH(poolIdArray[i]);
             uint256 remainingValidatorsToDeposit = ethToDeposit / poolDepositSize;
-            selectedPoolCapacity[i] = Math.min(poolCapacity, remainingValidatorsToDeposit);
+            selectedPoolCapacity[i] = Math.min(
+                poolAllocationMaxSize - selectedValidatorCount,
+                Math.min(poolCapacity, remainingValidatorsToDeposit)
+            );
+            selectedValidatorCount += selectedPoolCapacity[i];
             ethToDeposit -= selectedPoolCapacity[i] * poolDepositSize;
             i = (i + 1) % poolCount;
             //For ethToDeposit < ETH_PER_NODE, we will be able to at best deposit one more validator
             //but that will introduce complex logic, hence we are not solving that
-            if (ethToDeposit < ETH_PER_NODE) {
+            if (ethToDeposit < ETH_PER_NODE || selectedValidatorCount >= poolAllocationMaxSize) {
                 poolIdArrayIndexForExcessDeposit = i;
                 break;
             }

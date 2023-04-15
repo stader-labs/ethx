@@ -595,10 +595,6 @@ contract PermissionedNodeRegistry is
         return validatorRegistry[validatorIdByPubkey[_pubkey]];
     }
 
-    function getValidator(uint256 _validatorId) external view returns (Validator memory) {
-        return validatorRegistry[_validatorId];
-    }
-
     // check for duplicate keys in permissioned node registry
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         return validatorIdByPubkey[_pubkey] != 0;

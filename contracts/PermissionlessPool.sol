@@ -152,11 +152,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         assert(address(this).balance == 0);
     }
 
-    // @inheritdoc IStaderPoolBase
-    function getOperator(bytes calldata _pubkey) external view returns (Operator memory) {
-        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getOperator(_pubkey);
-    }
-
     /// @inheritdoc IStaderPoolBase
     function getSocializingPoolAddress() external view returns (address) {
         return staderConfig.getPermissionlessSocializingPool();
@@ -185,10 +180,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         return
             IPermissionlessNodeRegistry(staderConfig.getPermissionlessNodeRegistry())
                 .getAllSocializingPoolOptOutOperators(_pageNumber, _pageSize);
-    }
-
-    function getValidator(bytes calldata _pubkey) external view returns (Validator memory) {
-        return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getValidator(_pubkey);
     }
 
     /**

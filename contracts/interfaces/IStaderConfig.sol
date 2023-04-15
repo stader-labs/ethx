@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 
 interface IStaderConfig {
     // Errors
+    error InvalidLimits();
     error InvalidMinDepositValue();
     error InvalidMaxDepositValue();
     error InvalidMinWithdrawValue();

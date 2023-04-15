@@ -34,14 +34,6 @@ interface IPoolUtils {
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
 
-    function retrieveValidator(bytes calldata _pubkey) external view returns (Validator memory);
-
-    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey) external view returns (Validator memory);
-
-    function retrieveOperator(bytes calldata _pubkey) external view returns (Operator memory);
-
-    function getOperator(uint8 _poolId, bytes calldata _pubkey) external view returns (Operator memory);
-
     function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
         address _nodeOperator,
@@ -55,8 +47,6 @@ interface IPoolUtils {
     function getProtocolFee(uint8 _poolId) external view returns (uint256); // returns the protocol fee (0-10000)
 
     function getOperatorFee(uint8 _poolId) external view returns (uint256); // returns the operator fee (0-10000)
-
-    function getPoolCount() external view returns (uint256); // returns the number of pools in the poolUtils
 
     function getTotalActiveValidatorCount() external view returns (uint256); //returns total active validators across all pools
 

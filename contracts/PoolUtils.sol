@@ -70,10 +70,6 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function getPoolCount() public view override returns (uint256) {
-        return poolIdArray.length;
-    }
-
     /// @inheritdoc IPoolUtils
     function getProtocolFee(uint8 _poolId) public view override onlyExistingPoolId(_poolId) returns (uint256) {
         return IStaderPoolBase(poolAddressById[_poolId]).protocolFee();
@@ -103,7 +99,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         onlyExistingPoolId(_poolId)
         returns (uint256)
     {
-        return IStaderPoolBase(poolAddressById[_poolId]).getTotalQueuedValidatorCount();
+        address nodeRegistry = getNodeRegistry(_poolId);
+        return INodeRegistry(nodeRegistry).getTotalQueuedValidatorCount();
     }
 
     /// @inheritdoc IPoolUtils
@@ -114,57 +111,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         onlyExistingPoolId(_poolId)
         returns (uint256)
     {
-        return IStaderPoolBase(poolAddressById[_poolId]).getTotalActiveValidatorCount();
-    }
-
-    /// @inheritdoc IPoolUtils
-    function retrieveValidator(bytes calldata _pubkey) public view override returns (Validator memory) {
-        uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
-            if (getValidatorByPool(poolIdArray[i], _pubkey).pubkey.length == 0) {
-                continue;
-            }
-            return getValidatorByPool(poolIdArray[i], _pubkey);
-        }
-        Validator memory emptyValidator;
-
-        return emptyValidator;
-    }
-
-    /// @inheritdoc IPoolUtils
-    function getValidatorByPool(uint8 _poolId, bytes calldata _pubkey)
-        public
-        view
-        override
-        onlyExistingPoolId(_poolId)
-        returns (Validator memory)
-    {
-        return IStaderPoolBase(poolAddressById[_poolId]).getValidator(_pubkey);
-    }
-
-    /// @inheritdoc IPoolUtils
-    function retrieveOperator(bytes calldata _pubkey) public view override returns (Operator memory) {
-        uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
-            if (getValidatorByPool(poolIdArray[i], _pubkey).pubkey.length == 0) {
-                continue;
-            }
-            return getOperator(poolIdArray[i], _pubkey);
-        }
-
-        Operator memory emptyOperator;
-        return emptyOperator;
-    }
-
-    /// @inheritdoc IPoolUtils
-    function getOperator(uint8 _poolId, bytes calldata _pubkey)
-        public
-        view
-        override
-        onlyExistingPoolId(_poolId)
-        returns (Operator memory)
-    {
-        return IStaderPoolBase(poolAddressById[_poolId]).getOperator(_pubkey);
+        address nodeRegistry = getNodeRegistry(_poolId);
+        return INodeRegistry(nodeRegistry).getTotalActiveValidatorCount();
     }
 
     /// @inheritdoc IPoolUtils
@@ -185,26 +133,24 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         uint256 _startIndex,
         uint256 _endIndex
     ) public view override onlyExistingPoolId(_poolId) returns (uint256) {
-        return
-            IStaderPoolBase(poolAddressById[_poolId]).getOperatorTotalNonTerminalKeys(
-                _nodeOperator,
-                _startIndex,
-                _endIndex
-            );
+        address nodeRegistry = getNodeRegistry(_poolId);
+        return INodeRegistry(nodeRegistry).getOperatorTotalNonTerminalKeys(_nodeOperator, _startIndex, _endIndex);
     }
 
     function getCollateralETH(uint8 _poolId) public view override onlyExistingPoolId(_poolId) returns (uint256) {
-        return IStaderPoolBase(poolAddressById[_poolId]).getCollateralETH();
+        address nodeRegistry = getNodeRegistry(_poolId);
+        return INodeRegistry(nodeRegistry).getCollateralETH();
     }
 
-    function getNodeRegistry(uint8 _poolId) external view override onlyExistingPoolId(_poolId) returns (address) {
+    function getNodeRegistry(uint8 _poolId) public view override onlyExistingPoolId(_poolId) returns (address) {
         return IStaderPoolBase(poolAddressById[_poolId]).getNodeRegistry();
     }
 
     function isExistingPubkey(bytes calldata _pubkey) public view override returns (bool) {
         uint256 poolCount = getPoolCount();
         for (uint256 i = 0; i < poolCount; i++) {
-            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingPubkey(_pubkey)) {
+            address nodeRegistry = getNodeRegistry(poolIdArray[i]);
+            if (INodeRegistry(nodeRegistry).isExistingPubkey(_pubkey)) {
                 return true;
             }
         }
@@ -214,7 +160,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     function isExistingOperator(address _operAddr) external view override returns (bool) {
         uint256 poolCount = getPoolCount();
         for (uint256 i = 0; i < poolCount; i++) {
-            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingOperator(_operAddr)) {
+            address nodeRegistry = getNodeRegistry(poolIdArray[i]);
+            if (INodeRegistry(nodeRegistry).isExistingOperator(_operAddr)) {
                 return true;
             }
         }
@@ -224,7 +171,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     function getOperatorPoolId(address _operAddr) external view override returns (uint8) {
         uint256 poolCount = getPoolCount();
         for (uint256 i = 0; i < poolCount; i++) {
-            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingOperator(_operAddr)) {
+            address nodeRegistry = getNodeRegistry(poolIdArray[i]);
+            if (INodeRegistry(nodeRegistry).isExistingOperator(_operAddr)) {
                 return poolIdArray[i];
             }
         }
@@ -234,7 +182,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     function getValidatorPoolId(bytes calldata _pubkey) external view override returns (uint8) {
         uint256 poolCount = getPoolCount();
         for (uint256 i = 0; i < poolCount; i++) {
-            if (IStaderPoolBase(poolAddressById[poolIdArray[i]]).isExistingPubkey(_pubkey)) {
+            address nodeRegistry = getNodeRegistry(poolIdArray[i]);
+            if (INodeRegistry(nodeRegistry).isExistingPubkey(_pubkey)) {
                 return poolIdArray[i];
             }
         }
@@ -316,6 +265,10 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         if (IStaderPoolBase(_poolAddress).POOL_ID() != _poolId || isExistingPoolId(_poolId)) {
             revert ExistingOrMismatchingPoolId();
         }
+    }
+
+    function getPoolCount() internal view returns (uint256) {
+        return poolIdArray.length;
     }
 
     // Modifiers

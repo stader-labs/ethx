@@ -19,6 +19,11 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
 
     bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
