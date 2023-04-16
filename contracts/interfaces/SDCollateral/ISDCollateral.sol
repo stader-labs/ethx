@@ -86,8 +86,6 @@ interface ISDCollateral {
         uint256 _numValidator
     ) external view returns (uint256);
 
-    function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) external view returns (uint256);
-
     function convertSDToETH(uint256 _sdAmount) external view returns (uint256);
 
     function convertETHToSD(uint256 _ethAmount) external view returns (uint256);
