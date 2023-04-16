@@ -19,28 +19,24 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
     mapping(uint256 => LotItem) public lots;
 
+    uint256 public constant MIN_AUCTION_DURATION = 7200; // 24 hours
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(
-        address _admin,
-        address _staderConfig,
-        uint256 _duration,
-        uint256 _bidIncrement
-    ) external initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
-        if (_duration < 24 hours) revert ShortDuration();
 
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
-        duration = _duration;
-        bidIncrement = _bidIncrement;
+        duration = MIN_AUCTION_DURATION;
+        bidIncrement = 1e16;
         nextLot = 1;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -146,7 +142,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
     function updateDuration(uint256 _duration) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (_duration < 24 hours) revert ShortDuration();
+        if (_duration < MIN_AUCTION_DURATION) revert ShortDuration();
         duration = _duration;
         emit AuctionDurationUpdated(duration);
     }

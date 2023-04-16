@@ -222,12 +222,6 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         return (sdBalance >= minSDToBond ? 0 : minSDToBond - sdBalance);
     }
 
-    function getMaxValidatorSpawnable(uint256 _sdAmount, uint8 _poolId) external view override returns (uint256) {
-        isPoolThresholdValid(_poolId);
-        uint256 ethAmount = convertSDToETH(_sdAmount);
-        return ethAmount / poolThresholdbyPoolId[_poolId].minThreshold;
-    }
-
     function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
         return (_sdAmount * sdPriceInETH) / staderConfig.getDecimals();
