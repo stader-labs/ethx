@@ -194,8 +194,8 @@ contract PermissionedNodeRegistry is
         uint256 validatorPerOperator = _numValidators / totalActiveOperatorCount;
         uint256[] memory remainingOperatorCapacity = new uint256[](nextOperatorId);
         uint256 totalValidatorToDeposit;
-
-        if (validatorPerOperator != 0) {
+        bool validatorPerOperatorGreaterThanZero = (validatorPerOperator > 0);
+        if (validatorPerOperatorGreaterThanZero) {
             for (uint256 i = 1; i < nextOperatorId; i++) {
                 if (!operatorStructById[i].active) {
                     continue;
@@ -217,7 +217,10 @@ contract PermissionedNodeRegistry is
                 if (!operatorStructById[i].active) {
                     continue;
                 }
-                uint256 newSelectedCapacity = Math.min(remainingOperatorCapacity[i], remainingValidatorsToDeposit);
+                uint256 remainingCapacity = validatorPerOperatorGreaterThanZero
+                    ? remainingOperatorCapacity[i]
+                    : getOperatorQueuedValidatorCount(i);
+                uint256 newSelectedCapacity = Math.min(remainingCapacity, remainingValidatorsToDeposit);
                 selectedOperatorCapacity[i] += newSelectedCapacity;
                 remainingValidatorsToDeposit -= newSelectedCapacity;
                 i = (i % totalOperators) + 1;
