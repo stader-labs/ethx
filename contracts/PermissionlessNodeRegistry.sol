@@ -212,10 +212,6 @@ contract PermissionlessNodeRegistry is
             handleInvalidSignature(validatorId);
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
         }
-        uint256 totalDefectedKeys = frontRunValidatorsLength + invalidSignatureValidatorsLength;
-        if (totalDefectedKeys > 0) {
-            decreaseTotalActiveValidatorCount(totalDefectedKeys);
-        }
     }
 
     /**
