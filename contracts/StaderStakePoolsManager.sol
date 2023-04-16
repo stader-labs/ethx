@@ -35,7 +35,7 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
     uint256 public lastExcessETHDepositBlock;
-    uint256 public excessETHDepositCoolDown = 7200;
+    uint256 public excessETHDepositCoolDown;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {

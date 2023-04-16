@@ -43,7 +43,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 _validatorId
     ) public override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
         address withdrawVaultAddress;
-        bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount, msg.sender));
+        bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
         withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(validatorWithdrawalVaultImplementation, salt);
         ValidatorWithdrawalVault(payable(withdrawVaultAddress)).initialize(
             _poolId,
@@ -62,7 +62,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         returns (address)
     {
         address nodeELRewardVaultAddress;
-        bytes32 salt = sha256(abi.encode(_poolId, _operatorId, msg.sender));
+        bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
         nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
         NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(_poolId, _operatorId, address(staderConfig));
 
@@ -75,7 +75,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 _operatorId,
         uint256 _validatorCount
     ) public view override returns (address) {
-        bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount, msg.sender));
+        bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
         return ClonesUpgradeable.predictDeterministicAddress(validatorWithdrawalVaultImplementation, salt);
     }
 
@@ -85,7 +85,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         override
         returns (address)
     {
-        bytes32 salt = sha256(abi.encode(_poolId, _operatorId, msg.sender));
+        bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
         return ClonesUpgradeable.predictDeterministicAddress(nodeELRewardVaultImplementation, salt);
     }
 
