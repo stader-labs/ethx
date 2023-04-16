@@ -35,7 +35,7 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public override depositedPooledETH;
     uint256 public lastExcessETHDepositBlock;
-    uint256 public constant excessETHDepositCoolDown = 7200;
+    uint256 public excessETHDepositCoolDown = 7200;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -53,6 +53,7 @@ contract StaderStakePoolsManager is
         __Pausable_init();
         __ReentrancyGuard_init();
         lastExcessETHDepositBlock = block.number;
+        excessETHDepositCoolDown = 7200;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -107,6 +108,12 @@ contract StaderStakePoolsManager is
             revert TransferFailed();
         }
         emit TransferredETHToUserWithdrawManager(_amount);
+    }
+
+    function updateExcessETHDepositCoolDown(uint256 _excessETHDepositCoolDown) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        excessETHDepositCoolDown = _excessETHDepositCoolDown;
+        emit UpdatedExcessETHDepositCoolDown(_excessETHDepositCoolDown);
     }
 
     //update the address of staderConfig
@@ -214,7 +221,7 @@ contract StaderStakePoolsManager is
      * @dev only `MANAGER` role can call after coolDown period to make sure it runs once in a day cycle
      */
     function depositETHOverTargetWeight() external override nonReentrant {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
         if (block.number < lastExcessETHDepositBlock + excessETHDepositCoolDown) {
             revert CooldownNotComplete();
         }

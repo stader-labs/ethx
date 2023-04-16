@@ -21,6 +21,7 @@ interface IStaderStakePoolManager {
     event TransferredETHToUserWithdrawManager(uint256 amount);
     event ETHTransferredToPool(uint256 indexed poolId, address poolAddress, uint256 validatorCount);
     event WithdrawVaultUserShareReceived(uint256 amount);
+    event UpdatedExcessETHDepositCoolDown(uint256 excessETHDepositCoolDown);
 
     function depositedPooledETH() external view returns (uint256);
 
