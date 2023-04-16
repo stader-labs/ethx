@@ -81,13 +81,11 @@ contract SocializingPool is
         totalOperatorETHRewardsRemaining += _rewardsData.operatorETHRewards;
         totalOperatorSDRewardsRemaining += _rewardsData.operatorSDRewards;
 
-        bool success;
-        (success, ) = payable(staderConfig.getStakePoolManager()).call{value: _rewardsData.userETHRewards}('');
-        if (!success) {
-            revert ETHTransferFailed(staderConfig.getStakePoolManager(), _rewardsData.userETHRewards);
-        }
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{
+            value: _rewardsData.userETHRewards
+        }();
 
-        (success, ) = payable(staderConfig.getStaderTreasury()).call{value: _rewardsData.protocolETHRewards}('');
+        (bool success, ) = payable(staderConfig.getStaderTreasury()).call{value: _rewardsData.protocolETHRewards}('');
         if (!success) {
             revert ETHTransferFailed(staderConfig.getStaderTreasury(), _rewardsData.protocolETHRewards);
         }
