@@ -139,7 +139,6 @@ contract UserWithdrawalManager is
                 (userWithdrawInfo.requestBlock + staderConfig.getMinBlockDelayToFinalizeWithdrawRequest() >
                     block.number)
             ) {
-                requestId -= 1;
                 break;
             }
             userWithdrawRequests[requestId].ethFinalized = minEThRequiredToFinalizeRequest;
@@ -147,8 +146,9 @@ contract UserWithdrawalManager is
             lockedEthXToBurn += lockedEthX;
             ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
         }
-        if (requestId >= nextRequestIdToFinalize) {
-            nextRequestIdToFinalize = requestId + 1;
+        // at here, upto (requestId-1) is finalized
+        if (requestId > nextRequestIdToFinalize) {
+            nextRequestIdToFinalize = requestId;
             ETHx(staderConfig.getETHxToken()).burnFrom(address(this), lockedEthXToBurn);
             IStaderStakePoolManager(poolManager).transferETHToUserWithdrawManager(ethToSendToFinalizeRequest);
             emit FinalizedWithdrawRequest(requestId);
