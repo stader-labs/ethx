@@ -59,6 +59,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UtilLib.checkNonZeroAddress(_newPoolAddress);
+        verifyNewPool(_poolId, _newPoolAddress);
         poolAddressById[_poolId] = _newPoolAddress;
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
