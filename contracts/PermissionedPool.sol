@@ -57,6 +57,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     }
 
     function receiveInsuranceFund() external payable {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_INSURANCE_FUND());
         emit ReceivedInsuranceFund(msg.value);
     }
 
