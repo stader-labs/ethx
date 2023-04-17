@@ -125,6 +125,9 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     function slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
+        if (_sdSlashed == 0) {
+            return 0;
+        }
         operatorSDBalance[_operator] -= _sdSlashed;
         totalSDCollateral -= _sdSlashed;
         IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);

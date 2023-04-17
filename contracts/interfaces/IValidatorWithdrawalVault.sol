@@ -21,7 +21,7 @@ interface IValidatorWithdrawalVault {
     // methods
     function distributeRewards() external;
 
-    function settleFunds() external;
+    function settleFunds() external returns (uint256 _sdSlashed);
 
     // setters
     function updateStaderConfig(address _staderConfig) external;
