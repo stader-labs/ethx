@@ -126,7 +126,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         uint256 sdBalance = operatorSDBalance[_operator];
         _sdSlashed = Math.min(_sdToSlash, sdBalance);
         if (_sdSlashed == 0) {
-            return 0;
+            return _sdSlashed;
         }
         operatorSDBalance[_operator] -= _sdSlashed;
         totalSDCollateral -= _sdSlashed;
