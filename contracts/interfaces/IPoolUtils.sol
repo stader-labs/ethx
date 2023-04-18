@@ -21,6 +21,7 @@ interface IPoolUtils {
     event PoolAddressUpdated(uint8 indexed poolId, address poolAddress);
     event DeactivatedPool(uint8 indexed poolId, address poolAddress);
     event UpdatedStaderConfig(address staderConfig);
+    event ExitValidator(bytes pubkey);
 
     // returns the details of a specific pool
     function poolAddressById(uint8) external view returns (address poolAddress);
@@ -33,6 +34,8 @@ interface IPoolUtils {
     function addNewPool(uint8 _poolId, address _poolAddress) external;
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
+
+    function validatorExitList(bytes[] calldata _pubkeys) external;
 
     function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,

@@ -12,7 +12,7 @@ interface IPenalty {
     event UpdatedPenaltyOracleAddress(address penaltyOracleAddress);
     event UpdatedMissedAttestationPenaltyPerStrike(uint256 missedAttestationPenalty);
     event UpdatedValidatorExitPenaltyThreshold(uint256 totalPenaltyThreshold);
-    event ExitValidator(bytes pubkey);
+    event ForceExitValidator(bytes pubkey);
     event UpdatedStaderConfig(address staderConfig);
     event ValidatorMarkedAsSettled(bytes pubkey);
 
