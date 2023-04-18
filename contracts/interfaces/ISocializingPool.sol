@@ -51,8 +51,6 @@ interface ISocializingPool {
 
     function claimedRewards(address _user, uint256 _index) external view returns (bool);
 
-    function totalELRewardsCollected() external view returns (uint256);
-
     function totalOperatorETHRewardsRemaining() external view returns (uint256);
 
     function totalOperatorSDRewardsRemaining() external view returns (uint256);

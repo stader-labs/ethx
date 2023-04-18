@@ -23,7 +23,6 @@ contract SocializingPool is
     ReentrancyGuardUpgradeable
 {
     IStaderConfig public override staderConfig;
-    uint256 public override totalELRewardsCollected;
     uint256 public override totalOperatorETHRewardsRemaining;
     uint256 public override totalOperatorSDRewardsRemaining;
     uint256 public override initialBlock;
