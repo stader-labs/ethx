@@ -5,11 +5,8 @@ async function main() {
   const staderConfigAddr = process.env.STADER_CONFIG ?? ''
 
   const permissionlessNodeRegistryFactory = await ethers.getContractFactory('PermissionlessNodeRegistry')
-  const permissionlessNodeRegistry = await upgrades.deployProxy(permissionlessNodeRegistryFactory, [
-    owner.address,
-    staderConfigAddr,
-  ])
-  console.log('permissionless node registry deployed to: ', permissionlessNodeRegistry.address)
+  const permissionlessNodeRegistry = await upgrades.deployImplementation(permissionlessNodeRegistryFactory)
+  console.log('permissionless node registry deployed to: ', permissionlessNodeRegistry)
 }
 
 main()

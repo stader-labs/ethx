@@ -5,11 +5,8 @@ async function main() {
   const staderConfigAddr = process.env.STADER_CONFIG ?? ''
 
   const userWithdrawalManagerFactory = await ethers.getContractFactory('UserWithdrawalManager')
-  const userWithdrawalManager = await upgrades.deployProxy(userWithdrawalManagerFactory, [
-    owner.address,
-    staderConfigAddr,
-  ])
-  console.log('userWithdrawalManager deployed to: ', userWithdrawalManager.address)
+  const userWithdrawalManager = await upgrades.deployImplementation(userWithdrawalManagerFactory)
+  console.log('userWithdrawalManager deployed to: ', userWithdrawalManager)
 }
 
 main()

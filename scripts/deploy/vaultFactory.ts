@@ -1,11 +1,11 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-  const [owner] = await ethers.getSigners()
+  const admin = process.env.EXTERNAL_ADMIN ?? ''
   const staderConfigAddr = process.env.STADER_CONFIG ?? ''
 
   const VaultFactoryContractFactory = await ethers.getContractFactory('VaultFactory')
-  const vaultFactory = await upgrades.deployProxy(VaultFactoryContractFactory, [owner.address, staderConfigAddr])
+  const vaultFactory = await upgrades.deployProxy(VaultFactoryContractFactory, [admin, staderConfigAddr])
   console.log('vaultFactory deployed to: ', vaultFactory.address)
 }
 
