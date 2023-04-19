@@ -109,7 +109,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
         uint256 totalPenalty = _mevTheftPenalty + _missedAttestationPenalty + additionalPenaltyAmount[pubkeyRoot];
         totalPenaltyAmount[_pubkey] = totalPenalty;
         if (totalPenalty > validatorExitPenaltyThreshold) {
-            emit ExitValidator(_pubkey);
+            emit ForceExitValidator(_pubkey);
         }
         return totalPenalty;
     }

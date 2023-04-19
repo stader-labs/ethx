@@ -64,6 +64,19 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }
 
+    /**
+     * @notice validator pubkey list to exit for fulfilling user withdraw requests
+     * @param _pubkeys list of validator pubkeys to exit
+     * @dev emit an event containing validator pubkey for offchain to exit the validator
+     */
+    function processValidatorExitList(bytes[] calldata _pubkeys) external override {
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        uint256 exitValidatorCount = _pubkeys.length;
+        for (uint256 i = 0; i < exitValidatorCount; i++) {
+            emit ExitValidator(_pubkeys[i]);
+        }
+    }
+
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
