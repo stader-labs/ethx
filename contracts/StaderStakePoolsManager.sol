@@ -218,10 +218,12 @@ contract StaderStakePoolsManager is
 
     /**
      * @notice pool selection for excess ETH supply after running `validatorBatchDeposit` for each pool
-     * @dev only `MANAGER` role can call after coolDown period to make sure it runs once in a day cycle
+     * @dev any one call after cooldown period to make sure it runs once in the cooldown period cycle
      */
     function depositETHOverTargetWeight() external override nonReentrant {
-        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
+            revert UnsupportedOperationInSafeMode();
+        }
         if (block.number < lastExcessETHDepositBlock + excessETHDepositCoolDown) {
             revert CooldownNotComplete();
         }
