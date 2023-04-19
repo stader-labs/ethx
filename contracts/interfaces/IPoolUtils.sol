@@ -35,7 +35,7 @@ interface IPoolUtils {
 
     function updatePoolAddress(uint8 _poolId, address _poolAddress) external;
 
-    function validatorExitList(bytes[] calldata _pubkeys) external;
+    function processValidatorExitList(bytes[] calldata _pubkeys) external;
 
     function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
