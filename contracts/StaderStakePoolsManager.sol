@@ -187,9 +187,6 @@ contract StaderStakePoolsManager is
      * @dev gets the count of validator to deposit for pool from pool selector logic
      */
     function validatorBatchDeposit(uint8 _poolId) external override nonReentrant whenNotPaused {
-        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
-            revert UnsupportedOperationInSafeMode();
-        }
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         if (!poolUtils.isExistingPoolId(_poolId)) {
             revert PoolIdDoesNotExit();
@@ -218,12 +215,9 @@ contract StaderStakePoolsManager is
 
     /**
      * @notice pool selection for excess ETH supply after running `validatorBatchDeposit` for each pool
-     * @dev any one call after cooldown period to make sure it runs once in the cooldown period cycle
+     * @dev permissionless call with cooldown period
      */
     function depositETHOverTargetWeight() external override nonReentrant {
-        if (IStaderOracle(staderConfig.getStaderOracle()).safeMode()) {
-            revert UnsupportedOperationInSafeMode();
-        }
         if (block.number < lastExcessETHDepositBlock + excessETHDepositCoolDown) {
             revert CooldownNotComplete();
         }
