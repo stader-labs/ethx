@@ -174,7 +174,10 @@ contract ValidatorWithdrawalVault is
     function getPenaltyAmount() internal returns (uint256) {
         address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-        return IPenalty(staderConfig.getPenaltyContract()).updateTotalPenaltyAmount(pubkey);
+        bytes[] memory pubkeyArray = new bytes[](1);
+        pubkeyArray[0] = pubkey;
+        IPenalty(staderConfig.getPenaltyContract()).updateTotalPenaltyAmount(pubkeyArray);
+        return IPenalty(staderConfig.getPenaltyContract()).totalPenaltyAmount(pubkey);
     }
 
     function isWithdrawnValidator() internal view returns (bool) {
