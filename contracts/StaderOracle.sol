@@ -135,7 +135,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
+            submissionCount == trustedNodesCount / 2 + 1 &&
             _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
         ) {
             exchangeRate = _exchangeRate;
@@ -228,6 +228,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_sdPriceData.reportingBlockNumber % updateFrequencyMap[SD_PRICE_UF] > 0) {
             revert InvalidReportingBlock();
         }
+        if (_sdPriceData.reportingBlockNumber <= lastReportedSDPriceData.reportingBlockNumber) {
+            revert ReportingPreviousCycleData();
+        }
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber));
@@ -238,10 +241,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
         // price can be derived once more than 66% percent oracles have submitted price
-        if (
-            (submissionCount >= (2 * trustedNodesCount) / 3 + 1) &&
-            _sdPriceData.reportingBlockNumber > lastReportedSDPriceData.reportingBlockNumber
-        ) {
+        if ((submissionCount == (2 * trustedNodesCount) / 3 + 1)) {
             lastReportedSDPriceData = _sdPriceData;
             lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
             uint256 len = sdPrices.length;
@@ -326,7 +326,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
+            submissionCount == trustedNodesCount / 2 + 1 &&
             _validatorStats.reportingBlockNumber > validatorStats.reportingBlockNumber
         ) {
             validatorStats = _validatorStats;
@@ -389,7 +389,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
+            submissionCount == trustedNodesCount / 2 + 1 &&
             _withdrawnValidators.reportingBlockNumber > reportingBlockNumberForWithdrawnValidators
         ) {
             reportingBlockNumberForWithdrawnValidators = _withdrawnValidators.reportingBlockNumber;
