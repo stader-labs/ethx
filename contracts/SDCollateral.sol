@@ -155,6 +155,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     function updatePoolThreshold(
         uint8 _poolId,
         uint256 _minThreshold,
+        uint256 _maxThreshold,
         uint256 _withdrawThreshold,
         string memory _units
     ) external override {
@@ -165,6 +166,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
 
         poolThresholdbyPoolId[_poolId] = PoolThresholdInfo({
             minThreshold: _minThreshold,
+            maxThreshold: _maxThreshold,
             withdrawThreshold: _withdrawThreshold,
             units: _units
         });
@@ -205,9 +207,9 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         returns (uint256 _minSDToBond)
     {
         isPoolThresholdValid(_poolId);
-        PoolThresholdInfo storage poolThresholdInfo = poolThresholdbyPoolId[_poolId];
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
 
-        _minSDToBond = convertETHToSD(poolThresholdInfo.minThreshold);
+        _minSDToBond = convertETHToSD(poolThreshold.minThreshold);
         _minSDToBond *= _numValidator;
     }
 
@@ -223,6 +225,18 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         uint256 sdBalance = operatorSDBalance[_operator];
         uint256 minSDToBond = getMinimumSDToBond(_poolId, _numValidator);
         return (sdBalance >= minSDToBond ? 0 : minSDToBond - sdBalance);
+    }
+
+    function getRewardEligibleSD(address _operator) external view override returns (uint256 _rewardEligibleSD) {
+        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(_operator);
+
+        isPoolThresholdValid(poolId);
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
+
+        uint256 totalMinThreshold = validatorCount * convertETHToSD(poolThreshold.minThreshold);
+        uint256 totalMaxThreshold = validatorCount * convertETHToSD(poolThreshold.maxThreshold);
+        uint256 sdBalance = operatorSDBalance[_operator];
+        return (sdBalance < totalMinThreshold ? 0 : Math.min(sdBalance, totalMaxThreshold));
     }
 
     function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
