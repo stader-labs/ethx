@@ -95,23 +95,25 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
     }
 
     /// @inheritdoc IPenalty
-    function updateTotalPenaltyAmount(bytes calldata _pubkey) external override nonReentrant returns (uint256) {
-        if (UtilLib.getValidatorSettleStatus(_pubkey, staderConfig)) {
-            revert ValidatorSettled();
-        }
-        bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_pubkey);
-        // Retrieve the penalty for changing the fee recipient address based on Rated.network data.
-        uint256 _mevTheftPenalty = calculateMEVTheftPenalty(pubkeyRoot);
-        uint256 _missedAttestationPenalty = calculateMissedAttestationPenalty(pubkeyRoot);
+    function updateTotalPenaltyAmount(bytes[] calldata _pubkey) external override nonReentrant {
+        uint256 reportedValidatorCount = _pubkey.length;
+        for (uint256 i = 0; i < reportedValidatorCount; i++) {
+            if (UtilLib.getValidatorSettleStatus(_pubkey[i], staderConfig)) {
+                revert ValidatorSettled();
+            }
+            bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_pubkey[i]);
+            // Retrieve the penalty for changing the fee recipient address based on Rated.network data.
+            uint256 _mevTheftPenalty = calculateMEVTheftPenalty(pubkeyRoot);
+            uint256 _missedAttestationPenalty = calculateMissedAttestationPenalty(pubkeyRoot);
 
-        // Compute the total penalty for the given validator public key,
-        // taking into account additional penalties and penalty reversals from the DAO.
-        uint256 totalPenalty = _mevTheftPenalty + _missedAttestationPenalty + additionalPenaltyAmount[pubkeyRoot];
-        totalPenaltyAmount[_pubkey] = totalPenalty;
-        if (totalPenalty > validatorExitPenaltyThreshold) {
-            emit ForceExitValidator(_pubkey);
+            // Compute the total penalty for the given validator public key,
+            // taking into account additional penalties and penalty reversals from the DAO.
+            uint256 totalPenalty = _mevTheftPenalty + _missedAttestationPenalty + additionalPenaltyAmount[pubkeyRoot];
+            totalPenaltyAmount[_pubkey[i]] = totalPenalty;
+            if (totalPenalty > validatorExitPenaltyThreshold) {
+                emit ForceExitValidator(_pubkey[i]);
+            }
         }
-        return totalPenalty;
     }
 
     /// @inheritdoc IPenalty

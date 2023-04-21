@@ -64,11 +64,10 @@ interface IPenalty {
     function getAdditionalPenaltyAmount(bytes calldata _pubkey) external view returns (uint256);
 
     /**
-     * @notice update the total penalty amount for a given public key.
+     * @notice update the total penalty amount for a given public key and store in a map.
      * @param _pubkey The public key of the validator for which to calculate the penalty.
-     * @return The total MEV penalty.
      */
-    function updateTotalPenaltyAmount(bytes calldata _pubkey) external returns (uint256);
+    function updateTotalPenaltyAmount(bytes[] calldata _pubkey) external;
 
     /**
      * @notice Calculates the penalty for changing the fee recipient address for a given public key
