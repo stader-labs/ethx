@@ -10,11 +10,11 @@ interface IStaderConfig {
     error InvalidMaxWithdrawValue();
 
     // Events
-    event SetConstant(bytes32, uint256);
-    event SetVariable(bytes32, uint256);
-    event SetAccount(bytes32, address);
-    event SetContract(bytes32, address);
-    event SetToken(bytes32, address);
+    event SetConstant(bytes32 value, uint256 amount);
+    event SetVariable(bytes32 value, uint256 amount);
+    event SetAccount(bytes32 value, address updatedAddress);
+    event SetContract(bytes32 value, address updatedAddress);
+    event SetToken(bytes32 value, address updatedAddress);
 
     //Contracts
     function POOL_UTILS() external view returns (bytes32);
