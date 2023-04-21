@@ -83,7 +83,7 @@ contract ValidatorWithdrawalVault is
         }
         (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
-        uint256 penaltyAmount = getPenaltyAmount();
+        uint256 penaltyAmount = getUpdatedPenaltyAmount();
 
         if (operatorShare < penaltyAmount) {
             _sdSlashed = ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(validatorId, poolId);
@@ -171,7 +171,7 @@ contract ValidatorWithdrawalVault is
         return UtilLib.getNodeRecipientAddressByValidatorId(poolId, validatorId, staderConfig);
     }
 
-    function getPenaltyAmount() internal returns (uint256) {
+    function getUpdatedPenaltyAmount() internal returns (uint256) {
         address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         bytes[] memory pubkeyArray = new bytes[](1);
