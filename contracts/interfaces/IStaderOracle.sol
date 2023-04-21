@@ -67,14 +67,14 @@ struct ExchangeRate {
 struct ValidatorStats {
     /// @notice The block number when the validator stats was last updated.
     uint256 reportingBlockNumber;
-    /// @notice The total balance of all active validators.
-    uint128 activeValidatorsBalance;
+    /// @notice The total balance of all exiting validators.
+    uint128 exitingValidatorsBalance;
     /// @notice The total balance of all exited validators.
     uint128 exitedValidatorsBalance;
     /// @notice The total balance of all slashed validators.
     uint128 slashedValidatorsBalance;
-    /// @notice The number of currently active validators.
-    uint32 activeValidatorsCount;
+    /// @notice The number of currently exiting validators.
+    uint32 exitingValidatorsCount;
     /// @notice The number of validators that have exited.
     uint32 exitedValidatorsCount;
     /// @notice The number of validators that have been slashed.
