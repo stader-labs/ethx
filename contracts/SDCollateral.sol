@@ -160,7 +160,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         string memory _units
     ) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (_minThreshold > _withdrawThreshold) {
+        if ((_minThreshold > _withdrawThreshold) || (_minThreshold > _maxThreshold)) {
             revert InvalidPoolLimit();
         }
 
