@@ -6,6 +6,7 @@ import '../IStaderConfig.sol';
 interface ISDCollateral {
     struct PoolThresholdInfo {
         uint256 minThreshold;
+        uint256 maxThreshold;
         uint256 withdrawThreshold;
         string units;
     }
@@ -52,6 +53,7 @@ interface ISDCollateral {
     function updatePoolThreshold(
         uint8 _poolId,
         uint256 _minThreshold,
+        uint256 _maxThreshold,
         uint256 _withdrawThreshold,
         string memory _units
     ) external;
@@ -85,6 +87,8 @@ interface ISDCollateral {
         uint8 _poolId,
         uint256 _numValidator
     ) external view returns (uint256);
+
+    function getRewardEligibleSD(address _operator) external view returns (uint256 _rewardEligibleSD);
 
     function convertSDToETH(uint256 _sdAmount) external view returns (uint256);
 
