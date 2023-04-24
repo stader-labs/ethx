@@ -291,10 +291,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             abi.encodePacked(
                 msg.sender,
                 _validatorStats.reportingBlockNumber,
-                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitingValidatorsBalance,
                 _validatorStats.exitedValidatorsBalance,
                 _validatorStats.slashedValidatorsBalance,
-                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitingValidatorsCount,
                 _validatorStats.exitedValidatorsCount,
                 _validatorStats.slashedValidatorsCount
             )
@@ -302,10 +302,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         bytes32 submissionCountKey = keccak256(
             abi.encodePacked(
                 _validatorStats.reportingBlockNumber,
-                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitingValidatorsBalance,
                 _validatorStats.exitedValidatorsBalance,
                 _validatorStats.slashedValidatorsBalance,
-                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitingValidatorsCount,
                 _validatorStats.exitedValidatorsCount,
                 _validatorStats.slashedValidatorsCount
             )
@@ -316,10 +316,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit ValidatorStatsSubmitted(
             msg.sender,
             _validatorStats.reportingBlockNumber,
-            _validatorStats.activeValidatorsBalance,
+            _validatorStats.exitingValidatorsBalance,
             _validatorStats.exitedValidatorsBalance,
             _validatorStats.slashedValidatorsBalance,
-            _validatorStats.activeValidatorsCount,
+            _validatorStats.exitingValidatorsCount,
             _validatorStats.exitedValidatorsCount,
             _validatorStats.slashedValidatorsCount,
             block.timestamp
@@ -334,10 +334,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             // Emit stats updated event
             emit ValidatorStatsUpdated(
                 _validatorStats.reportingBlockNumber,
-                _validatorStats.activeValidatorsBalance,
+                _validatorStats.exitingValidatorsBalance,
                 _validatorStats.exitedValidatorsBalance,
                 _validatorStats.slashedValidatorsBalance,
-                _validatorStats.activeValidatorsCount,
+                _validatorStats.exitingValidatorsCount,
                 _validatorStats.exitedValidatorsCount,
                 _validatorStats.slashedValidatorsCount,
                 block.timestamp
