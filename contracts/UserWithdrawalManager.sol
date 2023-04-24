@@ -178,8 +178,8 @@ contract UserWithdrawalManager is
     }
 
     /// @notice return the list of ongoing withdraw requestIds for a user
-    function getRequestIdsByUser(address _user) external view override returns (uint256[] memory) {
-        return requestIdsByUserAddress[_user];
+    function getRequestIdsByUser(address _owner) external view override returns (uint256[] memory) {
+        return requestIdsByUserAddress[_owner];
     }
 
     /**

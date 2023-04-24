@@ -68,5 +68,5 @@ interface IUserWithdrawalManager {
 
     function claim(uint256 _requestId) external;
 
-    function getRequestIdsByUser(address _user) external view returns (uint256[] memory);
+    function getRequestIdsByUser(address _owner) external view returns (uint256[] memory);
 }
