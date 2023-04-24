@@ -177,6 +177,11 @@ contract UserWithdrawalManager is
         emit RequestRedeemed(msg.sender, userRequest.owner, etherToTransfer);
     }
 
+    /// @notice return the list of ongoing withdraw requestIds for a user
+    function getRequestIdsByUser(address _user) external view override returns (uint256[] memory) {
+        return requestIdsByUserAddress[_user];
+    }
+
     /**
      * @dev Triggers stopped state.
      * Contract must not be paused
