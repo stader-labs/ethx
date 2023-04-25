@@ -9,6 +9,14 @@ npx hardhat node
 npx hardhat run scripts/deploy.ts
 ```
 
+Setting up Foundry
+
+- install foundry `curl -L https://foundry.paradigm.xyz | bash `
+- extra step for macOS `brew install libusb`
+- run `foundryup`
+- npm install
+- forge test
+
 # Repository Conventions
 
 ### Types

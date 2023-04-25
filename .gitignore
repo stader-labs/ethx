@@ -13,5 +13,9 @@ keystores
 deposits
 
 
+# Foundry
+cache_forge/
+out/
+
 
 
