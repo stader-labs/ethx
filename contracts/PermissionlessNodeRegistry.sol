@@ -552,7 +552,7 @@ contract PermissionlessNodeRegistry is
         socializingPoolStateChangeBlock[nextOperatorId] = block.number;
         nextOperatorId++;
 
-        emit OnboardedOperator(msg.sender, _operatorRewardAddress, nextOperatorId - 1);
+        emit OnboardedOperator(msg.sender, _operatorRewardAddress, nextOperatorId - 1, _optInForSocializingPool);
     }
 
     // mark validator  `PRE_DEPOSIT` after successful key verification and front run check

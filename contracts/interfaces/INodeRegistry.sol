@@ -40,7 +40,6 @@ interface INodeRegistry {
     error TooManyWithdrawnKeysReported();
 
     // Events
-    event OnboardedOperator(address indexed nodeOperator, address nodeRewardAddress, uint256 operatorId);
     event AddedValidatorKey(address indexed nodeOperator, bytes pubkey, uint256 validatorId);
     event ValidatorMarkedAsFrontRunned(bytes indexed pubkey, uint256 validatorId);
     event ValidatorWithdrawn(bytes indexed pubkey, uint256 validatorId);
