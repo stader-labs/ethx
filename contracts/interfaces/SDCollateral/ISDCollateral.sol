@@ -31,7 +31,7 @@ interface ISDCollateral {
     event SDDeposited(address indexed operator, uint256 sdAmount);
     event SDWithdrawRequested(address indexed operator, uint256 requestedSD);
     event SDClaimed(address indexed operator, uint256 requestedSD);
-    event SDSlashed(address indexed operator, address indexed auction, uint256 sdToSlash);
+    event SDSlashed(address indexed operator, address indexed auction, uint256 sdSlashed);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
     event UpdatedPoolIdForOperator(uint8 poolId, address operator);
     event WithdrawDelayUpdated(uint256 withdrawDelay);
@@ -43,7 +43,7 @@ interface ISDCollateral {
 
     function claimWithdraw() external;
 
-    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external returns (uint256 _sdSlashed);
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external;
 
     function maxApproveSD(address spenderAddr) external;
 

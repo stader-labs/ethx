@@ -232,6 +232,8 @@ contract PermissionlessNodeRegistry is
             }
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnBlock = block.number;
+            IValidatorWithdrawalVault(validatorRegistry[validatorId].withdrawVaultAddress).settleFunds();
+
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         decreaseTotalActiveValidatorCount(withdrawnValidatorCount);

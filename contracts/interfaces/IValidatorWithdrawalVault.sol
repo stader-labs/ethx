@@ -10,6 +10,7 @@ interface IValidatorWithdrawalVault {
     error InsufficientBalance();
     error NotEnoughRewardToDistribute();
     error ETHTransferFailed(address recipient, uint256 amount);
+    error CallerNotNodeRegistryContract();
 
     // Events
     event ETHReceived(address indexed sender, uint256 amount);
@@ -21,7 +22,7 @@ interface IValidatorWithdrawalVault {
     // methods
     function distributeRewards() external;
 
-    function settleFunds() external returns (uint256 _sdSlashed);
+    function settleFunds() external;
 
     // setters
     function updateStaderConfig(address _staderConfig) external;

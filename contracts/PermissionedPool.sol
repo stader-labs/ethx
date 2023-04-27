@@ -30,6 +30,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     // @inheritdoc IStaderPoolBase
     uint256 public override operatorFee;
 
+    uint256 public preDepositValidatorCount;
+
     uint256 public constant MAX_COMMISSION_LIMIT_BIPS = 1500;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -64,6 +66,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     // transfer the 32ETH for defective keys (front run, invalid signature) to stader stake pool manager (SSPM)
     function transferETHOfDefectiveKeysToSSPM(uint256 _defectiveKeyCount) external nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_NODE_REGISTRY());
+        //decrease the preDeposit validator count
+        decreasePreDepositValidatorCount(_defectiveKeyCount);
         //get 1ETH from insurance fund
         IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).reimburseUserFund(
             _defectiveKeyCount * staderConfig.getPreDepositSize()
@@ -98,6 +102,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             if (validatorToDeposit == 0) {
                 continue;
             }
+            increasePreDepositValidatorCount(validatorToDeposit);
             uint256 nextQueuedValidatorIndex = IPermissionedNodeRegistry(nodeRegistryAddress)
                 .nextQueuedValidatorIndexByOperatorId(i);
 
@@ -124,6 +129,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
         uint256 pubkeyCount = _pubkey.length;
+        //decrease the preDeposit validator count
+        decreasePreDepositValidatorCount(pubkeyCount);
         for (uint256 i = 0; i < pubkeyCount; i++) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
@@ -149,6 +156,11 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 depositDataRoot
             );
             IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
+            if (preDepositValidatorCount == 0 && address(this).balance > 0) {
+                IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
+                    value: address(this).balance
+                }(POOL_ID);
+            }
             emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey[i]);
         }
     }
@@ -255,6 +267,14 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                     sha256(abi.encodePacked(amount, bytes24(0), signature_root))
                 )
             );
+    }
+
+    function increasePreDepositValidatorCount(uint256 _count) internal {
+        preDepositValidatorCount += _count;
+    }
+
+    function decreasePreDepositValidatorCount(uint256 _count) internal {
+        preDepositValidatorCount -= _count;
     }
 
     // deposit `PRE_DEPOSIT_SIZE` for validator
