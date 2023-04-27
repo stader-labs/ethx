@@ -105,34 +105,28 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     /// @notice slashes one validator equi. SD amount
     /// @dev callable only by respective withdrawVaults
     /// @param _validatorId validator SD collateral to slash
-    function slashValidatorSD(uint256 _validatorId, uint8 _poolId)
-        external
-        override
-        nonReentrant
-        returns (uint256 _sdSlashed)
-    {
+    function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external override nonReentrant {
         address operator = UtilLib.getOperatorForValidSender(_poolId, _validatorId, msg.sender, staderConfig);
         isPoolThresholdValid(_poolId);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
         uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
-        return slashSD(operator, sdToSlash);
+        slashSD(operator, sdToSlash);
     }
 
     /// @notice used to slash operator SD, incase of operator default
     /// @dev do provide SD approval to auction contract using `maxApproveSD()`
     /// @param _operator which operator SD collateral to slash
     /// @param _sdToSlash amount of SD to slash
-    function slashSD(address _operator, uint256 _sdToSlash) internal returns (uint256 _sdSlashed) {
+    function slashSD(address _operator, uint256 _sdToSlash) internal {
         uint256 sdBalance = operatorSDBalance[_operator];
-        _sdSlashed = Math.min(_sdToSlash, sdBalance);
-        if (_sdSlashed == 0) {
-            return _sdSlashed;
+        uint256 sdSlashed = Math.min(_sdToSlash, sdBalance);
+        if (sdSlashed == 0) {
+            return;
         }
-        operatorSDBalance[_operator] -= _sdSlashed;
-        totalSDCollateral -= _sdSlashed;
-        IAuction(staderConfig.getAuctionContract()).createLot(_sdSlashed);
-
-        emit SDSlashed(_operator, staderConfig.getAuctionContract(), _sdToSlash);
+        operatorSDBalance[_operator] -= sdSlashed;
+        totalSDCollateral -= sdSlashed;
+        IAuction(staderConfig.getAuctionContract()).createLot(sdSlashed);
+        emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
 
     /// @notice for max approval to auction contract for spending SD tokens

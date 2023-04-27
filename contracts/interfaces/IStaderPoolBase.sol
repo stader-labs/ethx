@@ -9,6 +9,7 @@ interface IStaderPoolBase {
     error OperatorFeeUnchanged();
     error UnsupportedOperation();
     error InvalidCommission();
+    error CouldNotDetermineExcessETH();
 
     // Events
     event ValidatorPreDepositedOnBeaconChain(bytes indexed pubKey);
