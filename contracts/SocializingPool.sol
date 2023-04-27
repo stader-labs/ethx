@@ -26,6 +26,7 @@ contract SocializingPool is
     uint256 public override totalOperatorETHRewardsRemaining;
     uint256 public override totalOperatorSDRewardsRemaining;
     uint256 public override initialBlock;
+    uint8 public override poolId;
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
@@ -35,16 +36,23 @@ contract SocializingPool is
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(
+        address _admin,
+        address _staderConfig,
+        uint8 _poolId
+    ) public initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
-
+        if (_poolId == 0) {
+            revert InvalidPoolId();
+        }
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
         initialBlock = block.number;
+        poolId = _poolId;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -109,7 +117,10 @@ contract SocializingPool is
         address operator = msg.sender;
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
 
-        uint8 poolId = IPoolUtils(staderConfig.getPoolUtils()).getOperatorPoolId(operator);
+        uint8 operatorPoolId = IPoolUtils(staderConfig.getPoolUtils()).getOperatorPoolId(operator);
+        if (operatorPoolId != poolId) {
+            revert InvalidOperator();
+        }
         address operatorRewardsAddr = UtilLib.getNodeRecipientAddressByOperator(poolId, operator, staderConfig);
 
         bool success;
@@ -164,7 +175,10 @@ contract SocializingPool is
         uint256 _amountETH,
         bytes32[] calldata _merkleProof
     ) public view returns (bool) {
-        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
+        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRootByPoolId(
+            poolId,
+            _index
+        );
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
@@ -191,7 +205,7 @@ contract SocializingPool is
             uint256 nextEndBlock
         )
     {
-        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
+        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex(poolId);
         (currentStartBlock, currentEndBlock) = getRewardCycleDetails(currentIndex);
         nextIndex = currentIndex + 1;
         (nextStartBlock, nextEndBlock) = getRewardCycleDetails(nextIndex);

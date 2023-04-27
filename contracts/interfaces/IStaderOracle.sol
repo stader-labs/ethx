@@ -117,8 +117,14 @@ interface IStaderOracle {
     event BalancesUpdated(uint256 block, uint256 totalEth, uint256 stakingEth, uint256 ethxSupply, uint256 time);
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
-    event SocializingRewardsMerkleRootSubmitted(address indexed node, uint256 index, bytes32 merkleRoot, uint256 block);
-    event SocializingRewardsMerkleRootUpdated(uint256 index, bytes32 merkleRoot, uint256 block);
+    event SocializingRewardsMerkleRootSubmitted(
+        address indexed node,
+        uint256 index,
+        uint8 poolId,
+        bytes32 merkleRoot,
+        uint256 block
+    );
+    event SocializingRewardsMerkleRootUpdated(uint256 index, uint8 poolId, bytes32 merkleRoot, uint256 block);
     event SDPriceSubmitted(address indexed node, uint256 sdPriceInETH, uint256 reportedBlock, uint256 block);
     event SDPriceUpdated(uint256 sdPriceInETH, uint256 reportedBlock, uint256 block);
 
@@ -252,14 +258,14 @@ interface IStaderOracle {
     function safeMode() external view returns (bool);
 
     // The root of the merkle tree containing the socializing rewards of operator
-    function socializingRewardsMerkleRoot(uint256) external view returns (bytes32);
+    function socializingRewardsMerkleRootByPoolId(uint8, uint256) external view returns (bytes32);
 
     function isTrustedNode(address) external view returns (bool);
 
     function missedAttestationPenalty(bytes32 _pubkey) external view returns (uint16);
 
     // The last updated merkle tree index
-    function getCurrentRewardsIndex() external view returns (uint256);
+    function getCurrentRewardsIndex(uint8 _poolId) external view returns (uint256);
 
     function getERReportableBlock() external view returns (uint256);
 

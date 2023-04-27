@@ -13,7 +13,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
-    RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
     ExchangeRate public exchangeRate;
@@ -33,7 +32,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     bool public override safeMode;
 
     /// @inheritdoc IStaderOracle
-    mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
+    mapping(uint8 => mapping(uint256 => bytes32)) public override socializingRewardsMerkleRootByPoolId;
+    mapping(uint8 => RewardsData) public rewardsDataByPoolId;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
@@ -170,7 +170,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_rewardsData.reportingBlockNumber % updateFrequencyMap[MERKLE_UF] > 0) {
             revert InvalidReportingBlock();
         }
-        if (_rewardsData.index <= rewardsData.index) {
+        if (_rewardsData.index <= rewardsDataByPoolId[_rewardsData.poolId].index) {
             revert InvalidMerkleRootIndex();
         }
 
@@ -180,6 +180,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
                 msg.sender,
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
+                _rewardsData.poolId,
                 _rewardsData.operatorETHRewards,
                 _rewardsData.userETHRewards,
                 _rewardsData.protocolETHRewards,
@@ -190,6 +191,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             abi.encodePacked(
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
+                _rewardsData.poolId,
                 _rewardsData.operatorETHRewards,
                 _rewardsData.userETHRewards,
                 _rewardsData.protocolETHRewards,
@@ -201,6 +203,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit SocializingRewardsMerkleRootSubmitted(
             msg.sender,
             _rewardsData.index,
+            _rewardsData.poolId,
             _rewardsData.merkleRoot,
             block.number
         );
@@ -209,15 +212,20 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
             // Update merkle root
-            socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
-            rewardsData = _rewardsData;
+            socializingRewardsMerkleRootByPoolId[_rewardsData.poolId][_rewardsData.index] = _rewardsData.merkleRoot;
+            rewardsDataByPoolId[_rewardsData.poolId] = _rewardsData;
 
             address socializingPool = IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(
                 _rewardsData.poolId
             );
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
-            emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);
+            emit SocializingRewardsMerkleRootUpdated(
+                _rewardsData.index,
+                _rewardsData.poolId,
+                _rewardsData.merkleRoot,
+                block.number
+            );
         }
     }
 
@@ -558,8 +566,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return (block.number / updateFrequency) * updateFrequency;
     }
 
-    function getCurrentRewardsIndex() external view returns (uint256) {
-        return rewardsData.index + 1; // rewardsData.index is the last updated index
+    function getCurrentRewardsIndex(uint8 _poolId) external view returns (uint256) {
+        return rewardsDataByPoolId[_poolId].index + 1;
     }
 
     function getValidatorStats() external view override returns (ValidatorStats memory) {

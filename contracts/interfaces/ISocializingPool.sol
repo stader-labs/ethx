@@ -16,6 +16,8 @@ interface ISocializingPool {
     error InvalidAmount();
     error InvalidProof(uint256 cycle, address operator);
     error InvalidCycleIndex();
+    error InvalidOperator();
+    error InvalidPoolId();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -56,6 +58,8 @@ interface ISocializingPool {
     function totalOperatorSDRewardsRemaining() external view returns (uint256);
 
     function initialBlock() external view returns (uint256);
+
+    function poolId() external view returns (uint8);
 
     function verifyProof(
         uint256 _index,
