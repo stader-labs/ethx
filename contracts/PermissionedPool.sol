@@ -165,11 +165,12 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
      * @dev preDepositValidatorCount has to be 0 for determining excess ETH value
      */
     function transferExcessETHToSSPM() external nonReentrant {
-        if (preDepositValidatorCount == 0 && address(this).balance > 0) {
-            IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
-                value: address(this).balance
-            }(POOL_ID);
+        if (preDepositValidatorCount != 0 || address(this).balance == 0) {
+            revert CouldNotDetermineExcessETH();
         }
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
+            value: address(this).balance
+        }(POOL_ID);
     }
 
     /**
