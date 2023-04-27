@@ -12,6 +12,7 @@ interface IPermissionedNodeRegistry {
     error MaxOperatorLimitReached();
 
     // Events
+    event OnboardedOperator(address indexed nodeOperator, address nodeRewardAddress, uint256 operatorId);
     event OperatorWhitelisted(address permissionedNO);
     event OperatorDeactivated(uint256 operatorID);
     event OperatorActivated(uint256 operatorID);

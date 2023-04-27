@@ -13,6 +13,12 @@ interface IPermissionlessNodeRegistry {
     error NoChangeInState();
 
     // Events
+    event OnboardedOperator(
+        address indexed nodeOperator,
+        address nodeRewardAddress,
+        uint256 operatorId,
+        bool optInForSocializingPool
+    );
     event ValidatorMarkedReadyToDeposit(bytes indexed pubkey, uint256 validatorId);
     event UpdatedNextQueuedValidatorIndex(uint256 nextQueuedValidatorIndex);
     event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);
