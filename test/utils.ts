@@ -1,7 +1,6 @@
 /* eslint-disable no-undef */
 /* eslint-disable arrow-body-style */
 /* eslint-disable no-await-in-loop */
-import deposit from '../scripts/deposits/deposit0.json'
 import { ethers, upgrades } from 'hardhat'
 
 const setupAddresses = async () => {
