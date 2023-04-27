@@ -156,12 +156,19 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 depositDataRoot
             );
             IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
-            if (preDepositValidatorCount == 0 && address(this).balance > 0) {
-                IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
-                    value: address(this).balance
-                }(POOL_ID);
-            }
             emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey[i]);
+        }
+    }
+
+    /**
+     * @notice transfer the excess ETH sent by some EAO or non stader contract back to SSPM
+     * @dev preDepositValidatorCount has to be 0 for determining excess ETH value
+     */
+    function transferExcessETHToSSPM() external nonReentrant {
+        if (preDepositValidatorCount == 0 && address(this).balance > 0) {
+            IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
+                value: address(this).balance
+            }(POOL_ID);
         }
     }
 
