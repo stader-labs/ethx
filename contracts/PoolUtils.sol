@@ -130,14 +130,8 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolUtils
-    function getSocializingPoolAddress(uint8 _poolId)
-        public
-        view
-        override
-        onlyExistingPoolId(_poolId)
-        returns (address)
-    {
-        return IStaderPoolBase(poolAddressById[_poolId]).getSocializingPoolAddress();
+    function getSocializingPoolAddress() public view override returns (address) {
+        return staderConfig.getSocializingPool();
     }
 
     /// @inheritdoc IPoolUtils

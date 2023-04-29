@@ -82,9 +82,6 @@ contract ValidatorWithdrawalVault is
         if (msg.sender != nodeRegistry) {
             revert CallerNotNodeRegistryContract();
         }
-        if (!isWithdrawnValidator() || vaultSettleStatus) {
-            revert ValidatorNotWithdrawnOrSettled();
-        }
         (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getUpdatedPenaltyAmount();
