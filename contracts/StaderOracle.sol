@@ -215,9 +215,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
             rewardsData = _rewardsData;
 
-            address socializingPool = IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(
-                _rewardsData.poolId
-            );
+            address socializingPool = staderConfig.getSocializingPool();
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
             emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);

@@ -103,9 +103,7 @@ contract PermissionlessNodeRegistry is
             nextOperatorId
         );
         nodeELRewardVaultByOperatorId[nextOperatorId] = nodeELRewardVault;
-        feeRecipientAddress = _optInForSocializingPool
-            ? staderConfig.getPermissionlessSocializingPool()
-            : nodeELRewardVault;
+        feeRecipientAddress = _optInForSocializingPool ? staderConfig.getSocializingPool() : nodeELRewardVault;
         onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
         return feeRecipientAddress;
     }
@@ -284,7 +282,7 @@ contract PermissionlessNodeRegistry is
             if (address(feeRecipientAddress).balance > 0) {
                 INodeELRewardVault(feeRecipientAddress).withdraw();
             }
-            feeRecipientAddress = staderConfig.getPermissionlessSocializingPool();
+            feeRecipientAddress = staderConfig.getSocializingPool();
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
         socializingPoolStateChangeBlock[operatorId] = block.number;

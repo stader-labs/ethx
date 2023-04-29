@@ -130,17 +130,6 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolUtils
-    function getSocializingPoolAddress(uint8 _poolId)
-        public
-        view
-        override
-        onlyExistingPoolId(_poolId)
-        returns (address)
-    {
-        return IStaderPoolBase(poolAddressById[_poolId]).getSocializingPoolAddress();
-    }
-
-    /// @inheritdoc IPoolUtils
     function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,
         address _nodeOperator,

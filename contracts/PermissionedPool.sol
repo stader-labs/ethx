@@ -203,11 +203,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
     }
 
-    // @inheritdoc IStaderPoolBase
-    function getSocializingPoolAddress() external view returns (address) {
-        return staderConfig.getPermissionedSocializingPool();
-    }
-
     function getCollateralETH() external view override returns (uint256) {
         return INodeRegistry(staderConfig.getPermissionedNodeRegistry()).getCollateralETH();
     }

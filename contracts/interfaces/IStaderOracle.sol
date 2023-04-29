@@ -19,8 +19,6 @@ struct RewardsData {
     uint256 index;
     /// @notice The merkle root hash
     bytes32 merkleRoot;
-    /// @notice pool id of operators
-    uint8 poolId;
     /// @notice operator ETH rewards for index cycle
     uint256 operatorETHRewards;
     /// @notice user ETH rewards for index cycle
