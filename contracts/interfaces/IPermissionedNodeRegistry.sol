@@ -12,11 +12,12 @@ interface IPermissionedNodeRegistry {
     error MaxOperatorLimitReached();
 
     // Events
+    event OnboardedOperator(address indexed nodeOperator, address nodeRewardAddress, uint256 operatorId);
     event OperatorWhitelisted(address permissionedNO);
     event OperatorDeactivated(uint256 operatorID);
     event OperatorActivated(uint256 operatorID);
     event MaxOperatorIdLimitChanged(uint256 maxOperatorId);
-    event MarkedValidatorStatusAsPreDeposit(bytes indexed pubkey);
+    event MarkedValidatorStatusAsPreDeposit(bytes pubkey);
     event UpdatedQueuedValidatorIndex(uint256 indexed operatorId, uint256 nextQueuedValidatorIndex);
 
     // Getters

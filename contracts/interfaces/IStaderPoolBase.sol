@@ -9,9 +9,10 @@ interface IStaderPoolBase {
     error OperatorFeeUnchanged();
     error UnsupportedOperation();
     error InvalidCommission();
+    error CouldNotDetermineExcessETH();
 
     // Events
-    event ValidatorPreDepositedOnBeaconChain(bytes indexed pubKey);
+    event ValidatorPreDepositedOnBeaconChain(bytes pubKey);
     event ValidatorDepositedOnBeaconChain(uint256 indexed validatorId, bytes pubKey);
     event UpdatedCommissionFees(uint256 protocolFee, uint256 operatorFee);
     event ReceivedCollateralETH(uint256 amount);
@@ -42,8 +43,6 @@ interface IStaderPoolBase {
     ) external view returns (uint256);
 
     function stakeUserETHToBeaconChain() external payable;
-
-    function getSocializingPoolAddress() external view returns (address);
 
     function getCollateralETH() external view returns (uint256);
 

@@ -77,16 +77,17 @@ contract ValidatorWithdrawalVault is
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
-    function settleFunds() external override nonReentrant returns (uint256 _sdSlashed) {
-        if (!isWithdrawnValidator() || vaultSettleStatus) {
-            revert ValidatorNotWithdrawnOrSettled();
+    function settleFunds() external override nonReentrant {
+        address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
+        if (msg.sender != nodeRegistry) {
+            revert CallerNotNodeRegistryContract();
         }
         (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmount = getUpdatedPenaltyAmount();
 
         if (operatorShare < penaltyAmount) {
-            _sdSlashed = ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(validatorId, poolId);
+            ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(validatorId, poolId);
             penaltyAmount = operatorShare;
         }
 

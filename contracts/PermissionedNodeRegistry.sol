@@ -121,7 +121,7 @@ contract PermissionedNodeRegistry is
         if (IPoolUtils(poolUtils).isExistingOperator(msg.sender)) {
             revert OperatorAlreadyOnBoardedInProtocol();
         }
-        feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
+        feeRecipientAddress = staderConfig.getSocializingPool();
         onboardOperator(_operatorName, _operatorRewardAddress);
         return feeRecipientAddress;
     }
@@ -305,6 +305,7 @@ contract PermissionedNodeRegistry is
             }
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnBlock = block.number;
+            IValidatorWithdrawalVault(validatorRegistry[validatorId].withdrawVaultAddress).settleFunds();
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         decreaseTotalActiveValidatorCount(withdrawnValidatorCount);

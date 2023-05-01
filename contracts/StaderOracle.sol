@@ -167,7 +167,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
-        if (_rewardsData.reportingBlockNumber % updateFrequencyMap[MERKLE_UF] > 0) {
+        if (
+            (_rewardsData.reportingBlockNumber <= rewardsData.reportingBlockNumber) ||
+            (_rewardsData.reportingBlockNumber % updateFrequencyMap[MERKLE_UF] > 0)
+        ) {
             revert InvalidReportingBlock();
         }
         if (_rewardsData.index <= rewardsData.index) {
@@ -212,9 +215,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
             rewardsData = _rewardsData;
 
-            address socializingPool = IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(
-                _rewardsData.poolId
-            );
+            address socializingPool = staderConfig.getSocializingPool();
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
             emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);

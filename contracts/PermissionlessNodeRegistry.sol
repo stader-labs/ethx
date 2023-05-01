@@ -103,9 +103,7 @@ contract PermissionlessNodeRegistry is
             nextOperatorId
         );
         nodeELRewardVaultByOperatorId[nextOperatorId] = nodeELRewardVault;
-        feeRecipientAddress = _optInForSocializingPool
-            ? staderConfig.getPermissionlessSocializingPool()
-            : nodeELRewardVault;
+        feeRecipientAddress = _optInForSocializingPool ? staderConfig.getSocializingPool() : nodeELRewardVault;
         onboardOperator(_optInForSocializingPool, _operatorName, _operatorRewardAddress);
         return feeRecipientAddress;
     }
@@ -232,6 +230,8 @@ contract PermissionlessNodeRegistry is
             }
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnBlock = block.number;
+            IValidatorWithdrawalVault(validatorRegistry[validatorId].withdrawVaultAddress).settleFunds();
+
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
         }
         decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
@@ -282,7 +282,7 @@ contract PermissionlessNodeRegistry is
             if (address(feeRecipientAddress).balance > 0) {
                 INodeELRewardVault(feeRecipientAddress).withdraw();
             }
-            feeRecipientAddress = staderConfig.getPermissionlessSocializingPool();
+            feeRecipientAddress = staderConfig.getSocializingPool();
         }
         operatorStructById[operatorId].optedForSocializingPool = _optInForSocializingPool;
         socializingPoolStateChangeBlock[operatorId] = block.number;
@@ -552,7 +552,7 @@ contract PermissionlessNodeRegistry is
         socializingPoolStateChangeBlock[nextOperatorId] = block.number;
         nextOperatorId++;
 
-        emit OnboardedOperator(msg.sender, _operatorRewardAddress, nextOperatorId - 1);
+        emit OnboardedOperator(msg.sender, _operatorRewardAddress, nextOperatorId - 1, _optInForSocializingPool);
     }
 
     // mark validator  `PRE_DEPOSIT` after successful key verification and front run check

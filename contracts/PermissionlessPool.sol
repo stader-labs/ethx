@@ -151,13 +151,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
             depositQueueStartIndex + requiredValidators
         );
         IPermissionlessNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
-        // balance must be 0 at this point
-        assert(address(this).balance == 0);
-    }
-
-    /// @inheritdoc IStaderPoolBase
-    function getSocializingPoolAddress() external view returns (address) {
-        return staderConfig.getPermissionlessSocializingPool();
     }
 
     /**
