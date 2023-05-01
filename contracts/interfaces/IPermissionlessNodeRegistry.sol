@@ -19,7 +19,7 @@ interface IPermissionlessNodeRegistry {
         uint256 operatorId,
         bool optInForSocializingPool
     );
-    event ValidatorMarkedReadyToDeposit(bytes indexed pubkey, uint256 validatorId);
+    event ValidatorMarkedReadyToDeposit(bytes pubkey, uint256 validatorId);
     event UpdatedNextQueuedValidatorIndex(uint256 nextQueuedValidatorIndex);
     event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);
     event TransferredCollateralToPool(uint256 amount);

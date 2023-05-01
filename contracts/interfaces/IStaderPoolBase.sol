@@ -12,7 +12,7 @@ interface IStaderPoolBase {
     error CouldNotDetermineExcessETH();
 
     // Events
-    event ValidatorPreDepositedOnBeaconChain(bytes indexed pubKey);
+    event ValidatorPreDepositedOnBeaconChain(bytes pubKey);
     event ValidatorDepositedOnBeaconChain(uint256 indexed validatorId, bytes pubKey);
     event UpdatedCommissionFees(uint256 protocolFee, uint256 operatorFee);
     event ReceivedCollateralETH(uint256 amount);
