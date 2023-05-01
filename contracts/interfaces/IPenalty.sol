@@ -7,7 +7,7 @@ interface IPenalty {
     error ValidatorSettled();
 
     // Events
-    event UpdatedAdditionalPenaltyAmount(bytes indexed pubkey, uint256 amount);
+    event UpdatedAdditionalPenaltyAmount(bytes pubkey, uint256 amount);
     event UpdatedMEVTheftPenaltyPerStrike(uint256 mevTheftPenalty);
     event UpdatedPenaltyOracleAddress(address penaltyOracleAddress);
     event UpdatedMissedAttestationPenaltyPerStrike(uint256 missedAttestationPenalty);
