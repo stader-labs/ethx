@@ -13,7 +13,6 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
-    RewardsData public rewardsData;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
     ExchangeRate public exchangeRate;
@@ -33,7 +32,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     bool public override safeMode;
 
     /// @inheritdoc IStaderOracle
-    mapping(uint256 => bytes32) public override socializingRewardsMerkleRoot;
     mapping(address => bool) public override isTrustedNode;
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
@@ -43,7 +41,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     uint256[] private sdPrices;
 
     bytes32 public constant ETHX_ER_UF = keccak256('ETHX_ER_UF'); // ETHx Exchange Rate, Balances Update Frequency
-    bytes32 public constant MERKLE_UF = keccak256('MERKLE_UF'); // Socializing Pool Rewards Merkle Root Update Frequency Key
     bytes32 public constant SD_PRICE_UF = keccak256('SD_PRICE_UF'); // SD Price Update Frequency Key
     bytes32 public constant VALIDATOR_STATS_UF = keccak256('VALIDATOR_STATS_UF'); // Validator Status Update Frequency Key
     bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256('WITHDRAWN_VALIDATORS_UF'); // Withdrawn Validator Update Frequency Key
@@ -167,13 +164,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
-        if (
-            (_rewardsData.reportingBlockNumber <= rewardsData.reportingBlockNumber) ||
-            (_rewardsData.reportingBlockNumber % updateFrequencyMap[MERKLE_UF] > 0)
-        ) {
+        if (_rewardsData.reportingBlockNumber != getMerkleRootReportableBlock()) {
             revert InvalidReportingBlock();
         }
-        if (_rewardsData.index <= rewardsData.index) {
+        if (_rewardsData.index != getCurrentRewardsIndex()) {
             revert InvalidMerkleRootIndex();
         }
 
@@ -211,10 +205,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
-            // Update merkle root
-            socializingRewardsMerkleRoot[_rewardsData.index] = _rewardsData.merkleRoot;
-            rewardsData = _rewardsData;
-
             address socializingPool = staderConfig.getSocializingPool();
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
@@ -490,11 +480,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 
-    function setMerkleRootUpdateFrequency(uint256 _updateFrequency) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        setUpdateFrequency(MERKLE_UF, _updateFrequency);
-    }
-
     function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
@@ -532,7 +517,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     function getMerkleRootReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(MERKLE_UF);
+        (, , uint256 currentEndBlock) = ISocializingPool(staderConfig.getSocializingPool()).getRewardDetails();
+        return currentEndBlock;
     }
 
     function getSDPriceReportableBlock() public view override returns (uint256) {
@@ -559,8 +545,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return (block.number / updateFrequency) * updateFrequency;
     }
 
-    function getCurrentRewardsIndex() external view returns (uint256) {
-        return rewardsData.index + 1; // rewardsData.index is the last updated index
+    function getCurrentRewardsIndex() public view returns (uint256) {
+        (, uint256 index, , , , , ) = ISocializingPool(staderConfig.getSocializingPool()).lastReportedRewardsData();
+        return index + 1;
     }
 
     function getValidatorStats() external view override returns (ValidatorStats memory) {

@@ -16,6 +16,7 @@ interface ISocializingPool {
     error InvalidAmount();
     error InvalidProof(uint256 cycle, address operator);
     error InvalidCycleIndex();
+    error FutureCycleIndex();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -65,16 +66,26 @@ interface ISocializingPool {
         bytes32[] calldata _merkleProof
     ) external view returns (bool);
 
+    function lastReportedRewardsData()
+        external
+        view
+        returns (
+            uint256 reportingBlockNumber,
+            uint256 index,
+            bytes32 merkleRoot,
+            uint256 operatorETHRewards,
+            uint256 userETHRewards,
+            uint256 protocolETHRewards,
+            uint256 operatorSDRewards
+        );
+
     function getRewardDetails()
         external
         view
         returns (
             uint256 currentIndex,
             uint256 currentStartBlock,
-            uint256 currentEndBlock,
-            uint256 nextIndex,
-            uint256 nextStartBlock,
-            uint256 nextEndBlock
+            uint256 currentEndBlock
         );
 
     function getRewardCycleDetails(uint256 _index) external view returns (uint256 _startBlock, uint256 _endBlock);
