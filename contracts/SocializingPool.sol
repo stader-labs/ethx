@@ -29,7 +29,7 @@ contract SocializingPool is
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
-    RewardsData public override lastReportedRewardsData;
+    RewardsData public lastReportedRewardsData;
     mapping(uint256 => RewardsData) public rewardsDataMap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -186,6 +186,10 @@ contract SocializingPool is
 
     // GETTERS
 
+    function getCurrentRewardsIndex() public view returns (uint256 index) {
+        index = lastReportedRewardsData.index + 1;
+    }
+
     function getRewardDetails()
         external
         view
@@ -196,7 +200,7 @@ contract SocializingPool is
             uint256 currentEndBlock
         )
     {
-        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
+        currentIndex = getCurrentRewardsIndex();
         (currentStartBlock, currentEndBlock) = getRewardCycleDetails(currentIndex);
     }
 

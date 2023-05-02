@@ -66,18 +66,7 @@ interface ISocializingPool {
         bytes32[] calldata _merkleProof
     ) external view returns (bool);
 
-    function lastReportedRewardsData()
-        external
-        view
-        returns (
-            uint256 reportingBlockNumber,
-            uint256 index,
-            bytes32 merkleRoot,
-            uint256 operatorETHRewards,
-            uint256 userETHRewards,
-            uint256 protocolETHRewards,
-            uint256 operatorSDRewards
-        );
+    function getCurrentRewardsIndex() external view returns (uint256 index);
 
     function getRewardDetails()
         external

@@ -546,8 +546,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     function getCurrentRewardsIndex() public view returns (uint256) {
-        (, uint256 index, , , , , ) = ISocializingPool(staderConfig.getSocializingPool()).lastReportedRewardsData();
-        return index + 1;
+        return ISocializingPool(staderConfig.getSocializingPool()).getCurrentRewardsIndex();
     }
 
     function getValidatorStats() external view override returns (ValidatorStats memory) {
