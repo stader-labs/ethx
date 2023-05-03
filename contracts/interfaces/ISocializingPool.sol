@@ -2,8 +2,26 @@
 
 pragma solidity ^0.8.16;
 
-import './IStaderOracle.sol';
 import './IStaderConfig.sol';
+
+/// @title RewardsData
+/// @notice This struct holds rewards merkleRoot and rewards split
+struct RewardsData {
+    /// @notice The block number when the rewards data was last updated
+    uint256 reportingBlockNumber;
+    /// @notice The index of merkle tree or rewards cycle
+    uint256 index;
+    /// @notice The merkle root hash
+    bytes32 merkleRoot;
+    /// @notice operator ETH rewards for index cycle
+    uint256 operatorETHRewards;
+    /// @notice user ETH rewards for index cycle
+    uint256 userETHRewards;
+    /// @notice protocol ETH rewards for index cycle
+    uint256 protocolETHRewards;
+    /// @notice operator SD rewards for index cycle
+    uint256 operatorSDRewards;
+}
 
 interface ISocializingPool {
     // errors
@@ -16,6 +34,7 @@ interface ISocializingPool {
     error InvalidAmount();
     error InvalidProof(uint256 cycle, address operator);
     error InvalidCycleIndex();
+    error FutureCycleIndex();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -65,16 +84,15 @@ interface ISocializingPool {
         bytes32[] calldata _merkleProof
     ) external view returns (bool);
 
+    function getCurrentRewardsIndex() external view returns (uint256 index);
+
     function getRewardDetails()
         external
         view
         returns (
             uint256 currentIndex,
             uint256 currentStartBlock,
-            uint256 currentEndBlock,
-            uint256 nextIndex,
-            uint256 nextStartBlock,
-            uint256 nextEndBlock
+            uint256 currentEndBlock
         );
 
     function getRewardCycleDetails(uint256 _index) external view returns (uint256 _startBlock, uint256 _endBlock);

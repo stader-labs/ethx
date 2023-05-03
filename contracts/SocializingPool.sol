@@ -29,6 +29,8 @@ contract SocializingPool is
 
     mapping(address => mapping(uint256 => bool)) public override claimedRewards;
     mapping(uint256 => bool) public handledRewards;
+    RewardsData public lastReportedRewardsData;
+    mapping(uint256 => RewardsData) public rewardsDataMap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -79,6 +81,9 @@ contract SocializingPool is
         handledRewards[_rewardsData.index] = true;
         totalOperatorETHRewardsRemaining += _rewardsData.operatorETHRewards;
         totalOperatorSDRewardsRemaining += _rewardsData.operatorSDRewards;
+
+        lastReportedRewardsData = _rewardsData;
+        rewardsDataMap[_rewardsData.index] = _rewardsData;
 
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{
             value: _rewardsData.userETHRewards
@@ -164,7 +169,10 @@ contract SocializingPool is
         uint256 _amountETH,
         bytes32[] calldata _merkleProof
     ) public view returns (bool) {
-        bytes32 merkleRoot = IStaderOracle(staderConfig.getStaderOracle()).socializingRewardsMerkleRoot(_index);
+        if (_index == 0 || _index > lastReportedRewardsData.index) {
+            revert InvalidCycleIndex();
+        }
+        bytes32 merkleRoot = rewardsDataMap[_index].merkleRoot;
         bytes32 node = keccak256(abi.encodePacked(_operator, _amountSD, _amountETH));
         return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, node);
     }
@@ -178,6 +186,10 @@ contract SocializingPool is
 
     // GETTERS
 
+    function getCurrentRewardsIndex() public view returns (uint256 index) {
+        index = lastReportedRewardsData.index + 1;
+    }
+
     function getRewardDetails()
         external
         view
@@ -185,16 +197,11 @@ contract SocializingPool is
         returns (
             uint256 currentIndex,
             uint256 currentStartBlock,
-            uint256 currentEndBlock,
-            uint256 nextIndex,
-            uint256 nextStartBlock,
-            uint256 nextEndBlock
+            uint256 currentEndBlock
         )
     {
-        currentIndex = IStaderOracle(staderConfig.getStaderOracle()).getCurrentRewardsIndex();
+        currentIndex = getCurrentRewardsIndex();
         (currentStartBlock, currentEndBlock) = getRewardCycleDetails(currentIndex);
-        nextIndex = currentIndex + 1;
-        (nextStartBlock, nextEndBlock) = getRewardCycleDetails(nextIndex);
     }
 
     /// @param _index reward cycle index for which details is required
@@ -203,7 +210,21 @@ contract SocializingPool is
             revert InvalidCycleIndex();
         }
         uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
-        _startBlock = initialBlock + ((_index - 1) * cycleDuration);
-        _endBlock = _startBlock + cycleDuration - 1;
+        // for 1st cycle
+        if (_index == 1) {
+            return (initialBlock, initialBlock + cycleDuration);
+        }
+
+        // for past cycles
+        _startBlock = rewardsDataMap[_index - 1].reportingBlockNumber + 1;
+        _endBlock = rewardsDataMap[_index].reportingBlockNumber;
+
+        // for current cycle
+        if (rewardsDataMap[_index].reportingBlockNumber == 0) {
+            if (rewardsDataMap[_index - 1].reportingBlockNumber == 0) {
+                revert FutureCycleIndex();
+            }
+            _endBlock = rewardsDataMap[_index - 1].reportingBlockNumber + cycleDuration;
+        }
     }
 }
