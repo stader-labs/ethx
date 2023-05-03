@@ -131,12 +131,49 @@ contract AuctionTest is Test {
         vm.expectRevert();
         auction.addBid{value: u2_bid1}(1);
 
-        // commented below as it is failing
-        // vm.assume(u2_bid2 >= highestBidAmount + auction.bidIncrement());
-        // hoax(user2, u2_bid2);
-        // auction.addBid{value: u2_bid2}(1);
-        // // (, , , address highestBidder, uint256 highestBidAmount2, , ) = auction.lots(1);
-        // // assertEq(highestBidder, user2);
-        // // assertEq(highestBidAmount2, u2_bid2);
+        vm.assume(u2_bid2 >= highestBidAmount + auction.bidIncrement());
+        vm.assume(u2_bid2 < type(uint256).max - auction.bidIncrement()); // TODO: fails without this condition, not sure why
+        hoax(user2, u2_bid2);
+        auction.addBid{value: u2_bid2}(1);
+        (, , , address highestBidder, uint256 highestBidAmount2, , ) = auction.lots(1);
+        assertEq(highestBidder, user2);
+        assertEq(highestBidAmount2, u2_bid2);
+    }
+
+    function test_userIncrementsBid(
+        uint128 sdAmount,
+        uint128 u1_bid1,
+        uint128 u1_bidIncrease,
+        uint128 u2_bid1
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        vm.assume(u1_bid1 > auction.bidIncrement());
+        hoax(user1, u1_bid1);
+        auction.addBid{value: u1_bid1}(1);
+        (, , , , uint256 highestBidAmount, , ) = auction.lots(1);
+
+        vm.assume(u2_bid1 >= highestBidAmount + auction.bidIncrement());
+        hoax(user2, u2_bid1);
+        auction.addBid{value: u2_bid1}(1);
+        (, , , address highestBidder2, uint256 highestBidAmount2, , ) = auction.lots(1);
+        assertEq(highestBidder2, user2);
+        assertEq(highestBidAmount2, u2_bid1);
+
+        vm.assume(
+            uint256(u1_bid1) + uint256(u1_bidIncrease) >= uint256(highestBidAmount2) + uint256(auction.bidIncrement())
+        );
+        hoax(user1, u1_bidIncrease);
+        auction.addBid{value: u1_bidIncrease}(1);
+        (, , , address highestBidder3, uint256 highestBidAmount3, , ) = auction.lots(1);
+        assertEq(highestBidder3, user1);
+        assertEq(highestBidAmount3, uint256(u1_bid1) + uint256(u1_bidIncrease));
     }
 }
