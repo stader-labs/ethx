@@ -3,30 +3,12 @@ pragma solidity ^0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
+import './ISocializingPool.sol';
 import './IStaderConfig.sol';
 
 struct SDPriceData {
     uint256 reportingBlockNumber;
     uint256 sdPriceInETH;
-}
-
-/// @title RewardsData
-/// @notice This struct holds rewards merkleRoot and rewards split
-struct RewardsData {
-    /// @notice The block number when the rewards data was last updated
-    uint256 reportingBlockNumber;
-    /// @notice The index of merkle tree or rewards cycle
-    uint256 index;
-    /// @notice The merkle root hash
-    bytes32 merkleRoot;
-    /// @notice operator ETH rewards for index cycle
-    uint256 operatorETHRewards;
-    /// @notice user ETH rewards for index cycle
-    uint256 userETHRewards;
-    /// @notice protocol ETH rewards for index cycle
-    uint256 protocolETHRewards;
-    /// @notice operator SD rewards for index cycle
-    uint256 operatorSDRewards;
 }
 
 /// @title MissedAttestationPenaltyData
