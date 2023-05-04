@@ -12,13 +12,16 @@ import '../mocks/StakePoolManagerMock.sol';
 
 contract AuctionTest is Test {
     address staderAdmin;
+    address staderManager;
+
     Auction auction;
     StaderConfig staderConfig;
     StaderTokenMock staderToken;
 
     function setUp() public {
         staderAdmin = vm.addr(100);
-        address ethDepositAddr = vm.addr(101);
+        staderManager = vm.addr(101);
+        address ethDepositAddr = vm.addr(102);
 
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
@@ -33,6 +36,7 @@ contract AuctionTest is Test {
         staderConfig.initialize(staderAdmin, ethDepositAddr);
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
+        staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
         Auction auctionImpl = new Auction();
@@ -198,7 +202,7 @@ contract AuctionTest is Test {
         auction.addBid{value: u1_bid1}(1);
     }
 
-    function test_revertWhenUserClaimsSDBeforeAuctionEnds(
+    function test_revertMethodsBeforeAuctionEnds(
         uint256 sdAmount,
         uint64 duration,
         uint128 u1_bid1
@@ -218,6 +222,13 @@ contract AuctionTest is Test {
         vm.expectRevert();
         auction.claimSD(1);
 
+        vm.expectRevert();
+        auction.transferHighestBidToSSPM(1);
+
+        vm.expectRevert();
+        auction.extractNonBidSD(1);
+
+        // user bids
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
         auction.addBid{value: u1_bid1}(1);
@@ -225,6 +236,12 @@ contract AuctionTest is Test {
         vm.prank(user1);
         vm.expectRevert();
         auction.claimSD(1);
+
+        vm.expectRevert();
+        auction.transferHighestBidToSSPM(1);
+
+        vm.expectRevert();
+        auction.extractNonBidSD(1);
     }
 
     function test_UserClaimsSD(
@@ -271,26 +288,6 @@ contract AuctionTest is Test {
         auction.claimSD(1);
     }
 
-    function test_transferHighestBidToSSPM_RevertsBeforeAuctionEnds(uint16 duration) public {
-        uint256 sdAmount = 5 ether;
-        staderToken.approve(address(auction), sdAmount);
-        auction.createLot(sdAmount);
-
-        // set to a block before auction ends
-        vm.assume(duration < auction.duration());
-        vm.roll(block.number + duration);
-
-        vm.expectRevert();
-        auction.transferHighestBidToSSPM(1);
-
-        address user1 = vm.addr(1);
-        hoax(user1, 1 ether);
-        auction.addBid{value: 1 ether}(1);
-
-        vm.expectRevert();
-        auction.transferHighestBidToSSPM(1);
-    }
-
     function test_transferHighestBidToSSPM_RevertsWhenNoBidPlaced(uint16 duration) public {
         uint256 sdAmount = 5 ether;
         staderToken.approve(address(auction), sdAmount);
@@ -329,5 +326,49 @@ contract AuctionTest is Test {
         // reverts if try executing again
         vm.expectRevert();
         auction.transferHighestBidToSSPM(1);
+    }
+
+    function test_revert_extractNonBidSD_whenBidPlaced(
+        uint256 sdAmount,
+        uint256 bid,
+        uint64 duration
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        address user1 = vm.addr(1);
+
+        vm.assume(bid > auction.bidIncrement());
+        hoax(user1, bid);
+        auction.addBid{value: bid}(1);
+
+        vm.roll(block.number + auction.duration() + 1 + duration);
+
+        // LotWasAuctioned()
+        vm.expectRevert();
+        auction.extractNonBidSD(1);
+    }
+
+    function test_extractNonBidSD(uint256 sdAmount, uint64 duration) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance && sdAmount > 0);
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        vm.roll(block.number + auction.duration() + 1 + duration);
+
+        address treasury = vm.addr(3);
+        vm.prank(staderManager);
+        staderConfig.updateStaderTreasury(treasury);
+
+        uint256 treasurySDBalanceBefore = staderToken.balanceOf(treasury);
+        auction.extractNonBidSD(1);
+        assertEq(staderToken.balanceOf(treasury), treasurySDBalanceBefore + sdAmount);
+
+        // AlreadyClaimed()
+        vm.expectRevert();
+        auction.extractNonBidSD(1);
     }
 }
