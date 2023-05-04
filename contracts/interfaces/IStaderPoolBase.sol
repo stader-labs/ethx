@@ -44,6 +44,8 @@ interface IStaderPoolBase {
 
     function stakeUserETHToBeaconChain() external payable;
 
+    function getSocializingPoolAddress() external view returns (address);
+
     function getCollateralETH() external view returns (uint256);
 
     function getNodeRegistry() external view returns (address);
