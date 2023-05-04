@@ -8,6 +8,7 @@ import '../../contracts/Auction.sol';
 import '../../contracts/StaderConfig.sol';
 
 import '../mocks/StaderTokenMock.sol';
+import '../mocks/StakePoolManagerMock.sol';
 
 contract AuctionTest is Test {
     address staderAdmin;
@@ -69,11 +70,14 @@ contract AuctionTest is Test {
         assertEq(staderToken.balanceOf(address(this)), userSDBalanceBefore - sdAmount);
 
         assertEq(auction.nextLot(), 2);
-        (uint256 _startBlock, uint256 _endBlock, uint256 _sdAmount, , , , ) = auction.lots(1);
+        (uint256 _startBlock, uint256 _endBlock, uint256 _sdAmount, , , bool sdClaimed, bool ethExtracted) = auction
+            .lots(1);
         assertEq(_startBlock, block.number);
         assertEq(_endBlock, block.number + auction.duration());
         assertEq(_sdAmount, sdAmount);
         assertEq(staderToken.balanceOf(address(auction)), sdAmount);
+        assertFalse(sdClaimed);
+        assertFalse(ethExtracted);
     }
 
     function test_addBid(
@@ -265,5 +269,65 @@ contract AuctionTest is Test {
         vm.prank(user1);
         vm.expectRevert();
         auction.claimSD(1);
+    }
+
+    function test_transferHighestBidToSSPM_RevertsBeforeAuctionEnds(uint16 duration) public {
+        uint256 sdAmount = 5 ether;
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        // set to a block before auction ends
+        vm.assume(duration < auction.duration());
+        vm.roll(block.number + duration);
+
+        vm.expectRevert();
+        auction.transferHighestBidToSSPM(1);
+
+        address user1 = vm.addr(1);
+        hoax(user1, 1 ether);
+        auction.addBid{value: 1 ether}(1);
+
+        vm.expectRevert();
+        auction.transferHighestBidToSSPM(1);
+    }
+
+    function test_transferHighestBidToSSPM_RevertsWhenNoBidPlaced(uint16 duration) public {
+        uint256 sdAmount = 5 ether;
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        // set to any random block after auction start block
+        vm.roll(block.number + duration);
+
+        vm.expectRevert();
+        auction.transferHighestBidToSSPM(1);
+    }
+
+    function test_transferHighestBidToSSPM(uint16 extraDuration) public {
+        uint256 sdAmount = 5 ether;
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        address user1 = vm.addr(1);
+        hoax(user1, 1 ether);
+        auction.addBid{value: 1 ether}(1);
+
+        // set to a block after auction ends
+        vm.roll(block.number + auction.duration() + 1 + extraDuration);
+
+        StakePoolManagerMock sspm = new StakePoolManagerMock();
+        vm.prank(staderAdmin);
+        staderConfig.updateStakePoolManager(address(sspm));
+
+        uint256 sspmEthBalanceBefore = address(sspm).balance;
+        auction.transferHighestBidToSSPM(1);
+
+        (, , , , uint256 highestBidAmount, , bool ethExtracted) = auction.lots(1);
+        assertEq(address(sspm).balance, sspmEthBalanceBefore + highestBidAmount);
+        assertTrue(ethExtracted);
+
+        // reverts if try executing again
+        vm.expectRevert();
+        auction.transferHighestBidToSSPM(1);
     }
 }
