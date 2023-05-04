@@ -164,10 +164,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
-        if (_rewardsData.reportingBlockNumber != getMerkleRootReportableBlock()) {
+        if (_rewardsData.reportingBlockNumber != getMerkleRootReportableBlockByPoolId(_rewardsData.poolId)) {
             revert InvalidReportingBlock();
         }
-        if (_rewardsData.index != getCurrentRewardsIndex()) {
+        if (_rewardsData.index != getCurrentRewardsIndexByPoolId(_rewardsData.poolId)) {
             revert InvalidMerkleRootIndex();
         }
 
@@ -177,6 +177,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
                 msg.sender,
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
+                _rewardsData.poolId,
                 _rewardsData.operatorETHRewards,
                 _rewardsData.userETHRewards,
                 _rewardsData.protocolETHRewards,
@@ -187,6 +188,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             abi.encodePacked(
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
+                _rewardsData.poolId,
                 _rewardsData.operatorETHRewards,
                 _rewardsData.userETHRewards,
                 _rewardsData.protocolETHRewards,
@@ -199,16 +201,24 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             msg.sender,
             _rewardsData.index,
             _rewardsData.merkleRoot,
+            _rewardsData.poolId,
             block.number
         );
 
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
-            address socializingPool = staderConfig.getSocializingPool();
+            address socializingPool = IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(
+                _rewardsData.poolId
+            );
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
-            emit SocializingRewardsMerkleRootUpdated(_rewardsData.index, _rewardsData.merkleRoot, block.number);
+            emit SocializingRewardsMerkleRootUpdated(
+                _rewardsData.index,
+                _rewardsData.merkleRoot,
+                _rewardsData.poolId,
+                block.number
+            );
         }
     }
 
@@ -516,8 +526,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return getReportableBlockFor(ETHX_ER_UF);
     }
 
-    function getMerkleRootReportableBlock() public view override returns (uint256) {
-        (, , uint256 currentEndBlock) = ISocializingPool(staderConfig.getSocializingPool()).getRewardDetails();
+    function getMerkleRootReportableBlockByPoolId(uint8 _poolId) public view override returns (uint256) {
+        (, , uint256 currentEndBlock) = ISocializingPool(
+            IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(_poolId)
+        ).getRewardDetails();
         return currentEndBlock;
     }
 
@@ -545,8 +557,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return (block.number / updateFrequency) * updateFrequency;
     }
 
-    function getCurrentRewardsIndex() public view returns (uint256) {
-        return ISocializingPool(staderConfig.getSocializingPool()).getCurrentRewardsIndex();
+    function getCurrentRewardsIndexByPoolId(uint8 _poolId) public view returns (uint256) {
+        return
+            ISocializingPool(IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(_poolId))
+                .getCurrentRewardsIndex();
     }
 
     function getValidatorStats() external view override returns (ValidatorStats memory) {

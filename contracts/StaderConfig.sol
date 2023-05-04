@@ -52,7 +52,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant override STADER_INSURANCE_FUND = keccak256('STADER_INSURANCE_FUND');
     bytes32 public constant override PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
     bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
-    bytes32 public constant override SOCIALIZING_POOL = keccak256('SOCIALIZING_POOL');
+    bytes32 public constant override PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
+    bytes32 public constant override PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
 
     //Roles
     bytes32 public constant override MANAGER = keccak256('MANAGER');
@@ -236,8 +237,18 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setContract(PERMISSIONLESS_NODE_REGISTRY, _permissionlessNodeRegistry);
     }
 
-    function updateSocializingPool(address _socializePool) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setContract(SOCIALIZING_POOL, _socializePool);
+    function updatePermissionedSocializingPool(address _permissionedSocializePool)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setContract(PERMISSIONED_SOCIALIZING_POOL, _permissionedSocializePool);
+    }
+
+    function updatePermissionlessSocializingPool(address _permissionlessSocializePool)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setContract(PERMISSIONLESS_SOCIALIZING_POOL, _permissionlessSocializePool);
     }
 
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -384,8 +395,12 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         return contractsMap[PERMISSIONLESS_NODE_REGISTRY];
     }
 
-    function getSocializingPool() external view override returns (address) {
-        return contractsMap[SOCIALIZING_POOL];
+    function getPermissionedSocializingPool() external view override returns (address) {
+        return contractsMap[PERMISSIONED_SOCIALIZING_POOL];
+    }
+
+    function getPermissionlessSocializingPool() external view override returns (address) {
+        return contractsMap[PERMISSIONLESS_SOCIALIZING_POOL];
     }
 
     //Token Getters

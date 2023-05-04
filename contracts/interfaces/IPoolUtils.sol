@@ -44,6 +44,8 @@ interface IPoolUtils {
         uint256 _endIndex
     ) external view returns (uint256);
 
+    function getSocializingPoolAddress(uint8 _poolId) external view returns (address);
+
     // Pool getters
     function getProtocolFee(uint8 _poolId) external view returns (uint256); // returns the protocol fee (0-10000)
 

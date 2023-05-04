@@ -121,7 +121,7 @@ contract PermissionedNodeRegistry is
         if (IPoolUtils(poolUtils).isExistingOperator(msg.sender)) {
             revert OperatorAlreadyOnBoardedInProtocol();
         }
-        feeRecipientAddress = staderConfig.getSocializingPool();
+        feeRecipientAddress = staderConfig.getPermissionedSocializingPool();
         onboardOperator(_operatorName, _operatorRewardAddress);
         return feeRecipientAddress;
     }
