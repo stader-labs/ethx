@@ -84,12 +84,10 @@ contract AuctionTest is Test {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
-        address user1 = vm.addr(1);
-        address user2 = vm.addr(2);
-
         staderToken.approve(address(auction), sdAmount);
         auction.createLot(sdAmount);
 
+        address user1 = vm.addr(1);
         vm.assume(u1_bid1 < auction.bidIncrement());
         hoax(user1, u1_bid1); // sets user1 as next method's caller and sends u1_bid1 eth
         vm.expectRevert();
@@ -114,11 +112,11 @@ contract AuctionTest is Test {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
-        address user1 = vm.addr(1);
-        address user2 = vm.addr(2);
-
         staderToken.approve(address(auction), sdAmount);
         auction.createLot(sdAmount);
+
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
 
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
@@ -149,11 +147,11 @@ contract AuctionTest is Test {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
-        address user1 = vm.addr(1);
-        address user2 = vm.addr(2);
-
         staderToken.approve(address(auction), sdAmount);
         auction.createLot(sdAmount);
+
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
 
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
@@ -175,5 +173,97 @@ contract AuctionTest is Test {
         (, , , address highestBidder3, uint256 highestBidAmount3, , ) = auction.lots(1);
         assertEq(highestBidder3, user1);
         assertEq(highestBidAmount3, uint256(u1_bid1) + uint256(u1_bidIncrease));
+    }
+
+    function testFail_addBidAfterAuctionEnds(
+        uint256 sdAmount,
+        uint64 extraDuration,
+        uint128 u1_bid1
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        address user1 = vm.addr(1);
+
+        vm.roll(block.number + auction.duration() + 1 + extraDuration); // sets block.number to
+        vm.assume(u1_bid1 > auction.bidIncrement());
+        hoax(user1, u1_bid1);
+        auction.addBid{value: u1_bid1}(1);
+    }
+
+    function test_revertWhenUserClaimsSDBeforeAuctionEnds(
+        uint256 sdAmount,
+        uint64 duration,
+        uint128 u1_bid1
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        vm.assume(duration <= auction.duration()); // any time before auction ends
+        vm.roll(block.number + duration); // sets block.number to
+
+        address user1 = vm.addr(1);
+
+        vm.prank(user1);
+        vm.expectRevert();
+        auction.claimSD(1);
+
+        vm.assume(u1_bid1 > auction.bidIncrement());
+        hoax(user1, u1_bid1);
+        auction.addBid{value: u1_bid1}(1);
+
+        vm.prank(user1);
+        vm.expectRevert();
+        auction.claimSD(1);
+    }
+
+    function test_UserClaimsSD(
+        uint256 sdAmount,
+        uint64 extraDuration,
+        uint128 u1_bid1,
+        uint8 randUserSeed
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        address user1 = vm.addr(1);
+        vm.assume(u1_bid1 > auction.bidIncrement());
+        hoax(user1, u1_bid1);
+        auction.addBid{value: u1_bid1}(1);
+
+        // Auction Ends
+        vm.roll(block.number + auction.duration() + 1 + extraDuration); // sets block.number to
+
+        // reverts if claimed by non-highest bidder
+        vm.assume(randUserSeed > 1);
+        address user2 = vm.addr(randUserSeed);
+        vm.prank(user2);
+        vm.expectRevert();
+        auction.claimSD(1);
+
+        // highest bidder user1 claims SD
+        uint256 u1_sdBalanceBefore = staderToken.balanceOf(user1);
+        (, , , , , bool sdClaimed, ) = auction.lots(1);
+        assertFalse(sdClaimed);
+
+        vm.prank(user1);
+        auction.claimSD(1);
+        assertEq(staderToken.balanceOf(user1), u1_sdBalanceBefore + sdAmount);
+        (, , , , , bool sdClaimedAfter, ) = auction.lots(1);
+        assertTrue(sdClaimedAfter);
+
+        // user1 tries to claim again
+        vm.prank(user1);
+        vm.expectRevert();
+        auction.claimSD(1);
     }
 }
