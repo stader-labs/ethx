@@ -1,14 +1,16 @@
 pragma solidity ^0.8.10;
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import '../../contracts/library/UtilLib.sol';
 
 import '../../contracts/Auction.sol';
 import '../../contracts/StaderConfig.sol';
 
 import '../mocks/StaderTokenMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
+
+import 'forge-std/Test.sol';
+import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
 contract AuctionTest is Test {
     address staderAdmin;
@@ -45,12 +47,21 @@ contract AuctionTest is Test {
         auction.initialize(staderAdmin, address(staderConfig));
     }
 
+    function test_JustToIncreaseCoverage() public {
+        ProxyAdmin admin = new ProxyAdmin();
+        Auction auctionImpl = new Auction();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), '');
+        Auction auction2 = Auction(address(proxy));
+        auction2.initialize(staderAdmin, address(staderConfig));
+    }
+
     function test_auctionInitialize() public {
         assertEq(address(auction.staderConfig()), address(staderConfig));
         assertEq(auction.duration(), auction.MIN_AUCTION_DURATION());
         assertEq(auction.bidIncrement(), 1e16);
         assertEq(auction.nextLot(), 1);
         assertTrue(auction.hasRole(auction.DEFAULT_ADMIN_ROLE(), staderAdmin));
+        UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
 
     function testFail_insufficientSDAuctionCreate(uint256 sdAmount) public {
@@ -228,6 +239,9 @@ contract AuctionTest is Test {
         vm.expectRevert();
         auction.extractNonBidSD(1);
 
+        vm.expectRevert();
+        auction.withdrawUnselectedBid(1);
+
         // user bids
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
@@ -242,6 +256,9 @@ contract AuctionTest is Test {
 
         vm.expectRevert();
         auction.extractNonBidSD(1);
+
+        vm.expectRevert();
+        auction.withdrawUnselectedBid(1);
     }
 
     function test_UserClaimsSD(
@@ -370,5 +387,70 @@ contract AuctionTest is Test {
         // AlreadyClaimed()
         vm.expectRevert();
         auction.extractNonBidSD(1);
+    }
+
+    function test_withdrawUnselectedBid(
+        uint64 duration,
+        uint128 u1_bid1,
+        uint128 u2_bid1
+    ) public {
+        uint256 sdAmount = 3 ether;
+        staderToken.approve(address(auction), sdAmount);
+        auction.createLot(sdAmount);
+
+        address user1 = vm.addr(1);
+        address user2 = vm.addr(2);
+
+        vm.assume(u1_bid1 > auction.bidIncrement());
+        hoax(user1, u1_bid1);
+        auction.addBid{value: u1_bid1}(1);
+        (, , , , uint256 highestBidAmount, , ) = auction.lots(1);
+
+        vm.assume(u2_bid1 >= highestBidAmount + auction.bidIncrement());
+        hoax(user2, u2_bid1);
+        auction.addBid{value: u2_bid1}(1);
+
+        // Auction ends
+        vm.roll(block.number + auction.duration() + 1 + duration);
+
+        // user2 withdrawUnselectedBid : reverts as user2 is highest bidder
+        vm.prank(user2);
+        vm.expectRevert();
+        auction.withdrawUnselectedBid(1);
+
+        uint256 user1_ethBalance = address(user1).balance;
+        vm.prank(user1);
+        auction.withdrawUnselectedBid(1);
+        assertEq(address(user1).balance, user1_ethBalance + u1_bid1);
+
+        // fails if user1 tries to withdrawUnselectedBid again
+        vm.prank(user1);
+        vm.expectRevert();
+        auction.withdrawUnselectedBid(1);
+    }
+
+    function test_updateStaderConfig() public {
+        vm.prank(staderAdmin);
+        auction.updateStaderConfig(vm.addr(203));
+        assertEq(address(auction.staderConfig()), vm.addr(203));
+    }
+
+    function test_updateDuration(uint256 newDuration) public {
+        vm.assume(newDuration >= auction.MIN_AUCTION_DURATION());
+        vm.prank(staderManager);
+        auction.updateDuration(newDuration);
+        assertEq(auction.duration(), newDuration);
+    }
+
+    function testFail_shortUpdateDuration(uint256 newDuration) public {
+        vm.assume(newDuration < auction.MIN_AUCTION_DURATION());
+        vm.prank(staderManager);
+        auction.updateDuration(newDuration);
+    }
+
+    function test_updateBidIncrement(uint256 newBidIncrement) public {
+        vm.prank(staderManager);
+        auction.updateBidIncrement(newBidIncrement);
+        assertEq(auction.bidIncrement(), newBidIncrement);
     }
 }
