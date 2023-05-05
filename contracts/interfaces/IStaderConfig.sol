@@ -47,7 +47,9 @@ interface IStaderConfig {
 
     function PERMISSIONLESS_NODE_REGISTRY() external view returns (bytes32);
 
-    function SOCIALIZING_POOL() external view returns (bytes32);
+    function PERMISSIONED_SOCIALIZING_POOL() external view returns (bytes32);
+
+    function PERMISSIONLESS_SOCIALIZING_POOL() external view returns (bytes32);
 
     //Roles
     function MANAGER() external view returns (bytes32);
@@ -122,7 +124,9 @@ interface IStaderConfig {
 
     function getPermissionlessNodeRegistry() external view returns (address);
 
-    function getSocializingPool() external view returns (address);
+    function getPermissionedSocializingPool() external view returns (address);
+
+    function getPermissionlessSocializingPool() external view returns (address);
 
     // Tokens
     function getStaderToken() external view returns (address);
