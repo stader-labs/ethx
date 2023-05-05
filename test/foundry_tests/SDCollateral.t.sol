@@ -239,4 +239,129 @@ contract SDCollateralTest is Test {
         assertEq(lastWithdrawReqTimestamp, block.timestamp);
         assertEq(totalSDWithdrawReqAmount, _requestedSD1 + _requestedSD2);
     }
+
+    function test_claimWithdraw_reverts_if_no_more_requests() public {
+        vm.expectRevert(ISDCollateral.AlreadyClaimed.selector);
+        sdCollateral.claimWithdraw();
+    }
+
+    function test_setWithdrawDelay(uint256 _withdrawDelay) public {
+        vm.startPrank(staderManager); // called by staderManager for all contract calls ahead until stopPrank()
+
+        vm.expectRevert(ISDCollateral.NoStateChange.selector);
+        sdCollateral.setWithdrawDelay(0);
+
+        vm.assume(_withdrawDelay > 0);
+        sdCollateral.setWithdrawDelay(_withdrawDelay);
+
+        vm.expectRevert(ISDCollateral.NoStateChange.selector);
+        sdCollateral.setWithdrawDelay(_withdrawDelay);
+    }
+
+    function test_claimWithdraw_reverts_if_ClaimNotReady(
+        uint32 _withdrawDelay,
+        uint32 _actualDelay,
+        uint128 _depositSDAmount,
+        uint128 _requestedSD
+    ) public {
+        vm.assume(_withdrawDelay > 0);
+        vm.prank(staderManager);
+        sdCollateral.setWithdrawDelay(_withdrawDelay);
+
+        // set poolThreshold
+        (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+
+        // assuming deployer is operator
+        address operator = address(this);
+        uint256 deployerSDBalance = staderToken.balanceOf(operator);
+        vm.assume(_depositSDAmount <= deployerSDBalance);
+
+        staderToken.approve(address(sdCollateral), _depositSDAmount);
+        sdCollateral.depositSDAsCollateral(_depositSDAmount);
+
+        uint256 validatorCount = 5; // set in PoolUtilsMock::getOperatorTotalNonTerminalKeys
+        uint256 sdWithdrawableThreshold = sdCollateral.convertETHToSD(withdrawThreshold * validatorCount);
+
+        vm.assume(_requestedSD > 0);
+        vm.assume(_depositSDAmount >= sdWithdrawableThreshold + _requestedSD);
+        sdCollateral.requestWithdraw(_requestedSD);
+
+        // at any time before withdrawDelay
+        vm.assume(_actualDelay < _withdrawDelay);
+        skip(_actualDelay);
+        vm.expectRevert(ISDCollateral.ClaimNotReady.selector);
+        sdCollateral.claimWithdraw();
+    }
+
+    function test_claimWithdraw(
+        uint64 _actualDelay,
+        uint256 _depositSDAmount,
+        uint256 _requestedSD1,
+        uint256 _requestedSD2
+    ) public {
+        vm.assume(_depositSDAmount < type(uint128).max);
+        vm.assume(_requestedSD1 < type(uint128).max);
+        vm.assume(_requestedSD2 < type(uint128).max);
+
+        vm.prank(staderManager);
+        sdCollateral.setWithdrawDelay(3 days);
+
+        // set poolThreshold
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, 'ETH');
+
+        // assuming deployer is operator
+        address operator = address(this);
+        uint256 deployerSDBalance = staderToken.balanceOf(operator);
+        vm.assume(_depositSDAmount <= deployerSDBalance);
+
+        staderToken.approve(address(sdCollateral), type(uint256).max);
+        sdCollateral.depositSDAsCollateral(_depositSDAmount);
+
+        uint256 validatorCount = 5; // set in PoolUtilsMock::getOperatorTotalNonTerminalKeys
+        uint256 sdWithdrawableThreshold = sdCollateral.convertETHToSD(1e18 * validatorCount);
+
+        vm.assume(_requestedSD1 + _requestedSD2 > 0);
+        vm.assume(_depositSDAmount >= sdWithdrawableThreshold + _requestedSD1 + _requestedSD2);
+
+        (uint256 lastWithdrawReqTimestamp, uint256 totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, 0);
+        assertEq(totalSDWithdrawReqAmount, 0);
+        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount);
+
+        sdCollateral.requestWithdraw(_requestedSD1);
+
+        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount);
+        (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp);
+        assertEq(totalSDWithdrawReqAmount, _requestedSD1);
+
+        // operator requestWithdraw again after sometime
+        skip(2 hours);
+        sdCollateral.requestWithdraw(_requestedSD2);
+
+        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount);
+        (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp);
+        assertEq(totalSDWithdrawReqAmount, _requestedSD1 + _requestedSD2);
+
+        // at any time after withdrawDelay = 3 days
+        vm.assume(_actualDelay > 3 days);
+        skip(_actualDelay);
+
+        uint256 sdBalanceBefore = staderToken.balanceOf(operator);
+        sdCollateral.claimWithdraw();
+
+        assertEq(staderToken.balanceOf(operator), sdBalanceBefore + _requestedSD1 + _requestedSD2);
+        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount - _requestedSD1 - _requestedSD2);
+        assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount - _requestedSD1 - _requestedSD2);
+        (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp - _actualDelay);
+        assertEq(totalSDWithdrawReqAmount, 0);
+    }
 }
