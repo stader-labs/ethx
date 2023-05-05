@@ -3,6 +3,7 @@ pragma solidity ^0.8.16;
 import '../../contracts/library/UtilLib.sol';
 
 import '../../contracts/StaderConfig.sol';
+import '../../contracts/Auction.sol';
 import '../../contracts/SDCollateral.sol';
 
 import '../mocks/StaderTokenMock.sol';
@@ -40,10 +41,17 @@ contract SDCollateralTest is Test {
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
+
+        Auction auctionImpl = new Auction();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), '');
+        Auction auction = Auction(address(proxy));
+        auction.initialize(staderAdmin, address(staderConfig));
+
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updateStaderOracle(address(staderOracle));
+        staderConfig.updateAuctionContract(address(auction));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
@@ -363,5 +371,102 @@ contract SDCollateralTest is Test {
         (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
         assertEq(lastWithdrawReqTimestamp, block.timestamp - _actualDelay);
         assertEq(totalSDWithdrawReqAmount, 0);
+    }
+
+    function test_slashValidatorSD_reverts_when_CallerNotWithdrawVault(uint64 randomSeed) public {
+        vm.assume(randomSeed > 0);
+        vm.prank(vm.addr(randomSeed));
+        vm.expectRevert(UtilLib.CallerNotWithdrawVault.selector);
+        sdCollateral.slashValidatorSD(1, 1);
+    }
+
+    function test_slashValidatorSD_reverts_when_PoolThresholdNotSet() public {
+        address validatorWithdrawVault = address(1); // have set the same in NodeRegistryMock
+        vm.prank(validatorWithdrawVault);
+        vm.expectRevert(ISDCollateral.InvalidPoolId.selector);
+        sdCollateral.slashValidatorSD(1, 1);
+    }
+
+    function test_slashValidatorSD_auctionLotNotCreated_whenNoCollateral() public {
+        // set poolThreshold
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, 'ETH');
+
+        address validatorWithdrawVault = address(1); // have set the same in NodeRegistryMock
+        address operator = address(500);
+        IAuction auction = IAuction(staderConfig.getAuctionContract());
+
+        // 0 collateral
+        assertEq(sdCollateral.operatorSDBalance(operator), 0);
+        assertEq(auction.nextLot(), 1);
+
+        vm.prank(validatorWithdrawVault);
+        sdCollateral.slashValidatorSD(1, 1);
+
+        assertEq(auction.nextLot(), 1);
+    }
+
+    function test_slashValidatorSD() public {
+        // set poolThreshold
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, 'ETH');
+
+        address validatorWithdrawVault = address(1); // have set the same in NodeRegistryMock
+        address operator = address(500);
+        Auction auction = Auction(staderConfig.getAuctionContract());
+
+        uint256 sdForOneValidator = sdCollateral.getMinimumSDToBond(1, 1);
+        uint256 depositSDAmount = sdForOneValidator + 5;
+
+        staderToken.transfer(operator, depositSDAmount);
+
+        vm.startPrank(operator);
+        staderToken.approve(address(sdCollateral), depositSDAmount);
+        sdCollateral.depositSDAsCollateral(depositSDAmount);
+        vm.stopPrank();
+
+        // 0 collateral
+        assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount);
+        assertEq(auction.nextLot(), 1);
+
+        vm.prank(validatorWithdrawVault);
+        vm.expectRevert('ERC20: insufficient allowance');
+        sdCollateral.slashValidatorSD(1, 1);
+
+        vm.prank(staderManager);
+        sdCollateral.maxApproveSD(address(auction));
+
+        vm.prank(validatorWithdrawVault);
+        sdCollateral.slashValidatorSD(1, 1);
+
+        assertEq(auction.nextLot(), 2);
+        assertEq(sdCollateral.totalSDCollateral(), 5);
+        assertEq(sdCollateral.operatorSDBalance(operator), 5);
+
+        (uint256 _startBlock, uint256 _endBlock, uint256 _sdAmount, , , bool sdClaimed, bool ethExtracted) = auction
+            .lots(1);
+        assertEq(_startBlock, block.number);
+        assertEq(_endBlock, block.number + auction.duration());
+        assertEq(_sdAmount, sdForOneValidator);
+        assertEq(staderToken.balanceOf(address(auction)), sdForOneValidator);
+        assertFalse(sdClaimed);
+        assertFalse(ethExtracted);
+
+        // slash once more
+        // TODO: able to slash again using same validator vault
+        vm.prank(validatorWithdrawVault);
+        sdCollateral.slashValidatorSD(1, 1);
+
+        assertEq(auction.nextLot(), 3);
+        assertEq(sdCollateral.totalSDCollateral(), 0);
+        assertEq(sdCollateral.operatorSDBalance(operator), 0);
+
+        (_startBlock, _endBlock, _sdAmount, , , sdClaimed, ethExtracted) = auction.lots(2);
+        assertEq(_startBlock, block.number);
+        assertEq(_endBlock, block.number + auction.duration());
+        assertEq(_sdAmount, 5);
+        assertEq(staderToken.balanceOf(address(auction)), depositSDAmount);
+        assertFalse(sdClaimed);
+        assertFalse(ethExtracted);
     }
 }

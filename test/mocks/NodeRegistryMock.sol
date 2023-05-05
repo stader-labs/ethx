@@ -1,7 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
+import '../../contracts/interfaces/INodeRegistry.sol';
+
 contract NodeRegistryMock {
+    mapping(uint256 => Validator) public validatorRegistry;
+    mapping(uint256 => Operator) public operatorStructById;
+
+    constructor() {
+        validatorRegistry[1].withdrawVaultAddress = address(1);
+        validatorRegistry[1].operatorId = 1;
+
+        operatorStructById[1].operatorAddress = address(500);
+    }
+
     function operatorIDByAddress(address) external pure returns (uint256) {
         return 1;
     }
