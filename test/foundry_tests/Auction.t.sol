@@ -72,7 +72,7 @@ contract AuctionTest is Test {
         auction.createLot(sdAmount);
     }
 
-    function test_auctionIsCreated(uint256 sdAmount) public {
+    function test_createLot(uint256 sdAmount) public {
         uint256 userSDBalanceBefore = staderToken.balanceOf(address(this));
 
         vm.assume(sdAmount <= userSDBalanceBefore);
@@ -80,6 +80,10 @@ contract AuctionTest is Test {
         assertEq(auction.nextLot(), 1);
 
         staderToken.approve(address(auction), sdAmount);
+        vm.expectCall(
+            address(staderToken),
+            abi.encodeCall(staderToken.transferFrom, (address(this), address(auction), sdAmount))
+        );
         auction.createLot(sdAmount);
 
         assertEq(staderToken.balanceOf(address(this)), userSDBalanceBefore - sdAmount);
