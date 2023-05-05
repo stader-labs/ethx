@@ -6,6 +6,8 @@ import '../../contracts/StaderConfig.sol';
 import '../../contracts/SDCollateral.sol';
 
 import '../mocks/StaderTokenMock.sol';
+import '../mocks/PoolUtilsMock.sol';
+import '../mocks/StaderOracleMock.sol';
 
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -24,6 +26,9 @@ contract SDCollateralTest is Test {
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
 
+        PoolUtilsMock poolUtils = new PoolUtilsMock();
+        StaderOracleMock staderOracle = new StaderOracleMock();
+
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
 
@@ -37,6 +42,8 @@ contract SDCollateralTest is Test {
         staderConfig.initialize(staderAdmin, ethDepositAddr);
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
+        staderConfig.updatePoolUtils(address(poolUtils));
+        staderConfig.updateStaderOracle(address(staderOracle));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
@@ -64,7 +71,9 @@ contract SDCollateralTest is Test {
 
     function test_sdCollateralInitialize() public {
         assertEq(address(sdCollateral.staderConfig()), address(staderConfig));
-
+        assertEq(staderConfig.getStaderToken(), address(staderToken));
+        assertNotEq(staderConfig.getPoolUtils(), address(0));
+        assertEq(staderConfig.getPoolSelector(), address(0));
         assertTrue(sdCollateral.hasRole(sdCollateral.DEFAULT_ADMIN_ROLE(), staderAdmin));
         UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
@@ -152,5 +161,82 @@ contract SDCollateralTest is Test {
         assertEq(maxThreshold, _maxThreshold);
         assertEq(withdrawThreshold, _withdrawThreshold);
         assertEq(units, 'ETH');
+    }
+
+    function test_requestWithdraw_revertIfPoolThresholdNotSet(uint256 _requestedSD) public {
+        vm.expectRevert(ISDCollateral.InvalidPoolId.selector);
+        sdCollateral.requestWithdraw(_requestedSD);
+    }
+
+    function test_requestWithdraw_reverts_InsufficientSDToWithdraw(uint128 _depositSDAmount, uint128 _requestedSD)
+        public
+    {
+        // set poolThreshold
+        (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+
+        // assuming deployer is operator
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(_depositSDAmount <= deployerSDBalance);
+
+        staderToken.approve(address(sdCollateral), _depositSDAmount);
+        sdCollateral.depositSDAsCollateral(_depositSDAmount);
+
+        uint256 validatorCount = 5; // set in PoolUtilsMock::getOperatorTotalNonTerminalKeys
+        uint256 sdWithdrawableThreshold = sdCollateral.convertETHToSD(withdrawThreshold * validatorCount);
+
+        vm.assume(_depositSDAmount < sdWithdrawableThreshold + _requestedSD);
+
+        vm.expectRevert(abi.encodeWithSelector(ISDCollateral.InsufficientSDToWithdraw.selector, _depositSDAmount));
+        sdCollateral.requestWithdraw(_requestedSD);
+    }
+
+    function test_requestWithdraw(
+        uint128 _depositSDAmount,
+        uint128 _requestedSD1,
+        uint128 _requestedSD2
+    ) public {
+        // set poolThreshold
+        (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+
+        // assuming deployer is operator
+        address operator = address(this);
+        uint256 deployerSDBalance = staderToken.balanceOf(operator);
+        vm.assume(_depositSDAmount <= deployerSDBalance);
+
+        staderToken.approve(address(sdCollateral), _depositSDAmount);
+        sdCollateral.depositSDAsCollateral(_depositSDAmount);
+
+        uint256 validatorCount = 5; // set in PoolUtilsMock::getOperatorTotalNonTerminalKeys
+        uint256 sdWithdrawableThreshold = sdCollateral.convertETHToSD(withdrawThreshold * validatorCount);
+
+        vm.assume(_depositSDAmount >= sdWithdrawableThreshold + _requestedSD1 + _requestedSD2);
+
+        (uint256 lastWithdrawReqTimestamp, uint256 totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, 0);
+        assertEq(totalSDWithdrawReqAmount, 0);
+        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount);
+
+        sdCollateral.requestWithdraw(_requestedSD1);
+
+        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount);
+        (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp);
+        assertEq(totalSDWithdrawReqAmount, _requestedSD1);
+
+        // operator requestWithdraw again after sometime
+        skip(2 hours);
+        sdCollateral.requestWithdraw(_requestedSD2);
+
+        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount);
+        (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp);
+        assertEq(totalSDWithdrawReqAmount, _requestedSD1 + _requestedSD2);
     }
 }
