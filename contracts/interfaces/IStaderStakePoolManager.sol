@@ -23,8 +23,6 @@ interface IStaderStakePoolManager {
     event WithdrawVaultUserShareReceived(uint256 amount);
     event UpdatedExcessETHDepositCoolDown(uint256 excessETHDepositCoolDown);
 
-    function depositedPooledETH() external view returns (uint256);
-
     function deposit(address _receiver) external payable returns (uint256);
 
     function previewDeposit(uint256 _assets) external view returns (uint256);

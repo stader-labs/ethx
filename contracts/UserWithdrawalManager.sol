@@ -128,7 +128,7 @@ contract UserWithdrawalManager is
         uint256 lockedEthXToBurn;
         uint256 ethToSendToFinalizeRequest;
         uint256 requestId;
-        uint256 pooledETH = IStaderStakePoolManager(poolManager).depositedPooledETH();
+        uint256 pooledETH = poolManager.balance;
         for (requestId = nextRequestIdToFinalize; requestId <= maxRequestIdToFinalize; requestId++) {
             UserWithdrawInfo memory userWithdrawInfo = userWithdrawRequests[requestId];
             uint256 requiredEth = userWithdrawInfo.ethExpected;
