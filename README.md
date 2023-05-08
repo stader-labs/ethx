@@ -16,6 +16,7 @@ Setting up Foundry
 - run `foundryup`
 - npm install
 - forge test
+- forge coverage
 
 # Repository Conventions
 
