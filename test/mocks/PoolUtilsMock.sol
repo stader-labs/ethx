@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
-import "./NodeRegistryMock.sol";
+import './NodeRegistryMock.sol';
 
 contract PoolUtilsMock {
     NodeRegistryMock nodeRegistry;
@@ -27,7 +27,12 @@ contract PoolUtilsMock {
         return address(nodeRegistry);
     }
 
-    function getOperatorTotalNonTerminalKeys(uint8, address, uint256, uint256) public pure returns (uint256) {
+    function getOperatorTotalNonTerminalKeys(
+        uint8,
+        address,
+        uint256,
+        uint256
+    ) public pure returns (uint256) {
         return 5;
     }
 
