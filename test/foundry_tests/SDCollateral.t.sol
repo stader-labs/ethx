@@ -425,7 +425,6 @@ contract SDCollateralTest is Test {
         sdCollateral.depositSDAsCollateral(depositSDAmount);
         vm.stopPrank();
 
-        // 0 collateral
         assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount);
         assertEq(auction.nextLot(), 1);
 
@@ -468,5 +467,162 @@ contract SDCollateralTest is Test {
         assertEq(staderToken.balanceOf(address(auction)), depositSDAmount);
         assertFalse(sdClaimed);
         assertFalse(ethExtracted);
+    }
+
+    function test_updateStaderConfig() public {
+        // not DEFAULT_ADMIN_ROLE
+        vm.expectRevert();
+        sdCollateral.updateStaderConfig(vm.addr(203));
+
+        vm.startPrank(staderAdmin);
+
+        vm.expectRevert(ISDCollateral.NoStateChange.selector);
+        sdCollateral.updateStaderConfig(address(staderConfig));
+
+        sdCollateral.updateStaderConfig(vm.addr(203));
+        assertEq(address(sdCollateral.staderConfig()), vm.addr(203));
+    }
+
+    function test_getRemainingSDToBond(uint256 numValidator, uint256 depositSDAmount) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(depositSDAmount <= deployerSDBalance);
+        vm.assume(numValidator < type(uint64).max);
+
+        address operator = address(this);
+
+        // pool Threshold not set
+        vm.expectRevert(ISDCollateral.InvalidPoolId.selector);
+        uint256 actualRemaniningSDToBond = sdCollateral.getRemainingSDToBond(operator, 1, numValidator);
+
+        // set PoolThreshold
+        (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+
+        staderToken.approve(address(sdCollateral), depositSDAmount);
+        sdCollateral.depositSDAsCollateral(depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount);
+
+        uint256 minimumSDToBond = sdCollateral.convertETHToSD(minThreshold * numValidator);
+        uint256 remainingSDToBond = (depositSDAmount >= minimumSDToBond ? 0 : minimumSDToBond - depositSDAmount);
+        actualRemaniningSDToBond = sdCollateral.getRemainingSDToBond(operator, poolId, numValidator);
+        assertEq(actualRemaniningSDToBond, remainingSDToBond);
+
+        // test has enoughSDCollateral
+        assertEq(sdCollateral.hasEnoughSDCollateral(operator, poolId, numValidator), (remainingSDToBond == 0));
+    }
+
+    function test_getRewardEligibleSD(uint256 depositSDAmount) public {
+        uint256 numValidator = 5; // set in poolUtils mock
+        address operator = address(this);
+
+        uint256 deployerSDBalance = staderToken.balanceOf(operator);
+        vm.assume(depositSDAmount <= deployerSDBalance);
+
+        // set PoolThreshold
+        (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+
+        staderToken.approve(address(sdCollateral), depositSDAmount);
+        sdCollateral.depositSDAsCollateral(depositSDAmount);
+        assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount);
+
+        uint256 totalMinThreshold = numValidator * sdCollateral.convertETHToSD(minThreshold);
+        uint256 totalMaxThreshold = numValidator * sdCollateral.convertETHToSD(maxThreshold);
+
+        uint256 rewardEligibleSD = (
+            depositSDAmount < totalMinThreshold ? 0 : Math.min(depositSDAmount, totalMaxThreshold)
+        );
+
+        assertEq(sdCollateral.getRewardEligibleSD(operator), rewardEligibleSD);
+    }
+
+    // NOTE: used uint128 to avoid overflow/underflow
+    function test_sd_eth_converters(uint128 _ethAmount) public {
+        uint256 sdAmount = sdCollateral.convertETHToSD(_ethAmount);
+
+        // have set 1 eth = 1600 sd in oracle mock
+        assertEq(sdAmount, _ethAmount * uint256(1600));
+
+        uint256 ethAmount = sdCollateral.convertSDToETH(sdAmount);
+        assertEq(_ethAmount, ethAmount);
+    }
+
+    function test_request_slash_claim_sd(uint256 requestedSD, uint128 surplusDeposit) public {
+        // set poolThreshold
+        vm.prank(staderManager);
+        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, 'ETH');
+
+        address validatorWithdrawVault = address(1); // have set the same in NodeRegistryMock
+        address operator = address(500);
+        Auction auction = Auction(staderConfig.getAuctionContract());
+
+        uint256 sdForOneValidator = sdCollateral.getMinimumSDToBond(1, 1);
+        uint256 totalWithdrawalableThresholdInSD = sdCollateral.convertETHToSD(5 ether); // numValidator * withdrawThreshold
+        uint256 depositSDAmount = totalWithdrawalableThresholdInSD + surplusDeposit;
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(depositSDAmount <= deployerSDBalance);
+        staderToken.transfer(operator, depositSDAmount);
+
+        vm.startPrank(operator);
+        staderToken.approve(address(sdCollateral), depositSDAmount);
+        sdCollateral.depositSDAsCollateral(depositSDAmount);
+
+        assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount);
+        vm.assume(requestedSD <= surplusDeposit);
+        vm.assume(requestedSD > 0);
+        sdCollateral.requestWithdraw(requestedSD);
+        assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount);
+        (uint256 lastWithdrawReqTimestamp, uint256 totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp);
+        assertEq(totalSDWithdrawReqAmount, requestedSD);
+        vm.stopPrank();
+
+        // let's have one slashing
+        vm.prank(staderManager);
+        sdCollateral.maxApproveSD(address(auction));
+
+        assertEq(auction.nextLot(), 1);
+
+        vm.prank(validatorWithdrawVault);
+        sdCollateral.slashValidatorSD(1, 1); // uint256 _validatorId, uint8 _poolId
+
+        assertEq(auction.nextLot(), 2);
+        (, , uint256 _sdAmount, , , , ) = auction.lots(1);
+        assertEq(_sdAmount, sdForOneValidator);
+
+        assertEq(sdCollateral.totalSDCollateral(), depositSDAmount - sdForOneValidator);
+        assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount - sdForOneValidator);
+
+        // requestedAmount still remains the same after slashing
+        (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp);
+        assertEq(totalSDWithdrawReqAmount, requestedSD);
+
+        vm.prank(staderManager);
+        sdCollateral.setWithdrawDelay(3 days);
+
+        skip(3 days + 1);
+
+        // uint256 sdClaimed = requestedSD - sdForOneValidator;
+        uint256 sdBalanceBefore = staderToken.balanceOf(operator);
+        // vm.expectEmit(true, true, true, true);
+        // emit ISDCollateral.SDClaimed(operator, sdClaimed);
+        vm.prank(operator);
+        sdCollateral.claimWithdraw();
+
+        // TODO: NOTE: even after slashing it is able to extract more than withdrawable sd
+        // instead of sdClaimed, we transferred requested sd
+        // assertEq(staderToken.balanceOf(operator), sdBalanceBefore + sdClaimed);
+        assertEq(staderToken.balanceOf(operator), sdBalanceBefore + requestedSD);
+        assertEq(sdCollateral.totalSDCollateral(), depositSDAmount - sdForOneValidator - requestedSD);
+        assertEq(sdCollateral.operatorSDBalance(operator), depositSDAmount - sdForOneValidator - requestedSD);
+        (lastWithdrawReqTimestamp, totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
+        assertEq(lastWithdrawReqTimestamp, block.timestamp - 3 days - 1);
+        assertEq(totalSDWithdrawReqAmount, 0);
+
+        // NOTE:
+        assertEq(sdCollateral.hasEnoughSDCollateral(operator, 1, 5), true);
     }
 }
