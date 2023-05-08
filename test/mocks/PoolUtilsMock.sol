@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.16;
 
-import './NodeRegistryMock.sol';
+import "./NodeRegistryMock.sol";
 
 contract PoolUtilsMock {
     NodeRegistryMock nodeRegistry;
@@ -27,24 +27,19 @@ contract PoolUtilsMock {
         return address(nodeRegistry);
     }
 
-    function getOperatorTotalNonTerminalKeys(
-        uint8,
-        address,
-        uint256,
-        uint256
-    ) public pure returns (uint256) {
+    function getOperatorTotalNonTerminalKeys(uint8, address, uint256, uint256) public pure returns (uint256) {
         return 5;
     }
 
-    function isExistingPubkey(bytes calldata _pubkey) public view returns (bool) {
+    function isExistingPubkey(bytes calldata) public pure returns (bool) {
         return false;
     }
 
-    function isExistingOperator(address _operAddr) external view returns (bool) {
+    function isExistingOperator(address) external pure returns (bool) {
         return false;
     }
 
-    function onlyValidName(string calldata _name) external view {
+    function onlyValidName(string calldata _name) external pure {
         if (bytes(_name).length == 0) {
             revert EmptyNameString();
         }
@@ -57,7 +52,7 @@ contract PoolUtilsMock {
         bytes calldata _pubkey,
         bytes calldata _preDepositSignature,
         bytes calldata _depositSignature
-    ) external view {
+    ) external pure {
         if (_pubkey.length != PUBKEY_LENGTH) {
             revert InvalidLengthOfPubkey();
         }

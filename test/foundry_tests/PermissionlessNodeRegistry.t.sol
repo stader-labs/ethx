@@ -1,17 +1,19 @@
 pragma solidity ^0.8.16;
 
-import "../../contracts/library/UtilLib.sol";
+import '../../contracts/library/UtilLib.sol';
 
-import "../../contracts/StaderConfig.sol";
-import "../../contracts/factory/VaultFactory.sol";
-import "../../contracts/PermissionlessNodeRegistry.sol";
+import '../../contracts/StaderConfig.sol';
+import '../../contracts/factory/VaultFactory.sol';
+import '../../contracts/PermissionlessNodeRegistry.sol';
 
-import "../mocks/PoolUtilsMock.sol";
-import "../mocks/SocializingPoolMock.sol";
+import '../mocks/PoolUtilsMock.sol';
+import '../mocks/SocializingPoolMock.sol';
+import '../mocks/SDCollateralMock.sol';
+import '../mocks/PermissionlessPoolMock.sol';
 
-import "forge-std/Test.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import 'forge-std/Test.sol';
+import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
 contract PermissionlessNodeRegistryTest is Test {
     address staderAdmin;
@@ -30,24 +32,21 @@ contract PermissionlessNodeRegistryTest is Test {
 
         PoolUtilsMock poolUtils = new PoolUtilsMock();
         socializingPoolMock = new SocializingPoolMock();
-
+        SDCollateralMock sdCollateral = new SDCollateralMock();
+        PermissionlessPoolMock permissionlessPool = new PermissionlessPoolMock();
         ProxyAdmin admin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ""
+            ''
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
         VaultFactory vaultImp = new VaultFactory();
-        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(
-            address(vaultImp),
-            address(admin),
-            ""
-        );
+        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImp), address(admin), '');
 
         vaultFactory = VaultFactory(address(vaultProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
@@ -56,7 +55,7 @@ contract PermissionlessNodeRegistryTest is Test {
         TransparentUpgradeableProxy nodeRegistryProxy = new TransparentUpgradeableProxy(
             address(nodeRegistryImpl),
             address(admin),
-            ""
+            ''
         );
         nodeRegistry = PermissionlessNodeRegistry(address(nodeRegistryProxy));
         nodeRegistry.initialize(staderAdmin, address(staderConfig));
@@ -64,6 +63,8 @@ contract PermissionlessNodeRegistryTest is Test {
         vm.startPrank(staderAdmin);
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updateVaultFactory(address(vaultFactory));
+        staderConfig.updateSDCollateral(address(sdCollateral));
+        staderConfig.updatePermissionlessPool(address(permissionlessPool));
         staderConfig.updatePermissionlessSocializingPool(address(socializingPoolMock));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(nodeRegistry));
@@ -76,7 +77,7 @@ contract PermissionlessNodeRegistryTest is Test {
         TransparentUpgradeableProxy nodeRegistryProxy = new TransparentUpgradeableProxy(
             address(nodeRegistryImpl),
             address(admin),
-            ""
+            ''
         );
         nodeRegistry = PermissionlessNodeRegistry(address(nodeRegistryProxy));
         nodeRegistry.initialize(staderAdmin, address(staderConfig));
@@ -94,45 +95,52 @@ contract PermissionlessNodeRegistryTest is Test {
 
     function test_OnboardOperatorWithOptIn(
         string calldata _operatorName,
-        uint256 _operatorAddress,
-        address payable _operatorRewardAddress
+        uint64 __opAddrSeed,
+        uint64 _opRewardAddrSeed
     ) public {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(_operatorRewardAddress != address(0));
-        vm.prank(_operatorAddress);
-        address out = nodeRegistry.onboardNodeOperator(true, _operatorName, _operatorRewardAddress);
-        uint256 operatorId = nodeRegistry.operatorIDByAddress(_operatorAddress);
-        assertEq(out, address(socializingPoolMock));
-        //failing with
-        //assertEq(nodeRegistry.socializingPoolStateChangeBlock(operatorId), block.number);
-        assertEq(block.number, nodeRegistry.socializingPoolStateChangeBlock(operatorId));
-        assertNotEq(out, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
+        vm.assume(__opAddrSeed > 0);
+        vm.assume(_opRewardAddrSeed > 0);
+        address operatorAddr = vm.addr(__opAddrSeed);
+        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
+        vm.prank(operatorAddr);
+        address output = nodeRegistry.onboardNodeOperator(true, _operatorName, opRewardAddr);
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
+        assertEq(output, address(socializingPoolMock));
+        assertEq(nodeRegistry.socializingPoolStateChangeBlock(operatorId), block.number);
+        assertNotEq(output, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
     }
 
     function test_OnboardOperatorWithOptOut(
         string calldata _operatorName,
-        address _operatorAddress,
-        address payable _operatorRewardAddress
+        uint64 __opAddrSeed,
+        uint64 _opRewardAddrSeed
     ) public {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(_operatorRewardAddress != address(0));
-        vm.prank(_operatorAddress);
-        address out = nodeRegistry.onboardNodeOperator(false, _operatorName, _operatorRewardAddress);
-        uint256 operatorId = nodeRegistry.operatorIDByAddress(_operatorAddress);
+        vm.assume(__opAddrSeed > 0);
+        vm.assume(_opRewardAddrSeed > 0);
+        address operatorAddr = vm.addr(__opAddrSeed);
+        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
+        vm.prank(operatorAddr);
+        address output = nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
         address nodeELVault = vaultFactory.computeNodeELRewardVaultAddress(nodeRegistry.POOL_ID(), operatorId);
-        assertEq(out, nodeELVault);
-        //failing with
-        //assertEq(nodeRegistry.socializingPoolStateChangeBlock(operatorId), block.number);
-        //passing with
-        assertEq(block.number, nodeRegistry.socializingPoolStateChangeBlock(operatorId));
-        assertEq(out, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
+        assertEq(output, nodeELVault);
+        assertEq(nodeRegistry.socializingPoolStateChangeBlock(operatorId), block.number);
+        assertEq(output, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
     }
 
-    function test_addValidatorKeys(bytes calldata _pubkey, bytes calldata _preDepositSig, bytes calldata _depositSig){
+    function test_addValidatorKeys(bytes calldata _pubkey, bytes calldata _signature) public {
         vm.assume(_pubkey.length == 48);
-        vm.assume(_preDepositSig.length == 96);
-        vm.assume(_depositSig.length == 96);
-        vm.string()
-
+        vm.assume(_signature.length == 96);
+        bytes[] memory pubkeys = new bytes[](1);
+        bytes[] memory preDepositSignature = new bytes[](1);
+        bytes[] memory depositSignature = new bytes[](1);
+        pubkeys[0] = _pubkey;
+        preDepositSignature[0] = _signature;
+        depositSignature[0] = _signature;
+        startHoax(address(this));
+        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
+        nodeRegistry.addValidatorKeys{value: 4 ether}(pubkeys, preDepositSignature, depositSignature);
     }
 }
