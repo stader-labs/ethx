@@ -33,7 +33,6 @@ contract StaderStakePoolsManager is
 {
     using Math for uint256;
     IStaderConfig public staderConfig;
-    uint256 public override depositedPooledETH;
     uint256 public lastExcessETHDepositBlock;
     uint256 public excessETHDepositCoolDown;
 
@@ -70,18 +69,15 @@ contract StaderStakePoolsManager is
 
     // payable function for receiving execution layer rewards.
     function receiveExecutionLayerRewards() external payable override {
-        depositedPooledETH += msg.value;
         emit ExecutionLayerRewardsReceived(msg.value);
     }
 
     // payable function for receiving user share from validator withdraw vault
     function receiveWithdrawVaultUserShare() external payable override {
-        depositedPooledETH += msg.value;
         emit WithdrawVaultUserShareReceived(msg.value);
     }
 
     function receiveEthFromAuction() external payable override {
-        depositedPooledETH += msg.value;
         emit AuctionedEthReceived(msg.value);
     }
 
@@ -90,7 +86,6 @@ contract StaderStakePoolsManager is
      * @param _poolId ID of the pool
      */
     function receiveExcessEthFromPool(uint8 _poolId) external payable override {
-        depositedPooledETH += msg.value;
         emit ReceivedExcessEthFromPool(_poolId);
     }
 
@@ -101,7 +96,6 @@ contract StaderStakePoolsManager is
      */
     function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant whenNotPaused {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.USER_WITHDRAW_MANAGER());
-        depositedPooledETH -= _amount;
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = payable(staderConfig.getUserWithdrawManager()).call{value: _amount}('');
         if (!success) {
@@ -191,7 +185,7 @@ contract StaderStakePoolsManager is
         if (!poolUtils.isExistingPoolId(_poolId)) {
             revert PoolIdDoesNotExit();
         }
-        uint256 availableETHForNewDeposit = depositedPooledETH -
+        uint256 availableETHForNewDeposit = address(this).balance -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
         uint256 poolDepositSize = staderConfig.getStakedEthPerNode() - poolUtils.getCollateralETH(_poolId);
 
@@ -207,7 +201,6 @@ contract StaderStakePoolsManager is
             return;
         }
         address poolAddress = poolUtils.poolAddressById(_poolId);
-        depositedPooledETH -= selectedPoolCapacity * poolDepositSize;
         //slither-disable-next-line arbitrary-send-eth
         IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: selectedPoolCapacity * poolDepositSize}();
         emit ETHTransferredToPool(_poolId, poolAddress, selectedPoolCapacity * poolDepositSize);
@@ -222,7 +215,7 @@ contract StaderStakePoolsManager is
             revert CooldownNotComplete();
         }
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
-        uint256 availableETHForNewDeposit = depositedPooledETH -
+        uint256 availableETHForNewDeposit = address(this).balance -
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
         (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) = IPoolSelector(
             staderConfig.getPoolSelector()
@@ -239,7 +232,6 @@ contract StaderStakePoolsManager is
                 IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
 
             lastExcessETHDepositBlock = block.number;
-            depositedPooledETH -= validatorToDeposit * poolDepositSize;
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();
             emit ETHTransferredToPool(i, poolAddress, validatorToDeposit * poolDepositSize);
@@ -320,7 +312,6 @@ contract StaderStakePoolsManager is
         uint256 _shares
     ) internal {
         ETHx(staderConfig.getETHxToken()).mint(_receiver, _shares);
-        depositedPooledETH += _assets;
         emit Deposited(_caller, _receiver, _assets, _shares);
     }
 
