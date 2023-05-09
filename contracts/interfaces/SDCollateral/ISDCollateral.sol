@@ -22,7 +22,7 @@ interface ISDCollateral {
     error InvalidPoolLimit();
     error SDTransferFailed();
     error InvalidExecutor();
-    error AlreadyClaimed();
+    error NoOperation();
     error ClaimNotReady();
     error NoStateChange();
 

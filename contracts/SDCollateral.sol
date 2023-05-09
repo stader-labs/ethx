@@ -62,26 +62,33 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     /// this requested sd is subject to slashes
     function requestWithdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
-        uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
+        uint256 opSDBalance = operatorSDBalance[operator];
+        uint256 totalRequestSD = withdrawReq[operator].totalSDWithdrawReqAmount + _requestedSD;
 
-        if (sdBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
-            revert InsufficientSDToWithdraw(sdBalance);
+        if (opSDBalance < getOperatorWithdrawThreshold(operator) + totalRequestSD) {
+            revert InsufficientSDToWithdraw(opSDBalance);
         }
 
         withdrawReq[operator].lastWithdrawReqTimestamp = block.timestamp;
-        withdrawReq[operator].totalSDWithdrawReqAmount += _requestedSD;
+        withdrawReq[operator].totalSDWithdrawReqAmount = totalRequestSD;
 
         emit SDWithdrawRequested(operator, _requestedSD);
     }
 
     function claimWithdraw() external override nonReentrant {
         address operator = msg.sender;
-        uint256 withdrawableSD = operatorSDBalance[operator] - getOperatorWithdrawThreshold(operator);
+        uint256 opSDBalance = operatorSDBalance[operator];
+        uint256 operatorWithdrawThreshold = getOperatorWithdrawThreshold(operator);
 
-        // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, withdrawableSD)
+        if (opSDBalance <= operatorWithdrawThreshold) {
+            revert InsufficientSDToWithdraw(opSDBalance);
+        }
+
+        uint256 withdrawableSD = opSDBalance - operatorWithdrawThreshold;
+        // requested sd is subject to slashing, hence claimableSD = min(requestedSD, withdrawableSD)
         uint256 claimableSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, withdrawableSD);
         if (claimableSD == 0) {
-            revert AlreadyClaimed();
+            revert NoOperation();
         }
         if (block.timestamp < (withdrawReq[operator].lastWithdrawReqTimestamp + withdrawDelay)) {
             revert ClaimNotReady();
@@ -89,7 +96,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
 
         totalSDCollateral -= claimableSD;
         operatorSDBalance[operator] -= claimableSD;
-        withdrawReq[operator].totalSDWithdrawReqAmount = 0;
+        withdrawReq[operator].totalSDWithdrawReqAmount -= claimableSD;
 
         // cannot use safeERC20 as this contract is an upgradeable contract
         if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), claimableSD)) {

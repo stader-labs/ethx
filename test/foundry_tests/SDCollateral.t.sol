@@ -436,7 +436,7 @@ contract SDCollateralTest is Test {
         assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount - claimableSD);
         (uint256 lastWithdrawReqTimestamp, uint256 totalSDWithdrawReqAmount) = sdCollateral.withdrawReq(operator);
         assertEq(lastWithdrawReqTimestamp, block.timestamp - _actualDelay);
-        assertEq(totalSDWithdrawReqAmount, 0);
+        assertEq(totalSDWithdrawReqAmount, _requestedSD - claimableSD); // TODO: doesn't fail even if i replace it here with 0, why?
     }
 
     function test_slashValidatorSD_reverts_when_CallerNotWithdrawVault(uint64 randomSeed) public {
