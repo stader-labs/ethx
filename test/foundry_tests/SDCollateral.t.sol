@@ -430,6 +430,7 @@ contract SDCollateralTest is Test {
         uint256 claimableSD = Math.min(_requestedSD, withdrawableSD);
         sdCollateral.claimWithdraw();
 
+        assertTrue(staderToken.balanceOf(operator) <= sdBalanceBefore + _requestedSD);
         assertEq(staderToken.balanceOf(operator), sdBalanceBefore + claimableSD);
         assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount - claimableSD);
         assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount - claimableSD);
