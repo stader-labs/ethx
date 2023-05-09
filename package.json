@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/stader-labs/ethx#readme",
   "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.0.1",
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-solhint": "^2.0.1",
@@ -26,7 +27,7 @@
     "@typechain/hardhat": "^6.1.4",
     "axios": "^0.27.2",
     "chai": "^4.3.7",
-    "hardhat": "2.9.9",
+    "hardhat": "^2.9.9",
     "prettier": "^2.7.1",
     "prettier-plugin-solidity": "^1.0.0-beta.24",
     "typechain": "^8.1.1"

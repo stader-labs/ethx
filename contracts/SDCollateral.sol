@@ -254,10 +254,11 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
             uint256 _validatorCount
         )
     {
-        _poolId = IPoolUtils(staderConfig.getPoolUtils()).getOperatorPoolId(_operator);
-        INodeRegistry nodeRegistry = INodeRegistry(IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId));
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        _poolId = poolUtils.getOperatorPoolId(_operator);
+        INodeRegistry nodeRegistry = INodeRegistry(poolUtils.getNodeRegistry(_poolId));
         _operatorId = nodeRegistry.operatorIDByAddress(_operator);
-        _validatorCount = IPoolUtils(staderConfig.getPoolUtils()).getOperatorTotalNonTerminalKeys(
+        _validatorCount = poolUtils.getOperatorTotalNonTerminalKeys(
             _poolId,
             _operator,
             0,

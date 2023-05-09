@@ -10,6 +10,7 @@ import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 import '@nomiclabs/hardhat-solhint'
 import '@nomicfoundation/hardhat-chai-matchers'
+import '@nomicfoundation/hardhat-foundry'
 
 const config: HardhatUserConfig = {
   // Your type-safe config goes here
