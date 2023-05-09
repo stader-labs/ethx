@@ -300,7 +300,7 @@ contract PermissionedNodeRegistry is
         }
         for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
-            if (!isNonTerminalValidator(validatorId)) {
+            if (validatorRegistry[validatorId].status != ValidatorStatus.DEPOSITED) {
                 revert UNEXPECTED_STATUS();
             }
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
@@ -673,11 +673,7 @@ contract PermissionedNodeRegistry is
     //active validator are those having user deposit staked on beacon chain
     function isActiveValidator(uint256 _validatorId) internal view returns (bool) {
         Validator memory validator = validatorRegistry[_validatorId];
-        return
-            !(validator.status == ValidatorStatus.INITIALIZED ||
-                validator.status == ValidatorStatus.INVALID_SIGNATURE ||
-                validator.status == ValidatorStatus.FRONT_RUN ||
-                validator.status == ValidatorStatus.WITHDRAWN);
+        return (validator.status == ValidatorStatus.PRE_DEPOSIT || validator.status == ValidatorStatus.DEPOSITED);
     }
 
     // checks if validator status enum is not withdrawn ,front run and invalid signature
