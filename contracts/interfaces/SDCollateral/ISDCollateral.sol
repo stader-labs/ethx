@@ -30,7 +30,7 @@ interface ISDCollateral {
     event UpdatedStaderConfig(address indexed staderConfig);
     event SDDeposited(address indexed operator, uint256 sdAmount);
     event SDWithdrawRequested(address indexed operator, uint256 requestedSD);
-    event SDClaimed(address indexed operator, uint256 requestedSD);
+    event SDClaimed(address indexed operator, uint256 sdClaimed);
     event SDSlashed(address indexed operator, address indexed auction, uint256 sdSlashed);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
     event UpdatedPoolIdForOperator(uint8 poolId, address operator);

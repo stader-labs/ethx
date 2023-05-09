@@ -81,25 +81,31 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
 
     function claimWithdraw() external override nonReentrant {
         address operator = msg.sender;
-        // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, operatorSDBalance)
-        uint256 requestedSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, operatorSDBalance[operator]);
-        if (requestedSD == 0) {
+        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
+        isPoolThresholdValid(poolId);
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
+        uint256 totalWithdrawThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+        uint256 withdrawableSD = operatorSDBalance[operator] - totalWithdrawThreshold;
+
+        // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, withdrawableSD)
+        uint256 claimableSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, withdrawableSD);
+        if (claimableSD == 0) {
             revert AlreadyClaimed();
         }
         if (block.timestamp < (withdrawReq[operator].lastWithdrawReqTimestamp + withdrawDelay)) {
             revert ClaimNotReady();
         }
 
-        totalSDCollateral -= requestedSD;
-        operatorSDBalance[operator] -= requestedSD;
+        totalSDCollateral -= claimableSD;
+        operatorSDBalance[operator] -= claimableSD;
         withdrawReq[operator].totalSDWithdrawReqAmount = 0;
 
         // cannot use safeERC20 as this contract is an upgradeable contract
-        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), requestedSD)) {
+        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), claimableSD)) {
             revert SDTransferFailed();
         }
 
-        emit SDClaimed(operator, requestedSD);
+        emit SDClaimed(operator, claimableSD);
     }
 
     /// @notice slashes one validator equi. SD amount
