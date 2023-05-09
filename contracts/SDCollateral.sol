@@ -64,12 +64,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         address operator = msg.sender;
         uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
 
-        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
-        isPoolThresholdValid(poolId);
-        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
-
-        uint256 sdWithdrawableThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
-        if (sdBalance < sdWithdrawableThreshold + _requestedSD) {
+        if (sdBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
             revert InsufficientSDToWithdraw(sdBalance);
         }
 
@@ -81,11 +76,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
 
     function claimWithdraw() external override nonReentrant {
         address operator = msg.sender;
-        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
-        isPoolThresholdValid(poolId);
-        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
-        uint256 totalWithdrawThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
-        uint256 withdrawableSD = operatorSDBalance[operator] - totalWithdrawThreshold;
+        uint256 withdrawableSD = operatorSDBalance[operator] - getOperatorWithdrawThreshold(operator);
 
         // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, withdrawableSD)
         uint256 claimableSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, withdrawableSD);
@@ -106,6 +97,13 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         }
 
         emit SDClaimed(operator, claimableSD);
+    }
+
+    function getOperatorWithdrawThreshold(address _operator) internal view returns (uint256 operatorWithdrawThreshold) {
+        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(_operator);
+        isPoolThresholdValid(poolId);
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
+        return convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
     }
 
     /// @notice slashes one validator equi. SD amount
