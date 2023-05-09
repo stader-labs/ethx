@@ -6,12 +6,14 @@ import '../../contracts/StaderConfig.sol';
 import '../../contracts/factory/VaultFactory.sol';
 import '../../contracts/PermissionlessNodeRegistry.sol';
 
-import '../mocks/PoolUtilsMock.sol';
+import '../mocks/PenaltyMock.sol';
 import '../mocks/SocializingPoolMock.sol';
 import '../mocks/SDCollateralMock.sol';
 import '../mocks/StaderOracleMock.sol';
 import '../mocks/PermissionlessPoolMock.sol';
 import '../mocks/StaderInsuranceFundMock.sol';
+import '../mocks/StakePoolManagerMock.sol';
+import '../mocks/PoolUtilsMockForDepositFlow.sol';
 
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -35,10 +37,11 @@ contract PermissionlessNodeRegistryTest is Test {
         operator = vm.addr(102);
         address ethDepositAddr = vm.addr(103);
 
-        PoolUtilsMock poolUtils = new PoolUtilsMock();
+        PenaltyMock penalty = new PenaltyMock();
         socializingPoolMock = new SocializingPoolMock();
         staderOracle = new StaderOracleMock();
         SDCollateralMock sdCollateral = new SDCollateralMock();
+        StakePoolManagerMock poolManager = new StakePoolManagerMock();
         StaderInsuranceFundMock insuranceFund = new StaderInsuranceFundMock();
         PermissionlessPoolMock permissionlessPool = new PermissionlessPoolMock();
         ProxyAdmin admin = new ProxyAdmin();
@@ -66,9 +69,11 @@ contract PermissionlessNodeRegistryTest is Test {
         );
         nodeRegistry = PermissionlessNodeRegistry(address(nodeRegistryProxy));
         nodeRegistry.initialize(staderAdmin, address(staderConfig));
-
+        PoolUtilsMockForDepositFlow poolUtils = new PoolUtilsMockForDepositFlow(address(nodeRegistry));
         vm.startPrank(staderAdmin);
         staderConfig.updatePoolUtils(address(poolUtils));
+        staderConfig.updatePenaltyContract(address(penalty));
+        staderConfig.updateStakePoolManager(address(poolManager));
         staderConfig.updateVaultFactory(address(vaultFactory));
         staderConfig.updateSDCollateral(address(sdCollateral));
         staderConfig.updateStaderOracle(address(staderOracle));
