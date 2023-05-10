@@ -5,9 +5,11 @@ import './NodeRegistryMock.sol';
 
 contract PoolUtilsMock {
     NodeRegistryMock nodeRegistry;
+    uint256 operatorTotalNonTerminalKeys;
 
     constructor() {
         nodeRegistry = new NodeRegistryMock();
+        operatorTotalNonTerminalKeys = 5;
     }
 
     function getOperatorPoolId(address) external pure returns (uint8) {
@@ -23,7 +25,15 @@ contract PoolUtilsMock {
         address,
         uint256,
         uint256
-    ) public pure returns (uint256) {
-        return 5;
+    ) public view returns (uint256) {
+        return operatorTotalNonTerminalKeys;
+    }
+
+    function updateOperatorTotalNonTerminalKeys(bool increase, uint256 numUpdate) public {
+        if (increase) {
+            operatorTotalNonTerminalKeys += numUpdate;
+        } else {
+            operatorTotalNonTerminalKeys -= numUpdate;
+        }
     }
 }
