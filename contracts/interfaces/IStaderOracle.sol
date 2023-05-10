@@ -18,8 +18,6 @@ struct MissedAttestationPenaltyData {
     uint256 reportingBlockNumber;
     /// @notice The index of missed attestation penalty data
     uint256 index;
-    /// @notice page number of the the data
-    uint256 pageNumber;
     /// @notice missed attestation validator pubkeys
     bytes[] sortedPubkeys;
 }
@@ -79,7 +77,7 @@ interface IStaderOracle {
     error ReportingFutureBlockData();
     error InvalidMerkleRootIndex();
     error ReportingPreviousCycleData();
-    error StaleData();
+    error InvalidMAPDIndex();
     error PageNumberAlreadyReported();
     error NotATrustedNode();
     error UpdateFrequencyNotSet();
@@ -111,7 +109,6 @@ interface IStaderOracle {
     event MissedAttestationPenaltySubmitted(
         address indexed node,
         uint256 index,
-        uint256 pageNumber,
         uint256 block,
         uint256 reportingBlockNumber,
         bytes[] pubkeys
@@ -231,7 +228,7 @@ interface IStaderOracle {
     function trustedNodesCount() external view returns (uint256);
 
     //returns the latest consensus index for missed attestation penalty data report
-    function latestMissedAttestationConsensusIndex() external view returns (uint256);
+    function lastReportedMAPDIndex() external view returns (uint256);
 
     function safeMode() external view returns (bool);
 
