@@ -21,27 +21,20 @@ interface ISDCollateral {
     error InvalidPoolId();
     error InvalidPoolLimit();
     error SDTransferFailed();
-    error InvalidExecutor();
-    error NoOperation();
-    error ClaimNotReady();
     error NoStateChange();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
     event SDDeposited(address indexed operator, uint256 sdAmount);
-    event SDWithdrawRequested(address indexed operator, uint256 requestedSD);
-    event SDClaimed(address indexed operator, uint256 sdClaimed);
+    event SDWithdrawn(address indexed operator, uint256 sdAmount);
     event SDSlashed(address indexed operator, address indexed auction, uint256 sdSlashed);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
     event UpdatedPoolIdForOperator(uint8 poolId, address operator);
-    event WithdrawDelayUpdated(uint256 withdrawDelay);
 
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
 
-    function requestWithdraw(uint256 _requestedSD) external;
-
-    function claimWithdraw() external;
+    function withdraw(uint256 _requestedSD) external;
 
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external;
 
@@ -58,21 +51,14 @@ interface ISDCollateral {
         string memory _units
     ) external;
 
-    function setWithdrawDelay(uint256 _withdrawDelay) external;
-
     // getters
     function staderConfig() external view returns (IStaderConfig);
 
     function totalSDCollateral() external view returns (uint256);
 
-    function withdrawDelay() external view returns (uint256);
-
     function operatorSDBalance(address) external view returns (uint256);
 
-    function withdrawReq(address _operator)
-        external
-        view
-        returns (uint256 _lastWithdrawReqTimestamp, uint256 _totalSDWithdrawReqAmount);
+    function getOperatorWithdrawThreshold(address _operator) external view returns (uint256 operatorWithdrawThreshold);
 
     function hasEnoughSDCollateral(
         address _operator,
