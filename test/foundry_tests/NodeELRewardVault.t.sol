@@ -5,12 +5,19 @@ import '../../contracts/library/UtilLib.sol';
 import '../../contracts/StaderConfig.sol';
 import '../../contracts/NodeELRewardVault.sol';
 
+import '../mocks/PoolUtilsMock.sol';
+import '../mocks/StakePoolManagerMock.sol';
+
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
 contract NodeELRewardVaultTest is Test {
     address staderAdmin;
+    address staderManager;
+    address staderTreasury;
+    PoolUtilsMock poolUtils;
+
     uint8 poolId;
     uint256 operatorId;
 
@@ -22,6 +29,7 @@ contract NodeELRewardVaultTest is Test {
         operatorId = 1;
 
         staderAdmin = vm.addr(100);
+        staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
 
         ProxyAdmin proxyAdmin = new ProxyAdmin();
@@ -34,8 +42,14 @@ contract NodeELRewardVaultTest is Test {
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
-        vm.prank(staderAdmin);
+
+        poolUtils = new PoolUtilsMock(address(staderConfig));
+
+        vm.startPrank(staderAdmin);
         staderConfig.updateAdmin(staderAdmin);
+        staderConfig.updatePoolUtils(address(poolUtils));
+        staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
+        vm.stopPrank();
 
         NodeELRewardVault nodeELRewardVaultImpl = new NodeELRewardVault();
         TransparentUpgradeableProxy nodeELRewardVaultProxy = new TransparentUpgradeableProxy(
@@ -64,6 +78,7 @@ contract NodeELRewardVaultTest is Test {
         assertTrue(nodeELRewardVault.hasRole(nodeELRewardVault.DEFAULT_ADMIN_ROLE(), staderAdmin));
         assertEq(nodeELRewardVault.poolId(), poolId);
         assertEq(nodeELRewardVault.operatorId(), operatorId);
+        UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
 
     function test_receive(uint64 randomPrivateKey, uint256 amount) public {
@@ -77,5 +92,54 @@ contract NodeELRewardVaultTest is Test {
         payable(nodeELRewardVault).call{value: amount}('');
 
         assertEq(address(nodeELRewardVault).balance, amount);
+    }
+
+    // NOTE: used uint128 to avoid arithmetic underflow overflow in calculateRewardShare
+    function test_withdraw(uint128 rewardEth) public {
+        assertEq(address(nodeELRewardVault).balance, 0);
+        vm.expectRevert(INodeELRewardVault.NotEnoughRewardToWithdraw.selector);
+        nodeELRewardVault.withdraw();
+
+        vm.assume(rewardEth > 0);
+        vm.deal(address(nodeELRewardVault), rewardEth); // send rewardEth to nodeELRewardVault
+
+        StakePoolManagerMock sspm = new StakePoolManagerMock();
+        address treasury = vm.addr(3);
+        address opRewardAddr = vm.addr(4);
+
+        vm.prank(staderAdmin);
+        staderConfig.updateStakePoolManager(address(sspm));
+
+        vm.prank(staderManager);
+        staderConfig.updateStaderTreasury(treasury);
+
+        vm.mockCall(
+            address(poolUtils.nodeRegistry()),
+            abi.encodeWithSelector(INodeRegistry.getOperatorRewardAddress.selector),
+            abi.encode(opRewardAddr)
+        );
+
+        assertEq(address(nodeELRewardVault).balance, rewardEth);
+
+        nodeELRewardVault.withdraw();
+
+        (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = poolUtils.calculateRewardShare(
+            1,
+            rewardEth
+        );
+
+        assertEq(address(sspm).balance, userShare);
+        assertEq(address(treasury).balance, protocolShare);
+        assertEq(address(opRewardAddr).balance, operatorShare);
+    }
+
+    function test_updateStaderConfig() public {
+        // not staderAdmin
+        vm.expectRevert();
+        nodeELRewardVault.updateStaderConfig(vm.addr(203));
+
+        vm.prank(staderAdmin);
+        nodeELRewardVault.updateStaderConfig(vm.addr(203));
+        assertEq(address(nodeELRewardVault.staderConfig()), vm.addr(203));
     }
 }
