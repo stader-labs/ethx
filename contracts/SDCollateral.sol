@@ -16,10 +16,8 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
     uint256 public override totalSDCollateral;
-    uint256 public override withdrawDelay; // in seconds
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;
-    mapping(address => WithdrawRequestInfo) public override withdrawReq;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -60,46 +58,23 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     /// @dev it does not transfer sd tokens immediately
     /// operator should come back after withdrawal-delay time to claim
     /// this requested sd is subject to slashes
-    function requestWithdraw(uint256 _requestedSD) external override {
+    function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
-        uint256 sdBalance = operatorSDBalance[operator] - withdrawReq[operator].totalSDWithdrawReqAmount;
+        uint256 opSDBalance = operatorSDBalance[operator];
 
-        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(operator);
-        isPoolThresholdValid(poolId);
-        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
-
-        uint256 sdWithdrawableThreshold = convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
-        if (sdBalance < sdWithdrawableThreshold + _requestedSD) {
-            revert InsufficientSDToWithdraw(sdBalance);
+        if (opSDBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
+            revert InsufficientSDToWithdraw(opSDBalance);
         }
 
-        withdrawReq[operator].lastWithdrawReqTimestamp = block.timestamp;
-        withdrawReq[operator].totalSDWithdrawReqAmount += _requestedSD;
-
-        emit SDWithdrawRequested(operator, _requestedSD);
-    }
-
-    function claimWithdraw() external override nonReentrant {
-        address operator = msg.sender;
-        // requested sd is subject to slashing, hence sdToClaim = min(requestedSD, operatorSDBalance)
-        uint256 requestedSD = Math.min(withdrawReq[operator].totalSDWithdrawReqAmount, operatorSDBalance[operator]);
-        if (requestedSD == 0) {
-            revert AlreadyClaimed();
-        }
-        if (block.timestamp < (withdrawReq[operator].lastWithdrawReqTimestamp + withdrawDelay)) {
-            revert ClaimNotReady();
-        }
-
-        totalSDCollateral -= requestedSD;
-        operatorSDBalance[operator] -= requestedSD;
-        withdrawReq[operator].totalSDWithdrawReqAmount = 0;
+        totalSDCollateral -= _requestedSD;
+        operatorSDBalance[operator] -= _requestedSD;
 
         // cannot use safeERC20 as this contract is an upgradeable contract
-        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), requestedSD)) {
+        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
             revert SDTransferFailed();
         }
 
-        emit SDClaimed(operator, requestedSD);
+        emit SDWithdrawn(operator, _requestedSD);
     }
 
     /// @notice slashes one validator equi. SD amount
@@ -168,16 +143,15 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         emit UpdatedPoolThreshold(_poolId, _minThreshold, _withdrawThreshold);
     }
 
-    function setWithdrawDelay(uint256 _withdrawDelay) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (withdrawDelay == _withdrawDelay) {
-            revert NoStateChange();
-        }
-        withdrawDelay = _withdrawDelay;
-        emit WithdrawDelayUpdated(_withdrawDelay);
-    }
-
     // GETTERS
+
+    // returns sum of withdraw threshold accounting for all its(op's) validators
+    function getOperatorWithdrawThreshold(address _operator) public view returns (uint256 operatorWithdrawThreshold) {
+        (uint8 poolId, , uint256 validatorCount) = getOperatorInfo(_operator);
+        isPoolThresholdValid(poolId);
+        PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[poolId];
+        return convertETHToSD(poolThreshold.withdrawThreshold * validatorCount);
+    }
 
     /// @notice checks if operator has enough SD collateral to onboard validators in a specific pool
     /// @param _operator node operator addr who want to onboard validators
