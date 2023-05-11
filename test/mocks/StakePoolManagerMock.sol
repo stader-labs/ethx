@@ -4,4 +4,6 @@ pragma solidity ^0.8.16;
 
 contract StakePoolManagerMock {
     function receiveEthFromAuction() external payable {}
+
+    function receiveExecutionLayerRewards() external payable {}
 }
