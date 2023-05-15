@@ -56,10 +56,6 @@ contract ValidatorWithdrawalVault is
 
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
-        if (vaultSettleStatus) {
-            sendValue(payable(staderConfig.getStaderTreasury()), address(this).balance);
-            return;
-        }
         if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
