@@ -19,9 +19,9 @@ contract PoolUtilsMock {
         return 1;
     }
 
-    function getValidatorPoolId(address) external pure returns (uint8) {
-        return 1;
-    }
+    // function getValidatorPoolId(bytes calldata) external pure returns (uint8) {
+    //     return 1;
+    // }
 
     function getNodeRegistry(uint8) public view returns (address) {
         return address(nodeRegistry);
