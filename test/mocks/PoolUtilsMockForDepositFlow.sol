@@ -74,6 +74,6 @@ contract PoolUtilsMockForDepositFlow {
             uint256
         )
     {
-        return (0, 0, 0);
+        return (0.9 ether, 0.05 ether, 0.05 ether);
     }
 }

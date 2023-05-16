@@ -6,6 +6,6 @@ contract StakePoolManagerMock {
     function receiveEthFromAuction() external payable {}
 
     function receiveWithdrawVaultUserShare() external payable {}
-    
+
     function receiveExecutionLayerRewards() external payable {}
 }
