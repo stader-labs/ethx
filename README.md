@@ -17,6 +17,17 @@ Setting up Foundry
 - npm install
 - forge test
 
+Setting up Foundry
+
+- install foundry `curl -L https://foundry.paradigm.xyz | bash `
+- extra step for macOS `brew install libusb`
+- run `foundryup`
+- npm install // to install hardhat-foundry plugin
+- forge install // to install submodule dependencies
+- forge build // to build all contracts
+- forge test
+- forge coverage
+
 # Repository Conventions
 
 ### Types

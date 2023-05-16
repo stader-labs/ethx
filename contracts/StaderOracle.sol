@@ -25,7 +25,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     /// @inheritdoc IStaderOracle
-    uint256 public override latestMissedAttestationConsensusIndex;
+    uint256 public override lastReportedMAPDIndex;
 
     // indicate the health of protocol on beacon chain
     // enabled by `MANAGER` if heavy slashing on protocol on beacon chain
@@ -36,8 +36,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     mapping(bytes32 => bool) private nodeSubmissionKeys;
     mapping(bytes32 => uint8) private submissionCountKeys;
     mapping(bytes32 => uint16) public override missedAttestationPenalty;
-    // mapping of trusted node address with report index and report pageNumber
-    mapping(address => MissedAttestationReportInfo) public missedAttestationDataByTrustedNode;
     uint256[] private sdPrices;
 
     bytes32 public constant ETHX_ER_UF = keccak256('ETHX_ER_UF'); // ETHx Exchange Rate, Balances Update Frequency
@@ -416,44 +414,31 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
-        if (_mapd.reportingBlockNumber % updateFrequencyMap[MISSED_ATTESTATION_PENALTY_UF] > 0) {
+        if (_mapd.reportingBlockNumber != getMissedAttestationPenaltyReportableBlock()) {
             revert InvalidReportingBlock();
         }
-        if (_mapd.index <= latestMissedAttestationConsensusIndex) {
-            revert StaleData();
-        }
-
-        MissedAttestationReportInfo memory reportInfo = missedAttestationDataByTrustedNode[msg.sender];
-        if (_mapd.index < reportInfo.index) {
-            revert ReportingPreviousCycleData();
-        }
-        if (_mapd.pageNumber <= reportInfo.pageNumber) {
-            revert PageNumberAlreadyReported();
+        if (_mapd.index != lastReportedMAPDIndex + 1) {
+            revert InvalidMAPDIndex();
         }
 
         bytes memory encodedPubkeys = abi.encode(_mapd.sortedPubkeys);
 
         // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(msg.sender, _mapd.index, _mapd.pageNumber, encodedPubkeys)
-        );
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, _mapd.pageNumber, encodedPubkeys));
-
-        missedAttestationDataByTrustedNode[msg.sender] = MissedAttestationReportInfo(_mapd.index, _mapd.pageNumber);
+        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _mapd.index, encodedPubkeys));
+        bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, encodedPubkeys));
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         // Emit missed attestation penalty submitted event
         emit MissedAttestationPenaltySubmitted(
             msg.sender,
             _mapd.index,
-            _mapd.pageNumber,
             block.number,
             _mapd.reportingBlockNumber,
             _mapd.sortedPubkeys
         );
 
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
-            latestMissedAttestationConsensusIndex = _mapd.index;
+            lastReportedMAPDIndex = _mapd.index;
             uint256 keyCount = _mapd.sortedPubkeys.length;
             for (uint256 i = 0; i < keyCount; i++) {
                 bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_mapd.sortedPubkeys[i]);

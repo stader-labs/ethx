@@ -8,4 +8,6 @@ contract PermissionlessPoolMock {
         uint256 _operatorId,
         uint256 _operatorTotalKeys
     ) external payable {}
+
+    function receiveRemainingCollateralETH() external payable {}
 }
