@@ -32,7 +32,6 @@ contract StaderStakePoolsManager is
     ReentrancyGuardUpgradeable
 {
     using Math for uint256;
-
     IStaderConfig public staderConfig;
     uint256 public lastExcessETHDepositBlock;
     uint256 public excessETHDepositCoolDown;
@@ -132,30 +131,22 @@ contract StaderStakePoolsManager is
         return (totalETH * DECIMALS) / totalETHx;
     }
 
-    /**
-     * @dev See {IERC4626-totalAssets}.
-     */
+    /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view override returns (uint256) {
         return IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHBalance;
     }
 
-    /**
-     * @dev See {IERC4626-convertToShares}.
-     */
+    /** @dev See {IERC4626-convertToShares}. */
     function convertToShares(uint256 _assets) public view override returns (uint256) {
         return _convertToShares(_assets, Math.Rounding.Down);
     }
 
-    /**
-     * @dev See {IERC4626-convertToAssets}.
-     */
+    /** @dev See {IERC4626-convertToAssets}. */
     function convertToAssets(uint256 _shares) public view override returns (uint256) {
         return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
-    /**
-     * @dev See {IERC4626-maxDeposit}.
-     */
+    /** @dev See {IERC4626-maxDeposit}. */
     function maxDeposit() public view override returns (uint256) {
         return isVaultHealthy() ? staderConfig.getMaxDepositAmount() : 0;
     }
@@ -164,23 +155,17 @@ contract StaderStakePoolsManager is
         return isVaultHealthy() ? staderConfig.getMinDepositAmount() : 0;
     }
 
-    /**
-     * @dev See {IERC4626-previewDeposit}.
-     */
+    /** @dev See {IERC4626-previewDeposit}. */
     function previewDeposit(uint256 _assets) public view override returns (uint256) {
         return _convertToShares(_assets, Math.Rounding.Down);
     }
 
-    /**
-     * @dev See {IERC4626-previewWithdraw}.
-     */
+    /** @dev See {IERC4626-previewWithdraw}. */
     function previewWithdraw(uint256 _shares) public view override returns (uint256) {
         return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
-    /**
-     * @dev See {IERC4626-deposit}.
-     */
+    /** @dev See {IERC4626-deposit}. */
     function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < minDeposit()) {
