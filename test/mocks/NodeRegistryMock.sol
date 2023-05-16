@@ -10,6 +10,7 @@ contract NodeRegistryMock {
     constructor() {
         validatorRegistry[1].withdrawVaultAddress = address(1);
         validatorRegistry[1].operatorId = 1;
+        validatorRegistry[1].pubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
 
         operatorStructById[1].operatorAddress = address(500);
     }
