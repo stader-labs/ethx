@@ -60,7 +60,8 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         uint256 currentActiveValidators = poolUtils.getActiveValidatorCountByPool(_poolId);
         uint256 poolTotalTarget = (poolWeights[_poolId] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
         (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
-        selectedPoolCapacity = Math.min(poolAllocationMaxSize, Math.min(remainingPoolCapacity, remainingPoolTarget));
+        selectedPoolCapacity = Math.min(_newValidatorToRegister, Math.min(remainingPoolCapacity, remainingPoolTarget));
+        selectedPoolCapacity = Math.min(poolAllocationMaxSize, selectedPoolCapacity);
     }
 
     /**
