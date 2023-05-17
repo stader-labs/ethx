@@ -224,7 +224,7 @@ contract StaderStakePoolsManager is
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw()
         );
         if (availableETHForNewDeposit == 0) {
-            revert NoETHForNewDeposit();
+            revert InsufficientBalance();
         }
         (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) = IPoolSelector(
             staderConfig.getPoolSelector()

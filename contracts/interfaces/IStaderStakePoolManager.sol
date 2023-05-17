@@ -9,7 +9,6 @@ interface IStaderStakePoolManager {
     error InsufficientBalance();
     error TransferFailed();
     error PoolIdDoesNotExit();
-    error NoETHForNewDeposit();
     error CooldownNotComplete();
     error UnsupportedOperationInSafeMode();
 
