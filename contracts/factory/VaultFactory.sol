@@ -5,6 +5,7 @@ import '../library/UtilLib.sol';
 
 import '../ValidatorWithdrawalVault.sol';
 import '../NodeELRewardVault.sol';
+import '../VaultProxy.sol';
 
 import '../interfaces/IVaultFactory.sol';
 import '../interfaces/IStaderConfig.sol';
@@ -14,6 +15,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
+    address vaultProxyImplementation;
     address public nodeELRewardVaultImplementation;
     address public validatorWithdrawalVaultImplementation;
 
@@ -30,6 +32,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
+        vaultProxyImplementation = address(new VaultProxy());
         nodeELRewardVaultImplementation = address(new NodeELRewardVault());
         validatorWithdrawalVaultImplementation = address(new ValidatorWithdrawalVault());
 
@@ -42,13 +45,13 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 _validatorCount,
         uint256 _validatorId
     ) public override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
-        address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
-        withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(validatorWithdrawalVaultImplementation, salt);
-        ValidatorWithdrawalVault(payable(withdrawVaultAddress)).initialize(
+        address withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
+        VaultProxy(payable(withdrawVaultAddress)).initialize(
             _poolId,
+            _validatorId,
             address(staderConfig),
-            _validatorId
+            validatorWithdrawalVaultImplementation
         );
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
@@ -61,10 +64,14 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         onlyRole(NODE_REGISTRY_CONTRACT)
         returns (address)
     {
-        address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
-        nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
-        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(_poolId, _operatorId, address(staderConfig));
+        address nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
+        VaultProxy(payable(nodeELRewardVaultAddress)).initialize(
+            _poolId,
+            _operatorId,
+            address(staderConfig),
+            nodeELRewardVaultImplementation
+        );
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
         return nodeELRewardVaultAddress;
@@ -76,7 +83,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 _validatorCount
     ) public view override returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
-        return ClonesUpgradeable.predictDeterministicAddress(validatorWithdrawalVaultImplementation, salt);
+        return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }
 
     function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId)
@@ -86,7 +93,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         returns (address)
     {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
-        return ClonesUpgradeable.predictDeterministicAddress(nodeELRewardVaultImplementation, salt);
+        return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }
 
     function getValidatorWithdrawCredential(address _withdrawVault) public pure override returns (bytes memory) {
@@ -98,5 +105,21 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function updateImplementationAddress(
+        address _vaultProxyImpl,
+        address _nodeELRewardVaultImpl,
+        address _validatorWithdrawalVaultImpl
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_vaultProxyImpl);
+        UtilLib.checkNonZeroAddress(_nodeELRewardVaultImpl);
+        UtilLib.checkNonZeroAddress(_validatorWithdrawalVaultImpl);
+        vaultProxyImplementation = _vaultProxyImpl;
+        nodeELRewardVaultImplementation = _nodeELRewardVaultImpl;
+        validatorWithdrawalVaultImplementation = _validatorWithdrawalVaultImpl;
+        emit UpdatedVaultProxyImplementation(vaultProxyImplementation);
+        emit UpdatedNodeELRewardVaultImplementation(nodeELRewardVaultImplementation);
+        emit UpdatedValidatorWithdrawalVaultImplementation(validatorWithdrawalVaultImplementation);
     }
 }

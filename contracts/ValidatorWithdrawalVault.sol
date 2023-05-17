@@ -35,8 +35,8 @@ contract ValidatorWithdrawalVault is
 
     function initialize(
         uint8 _poolId,
-        address _staderConfig,
-        uint256 _validatorId
+        uint256 _validatorId,
+        address _staderConfig
     ) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
 
@@ -47,11 +47,6 @@ contract ValidatorWithdrawalVault is
         poolId = _poolId;
         validatorId = _validatorId;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
-    }
-
-    // Allows the contract to receive ETH
-    receive() external payable {
-        emit ETHReceived(msg.sender, msg.value);
     }
 
     function distributeRewards() external override nonReentrant {
