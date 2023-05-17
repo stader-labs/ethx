@@ -2,14 +2,13 @@
 pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
-
 import './interfaces/IStaderConfig.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract VaultProxy is Initializable, AccessControlUpgradeable {
     address vaultImplementation;
     IStaderConfig public staderConfig;
-
+    event UpgradedVaultImplementation(address vaultImplementation);
     event ETHReceived(address indexed sender, uint256 amount);
 
     function initialize(
@@ -28,7 +27,9 @@ contract VaultProxy is Initializable, AccessControlUpgradeable {
         (bool success, bytes memory data) = vaultImplementation.delegatecall(
             abi.encodeWithSignature('initialise(uint8,uint256,address)', _poolId, _Id, _staderConfig)
         );
-        // if (!success) { revert(getRevertMessage(data)); }
+        if (!success) {
+            revert data;
+        }
     }
 
     // Allows the contract to receive ETH
@@ -40,10 +41,28 @@ contract VaultProxy is Initializable, AccessControlUpgradeable {
         // If useLatestDelegate is set, use the latest delegate contract
         // address delegateContract = useLatestDelegate ? getContractAddress("rocketMinipoolDelegate") : rocketMinipoolDelegate;
         // Check for contract existence
-        // require(contractExists(vaultImplementation), "Delegate contract does not exist");
+        require(contractExists(vaultImplementation), 'Delegate contract does not exist');
         // Execute delegatecall
         (bool success, bytes memory data) = vaultImplementation.delegatecall(_input);
-        // if (!success) { revert(getRevertMessage(data)); }
+        if (!success) {
+            revert data;
+        }
         return data;
+    }
+
+    function vaultUpgrade(address _vaultImplementation) external payable {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        UtilLib.checkNonZeroAddress(_vaultImplementation);
+        vaultImplementation = _vaultImplementation;
+        emit UpgradedVaultImplementation(vaultImplementation);
+    }
+
+    /// @dev Returns true if contract exists at _contractAddress (if called during that contract's construction it will return a false negative)
+    function contractExists(address _contractAddress) private view returns (bool) {
+        uint32 codeSize;
+        assembly {
+            codeSize := extcodesize(_contractAddress)
+        }
+        return codeSize > 0;
     }
 }
