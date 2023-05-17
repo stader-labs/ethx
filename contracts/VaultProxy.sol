@@ -6,63 +6,50 @@ import './interfaces/IStaderConfig.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract VaultProxy is Initializable, AccessControlUpgradeable {
-    address vaultImplementation;
+    bool isValidatorWithdrawalVault;
     IStaderConfig public staderConfig;
-    event UpgradedVaultImplementation(address vaultImplementation);
-    event ETHReceived(address indexed sender, uint256 amount);
+
+    event UpdatedStaderConfig(address staderConfig);
 
     function initialize(
+        bool _isValidatorWithdrawalVault,
         uint8 _poolId,
         uint256 _Id, //validatorId in case of withdrawVault, operatorId in case of nodeELRewardVault
-        address _staderConfig,
-        address _vaultImplementation //implementation of withdrawVault or nodeELRewardVault
+        address _staderConfig
     ) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
-
         __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
-        vaultImplementation = _vaultImplementation;
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
+
+        //get the vault implementation form stader config based on vault type
+        address vaultImplementation = isValidatorWithdrawalVault
+            ? staderConfig.getValidatorWithdrawalVaultImplementation()
+            : staderConfig.getNodeELRewardVaultImplementation();
         (bool success, bytes memory data) = vaultImplementation.delegatecall(
             abi.encodeWithSignature('initialise(uint8,uint256,address)', _poolId, _Id, _staderConfig)
         );
         if (!success) {
-            revert data;
+            revert(string(data));
         }
     }
 
-    // Allows the contract to receive ETH
-    receive() external payable {
-        emit ETHReceived(msg.sender, msg.value);
-    }
-
     fallback(bytes calldata _input) external payable returns (bytes memory) {
-        // If useLatestDelegate is set, use the latest delegate contract
-        // address delegateContract = useLatestDelegate ? getContractAddress("rocketMinipoolDelegate") : rocketMinipoolDelegate;
-        // Check for contract existence
-        require(contractExists(vaultImplementation), 'Delegate contract does not exist');
-        // Execute delegatecall
+        address vaultImplementation = isValidatorWithdrawalVault
+            ? staderConfig.getValidatorWithdrawalVaultImplementation()
+            : staderConfig.getNodeELRewardVaultImplementation();
         (bool success, bytes memory data) = vaultImplementation.delegatecall(_input);
         if (!success) {
-            revert data;
+            revert(string(data));
         }
         return data;
     }
 
-    function vaultUpgrade(address _vaultImplementation) external payable {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        UtilLib.checkNonZeroAddress(_vaultImplementation);
-        vaultImplementation = _vaultImplementation;
-        emit UpgradedVaultImplementation(vaultImplementation);
-    }
-
-    /// @dev Returns true if contract exists at _contractAddress (if called during that contract's construction it will return a false negative)
-    function contractExists(address _contractAddress) private view returns (bool) {
-        uint32 codeSize;
-        assembly {
-            codeSize := extcodesize(_contractAddress)
-        }
-        return codeSize > 0;
+    //update the address of staderConfig
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 }

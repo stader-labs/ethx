@@ -6,8 +6,6 @@ interface IVaultFactory {
     event NodeELRewardVaultCreated(address nodeDistributor);
     event UpdatedStaderConfig(address staderConfig);
     event UpdatedVaultProxyImplementation(address vaultProxyImplementation);
-    event UpdatedNodeELRewardVaultImplementation(address nodeELRewardVaultImplementation);
-    event UpdatedValidatorWithdrawalVaultImplementation(address validatorWithdrawalVaultImplementation);
 
     function NODE_REGISTRY_CONTRACT() external view returns (bytes32);
 

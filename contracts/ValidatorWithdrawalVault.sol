@@ -49,6 +49,11 @@ contract ValidatorWithdrawalVault is
         _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
     }
 
+    // Allows the contract to receive ETH
+    receive() external payable {
+        emit ETHReceived(msg.sender, msg.value);
+    }
+
     function distributeRewards() external override nonReentrant {
         uint256 totalRewards = address(this).balance;
         if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {

@@ -51,6 +51,10 @@ interface IStaderConfig {
 
     function PERMISSIONLESS_SOCIALIZING_POOL() external view returns (bytes32);
 
+    function NODE_EL_REWARD_VAULT_IMPLEMENTATION() external view returns (bytes32);
+
+    function VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION() external view returns (bytes32);
+
     //Roles
     function MANAGER() external view returns (bytes32);
 
@@ -127,6 +131,10 @@ interface IStaderConfig {
     function getPermissionedSocializingPool() external view returns (address);
 
     function getPermissionlessSocializingPool() external view returns (address);
+
+    function getNodeELRewardVaultImplementation() external view returns (address);
+
+    function getValidatorWithdrawalVaultImplementation() external view returns (address);
 
     // Tokens
     function getStaderToken() external view returns (address);
