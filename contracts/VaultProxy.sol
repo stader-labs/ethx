@@ -2,39 +2,34 @@
 pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
-import './interfaces/IStaderConfig.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import 'forge-std/Test.sol';
+
+import './interfaces/IVaultProxy.sol';
 
 //contract to delegate call to respective vault implementation based on the flag of 'isValidatorWithdrawalVault'
-contract VaultProxy is Initializable, AccessControlUpgradeable {
-    bool isValidatorWithdrawalVault;
-    IStaderConfig public staderConfig;
+contract VaultProxy is IVaultProxy {
+    bool public override vaultSettleStatus;
+    bool public override isValidatorWithdrawalVault;
+    uint8 public override poolId;
+    uint256 public override id; //validatorId or operatorId based on vault type
+    address public override owner;
+    IStaderConfig public override staderConfig;
 
-    event UpdatedStaderConfig(address staderConfig);
+    constructor() {}
 
-    function initialize(
+    //TODO do we need to put some check to avoid call from unwanted address?
+    function initialise(
         bool _isValidatorWithdrawalVault,
         uint8 _poolId,
-        uint256 _Id, //validatorId in case of withdrawVault, operatorId in case of nodeELRewardVault
+        uint256 _id,
         address _staderConfig
-    ) external initializer {
+    ) external {
         UtilLib.checkNonZeroAddress(_staderConfig);
-        __AccessControl_init_unchained();
-
+        isValidatorWithdrawalVault = _isValidatorWithdrawalVault;
+        poolId = _poolId;
+        id = _id;
         staderConfig = IStaderConfig(_staderConfig);
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
-
-        //get the vault implementation form stader config based on vault type
-        address vaultImplementation = isValidatorWithdrawalVault
-            ? staderConfig.getValidatorWithdrawalVaultImplementation()
-            : staderConfig.getNodeELRewardVaultImplementation();
-        //initialize vault contract
-        (bool success, bytes memory data) = vaultImplementation.delegatecall(
-            abi.encodeWithSignature('initialise(uint8,uint256,address)', _poolId, _Id, _staderConfig)
-        );
-        if (!success) {
-            revert(string(data));
-        }
+        owner = staderConfig.getAdmin();
     }
 
     /**route all call to this proxy contract to the respective latest vault contract
@@ -52,9 +47,22 @@ contract VaultProxy is Initializable, AccessControlUpgradeable {
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderConfig(address _staderConfig) external override onlyOwner {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function updateOwner(address _owner) external override onlyOwner {
+        UtilLib.checkNonZeroAddress(_owner);
+        owner = _owner;
+        emit UpdatedOwner(owner);
+    }
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) {
+            revert CallerNotOwner();
+        }
+        _;
     }
 }

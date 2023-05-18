@@ -11,6 +11,7 @@ import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionlessPool.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderInsuranceFund.sol';
+import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 

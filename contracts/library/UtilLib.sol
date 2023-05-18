@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 import '../interfaces/IStaderConfig.sol';
 import '../interfaces/INodeRegistry.sol';
 import '../interfaces/IPoolUtils.sol';
-import '../interfaces/IValidatorWithdrawalVault.sol';
+import '../interfaces/IVaultProxy.sol';
 
 library UtilLib {
     error ZeroAddress();
@@ -143,6 +143,6 @@ library UtilLib {
         address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         uint256 validatorId = INodeRegistry(nodeRegistry).validatorIdByPubkey(_pubkey);
         (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
-        return IValidatorWithdrawalVault(withdrawVaultAddress).vaultSettleStatus();
+        return IVaultProxy(withdrawVaultAddress).vaultSettleStatus();
     }
 }

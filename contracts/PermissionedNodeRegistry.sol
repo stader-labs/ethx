@@ -9,6 +9,7 @@ import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionedPool.sol';
+import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionedNodeRegistry.sol';
 

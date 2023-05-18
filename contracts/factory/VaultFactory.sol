@@ -43,7 +43,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     ) public override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
         address withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
-        VaultProxy(payable(withdrawVaultAddress)).initialize(true, _poolId, _validatorId, address(staderConfig));
+        VaultProxy(payable(withdrawVaultAddress)).initialise(true, _poolId, _validatorId, address(staderConfig));
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
         return withdrawVaultAddress;
@@ -57,7 +57,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
     {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
         address nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
-        VaultProxy(payable(nodeELRewardVaultAddress)).initialize(false, _poolId, _operatorId, address(staderConfig));
+        VaultProxy(payable(nodeELRewardVaultAddress)).initialise(false, _poolId, _operatorId, address(staderConfig));
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
         return nodeELRewardVaultAddress;
