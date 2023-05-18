@@ -5,6 +5,7 @@ import './library/UtilLib.sol';
 import './interfaces/IStaderConfig.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
+//contract to delegate call to respective vault implementation based on the flag of 'isValidatorWithdrawalVault'
 contract VaultProxy is Initializable, AccessControlUpgradeable {
     bool isValidatorWithdrawalVault;
     IStaderConfig public staderConfig;
@@ -27,6 +28,7 @@ contract VaultProxy is Initializable, AccessControlUpgradeable {
         address vaultImplementation = isValidatorWithdrawalVault
             ? staderConfig.getValidatorWithdrawalVaultImplementation()
             : staderConfig.getNodeELRewardVaultImplementation();
+        //initialize vault contract
         (bool success, bytes memory data) = vaultImplementation.delegatecall(
             abi.encodeWithSignature('initialise(uint8,uint256,address)', _poolId, _Id, _staderConfig)
         );
@@ -35,6 +37,9 @@ contract VaultProxy is Initializable, AccessControlUpgradeable {
         }
     }
 
+    /**route all call to this proxy contract to the respective latest vault contract
+     * fetched from staderConfig. This approch will help in changing the implementation
+     * of validatorWithdrawalVault/nodeELRewardVault for already deployed vaults*/
     fallback(bytes calldata _input) external payable returns (bytes memory) {
         address vaultImplementation = isValidatorWithdrawalVault
             ? staderConfig.getValidatorWithdrawalVaultImplementation()

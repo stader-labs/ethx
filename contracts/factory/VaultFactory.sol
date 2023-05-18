@@ -93,7 +93,8 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function updateImplementationAddress(address _vaultProxyImpl) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    //update the implementation address of vaultProxy contract
+    function updateProxyAddress(address _vaultProxyImpl) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_vaultProxyImpl);
         vaultProxyImplementation = _vaultProxyImpl;
         emit UpdatedVaultProxyImplementation(vaultProxyImplementation);
