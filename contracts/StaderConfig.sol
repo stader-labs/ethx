@@ -191,8 +191,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setContract(SD_COLLATERAL, _sdCollateral);
     }
 
-    function updateOperatorRewardsCollector(address _payments) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setContract(OPERATOR_REWARD_COLLECTOR, _payments);
+    function updateOperatorRewardsCollector(address _operatorRewardsCollector) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(OPERATOR_REWARD_COLLECTOR, _operatorRewardsCollector);
     }
 
     function updateVaultFactory(address _vaultFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
