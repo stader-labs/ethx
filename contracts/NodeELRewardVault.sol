@@ -7,6 +7,7 @@ import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
+import './interfaces/IPayments.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -65,12 +66,8 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             revert ETHTransferFailed(staderConfig.getStaderTreasury(), protocolShare);
         }
 
-        address payable nodeRecipient = UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
-        // slither-disable-next-line arbitrary-send-eth
-        (success, ) = nodeRecipient.call{value: operatorShare}('');
-        if (!success) {
-            revert ETHTransferFailed(nodeRecipient, operatorShare);
-        }
+        address operator = UtilLib.getOpAddrByOpId(poolId, operatorId, staderConfig);
+        IPayments(staderConfig.getPaymentsContract()).depositFor{value: operatorShare}(operator);
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }
