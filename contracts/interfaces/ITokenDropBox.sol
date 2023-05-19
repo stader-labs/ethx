@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.16;
 
-interface IPayments {
+interface ITokenDropBox {
     // errors
     error InSufficientBalance();
     error TransferFailed();

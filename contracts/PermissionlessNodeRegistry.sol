@@ -13,7 +13,7 @@ import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderInsuranceFund.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IPayments.sol';
+import './interfaces/ITokenDropBox.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -579,7 +579,7 @@ contract PermissionlessNodeRegistry is
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
         uint256 amount = COLLATERAL_ETH - staderConfig.getPreDepositSize();
-        IPayments(staderConfig.getPaymentsContract()).depositFor{value: amount}(operatorAddress);
+        ITokenDropBox(staderConfig.getTokenDropBox()).depositFor{value: amount}(operatorAddress);
     }
 
     // validate the input of `addValidatorKeys` function

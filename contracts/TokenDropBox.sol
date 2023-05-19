@@ -3,13 +3,13 @@ pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
 
-import './interfaces/IPayments.sol';
+import './interfaces/ITokenDropBox.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract Payments is IPayments, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract TokenDropBox is ITokenDropBox, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     IStaderConfig public staderConfig;
 
     mapping(address => uint256) public ethBalances;
