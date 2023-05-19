@@ -70,7 +70,7 @@ contract ValidatorWithdrawalVault is
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{value: operatorShare}(getOperatorAddress());
-        UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
@@ -96,7 +96,7 @@ contract ValidatorWithdrawalVault is
         IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{value: operatorShare}(getOperatorAddress());
-        UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
     }
 
@@ -143,6 +143,20 @@ contract ValidatorWithdrawalVault is
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function sendValue(address payable _recipient, uint256 _amount) internal {
+        if (address(this).balance < _amount) {
+            revert InsufficientBalance();
+        }
+
+        //slither-disable-next-line arbitrary-send-eth
+        if (_amount > 0) {
+            (bool success, ) = _recipient.call{value: _amount}('');
+            if (!success) {
+                revert ETHTransferFailed(_recipient, _amount);
+            }
+        }
     }
 
     // HELPER METHODS
