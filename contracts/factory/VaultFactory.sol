@@ -2,11 +2,7 @@
 pragma solidity ^0.8.16;
 
 import '../library/UtilLib.sol';
-
-import '../ValidatorWithdrawalVault.sol';
-import '../NodeELRewardVault.sol';
 import '../VaultProxy.sol';
-
 import '../interfaces/IVaultFactory.sol';
 import '../interfaces/IStaderConfig.sol';
 

@@ -3,9 +3,7 @@ pragma solidity ^0.8.16;
 import './IStaderConfig.sol';
 
 interface IVaultProxy {
-    error CallerNotVault();
     error CallerNotOwner();
-
     event UpdatedOwner(address owner);
     event UpdatedStaderConfig(address staderConfig);
 

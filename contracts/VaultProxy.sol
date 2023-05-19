@@ -2,8 +2,6 @@
 pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
-import 'forge-std/Test.sol';
-
 import './interfaces/IVaultProxy.sol';
 
 //contract to delegate call to respective vault implementation based on the flag of 'isValidatorWithdrawalVault'
@@ -17,7 +15,7 @@ contract VaultProxy is IVaultProxy {
 
     constructor() {}
 
-    //TODO do we need to put some check to avoid call from unwanted address?
+    //initialise the vault proxy with data
     function initialise(
         bool _isValidatorWithdrawalVault,
         uint8 _poolId,
@@ -46,19 +44,29 @@ contract VaultProxy is IVaultProxy {
         return data;
     }
 
-    //update the address of staderConfig
+    /**
+     * @notice update the address of stader config contract
+     * @dev only owner can call
+     * @param _staderConfig address of updated staderConfig
+     */
     function updateStaderConfig(address _staderConfig) external override onlyOwner {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
 
+    /**
+     * @notice @update the owner of vault proxy contrat
+     * @dev only owner can call
+     * @param _owner new owner account
+     */
     function updateOwner(address _owner) external override onlyOwner {
         UtilLib.checkNonZeroAddress(_owner);
         owner = _owner;
         emit UpdatedOwner(owner);
     }
 
+    //modifier to check only owner
     modifier onlyOwner() {
         if (msg.sender != owner) {
             revert CallerNotOwner();

@@ -4,19 +4,18 @@ pragma solidity ^0.8.16;
 import './library/UtilLib.sol';
 import './library/ValidatorStatus.sol';
 
+import './VaultProxy.sol';
 import './interfaces/IPenalty.sol';
 import './interfaces/IPoolUtils.sol';
-import './interfaces/IVaultProxy.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
-
 import '@openzeppelin/contracts/utils/math/Math.sol';
 
 contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
-    using Math for uint256;
     bool internal vaultSettleStatus;
+    using Math for uint256;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
@@ -27,9 +26,9 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     }
 
     function distributeRewards() external override {
-        uint8 poolId = IVaultProxy(address(this)).poolId();
-        uint256 validatorId = IVaultProxy(address(this)).id();
-        IStaderConfig staderConfig = IVaultProxy(address(this)).staderConfig();
+        uint8 poolId = VaultProxy(payable(address(this))).poolId();
+        uint256 validatorId = VaultProxy(payable(address(this))).id();
+        IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
         uint256 totalRewards = address(this).balance;
         if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
@@ -49,9 +48,9 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     }
 
     function settleFunds() external override {
-        uint8 poolId = IVaultProxy(address(this)).poolId();
-        uint256 validatorId = IVaultProxy(address(this)).id();
-        IStaderConfig staderConfig = IVaultProxy(address(this)).staderConfig();
+        uint8 poolId = VaultProxy(payable(address(this))).poolId();
+        uint256 validatorId = VaultProxy(payable(address(this))).id();
+        IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
         address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         if (msg.sender != nodeRegistry) {
             revert CallerNotNodeRegistryContract();
@@ -72,7 +71,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
         vaultSettleStatus = true;
         IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        sendValue(payable(getNodeRecipient(poolId, validatorId, staderConfig)), operatorShare);
+        sendValue(getNodeRecipient(poolId, validatorId, staderConfig), operatorShare);
         sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
     }
@@ -86,8 +85,8 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
             uint256 _protocolShare
         )
     {
-        uint8 poolId = IVaultProxy(address(this)).poolId();
-        IStaderConfig staderConfig = IVaultProxy(address(this)).staderConfig();
+        uint8 poolId = VaultProxy(payable(address(this))).poolId();
+        IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(poolId, staderConfig); // 0, incase of permissioned NOs
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
