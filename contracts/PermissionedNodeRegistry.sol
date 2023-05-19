@@ -610,7 +610,8 @@ contract PermissionedNodeRegistry is
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
         Validator[] memory validators = new Validator[](endIndex - startIndex);
         for (uint256 i = startIndex; i < endIndex; i++) {
-            validators[i] = validatorIdsByOperatorId[operatorId][i];
+            uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
+            validators[i] = validatorRegistry[validatorId];
         }
 
         return validators;
