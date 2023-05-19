@@ -4,6 +4,7 @@ import '../../contracts/library/UtilLib.sol';
 
 import '../../contracts/StaderConfig.sol';
 import '../../contracts/NodeELRewardVault.sol';
+import '../../contracts/TokenDropBox.sol';
 
 import '../mocks/PoolUtilsMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
@@ -23,6 +24,7 @@ contract NodeELRewardVaultTest is Test {
 
     StaderConfig staderConfig;
     NodeELRewardVault nodeELRewardVault;
+    TokenDropBox tokenDropBox;
 
     function setUp() public {
         poolId = 1;
@@ -43,11 +45,21 @@ contract NodeELRewardVaultTest is Test {
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
+        TokenDropBox dropBoxImpl = new TokenDropBox();
+        TransparentUpgradeableProxy dropBoxProxy = new TransparentUpgradeableProxy(
+            address(dropBoxImpl),
+            address(proxyAdmin),
+            ''
+        );
+        tokenDropBox = TokenDropBox(address(dropBoxProxy));
+        tokenDropBox.initialize(staderAdmin, address(staderConfig));
+
         poolUtils = new PoolUtilsMock(address(staderConfig));
 
         vm.startPrank(staderAdmin);
         staderConfig.updateAdmin(staderAdmin);
         staderConfig.updatePoolUtils(address(poolUtils));
+        staderConfig.updateTokenDropBox(address(tokenDropBox));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
@@ -71,6 +83,15 @@ contract NodeELRewardVaultTest is Test {
         );
         NodeELRewardVault nodeELRewardVault2 = NodeELRewardVault(payable(nodeELRewardVaultProxy));
         nodeELRewardVault2.initialize(poolId, operatorId, address(staderConfig));
+
+        TokenDropBox dropBoxImpl = new TokenDropBox();
+        TransparentUpgradeableProxy dropBoxProxy = new TransparentUpgradeableProxy(
+            address(dropBoxImpl),
+            address(proxyAdmin),
+            ''
+        );
+        TokenDropBox tokenDropBox2 = TokenDropBox(address(dropBoxProxy));
+        tokenDropBox2.initialize(staderAdmin, address(staderConfig));
     }
 
     function test_nodeELRewardVaultInitialize() public {
@@ -105,6 +126,7 @@ contract NodeELRewardVaultTest is Test {
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
+        address operator = address(500);
         address opRewardAddr = vm.addr(4);
 
         vm.prank(staderAdmin);
@@ -113,13 +135,8 @@ contract NodeELRewardVaultTest is Test {
         vm.prank(staderManager);
         staderConfig.updateStaderTreasury(treasury);
 
-        vm.mockCall(
-            address(poolUtils.nodeRegistry()),
-            abi.encodeWithSelector(INodeRegistry.getOperatorRewardAddress.selector),
-            abi.encode(opRewardAddr)
-        );
-
         assertEq(address(nodeELRewardVault).balance, rewardEth);
+        assertEq(tokenDropBox.ethBalances(operator), 0);
 
         nodeELRewardVault.withdraw();
 
@@ -130,7 +147,28 @@ contract NodeELRewardVaultTest is Test {
 
         assertEq(address(sspm).balance, userShare);
         assertEq(address(treasury).balance, protocolShare);
+        assertEq(address(opRewardAddr).balance, 0);
+        assertEq(address(tokenDropBox).balance, operatorShare);
+        assertEq(tokenDropBox.ethBalances(operator), operatorShare);
+
+        // claim by operator
+        vm.mockCall(
+            address(poolUtils.nodeRegistry()),
+            abi.encodeWithSelector(INodeRegistry.getOperatorRewardAddress.selector),
+            abi.encode(opRewardAddr)
+        );
+
+        // vm.mockCall(
+        //     address(address(poolUtils)),
+        //     abi.encodeWithSelector(IPoolUtils.getOperatorPoolId.selector),
+        //     abi.encode(1)
+        // );
+
+        vm.prank(operator);
+        tokenDropBox.claimEth();
+
         assertEq(address(opRewardAddr).balance, operatorShare);
+        assertEq(tokenDropBox.ethBalances(operator), 0);
     }
 
     function test_updateStaderConfig() public {
