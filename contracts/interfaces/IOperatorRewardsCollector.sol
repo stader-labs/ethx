@@ -2,9 +2,6 @@
 pragma solidity ^0.8.16;
 
 interface IOperatorRewardsCollector {
-    // errors
-    error TransferFailed();
-
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
     event Claimed(address indexed receiver, uint256 amount);
