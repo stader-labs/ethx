@@ -10,7 +10,7 @@ import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
-import './interfaces/ITokenDropBox.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -69,7 +69,9 @@ contract ValidatorWithdrawalVault is
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{value: operatorShare}(getOperatorAddress());
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            getOperatorAddress()
+        );
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
@@ -95,7 +97,9 @@ contract ValidatorWithdrawalVault is
         vaultSettleStatus = true;
         IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{value: operatorShare}(getOperatorAddress());
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            getOperatorAddress()
+        );
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
     }

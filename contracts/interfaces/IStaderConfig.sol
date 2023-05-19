@@ -23,7 +23,7 @@ interface IStaderConfig {
 
     function SD_COLLATERAL() external view returns (bytes32);
 
-    function TOKEN_DROP_BOX() external view returns (bytes32);
+    function OPERATOR_REWARD_COLLECTOR() external view returns (bytes32);
 
     function VAULT_FACTORY() external view returns (bytes32);
 
@@ -102,7 +102,7 @@ interface IStaderConfig {
 
     function getSDCollateral() external view returns (address);
 
-    function getTokenDropBox() external view returns (address);
+    function getOperatorRewardsCollector() external view returns (address);
 
     function getVaultFactory() external view returns (address);
 

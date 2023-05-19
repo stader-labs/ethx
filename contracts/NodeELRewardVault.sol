@@ -7,7 +7,7 @@ import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/ITokenDropBox.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -67,7 +67,9 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
         }
 
         address operator = UtilLib.getOperatorAddressByOperatorId(poolId, operatorId, staderConfig);
-        ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{value: operatorShare}(operator);
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            operator
+        );
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }

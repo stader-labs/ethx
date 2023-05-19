@@ -13,7 +13,7 @@ import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderInsuranceFund.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/ITokenDropBox.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -578,7 +578,7 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
-        ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{
             value: (COLLATERAL_ETH - staderConfig.getPreDepositSize())
         }(operatorAddress);
     }

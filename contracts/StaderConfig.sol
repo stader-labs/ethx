@@ -40,7 +40,7 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant override POOL_UTILS = keccak256('POOL_UTILS');
     bytes32 public constant override POOL_SELECTOR = keccak256('POOL_SELECTOR');
     bytes32 public constant override SD_COLLATERAL = keccak256('SD_COLLATERAL');
-    bytes32 public constant override TOKEN_DROP_BOX = keccak256('TOKEN_DROP_BOX');
+    bytes32 public constant override OPERATOR_REWARD_COLLECTOR = keccak256('OPERATOR_REWARD_COLLECTOR');
     bytes32 public constant override VAULT_FACTORY = keccak256('VAULT_FACTORY');
     bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
     bytes32 public constant override AUCTION_CONTRACT = keccak256('AuctionContract');
@@ -191,8 +191,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setContract(SD_COLLATERAL, _sdCollateral);
     }
 
-    function updateTokenDropBox(address _payments) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setContract(TOKEN_DROP_BOX, _payments);
+    function updateOperatorRewardsCollector(address _payments) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(OPERATOR_REWARD_COLLECTOR, _payments);
     }
 
     function updateVaultFactory(address _vaultFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -352,8 +352,8 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         return contractsMap[SD_COLLATERAL];
     }
 
-    function getTokenDropBox() external view override returns (address) {
-        return contractsMap[TOKEN_DROP_BOX];
+    function getOperatorRewardsCollector() external view override returns (address) {
+        return contractsMap[OPERATOR_REWARD_COLLECTOR];
     }
 
     function getVaultFactory() external view override returns (address) {

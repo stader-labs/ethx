@@ -3,16 +3,21 @@ pragma solidity ^0.8.16;
 
 import './library/UtilLib.sol';
 
-import './interfaces/ITokenDropBox.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract TokenDropBox is ITokenDropBox, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract OperatorRewardsCollector is
+    IOperatorRewardsCollector,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable
+{
     IStaderConfig public staderConfig;
 
-    mapping(address => uint256) public ethBalances;
+    mapping(address => uint256) public balances;
 
     function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
@@ -27,19 +32,19 @@ contract TokenDropBox is ITokenDropBox, Initializable, AccessControlUpgradeable,
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function depositEthFor(address _receiver) external payable {
-        ethBalances[_receiver] += msg.value;
+    function depositFor(address _receiver) external payable {
+        balances[_receiver] += msg.value;
 
-        emit EthDepositedFor(msg.sender, _receiver, msg.value);
+        emit DepositedFor(msg.sender, _receiver, msg.value);
     }
 
-    function claimEth() external whenNotPaused {
+    function claim() external whenNotPaused {
         address operator = msg.sender;
-        uint256 amount = ethBalances[operator];
-        ethBalances[operator] -= amount;
+        uint256 amount = balances[operator];
+        balances[operator] -= amount;
 
         address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(msg.sender, staderConfig);
         UtilLib.sendValue(operatorRewardsAddr, amount);
-        emit EthClaimed(operatorRewardsAddr, amount);
+        emit Claimed(operatorRewardsAddr, amount);
     }
 }

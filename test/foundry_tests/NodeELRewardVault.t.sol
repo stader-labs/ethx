@@ -4,7 +4,7 @@ import '../../contracts/library/UtilLib.sol';
 
 import '../../contracts/StaderConfig.sol';
 import '../../contracts/NodeELRewardVault.sol';
-import '../../contracts/TokenDropBox.sol';
+import '../../contracts/OperatorRewardsCollector.sol';
 
 import '../mocks/PoolUtilsMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
@@ -24,7 +24,7 @@ contract NodeELRewardVaultTest is Test {
 
     StaderConfig staderConfig;
     NodeELRewardVault nodeELRewardVault;
-    TokenDropBox tokenDropBox;
+    OperatorRewardsCollector operatorRC;
 
     function setUp() public {
         poolId = 1;
@@ -45,21 +45,21 @@ contract NodeELRewardVaultTest is Test {
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
-        TokenDropBox dropBoxImpl = new TokenDropBox();
-        TransparentUpgradeableProxy dropBoxProxy = new TransparentUpgradeableProxy(
-            address(dropBoxImpl),
+        OperatorRewardsCollector operatorRCImpl = new OperatorRewardsCollector();
+        TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
+            address(operatorRCImpl),
             address(proxyAdmin),
             ''
         );
-        tokenDropBox = TokenDropBox(address(dropBoxProxy));
-        tokenDropBox.initialize(staderAdmin, address(staderConfig));
+        operatorRC = OperatorRewardsCollector(address(operatorRCProxy));
+        operatorRC.initialize(staderAdmin, address(staderConfig));
 
         poolUtils = new PoolUtilsMock(address(staderConfig));
 
         vm.startPrank(staderAdmin);
         staderConfig.updateAdmin(staderAdmin);
         staderConfig.updatePoolUtils(address(poolUtils));
-        staderConfig.updateTokenDropBox(address(tokenDropBox));
+        staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
@@ -84,14 +84,14 @@ contract NodeELRewardVaultTest is Test {
         NodeELRewardVault nodeELRewardVault2 = NodeELRewardVault(payable(nodeELRewardVaultProxy));
         nodeELRewardVault2.initialize(poolId, operatorId, address(staderConfig));
 
-        TokenDropBox dropBoxImpl = new TokenDropBox();
-        TransparentUpgradeableProxy dropBoxProxy = new TransparentUpgradeableProxy(
-            address(dropBoxImpl),
+        OperatorRewardsCollector operatorRCImpl = new OperatorRewardsCollector();
+        TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
+            address(operatorRCImpl),
             address(proxyAdmin),
             ''
         );
-        TokenDropBox tokenDropBox2 = TokenDropBox(address(dropBoxProxy));
-        tokenDropBox2.initialize(staderAdmin, address(staderConfig));
+        OperatorRewardsCollector operatorRC2 = OperatorRewardsCollector(address(operatorRCProxy));
+        operatorRC2.initialize(staderAdmin, address(staderConfig));
     }
 
     function test_nodeELRewardVaultInitialize() public {
@@ -136,7 +136,7 @@ contract NodeELRewardVaultTest is Test {
         staderConfig.updateStaderTreasury(treasury);
 
         assertEq(address(nodeELRewardVault).balance, rewardEth);
-        assertEq(tokenDropBox.ethBalances(operator), 0);
+        assertEq(operatorRC.balances(operator), 0);
 
         nodeELRewardVault.withdraw();
 
@@ -148,8 +148,8 @@ contract NodeELRewardVaultTest is Test {
         assertEq(address(sspm).balance, userShare);
         assertEq(address(treasury).balance, protocolShare);
         assertEq(address(opRewardAddr).balance, 0);
-        assertEq(address(tokenDropBox).balance, operatorShare);
-        assertEq(tokenDropBox.ethBalances(operator), operatorShare);
+        assertEq(address(operatorRC).balance, operatorShare);
+        assertEq(operatorRC.balances(operator), operatorShare);
 
         // claim by operator
         vm.mockCall(
@@ -165,10 +165,10 @@ contract NodeELRewardVaultTest is Test {
         // );
 
         vm.prank(operator);
-        tokenDropBox.claimEth();
+        operatorRC.claim();
 
         assertEq(address(opRewardAddr).balance, operatorShare);
-        assertEq(tokenDropBox.ethBalances(operator), 0);
+        assertEq(operatorRC.balances(operator), 0);
     }
 
     function test_updateStaderConfig() public {
