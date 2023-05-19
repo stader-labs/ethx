@@ -113,7 +113,7 @@ contract SocializingPool is
         address operator = msg.sender;
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
 
-        address operatorRewardsAddr = UtilLib.getNodeRecipientAddressByOperator(operator, staderConfig);
+        address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
 
         bool success;
         if (totalAmountETH > 0) {

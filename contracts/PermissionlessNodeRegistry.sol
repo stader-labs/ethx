@@ -578,8 +578,9 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
-        uint256 amount = COLLATERAL_ETH - staderConfig.getPreDepositSize();
-        ITokenDropBox(staderConfig.getTokenDropBox()).depositFor{value: amount}(operatorAddress);
+        ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{
+            value: (COLLATERAL_ETH - staderConfig.getPreDepositSize())
+        }(operatorAddress);
     }
 
     // validate the input of `addValidatorKeys` function

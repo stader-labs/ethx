@@ -3,7 +3,6 @@ pragma solidity ^0.8.16;
 
 interface ITokenDropBox {
     // errors
-    error InSufficientBalance();
     error TransferFailed();
 
     // events
@@ -13,9 +12,7 @@ interface ITokenDropBox {
 
     // methods
 
-    function depositFor(address _receiver) external payable;
+    function depositEthFor(address _receiver) external payable;
 
-    function claim() external;
-
-    function claimByOperator() external;
+    function claimEth() external;
 }

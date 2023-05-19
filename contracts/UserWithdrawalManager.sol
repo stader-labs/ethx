@@ -173,7 +173,7 @@ contract UserWithdrawalManager is
         }
         uint256 etherToTransfer = userRequest.ethFinalized;
         deleteRequestId(_requestId, userRequest.owner);
-        sendValue(userRequest.owner, etherToTransfer);
+        UtilLib.sendValue(userRequest.owner, etherToTransfer);
         emit RequestRedeemed(msg.sender, userRequest.owner, etherToTransfer);
     }
 
@@ -212,17 +212,5 @@ contract UserWithdrawalManager is
             }
         }
         revert CannotFindRequestId();
-    }
-
-    function sendValue(address payable _recipient, uint256 _amount) internal {
-        if (address(this).balance < _amount) {
-            revert InSufficientBalance();
-        }
-
-        //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = _recipient.call{value: _amount}('');
-        if (!success) {
-            revert ETHTransferFailed();
-        }
     }
 }

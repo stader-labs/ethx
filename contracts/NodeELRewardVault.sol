@@ -66,8 +66,8 @@ contract NodeELRewardVault is INodeELRewardVault, Initializable, AccessControlUp
             revert ETHTransferFailed(staderConfig.getStaderTreasury(), protocolShare);
         }
 
-        address operator = UtilLib.getOpAddrByOpId(poolId, operatorId, staderConfig);
-        ITokenDropBox(staderConfig.getTokenDropBox()).depositFor{value: operatorShare}(operator);
+        address operator = UtilLib.getOperatorAddressByOperatorId(poolId, operatorId, staderConfig);
+        ITokenDropBox(staderConfig.getTokenDropBox()).depositEthFor{value: operatorShare}(operator);
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }

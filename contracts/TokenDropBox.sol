@@ -27,38 +27,19 @@ contract TokenDropBox is ITokenDropBox, Initializable, AccessControlUpgradeable,
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function depositFor(address _receiver) external payable {
+    function depositEthFor(address _receiver) external payable {
         ethBalances[_receiver] += msg.value;
 
         emit EthDepositedFor(msg.sender, _receiver, msg.value);
     }
 
-    function claim() external whenNotPaused {
-        _claim(msg.sender);
-    }
+    function claimEth() external whenNotPaused {
+        address operator = msg.sender;
+        uint256 amount = ethBalances[operator];
+        ethBalances[operator] -= amount;
 
-    function claimByOperator() external whenNotPaused {
-        address operatorRewardsAddr = UtilLib.getNodeRecipientAddressByOperator(msg.sender, staderConfig);
-        _claim(operatorRewardsAddr);
-    }
-
-    function _claim(address _receiver) internal {
-        uint256 amount = ethBalances[_receiver];
-        ethBalances[_receiver] -= amount;
-
-        sendValue(_receiver, amount);
-        emit EthClaimed(_receiver, amount);
-    }
-
-    function sendValue(address _receiver, uint256 _amount) internal {
-        if (address(this).balance < _amount) {
-            revert InSufficientBalance();
-        }
-
-        //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(_receiver).call{value: _amount}('');
-        if (!success) {
-            revert TransferFailed();
-        }
+        address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(msg.sender, staderConfig);
+        UtilLib.sendValue(operatorRewardsAddr, amount);
+        emit EthClaimed(operatorRewardsAddr, amount);
     }
 }

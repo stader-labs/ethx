@@ -13,6 +13,7 @@ library UtilLib {
     error CallerNotOperator();
     error CallerNotStaderContract();
     error CallerNotWithdrawVault();
+    error TransferFailed();
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
@@ -103,7 +104,7 @@ library UtilLib {
         return operatorAddress;
     }
 
-    function getOpAddrByOpId(
+    function getOperatorAddressByOperatorId(
         uint8 _poolId,
         uint256 _operatorId,
         IStaderConfig _staderConfig
@@ -114,7 +115,7 @@ library UtilLib {
         return operatorAddress;
     }
 
-    function getNodeRecipientAddressByOperator(address _operator, IStaderConfig _staderConfig)
+    function getOperatorRewardAddress(address _operator, IStaderConfig _staderConfig)
         internal
         view
         returns (address payable)
@@ -149,5 +150,12 @@ library UtilLib {
         uint256 validatorId = INodeRegistry(nodeRegistry).validatorIdByPubkey(_pubkey);
         (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return IValidatorWithdrawalVault(withdrawVaultAddress).vaultSettleStatus();
+    }
+
+    function sendValue(address _receiver, uint256 _amount) internal {
+        (bool success, ) = payable(_receiver).call{value: _amount}('');
+        if (!success) {
+            revert TransferFailed();
+        }
     }
 }

@@ -4,9 +4,7 @@ pragma solidity ^0.8.16;
 
 interface IUserWithdrawalManager {
     // Errors
-    error ETHTransferFailed();
     error UnsupportedOperationInSafeMode();
-    error InSufficientBalance();
     error ProtocolNotHealthy();
     error InvalidWithdrawAmount();
     error requestIdNotFinalized(uint256 _requestId);
