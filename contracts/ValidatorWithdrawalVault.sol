@@ -10,6 +10,7 @@ import './interfaces/INodeRegistry.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -68,8 +69,10 @@ contract ValidatorWithdrawalVault is
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        sendValue(getNodeRecipient(), operatorShare);
-        sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            getOperatorAddress()
+        );
+        UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
@@ -94,8 +97,10 @@ contract ValidatorWithdrawalVault is
         vaultSettleStatus = true;
         IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        sendValue(getNodeRecipient(), operatorShare);
-        sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            getOperatorAddress()
+        );
+        UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         emit SettledFunds(userShare, operatorShare, protocolShare);
     }
 
@@ -144,28 +149,14 @@ contract ValidatorWithdrawalVault is
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function sendValue(address payable _recipient, uint256 _amount) internal {
-        if (address(this).balance < _amount) {
-            revert InsufficientBalance();
-        }
-
-        //slither-disable-next-line arbitrary-send-eth
-        if (_amount > 0) {
-            (bool success, ) = _recipient.call{value: _amount}('');
-            if (!success) {
-                revert ETHTransferFailed(_recipient, _amount);
-            }
-        }
-    }
-
     // HELPER METHODS
 
     function getCollateralETH() internal view returns (uint256) {
         return IPoolUtils(staderConfig.getPoolUtils()).getCollateralETH(poolId);
     }
 
-    function getNodeRecipient() internal view returns (address payable) {
-        return UtilLib.getNodeRecipientAddressByValidatorId(poolId, validatorId, staderConfig);
+    function getOperatorAddress() internal view returns (address) {
+        return UtilLib.getOperatorAddressByValidatorId(poolId, validatorId, staderConfig);
     }
 
     function getUpdatedPenaltyAmount() internal returns (uint256) {

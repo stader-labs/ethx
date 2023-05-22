@@ -14,6 +14,7 @@ import './interfaces/IUserWithdrawalManager.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -32,6 +33,7 @@ contract StaderStakePoolsManager is
     ReentrancyGuardUpgradeable
 {
     using Math for uint256;
+    using SafeMath for uint256;
     IStaderConfig public staderConfig;
     uint256 public lastExcessETHDepositBlock;
     uint256 public excessETHDepositCoolDown;
@@ -185,8 +187,10 @@ contract StaderStakePoolsManager is
         if (!poolUtils.isExistingPoolId(_poolId)) {
             revert PoolIdDoesNotExit();
         }
-        uint256 availableETHForNewDeposit = address(this).balance -
-            IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
+        (, uint256 availableETHForNewDeposit) = SafeMath.trySub(
+            address(this).balance,
+            IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw()
+        );
         uint256 poolDepositSize = staderConfig.getStakedEthPerNode() - poolUtils.getCollateralETH(_poolId);
 
         if (availableETHForNewDeposit < poolDepositSize) {
@@ -215,8 +219,13 @@ contract StaderStakePoolsManager is
             revert CooldownNotComplete();
         }
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
-        uint256 availableETHForNewDeposit = address(this).balance -
-            IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw();
+        (, uint256 availableETHForNewDeposit) = SafeMath.trySub(
+            address(this).balance,
+            IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw()
+        );
+        if (availableETHForNewDeposit == 0) {
+            revert InsufficientBalance();
+        }
         (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) = IPoolSelector(
             staderConfig.getPoolSelector()
         ).poolAllocationForExcessETHDeposit(availableETHForNewDeposit);

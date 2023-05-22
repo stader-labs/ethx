@@ -13,6 +13,7 @@ library UtilLib {
     error CallerNotOperator();
     error CallerNotStaderContract();
     error CallerNotWithdrawVault();
+    error TransferFailed();
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
@@ -91,31 +92,36 @@ library UtilLib {
         }
     }
 
-    function getNodeRecipientAddressByValidatorId(
+    function getOperatorAddressByValidatorId(
         uint8 _poolId,
         uint256 _validatorId,
         IStaderConfig _staderConfig
-    ) internal view returns (address payable) {
+    ) internal view returns (address) {
         address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
         (, , , , , uint256 operatorId, , ) = INodeRegistry(nodeRegistry).validatorRegistry(_validatorId);
-        return INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
+        (, , , , address operatorAddress) = INodeRegistry(nodeRegistry).operatorStructById(operatorId);
+
+        return operatorAddress;
     }
 
-    function getNodeRecipientAddressByOperatorId(
+    function getOperatorAddressByOperatorId(
         uint8 _poolId,
         uint256 _operatorId,
         IStaderConfig _staderConfig
-    ) internal view returns (address payable) {
+    ) internal view returns (address) {
         address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
-        return INodeRegistry(nodeRegistry).getOperatorRewardAddress(_operatorId);
+        (, , , , address operatorAddress) = INodeRegistry(nodeRegistry).operatorStructById(_operatorId);
+
+        return operatorAddress;
     }
 
-    function getNodeRecipientAddressByOperator(
-        uint8 _poolId,
-        address _operator,
-        IStaderConfig _staderConfig
-    ) internal view returns (address payable) {
-        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
+    function getOperatorRewardAddress(address _operator, IStaderConfig _staderConfig)
+        internal
+        view
+        returns (address payable)
+    {
+        uint8 poolId = IPoolUtils(_staderConfig.getPoolUtils()).getOperatorPoolId(_operator);
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(_operator);
         return INodeRegistry(nodeRegistry).getOperatorRewardAddress(operatorId);
     }
@@ -144,5 +150,12 @@ library UtilLib {
         uint256 validatorId = INodeRegistry(nodeRegistry).validatorIdByPubkey(_pubkey);
         (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
         return IValidatorWithdrawalVault(withdrawVaultAddress).vaultSettleStatus();
+    }
+
+    function sendValue(address _receiver, uint256 _amount) internal {
+        (bool success, ) = payable(_receiver).call{value: _amount}('');
+        if (!success) {
+            revert TransferFailed();
+        }
     }
 }
