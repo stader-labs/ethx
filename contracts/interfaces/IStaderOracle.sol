@@ -84,6 +84,7 @@ interface IStaderOracle {
     error DeviationThresholdCanNotBeZero();
 
     // Events
+    event UpdatedDeviationThreshold(uint256 deviationThreshold);
     event ExchangeRateUpdated(uint256 block, uint256 totalEth, uint256 ethxSupply);
     event ExchangeRateUpdatedViaManager(uint256 block, uint256 totalEth, uint256 ethxSupply);
     event TrustedNodeAdded(address indexed node);
@@ -209,6 +210,8 @@ interface IStaderOracle {
     function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency) external;
 
     function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external;
+
+    function updateDeviationThreshold(uint256 _deviationThreshold) external;
 
     // getters
     function staderConfig() external view returns (IStaderConfig);

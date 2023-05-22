@@ -476,12 +476,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     //update the deviation threshold value, 0 deviationThreshold not allowed
-    function updateDeviationThreshold(uint256 _deviationThreshold) external {
+    function updateDeviationThreshold(uint256 _deviationThreshold) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (_deviationThreshold == 0) {
             revert DeviationThresholdCanNotBeZero();
         }
         deviationThreshold = _deviationThreshold;
+        emit UpdatedDeviationThreshold(deviationThreshold);
     }
 
     function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
