@@ -81,6 +81,7 @@ interface IStaderOracle {
     error InvalidReportingBlock();
     error CrossedDeviationThreshold();
     error DeviationThresholdNotCrossed();
+    error DeviationThresholdCanNotBeZero();
 
     // Events
     event ExchangeRateUpdated(uint256 block, uint256 totalEth, uint256 ethxSupply);
