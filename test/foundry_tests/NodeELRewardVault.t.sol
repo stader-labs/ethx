@@ -4,6 +4,7 @@ import '../../contracts/library/UtilLib.sol';
 
 import '../../contracts/StaderConfig.sol';
 import '../../contracts/NodeELRewardVault.sol';
+import '../../contracts/OperatorRewardsCollector.sol';
 
 import '../mocks/PoolUtilsMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
@@ -23,6 +24,7 @@ contract NodeELRewardVaultTest is Test {
 
     StaderConfig staderConfig;
     NodeELRewardVault nodeELRewardVault;
+    OperatorRewardsCollector operatorRC;
 
     function setUp() public {
         poolId = 1;
@@ -43,11 +45,21 @@ contract NodeELRewardVaultTest is Test {
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
+        OperatorRewardsCollector operatorRCImpl = new OperatorRewardsCollector();
+        TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
+            address(operatorRCImpl),
+            address(proxyAdmin),
+            ''
+        );
+        operatorRC = OperatorRewardsCollector(address(operatorRCProxy));
+        operatorRC.initialize(staderAdmin, address(staderConfig));
+
         poolUtils = new PoolUtilsMock(address(staderConfig));
 
         vm.startPrank(staderAdmin);
         staderConfig.updateAdmin(staderAdmin);
         staderConfig.updatePoolUtils(address(poolUtils));
+        staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
@@ -71,6 +83,15 @@ contract NodeELRewardVaultTest is Test {
         );
         NodeELRewardVault nodeELRewardVault2 = NodeELRewardVault(payable(nodeELRewardVaultProxy));
         nodeELRewardVault2.initialize(poolId, operatorId, address(staderConfig));
+
+        OperatorRewardsCollector operatorRCImpl = new OperatorRewardsCollector();
+        TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
+            address(operatorRCImpl),
+            address(proxyAdmin),
+            ''
+        );
+        OperatorRewardsCollector operatorRC2 = OperatorRewardsCollector(address(operatorRCProxy));
+        operatorRC2.initialize(staderAdmin, address(staderConfig));
     }
 
     function test_nodeELRewardVaultInitialize() public {
@@ -105,6 +126,7 @@ contract NodeELRewardVaultTest is Test {
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
+        address operator = address(500);
         address opRewardAddr = vm.addr(4);
 
         vm.prank(staderAdmin);
@@ -113,13 +135,8 @@ contract NodeELRewardVaultTest is Test {
         vm.prank(staderManager);
         staderConfig.updateStaderTreasury(treasury);
 
-        vm.mockCall(
-            address(poolUtils.nodeRegistry()),
-            abi.encodeWithSelector(INodeRegistry.getOperatorRewardAddress.selector),
-            abi.encode(opRewardAddr)
-        );
-
         assertEq(address(nodeELRewardVault).balance, rewardEth);
+        assertEq(operatorRC.balances(operator), 0);
 
         nodeELRewardVault.withdraw();
 
@@ -130,7 +147,28 @@ contract NodeELRewardVaultTest is Test {
 
         assertEq(address(sspm).balance, userShare);
         assertEq(address(treasury).balance, protocolShare);
+        assertEq(address(opRewardAddr).balance, 0);
+        assertEq(address(operatorRC).balance, operatorShare);
+        assertEq(operatorRC.balances(operator), operatorShare);
+
+        // claim by operator
+        vm.mockCall(
+            address(poolUtils.nodeRegistry()),
+            abi.encodeWithSelector(INodeRegistry.getOperatorRewardAddress.selector),
+            abi.encode(opRewardAddr)
+        );
+
+        // vm.mockCall(
+        //     address(address(poolUtils)),
+        //     abi.encodeWithSelector(IPoolUtils.getOperatorPoolId.selector),
+        //     abi.encode(1)
+        // );
+
+        vm.prank(operator);
+        operatorRC.claim();
+
         assertEq(address(opRewardAddr).balance, operatorShare);
+        assertEq(operatorRC.balances(operator), 0);
     }
 
     function test_updateStaderConfig() public {

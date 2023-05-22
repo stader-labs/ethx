@@ -12,6 +12,8 @@ artifacts
 keystores
 deposits
 
+# test coverage
+lcov.info 
 
 # Foundry
 cache_forge/

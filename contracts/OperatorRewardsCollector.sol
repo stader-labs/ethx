@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.16;
+
+import './library/UtilLib.sol';
+
+import './interfaces/IOperatorRewardsCollector.sol';
+import './interfaces/IStaderConfig.sol';
+
+import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+
+contract OperatorRewardsCollector is
+    IOperatorRewardsCollector,
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable
+{
+    IStaderConfig public staderConfig;
+
+    mapping(address => uint256) public balances;
+
+    function initialize(address _admin, address _staderConfig) external initializer {
+        UtilLib.checkNonZeroAddress(_admin);
+        UtilLib.checkNonZeroAddress(_staderConfig);
+
+        __AccessControl_init();
+        __Pausable_init();
+
+        staderConfig = IStaderConfig(_staderConfig);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function depositFor(address _receiver) external payable {
+        balances[_receiver] += msg.value;
+
+        emit DepositedFor(msg.sender, _receiver, msg.value);
+    }
+
+    function claim() external whenNotPaused {
+        address operator = msg.sender;
+        uint256 amount = balances[operator];
+        balances[operator] -= amount;
+
+        address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(msg.sender, staderConfig);
+        UtilLib.sendValue(operatorRewardsAddr, amount);
+        emit Claimed(operatorRewardsAddr, amount);
+    }
+}
