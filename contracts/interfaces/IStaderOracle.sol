@@ -34,8 +34,6 @@ struct ExchangeRate {
     uint256 reportingBlockNumber;
     /// @notice The total balance of Ether (ETH) in the system.
     uint256 totalETHBalance;
-    /// @notice The total balance of staked Ether (ETH) in the system.
-    uint256 totalStakingETHBalance;
     /// @notice The total supply of the liquid staking token (ETHX) in the system.
     uint256 totalETHXSupply;
 }
@@ -72,7 +70,6 @@ interface IStaderOracle {
     error NodeNotTrusted();
     error ZeroFrequency();
     error FrequencyUnchanged();
-    error InvalidNetworkBalances();
     error DuplicateSubmissionFromNode();
     error ReportingFutureBlockData();
     error InvalidMerkleRootIndex();
@@ -82,17 +79,12 @@ interface IStaderOracle {
     error NotATrustedNode();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();
+    error CrossedDeviationThreshold();
+    error DeviationThresholdNotCrossed();
 
     // Events
-    event BalancesSubmitted(
-        address indexed from,
-        uint256 block,
-        uint256 totalEth,
-        uint256 stakingEth,
-        uint256 ethxSupply,
-        uint256 time
-    );
-    event BalancesUpdated(uint256 block, uint256 totalEth, uint256 stakingEth, uint256 ethxSupply, uint256 time);
+    event ExchangeRateUpdated(uint256 block, uint256 totalEth, uint256 ethxSupply);
+    event ExchangeRateUpdatedViaManager(uint256 block, uint256 totalEth, uint256 ethxSupply);
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
     event SocializingRewardsMerkleRootSubmitted(
@@ -154,11 +146,11 @@ interface IStaderOracle {
 
     function removeTrustedNode(address _nodeAddress) external;
 
-    /**
-    @dev Submits the given balances for a specified block number.
-    @param _exchangeRate The exchange rate to submit.
-    */
-    function submitBalances(ExchangeRate calldata _exchangeRate) external;
+    //update the exchange rate
+    function updateExchangeRate() external;
+
+    //update exchange rate via `MANAGER` when deviation threshold is crossed
+    function updateExchangeRateWhenDeviationThresholdCrossed() external;
 
     /**
     @notice Submits the root of the merkle tree containing the socializing rewards.
@@ -209,8 +201,6 @@ interface IStaderOracle {
 
     function updateStaderConfig(address _staderConfig) external;
 
-    function setERUpdateFrequency(uint256 _updateFrequency) external;
-
     function setSDPriceUpdateFrequency(uint256 _updateFrequency) external;
 
     function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external;
@@ -239,8 +229,6 @@ interface IStaderOracle {
 
     // The last updated merkle tree index
     function getCurrentRewardsIndexByPoolId(uint8 _poolId) external view returns (uint256);
-
-    function getERReportableBlock() external view returns (uint256);
 
     function getMerkleRootReportableBlockByPoolId(uint8 _poolId) external view returns (uint256);
 

@@ -56,6 +56,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant override PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
     bytes32 public constant override PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
 
+    //POR Feed Proxy
+    bytes32 public constant override ETH_BALANCE_POR_FEED = keccak256('ETH_BALANCE_POR_FEED');
+    bytes32 public constant override ETHX_SUPPLY_POR_FEED = keccak256('ETHX_SUPPLY_POR_FEED');
+
     //Roles
     bytes32 public constant override MANAGER = keccak256('MANAGER');
     bytes32 public constant override OPERATOR = keccak256('OPERATOR');
@@ -256,6 +260,14 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setContract(PERMISSIONLESS_SOCIALIZING_POOL, _permissionlessSocializePool);
     }
 
+    function updateETHBalancePORFeedProxy(address _ethBalanceProxy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(ETH_BALANCE_POR_FEED, _ethBalanceProxy);
+    }
+
+    function updateETHXSupplyPORFeedProxy(address _ethXSupplyProxy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(ETHX_SUPPLY_POR_FEED, _ethXSupplyProxy);
+    }
+
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setToken(SD, _staderToken);
     }
@@ -410,6 +422,15 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getPermissionlessSocializingPool() external view override returns (address) {
         return contractsMap[PERMISSIONLESS_SOCIALIZING_POOL];
+    }
+
+    //POR Feed Proxy Getters
+    function getETHBalancePORFeedProxy() external view override returns (address) {
+        return contractsMap[ETH_BALANCE_POR_FEED];
+    }
+
+    function getETHXSupplyPORFeedProxy() external view override returns (address) {
+        return contractsMap[ETHX_SUPPLY_POR_FEED];
     }
 
     //Token Getters

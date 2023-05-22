@@ -53,6 +53,11 @@ interface IStaderConfig {
 
     function PERMISSIONLESS_SOCIALIZING_POOL() external view returns (bytes32);
 
+    //POR Feed Proxy
+    function ETH_BALANCE_POR_FEED() external view returns (bytes32);
+
+    function ETHX_SUPPLY_POR_FEED() external view returns (bytes32);
+
     //Roles
     function MANAGER() external view returns (bytes32);
 
@@ -131,6 +136,10 @@ interface IStaderConfig {
     function getPermissionedSocializingPool() external view returns (address);
 
     function getPermissionlessSocializingPool() external view returns (address);
+
+    function getETHBalancePORFeedProxy() external view returns (address);
+
+    function getETHXSupplyPORFeedProxy() external view returns (address);
 
     // Tokens
     function getStaderToken() external view returns (address);

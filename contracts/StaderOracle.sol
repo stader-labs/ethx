@@ -7,19 +7,22 @@ import './interfaces/IPoolUtils.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/IStaderStakePoolManager.sol';
 
+import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+    bool public isERDeviationThresholdCrossed;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
 
-    uint256 public constant MAX_ER_UPDATE_FREQUENCY = 7200 * 7; // 7 days
-
+    uint256 public constant TOTAL_DEVIATION = 10000;
+    uint256 public deviationThreshold;
     /// @inheritdoc IStaderOracle
     uint256 public override reportingBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
@@ -38,7 +41,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     mapping(bytes32 => uint16) public override missedAttestationPenalty;
     uint256[] private sdPrices;
 
-    bytes32 public constant ETHX_ER_UF = keccak256('ETHX_ER_UF'); // ETHx Exchange Rate, Balances Update Frequency
     bytes32 public constant SD_PRICE_UF = keccak256('SD_PRICE_UF'); // SD Price Update Frequency Key
     bytes32 public constant VALIDATOR_STATS_UF = keccak256('VALIDATOR_STATS_UF'); // Validator Status Update Frequency Key
     bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256('WITHDRAWN_VALIDATORS_UF'); // Withdrawn Validator Update Frequency Key
@@ -57,6 +59,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
+        deviationThreshold = 500; //5% deviation threshold
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -89,61 +92,66 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly whenNotPaused {
-        if (_exchangeRate.reportingBlockNumber >= block.number) {
-            revert ReportingFutureBlockData();
+    function updateExchangeRate() external override whenNotPaused {
+        if (isERDeviationThresholdCrossed) {
+            revert CrossedDeviationThreshold();
         }
-        if (_exchangeRate.reportingBlockNumber % updateFrequencyMap[ETHX_ER_UF] > 0) {
-            revert InvalidReportingBlock();
-        }
-        if (_exchangeRate.totalStakingETHBalance > _exchangeRate.totalETHBalance) {
-            revert InvalidNetworkBalances();
-        }
-
-        // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(
-                msg.sender,
-                _exchangeRate.reportingBlockNumber,
-                _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
-                _exchangeRate.totalETHXSupply
-            )
-        );
-        bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(
-                _exchangeRate.reportingBlockNumber,
-                _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
-                _exchangeRate.totalETHXSupply
-            )
-        );
-        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
-        // Emit balances submitted event
-        emit BalancesSubmitted(
-            msg.sender,
-            _exchangeRate.reportingBlockNumber,
-            _exchangeRate.totalETHBalance,
-            _exchangeRate.totalStakingETHBalance,
-            _exchangeRate.totalETHXSupply,
-            block.timestamp
-        );
-
+        (, int256 totalETHBalanceInInt, , , ) = AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy())
+            .latestRoundData();
+        (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
+            .latestRoundData();
+        uint256 totalETHBalance = uint256(totalETHBalanceInInt);
+        uint256 totalETHXSupply = uint256(totalETHXSupplyInInt);
+        uint256 currentExchange = IStaderStakePoolManager(staderConfig.getStakePoolManager()).getExchangeRate();
+        uint256 DECIMALS = staderConfig.getDecimals();
+        uint256 newExchangeRate = (totalETHBalance == 0 || totalETHXSupply == 0)
+            ? DECIMALS
+            : (totalETHBalance * DECIMALS) / totalETHXSupply;
         if (
-            submissionCount == trustedNodesCount / 2 + 1 &&
-            _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
+            newExchangeRate < (currentExchange * (TOTAL_DEVIATION - deviationThreshold)) / TOTAL_DEVIATION ||
+            newExchangeRate > ((currentExchange * (TOTAL_DEVIATION - deviationThreshold)) / TOTAL_DEVIATION)
         ) {
-            exchangeRate = _exchangeRate;
-
-            // Emit balances updated event
-            emit BalancesUpdated(
-                _exchangeRate.reportingBlockNumber,
-                _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
-                _exchangeRate.totalETHXSupply,
-                block.timestamp
-            );
+            isERDeviationThresholdCrossed = true;
+            return;
         }
+        exchangeRate.totalETHBalance = totalETHBalance;
+        exchangeRate.totalETHXSupply = totalETHXSupply;
+        exchangeRate.reportingBlockNumber = block.number;
+
+        // Emit balances updated event
+        emit ExchangeRateUpdated(
+            exchangeRate.reportingBlockNumber,
+            exchangeRate.totalETHBalance,
+            exchangeRate.totalETHXSupply
+        );
+    }
+
+    /**
+     * @notice update the exchange rate when deviation threshold crossed, after figuring out the reason for deviation
+     * @dev `isERDeviationThresholdCrossed` must be true to call this function and only MANAGER is allowed
+     */
+    function updateExchangeRateWhenDeviationThresholdCrossed() external override whenNotPaused {
+        if (!isERDeviationThresholdCrossed) {
+            revert DeviationThresholdNotCrossed();
+        }
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        isERDeviationThresholdCrossed = false;
+        (, int256 totalETHBalanceInInt, , , ) = AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy())
+            .latestRoundData();
+        (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
+            .latestRoundData();
+        uint256 totalETHBalance = uint256(totalETHBalanceInInt);
+        uint256 totalETHXSupply = uint256(totalETHXSupplyInInt);
+        exchangeRate.totalETHBalance = totalETHBalance;
+        exchangeRate.totalETHXSupply = totalETHXSupply;
+        exchangeRate.reportingBlockNumber = block.number;
+
+        // Emit balances updated event
+        emit ExchangeRateUpdatedViaManager(
+            exchangeRate.reportingBlockNumber,
+            exchangeRate.totalETHBalance,
+            exchangeRate.totalETHXSupply
+        );
     }
 
     /// @notice submits merkle root and handles reward
@@ -467,14 +475,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    function setERUpdateFrequency(uint256 _updateFrequency) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (_updateFrequency > MAX_ER_UPDATE_FREQUENCY) {
-            revert InvalidUpdate();
-        }
-        setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
-    }
-
     function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
@@ -505,10 +505,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         updateFrequencyMap[_key] = _updateFrequency;
 
         emit UpdateFrequencyUpdated(_updateFrequency);
-    }
-
-    function getERReportableBlock() public view override returns (uint256) {
-        return getReportableBlockFor(ETHX_ER_UF);
     }
 
     function getMerkleRootReportableBlockByPoolId(uint8 _poolId) public view override returns (uint256) {
