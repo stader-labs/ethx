@@ -84,9 +84,9 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setConstant(TOTAL_FEE, 10000);
         setConstant(DECIMALS, 10**18);
         setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
-        setVariable(MIN_DEPOSIT_AMOUNT, 100);
+        setVariable(MIN_DEPOSIT_AMOUNT, 10**12);
         setVariable(MAX_DEPOSIT_AMOUNT, 10000 ether);
-        setVariable(MIN_WITHDRAW_AMOUNT, 100);
+        setVariable(MIN_WITHDRAW_AMOUNT, 10**12);
         setVariable(MAX_WITHDRAW_AMOUNT, 10000 ether);
         setVariable(WITHDRAWN_KEYS_BATCH_SIZE, 100);
         setContract(ETH_DEPOSIT_CONTRACT, _ethDepositContract);
