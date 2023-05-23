@@ -15,14 +15,14 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
-    bool public isERDeviationThresholdCrossed;
+    bool public erInspectionMode;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
 
-    uint256 public constant TOTAL_DEVIATION = 10000;
-    uint256 public deviationThreshold;
+    uint256 public constant ER_CHANGE_MAX_BPS = 10000;
+    uint256 public erChangeLimit;
     /// @inheritdoc IStaderOracle
     uint256 public override reportingBlockNumberForWithdrawnValidators;
     /// @inheritdoc IStaderOracle
@@ -59,7 +59,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        deviationThreshold = 500; //5% deviation threshold
+        erChangeLimit = 100; //5% deviation threshold
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -93,65 +93,55 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     /// @inheritdoc IStaderOracle
     function updateExchangeRate() external override whenNotPaused {
-        if (isERDeviationThresholdCrossed) {
-            revert CrossedDeviationThreshold();
+        if (erInspectionMode) {
+            revert ERChangeLimitCrossed();
         }
-        (, int256 totalETHBalanceInInt, , , ) = AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy())
-            .latestRoundData();
-        (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
-            .latestRoundData();
-        uint256 totalETHBalance = uint256(totalETHBalanceInInt);
-        uint256 totalETHXSupply = uint256(totalETHXSupplyInInt);
-        uint256 currentExchange = IStaderStakePoolManager(staderConfig.getStakePoolManager()).getExchangeRate();
-        uint256 DECIMALS = staderConfig.getDecimals();
-        uint256 newExchangeRate = (totalETHBalance == 0 || totalETHXSupply == 0)
-            ? DECIMALS
-            : (totalETHBalance * DECIMALS) / totalETHXSupply;
-        if (
-            newExchangeRate < (currentExchange * (TOTAL_DEVIATION - deviationThreshold)) / TOTAL_DEVIATION ||
-            newExchangeRate > ((currentExchange * (TOTAL_DEVIATION - deviationThreshold)) / TOTAL_DEVIATION)
-        ) {
-            isERDeviationThresholdCrossed = true;
+        (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
+            staderConfig.getETHBalancePORFeedProxy()
+        ).latestRoundData();
+        (, int256 totalETHXSupplyInInt, , uint256 ethXPORUpdatedAt, ) = AggregatorV3Interface(
+            staderConfig.getETHXSupplyPORFeedProxy()
+        ).latestRoundData();
+        if (ethPORUpdatedAt != ethXPORUpdatedAt) {
+            revert DifferentBlockDataSubmitted();
+        }
+        uint256 currentExchangeRate = UtilLib.computeExchangeRate(
+            exchangeRate.totalETHBalance,
+            exchangeRate.totalETHXSupply,
+            staderConfig
+        );
+        uint256 newExchangeRate = UtilLib.computeExchangeRate(
+            uint256(totalETHBalanceInInt),
+            uint256(totalETHXSupplyInInt),
+            staderConfig
+        );
+        if (!isNewERWithInLimit(newExchangeRate, currentExchangeRate)) {
+            erInspectionMode = true;
             return;
         }
-        exchangeRate.totalETHBalance = totalETHBalance;
-        exchangeRate.totalETHXSupply = totalETHXSupply;
-        exchangeRate.reportingBlockNumber = block.number;
-
-        // Emit balances updated event
-        emit ExchangeRateUpdated(
-            exchangeRate.reportingBlockNumber,
-            exchangeRate.totalETHBalance,
-            exchangeRate.totalETHXSupply
-        );
+        _updateExchangeRate(uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
     }
 
     /**
-     * @notice update the exchange rate when deviation threshold crossed, after figuring out the reason for deviation
-     * @dev `isERDeviationThresholdCrossed` must be true to call this function and only MANAGER is allowed
+     * @notice update the exchange rate when er change limit crossed, after figuring out the reason for change
+     * @dev `erInspectionMode` must be true to call this function and only MANAGER is allowed
      */
-    function updateExchangeRateWhenDeviationThresholdCrossed() external override whenNotPaused {
-        if (!isERDeviationThresholdCrossed) {
-            revert DeviationThresholdNotCrossed();
-        }
+    function closeERInspectionMode() external override whenNotPaused {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        isERDeviationThresholdCrossed = false;
-        (, int256 totalETHBalanceInInt, , , ) = AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy())
-            .latestRoundData();
-        (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
-            .latestRoundData();
-        uint256 totalETHBalance = uint256(totalETHBalanceInInt);
-        uint256 totalETHXSupply = uint256(totalETHXSupplyInInt);
-        exchangeRate.totalETHBalance = totalETHBalance;
-        exchangeRate.totalETHXSupply = totalETHXSupply;
-        exchangeRate.reportingBlockNumber = block.number;
-
-        // Emit balances updated event
-        emit ExchangeRateUpdatedViaManager(
-            exchangeRate.reportingBlockNumber,
-            exchangeRate.totalETHBalance,
-            exchangeRate.totalETHXSupply
-        );
+        if (!erInspectionMode) {
+            revert ERChangeLimitNotCrossed();
+        }
+        (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
+            staderConfig.getETHBalancePORFeedProxy()
+        ).latestRoundData();
+        (, int256 totalETHXSupplyInInt, , uint256 ethXPORUpdatedAt, ) = AggregatorV3Interface(
+            staderConfig.getETHXSupplyPORFeedProxy()
+        ).latestRoundData();
+        if (ethPORUpdatedAt != ethXPORUpdatedAt) {
+            revert DifferentBlockDataSubmitted();
+        }
+        erInspectionMode = false;
+        _updateExchangeRate(uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
     }
 
     /// @notice submits merkle root and handles reward
@@ -476,13 +466,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     //update the deviation threshold value, 0 deviationThreshold not allowed
-    function updateDeviationThreshold(uint256 _deviationThreshold) external override {
+    function updateERChangeLimit(uint256 _erChangeLimit) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (_deviationThreshold == 0) {
-            revert DeviationThresholdCanNotBeZero();
+        if (_erChangeLimit == 0 || _erChangeLimit > ER_CHANGE_MAX_BPS) {
+            revert ERPermissibleChangeOutofBounds();
         }
-        deviationThreshold = _deviationThreshold;
-        emit UpdatedDeviationThreshold(deviationThreshold);
+        erChangeLimit = _erChangeLimit;
+        emit UpdatedERChangeLimit(erChangeLimit);
     }
 
     function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
@@ -577,6 +567,28 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     function getSDPriceInETH() external view override returns (uint256) {
         return lastReportedSDPriceData.sdPriceInETH;
+    }
+
+    function isNewERWithInLimit(uint256 _newExchangeRate, uint256 _currentExchangeRate) internal view returns (bool) {
+        return (_newExchangeRate >= (_currentExchangeRate * (ER_CHANGE_MAX_BPS - erChangeLimit)) / ER_CHANGE_MAX_BPS &&
+            _newExchangeRate <= ((_currentExchangeRate * (ER_CHANGE_MAX_BPS + erChangeLimit)) / ER_CHANGE_MAX_BPS));
+    }
+
+    function _updateExchangeRate(
+        uint256 _totalETHBalance,
+        uint256 _totalETHXSupply,
+        uint256 _feedLastUpdatedTime
+    ) internal {
+        exchangeRate.totalETHBalance = _totalETHBalance;
+        exchangeRate.totalETHXSupply = _totalETHXSupply;
+        exchangeRate.feedLastUpdatedTime = _feedLastUpdatedTime;
+
+        // Emit balances updated event
+        emit ExchangeRateUpdated(
+            exchangeRate.totalETHBalance,
+            exchangeRate.totalETHXSupply,
+            exchangeRate.feedLastUpdatedTime
+        );
     }
 
     modifier trustedNodeOnly() {

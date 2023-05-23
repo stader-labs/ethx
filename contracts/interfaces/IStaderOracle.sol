@@ -30,12 +30,12 @@ struct MissedAttestationReportInfo {
 /// @title ExchangeRate
 /// @notice This struct holds data related to the exchange rate between ETH and ETHX.
 struct ExchangeRate {
-    /// @notice The block number when the exchange rate was last updated.
-    uint256 reportingBlockNumber;
     /// @notice The total balance of Ether (ETH) in the system.
     uint256 totalETHBalance;
     /// @notice The total supply of the liquid staking token (ETHX) in the system.
     uint256 totalETHXSupply;
+    /// @notice The timestamp when the POR Feed was last updated.
+    uint256 feedLastUpdatedTime;
 }
 
 /// @title ValidatorStats
@@ -79,14 +79,14 @@ interface IStaderOracle {
     error NotATrustedNode();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();
-    error CrossedDeviationThreshold();
-    error DeviationThresholdNotCrossed();
-    error DeviationThresholdCanNotBeZero();
+    error ERChangeLimitCrossed();
+    error ERChangeLimitNotCrossed();
+    error DifferentBlockDataSubmitted();
+    error ERPermissibleChangeOutofBounds();
 
     // Events
-    event UpdatedDeviationThreshold(uint256 deviationThreshold);
-    event ExchangeRateUpdated(uint256 block, uint256 totalEth, uint256 ethxSupply);
-    event ExchangeRateUpdatedViaManager(uint256 block, uint256 totalEth, uint256 ethxSupply);
+    event UpdatedERChangeLimit(uint256 erChangeLimit);
+    event ExchangeRateUpdated(uint256 totalEth, uint256 ethxSupply, uint256 feedLastUpdatedTime);
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
     event SocializingRewardsMerkleRootSubmitted(
@@ -151,8 +151,8 @@ interface IStaderOracle {
     //update the exchange rate
     function updateExchangeRate() external;
 
-    //update exchange rate via `MANAGER` when deviation threshold is crossed
-    function updateExchangeRateWhenDeviationThresholdCrossed() external;
+    //update exchange rate via `MANAGER` when ER change limit is crossed
+    function closeERInspectionMode() external;
 
     /**
     @notice Submits the root of the merkle tree containing the socializing rewards.
@@ -211,7 +211,7 @@ interface IStaderOracle {
 
     function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external;
 
-    function updateDeviationThreshold(uint256 _deviationThreshold) external;
+    function updateERChangeLimit(uint256 _erChangeLimit) external;
 
     // getters
     function staderConfig() external view returns (IStaderConfig);

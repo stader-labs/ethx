@@ -152,6 +152,18 @@ library UtilLib {
         return IValidatorWithdrawalVault(withdrawVaultAddress).vaultSettleStatus();
     }
 
+    function computeExchangeRate(
+        uint256 totalETHBalance,
+        uint256 totalETHXSupply,
+        IStaderConfig _staderConfig
+    ) internal view returns (uint256) {
+        uint256 DECIMALS = _staderConfig.getDecimals();
+        uint256 newExchangeRate = (totalETHBalance == 0 || totalETHXSupply == 0)
+            ? DECIMALS
+            : (totalETHBalance * DECIMALS) / totalETHXSupply;
+        return newExchangeRate;
+    }
+
     function sendValue(address _receiver, uint256 _amount) internal {
         (bool success, ) = payable(_receiver).call{value: _amount}('');
         if (!success) {
