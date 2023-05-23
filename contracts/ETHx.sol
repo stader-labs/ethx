@@ -15,7 +15,9 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  */
 
 contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
-    IStaderConfig staderConfig;
+    event UpdatedStaderConfig(address indexed _staderConfig);
+
+    IStaderConfig public staderConfig;
     bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
     bytes32 public constant BURNER_ROLE = keccak256('BURNER_ROLE');
 
@@ -34,6 +36,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
 
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /**
@@ -77,5 +80,11 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         uint256 amount
     ) internal override whenNotPaused {
         super._beforeTokenTransfer(from, to, amount);
+    }
+
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 }

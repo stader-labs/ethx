@@ -60,7 +60,7 @@ contract ETHxTest is Test {
     }
 
     function test_ethxInitialize() public {
-        // assertEq(address(ethx.staderConfig()), address(staderConfig)); // NOTE: staderConfig not public
+        assertEq(address(ethx.staderConfig()), address(staderConfig));
         assertEq(staderConfig.getETHxToken(), address(ethx));
         UtilLib.onlyManagerRole(staderManager, staderConfig);
 
@@ -195,5 +195,17 @@ contract ETHxTest is Test {
 
         vm.prank(burner);
         ethx.burnFrom(randomUser, 1 ether);
+    }
+
+    function test_updateStaderConfig() public {
+        assertEq(address(ethx.staderConfig()), address(staderConfig));
+
+        // not staderAdmin
+        vm.expectRevert();
+        ethx.updateStaderConfig(vm.addr(203));
+
+        vm.prank(staderAdmin);
+        ethx.updateStaderConfig(vm.addr(203));
+        assertEq(address(ethx.staderConfig()), vm.addr(203));
     }
 }
