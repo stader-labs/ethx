@@ -584,6 +584,39 @@ contract PermissionedNodeRegistry is
         return validators;
     }
 
+    /**
+     * @notice Returns an array of all validators for an Operator
+     *
+     * @param _pageNumber The page number of the results to fetch (starting from 1).
+     * @param _pageSize The maximum number of items per page.
+     *
+     * @return An array of `Validator` objects representing all validators for an operator
+     */
+    function getValidatorsByOperator(
+        address _operator,
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view override returns (Validator[] memory) {
+        if (_pageNumber == 0) {
+            revert PageNumberIsZero();
+        }
+        uint256 startIndex = (_pageNumber - 1) * _pageSize;
+        uint256 endIndex = startIndex + _pageSize;
+        uint256 operatorId = operatorIDByAddress[_operator];
+        if (operatorId == 0) {
+            revert OperatorNotOnBoarded();
+        }
+        uint256 validatorCount = getOperatorTotalKeys(operatorId);
+        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
+        Validator[] memory validators = new Validator[](endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
+            validators[i] = validatorRegistry[validatorId];
+        }
+
+        return validators;
+    }
+
     // check for duplicate keys in permissioned node registry
     function isExistingPubkey(bytes calldata _pubkey) external view override returns (bool) {
         return validatorIdByPubkey[_pubkey] != 0;
