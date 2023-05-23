@@ -94,6 +94,12 @@ interface INodeRegistry {
 
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
 
+    function getValidatorsByOperator(
+        address _operator,
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view returns (Validator[] memory);
+
     /**
      *
      * @param _nodeOperator @notice operator total non withdrawn keys within a specified validator list
