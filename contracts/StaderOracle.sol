@@ -59,7 +59,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        erChangeLimit = 100; //5% deviation threshold
+        erChangeLimit = 100; //1% deviation threshold
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -96,30 +96,18 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (erInspectionMode) {
             revert ERChangeLimitCrossed();
         }
-        (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
-            staderConfig.getETHBalancePORFeedProxy()
-        ).latestRoundData();
-        (, int256 totalETHXSupplyInInt, , uint256 ethXPORUpdatedAt, ) = AggregatorV3Interface(
-            staderConfig.getETHXSupplyPORFeedProxy()
-        ).latestRoundData();
-        if (ethPORUpdatedAt != ethXPORUpdatedAt) {
-            revert DifferentBlockDataSubmitted();
-        }
+        (uint256 totalETHBalance, uint256 totalETHXSupply, uint256 ethPORUpdatedAt) = getPORFeedData();
         uint256 currentExchangeRate = UtilLib.computeExchangeRate(
             exchangeRate.totalETHBalance,
             exchangeRate.totalETHXSupply,
             staderConfig
         );
-        uint256 newExchangeRate = UtilLib.computeExchangeRate(
-            uint256(totalETHBalanceInInt),
-            uint256(totalETHXSupplyInInt),
-            staderConfig
-        );
+        uint256 newExchangeRate = UtilLib.computeExchangeRate(totalETHBalance, totalETHXSupply, staderConfig);
         if (!isNewERWithInLimit(newExchangeRate, currentExchangeRate)) {
             erInspectionMode = true;
             return;
         }
-        _updateExchangeRate(uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
+        _updateExchangeRate(totalETHBalance, totalETHXSupply, ethPORUpdatedAt);
     }
 
     /**
@@ -131,17 +119,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (!erInspectionMode) {
             revert ERChangeLimitNotCrossed();
         }
-        (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
-            staderConfig.getETHBalancePORFeedProxy()
-        ).latestRoundData();
-        (, int256 totalETHXSupplyInInt, , uint256 ethXPORUpdatedAt, ) = AggregatorV3Interface(
-            staderConfig.getETHXSupplyPORFeedProxy()
-        ).latestRoundData();
-        if (ethPORUpdatedAt != ethXPORUpdatedAt) {
-            revert DifferentBlockDataSubmitted();
-        }
+        (uint256 totalETHBalance, uint256 totalETHXSupply, uint256 ethPORUpdatedAt) = getPORFeedData();
         erInspectionMode = false;
-        _updateExchangeRate(uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
+        _updateExchangeRate(totalETHBalance, totalETHXSupply, ethPORUpdatedAt);
     }
 
     /// @notice submits merkle root and handles reward
@@ -567,6 +547,27 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     function getSDPriceInETH() external view override returns (uint256) {
         return lastReportedSDPriceData.sdPriceInETH;
+    }
+
+    function getPORFeedData()
+        internal
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
+            staderConfig.getETHBalancePORFeedProxy()
+        ).latestRoundData();
+        (, int256 totalETHXSupplyInInt, , uint256 ethXPORUpdatedAt, ) = AggregatorV3Interface(
+            staderConfig.getETHXSupplyPORFeedProxy()
+        ).latestRoundData();
+        if (ethPORUpdatedAt != ethXPORUpdatedAt) {
+            revert DifferentBlockDataSubmitted();
+        }
+        return (uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
     }
 
     function isNewERWithInLimit(uint256 _newExchangeRate, uint256 _currentExchangeRate) internal view returns (bool) {
