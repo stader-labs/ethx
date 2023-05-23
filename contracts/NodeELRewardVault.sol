@@ -8,6 +8,7 @@ import './interfaces/IVaultProxy.sol';
 import './interfaces/INodeRegistry.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderStakePoolManager.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 
 contract NodeELRewardVault is INodeELRewardVault {
     constructor() {}
@@ -32,21 +33,13 @@ contract NodeELRewardVault is INodeELRewardVault {
             .calculateRewardShare(poolId, totalRewards);
 
         // Distribute rewards
-        bool success;
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
-
         // slither-disable-next-line arbitrary-send-eth
-        (success, ) = payable(staderConfig.getStaderTreasury()).call{value: protocolShare}('');
-        if (!success) {
-            revert ETHTransferFailed(staderConfig.getStaderTreasury(), protocolShare);
-        }
-
-        address payable nodeRecipient = UtilLib.getNodeRecipientAddressByOperatorId(poolId, operatorId, staderConfig);
-        // slither-disable-next-line arbitrary-send-eth
-        (success, ) = nodeRecipient.call{value: operatorShare}('');
-        if (!success) {
-            revert ETHTransferFailed(nodeRecipient, operatorShare);
-        }
+        UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        address operator = UtilLib.getOperatorAddressByOperatorId(poolId, operatorId, staderConfig);
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            operator
+        );
 
         emit Withdrawal(protocolShare, operatorShare, userShare);
     }

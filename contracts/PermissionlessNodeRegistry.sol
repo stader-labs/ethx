@@ -14,6 +14,7 @@ import './interfaces/IStaderInsuranceFund.sol';
 import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -493,6 +494,39 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
+     * @notice Returns an array of all validators for an Operator
+     *
+     * @param _pageNumber The page number of the results to fetch (starting from 1).
+     * @param _pageSize The maximum number of items per page.
+     *
+     * @return An array of `Validator` objects representing all validators for an operator
+     */
+    function getValidatorsByOperator(
+        address _operator,
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view override returns (Validator[] memory) {
+        if (_pageNumber == 0) {
+            revert PageNumberIsZero();
+        }
+        uint256 startIndex = (_pageNumber - 1) * _pageSize;
+        uint256 endIndex = startIndex + _pageSize;
+        uint256 operatorId = operatorIDByAddress[_operator];
+        if (operatorId == 0) {
+            revert OperatorNotOnBoarded();
+        }
+        uint256 validatorCount = getOperatorTotalKeys(operatorId);
+        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
+        Validator[] memory validators = new Validator[](endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
+            validators[i] = validatorRegistry[validatorId];
+        }
+
+        return validators;
+    }
+
+    /**
      * @notice Returns an array of nodeELRewardVault address for operators opting out of socializing pool
      *
      * @param _pageNumber The page number of the results to fetch (starting from 1).
@@ -578,7 +612,9 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
-        sendValue(operatorAddress, COLLATERAL_ETH - staderConfig.getPreDepositSize());
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{
+            value: (COLLATERAL_ETH - staderConfig.getPreDepositSize())
+        }(operatorAddress);
     }
 
     // validate the input of `addValidatorKeys` function
@@ -615,18 +651,6 @@ contract PermissionlessNodeRegistry is
             )
         ) {
             revert NotEnoughSDCollateral();
-        }
-    }
-
-    function sendValue(address _receiver, uint256 _amount) internal {
-        if (address(this).balance < _amount) {
-            revert InSufficientBalance();
-        }
-
-        //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(_receiver).call{value: _amount}('');
-        if (!success) {
-            revert TransferFailed();
         }
     }
 
