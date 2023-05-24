@@ -150,7 +150,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function updateExchangeRate() external override whenNotPaused {
+    function updateERFromPORFeed() external override whenNotPaused {
         if (!isPORFeedBasedERData) {
             revert InvalidERDataSource();
         }
@@ -515,7 +515,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 
-    function togglePORFeedBasedERData() external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function togglePORFeedBasedERData() external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         isPORFeedBasedERData = !isPORFeedBasedERData;
         emit ERDataSourceToggled(isPORFeedBasedERData);
     }
@@ -637,6 +638,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             uint256
         )
     {
+        //TODO how to get block number of report for POR Feed
         (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
             staderConfig.getETHBalancePORFeedProxy()
         ).latestRoundData();

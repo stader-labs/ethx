@@ -159,15 +159,17 @@ interface IStaderOracle {
     function removeTrustedNode(address _nodeAddress) external;
 
     /**
+     * @notice submit exchange rate data by trusted oracle nodes
     @dev Submits the given balances for a specified block number.
     @param _exchangeRate The exchange rate to submit.
     */
     function submitExchangeRateData(ExchangeRate calldata _exchangeRate) external;
 
-    //update the exchange rate
-    function updateExchangeRate() external;
+    //update the exchange rate via POR Feed data
+    function updateERFromPORFeed() external;
 
-    //update exchange rate via `MANAGER` when ER change limit is crossed
+    //update exchange rate via POR Feed when ER change limit is crossed
+    //only `MANAGER` role can call
     function closeERInspectionMode() external;
 
     /**
