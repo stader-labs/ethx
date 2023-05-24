@@ -42,7 +42,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
         emit AuctionDurationUpdated(duration);
-        emit BidInrementUpdated(bidIncrement);
+        emit BidIncrementUpdated(bidIncrement);
     }
 
     function createLot(uint256 _sdAmount) external override whenNotPaused {
@@ -150,6 +150,6 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
     function updateBidIncrement(uint256 _bidIncrement) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         bidIncrement = _bidIncrement;
-        emit BidInrementUpdated(_bidIncrement);
+        emit BidIncrementUpdated(_bidIncrement);
     }
 }

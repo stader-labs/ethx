@@ -27,7 +27,7 @@ interface IAuction {
     event SDClaimed(uint256 lotId, address indexed highestBidder, uint256 sdAmount);
     event ETHClaimed(uint256 lotId, address indexed sspm, uint256 ethAmount);
     event AuctionDurationUpdated(uint256 duration);
-    event BidInrementUpdated(uint256 _bidIncrement);
+    event BidIncrementUpdated(uint256 _bidIncrement);
     event UnsuccessfulSDAuctionExtracted(uint256 lotId, uint256 sdAmount, address indexed recipient);
 
     // struct
