@@ -34,8 +34,6 @@ struct ExchangeRate {
     uint256 reportingBlockNumber;
     /// @notice The total balance of Ether (ETH) in the system.
     uint256 totalETHBalance;
-    /// @notice The total balance of staked Ether (ETH) in the system.
-    uint256 totalStakingETHBalance;
     /// @notice The total supply of the liquid staking token (ETHX) in the system.
     uint256 totalETHXSupply;
 }
@@ -84,15 +82,14 @@ interface IStaderOracle {
     error InvalidReportingBlock();
 
     // Events
-    event BalancesSubmitted(
+    event ExchangeRateSubmitted(
         address indexed from,
         uint256 block,
         uint256 totalEth,
-        uint256 stakingEth,
         uint256 ethxSupply,
         uint256 time
     );
-    event BalancesUpdated(uint256 block, uint256 totalEth, uint256 stakingEth, uint256 ethxSupply, uint256 time);
+    event ExchangeRateUpdated(uint256 block, uint256 totalEth, uint256 ethxSupply, uint256 time);
     event TrustedNodeAdded(address indexed node);
     event TrustedNodeRemoved(address indexed node);
     event SocializingRewardsMerkleRootSubmitted(
@@ -158,7 +155,7 @@ interface IStaderOracle {
     @dev Submits the given balances for a specified block number.
     @param _exchangeRate The exchange rate to submit.
     */
-    function submitBalances(ExchangeRate calldata _exchangeRate) external;
+    function submitExchangeRateData(ExchangeRate calldata _exchangeRate) external;
 
     /**
     @notice Submits the root of the merkle tree containing the socializing rewards.

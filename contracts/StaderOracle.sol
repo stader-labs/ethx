@@ -89,15 +89,17 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly whenNotPaused {
+    function submitExchangeRateData(ExchangeRate calldata _exchangeRate)
+        external
+        override
+        trustedNodeOnly
+        whenNotPaused
+    {
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
         if (_exchangeRate.reportingBlockNumber % updateFrequencyMap[ETHX_ER_UF] > 0) {
             revert InvalidReportingBlock();
-        }
-        if (_exchangeRate.totalStakingETHBalance > _exchangeRate.totalETHBalance) {
-            revert InvalidNetworkBalances();
         }
 
         // Get submission keys
@@ -106,7 +108,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
                 msg.sender,
                 _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply
             )
         );
@@ -114,17 +115,15 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             abi.encodePacked(
                 _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply
             )
         );
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit balances submitted event
-        emit BalancesSubmitted(
+        emit ExchangeRateSubmitted(
             msg.sender,
             _exchangeRate.reportingBlockNumber,
             _exchangeRate.totalETHBalance,
-            _exchangeRate.totalStakingETHBalance,
             _exchangeRate.totalETHXSupply,
             block.timestamp
         );
@@ -136,10 +135,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             exchangeRate = _exchangeRate;
 
             // Emit balances updated event
-            emit BalancesUpdated(
+            emit ExchangeRateUpdated(
                 _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply,
                 block.timestamp
             );
