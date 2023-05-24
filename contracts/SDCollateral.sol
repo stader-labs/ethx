@@ -105,10 +105,9 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     }
 
     /// @notice for max approval to auction contract for spending SD tokens
-    /// @param spenderAddr contract to approve for spending SD
-    function maxApproveSD(address spenderAddr) external override {
+    function maxApproveSD() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        IERC20(staderConfig.getStaderToken()).approve(spenderAddr, type(uint256).max);
+        IERC20(staderConfig.getStaderToken()).approve(staderConfig.getAuctionContract(), type(uint256).max);
     }
 
     // SETTERS

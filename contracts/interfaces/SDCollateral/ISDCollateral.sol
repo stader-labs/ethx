@@ -38,7 +38,7 @@ interface ISDCollateral {
 
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external;
 
-    function maxApproveSD(address spenderAddr) external;
+    function maxApproveSD() external;
 
     // setters
     function updateStaderConfig(address _staderConfig) external;
