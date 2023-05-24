@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
@@ -93,6 +93,12 @@ interface INodeRegistry {
     function getSocializingPoolStateChangeBlock(uint256 _operatorId) external view returns (uint256);
 
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
+
+    function getValidatorsByOperator(
+        address _operator,
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view returns (Validator[] memory);
 
     /**
      *

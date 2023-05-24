@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import './library/UtilLib.sol';
 
@@ -11,6 +11,7 @@ import './interfaces/INodeRegistry.sol';
 import './interfaces/IPermissionlessPool.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderInsuranceFund.sol';
+import './interfaces/IValidatorWithdrawalVault.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 import './interfaces/IOperatorRewardsCollector.sol';
@@ -487,6 +488,39 @@ contract PermissionlessNodeRegistry is
         // If the result array isn't full, resize it to remove the unused elements
         assembly {
             mstore(validators, validatorCount)
+        }
+
+        return validators;
+    }
+
+    /**
+     * @notice Returns an array of all validators for an Operator
+     *
+     * @param _pageNumber The page number of the results to fetch (starting from 1).
+     * @param _pageSize The maximum number of items per page.
+     *
+     * @return An array of `Validator` objects representing all validators for an operator
+     */
+    function getValidatorsByOperator(
+        address _operator,
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view override returns (Validator[] memory) {
+        if (_pageNumber == 0) {
+            revert PageNumberIsZero();
+        }
+        uint256 startIndex = (_pageNumber - 1) * _pageSize;
+        uint256 endIndex = startIndex + _pageSize;
+        uint256 operatorId = operatorIDByAddress[_operator];
+        if (operatorId == 0) {
+            revert OperatorNotOnBoarded();
+        }
+        uint256 validatorCount = getOperatorTotalKeys(operatorId);
+        endIndex = endIndex > validatorCount ? validatorCount : endIndex;
+        Validator[] memory validators = new Validator[](endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
+            validators[i] = validatorRegistry[validatorId];
         }
 
         return validators;
