@@ -78,19 +78,19 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }
 
-    function getValidatorWithdrawCredential(address _withdrawVault) public pure override returns (bytes memory) {
+    function getValidatorWithdrawCredential(address _withdrawVault) external pure override returns (bytes memory) {
         return abi.encodePacked(bytes1(0x01), bytes11(0x0), address(_withdrawVault));
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
     }
 
     //update the implementation address of vaultProxy contract
-    function updateProxyAddress(address _vaultProxyImpl) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateVaultProxyAddress(address _vaultProxyImpl) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_vaultProxyImpl);
         vaultProxyImplementation = _vaultProxyImpl;
         emit UpdatedVaultProxyImplementation(vaultProxyImplementation);

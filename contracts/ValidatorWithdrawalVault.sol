@@ -40,7 +40,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
             revert NotEnoughRewardToDistribute();
         }
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = IPoolUtils(staderConfig.getPoolUtils())
-            .calculateRewardShare(IVaultProxy(address(this)).poolId(), totalRewards);
+            .calculateRewardShare(poolId, totalRewards);
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
@@ -115,7 +115,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
         if (totalRewards > 0) {
             (uint256 userReward, uint256 operatorReward, uint256 protocolReward) = IPoolUtils(
                 staderConfig.getPoolUtils()
-            ).calculateRewardShare(IVaultProxy(address(this)).poolId(), totalRewards);
+            ).calculateRewardShare(poolId, totalRewards);
             _userShare += userReward;
             _operatorShare += operatorReward;
             _protocolShare += protocolReward;

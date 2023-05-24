@@ -27,4 +27,8 @@ interface IVaultFactory {
     function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId) external view returns (address);
 
     function getValidatorWithdrawCredential(address _withdrawVault) external pure returns (bytes memory);
+
+    function updateStaderConfig(address _staderConfig) external;
+
+    function updateVaultProxyAddress(address _vaultProxyImpl) external;
 }
