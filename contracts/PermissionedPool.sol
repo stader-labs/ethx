@@ -22,8 +22,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     using Math for uint256;
 
     IStaderConfig public staderConfig;
-    uint8 public constant override POOL_ID = 2;
-
     // @inheritdoc IStaderPoolBase
     uint256 public override protocolFee;
 
@@ -78,7 +76,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: amountToSendToPoolManager
-        }(POOL_ID);
+        }(INodeRegistry((staderConfig).getPermissionedNodeRegistry()).POOL_ID());
         emit TransferredETHToSSPMForDefectiveKeys(amountToSendToPoolManager);
     }
 
@@ -170,7 +168,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         }
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: address(this).balance
-        }(POOL_ID);
+        }(INodeRegistry((staderConfig).getPermissionedNodeRegistry()).POOL_ID());
     }
 
     /**

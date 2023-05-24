@@ -276,7 +276,10 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     function verifyNewPool(uint8 _poolId, address _poolAddress) internal view {
-        if (IStaderPoolBase(_poolAddress).POOL_ID() != _poolId || isExistingPoolId(_poolId)) {
+        if (
+            INodeRegistry(IStaderPoolBase(_poolAddress).getNodeRegistry()).POOL_ID() != _poolId ||
+            isExistingPoolId(_poolId)
+        ) {
             revert ExistingOrMismatchingPoolId();
         }
     }
