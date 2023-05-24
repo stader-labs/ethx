@@ -55,7 +55,8 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
-        emit LotCreated(nextLot++, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
+        emit LotCreated(nextLot, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
+        nextLot++;
     }
 
     function addBid(uint256 lotId) external payable override whenNotPaused {
