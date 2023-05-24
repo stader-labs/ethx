@@ -534,7 +534,7 @@ contract PermissionlessNodeRegistry is
      *
      * @return An array of `address` objects representing the nodeELRewardVault contract address.
      */
-    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
+    function getNodeELVaultAddressForOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
         external
         view
         override
