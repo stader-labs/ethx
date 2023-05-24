@@ -4,6 +4,7 @@ pragma solidity ^0.8.16;
 import './library/UtilLib.sol';
 import './library/ValidatorStatus.sol';
 
+import './VaultProxy.sol';
 import './interfaces/IPenalty.sol';
 import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
@@ -13,49 +14,23 @@ import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IOperatorRewardsCollector.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract ValidatorWithdrawalVault is
-    IValidatorWithdrawalVault,
-    Initializable,
-    AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
+    bool internal vaultSettleStatus;
     using Math for uint256;
 
-    bool public override vaultSettleStatus;
-    uint8 public override poolId; // No Setter as this is supposed to be set once
-    IStaderConfig public override staderConfig;
-    uint256 public override validatorId; // No Setter as this is supposed to be set once
-
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    function initialize(
-        uint8 _poolId,
-        address _staderConfig,
-        uint256 _validatorId
-    ) external initializer {
-        UtilLib.checkNonZeroAddress(_staderConfig);
-
-        __AccessControl_init_unchained();
-        __ReentrancyGuard_init();
-
-        staderConfig = IStaderConfig(_staderConfig);
-        poolId = _poolId;
-        validatorId = _validatorId;
-        _grantRole(DEFAULT_ADMIN_ROLE, staderConfig.getAdmin());
-    }
+    constructor() {}
 
     // Allows the contract to receive ETH
     receive() external payable {
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function distributeRewards() external override nonReentrant {
+    function distributeRewards() external override {
+        uint8 poolId = VaultProxy(payable(address(this))).poolId();
+        uint256 validatorId = VaultProxy(payable(address(this))).id();
+        IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
         uint256 totalRewards = address(this).balance;
         if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
@@ -69,21 +44,24 @@ contract ValidatorWithdrawalVault is
 
         // Distribute rewards
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
-            getOperatorAddress()
-        );
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            getOperatorAddress(poolId, validatorId, staderConfig)
+        );
         emit DistributedRewards(userShare, operatorShare, protocolShare);
     }
 
-    function settleFunds() external override nonReentrant {
+    function settleFunds() external override {
+        uint8 poolId = VaultProxy(payable(address(this))).poolId();
+        uint256 validatorId = VaultProxy(payable(address(this))).id();
+        IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
         address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         if (msg.sender != nodeRegistry) {
             revert CallerNotNodeRegistryContract();
         }
         (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare();
 
-        uint256 penaltyAmount = getUpdatedPenaltyAmount();
+        uint256 penaltyAmount = getUpdatedPenaltyAmount(poolId, validatorId, staderConfig);
 
         if (operatorShare < penaltyAmount) {
             ISDCollateral(staderConfig.getSDCollateral()).slashValidatorSD(validatorId, poolId);
@@ -97,10 +75,10 @@ contract ValidatorWithdrawalVault is
         vaultSettleStatus = true;
         IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
-        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
-            getOperatorAddress()
-        );
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+            getOperatorAddress(poolId, validatorId, staderConfig)
+        );
         emit SettledFunds(userShare, operatorShare, protocolShare);
     }
 
@@ -113,8 +91,10 @@ contract ValidatorWithdrawalVault is
             uint256 _protocolShare
         )
     {
+        uint8 poolId = VaultProxy(payable(address(this))).poolId();
+        IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
-        uint256 collateralETH = getCollateralETH(); // 0, incase of permissioned NOs
+        uint256 collateralETH = getCollateralETH(poolId, staderConfig); // 0, incase of permissioned NOs
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
         uint256 contractBalance = address(this).balance;
 
@@ -142,35 +122,40 @@ contract ValidatorWithdrawalVault is
         }
     }
 
-    //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        UtilLib.checkNonZeroAddress(_staderConfig);
-        staderConfig = IStaderConfig(_staderConfig);
-        emit UpdatedStaderConfig(_staderConfig);
-    }
-
     // HELPER METHODS
 
-    function getCollateralETH() internal view returns (uint256) {
-        return IPoolUtils(staderConfig.getPoolUtils()).getCollateralETH(poolId);
+    function getCollateralETH(uint8 _poolId, IStaderConfig _staderConfig) internal view returns (uint256) {
+        return IPoolUtils(_staderConfig.getPoolUtils()).getCollateralETH(_poolId);
     }
 
-    function getOperatorAddress() internal view returns (address) {
-        return UtilLib.getOperatorAddressByValidatorId(poolId, validatorId, staderConfig);
+    function getOperatorAddress(
+        uint8 _poolId,
+        uint256 _validatorId,
+        IStaderConfig _staderConfig
+    ) internal view returns (address) {
+        return UtilLib.getOperatorAddressByValidatorId(_poolId, _validatorId, _staderConfig);
     }
 
-    function getUpdatedPenaltyAmount() internal returns (uint256) {
-        address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
-        (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
+    function getUpdatedPenaltyAmount(
+        uint8 _poolId,
+        uint256 _validatorId,
+        IStaderConfig _staderConfig
+    ) internal returns (uint256) {
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
+        (, bytes memory pubkey, , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(_validatorId);
         bytes[] memory pubkeyArray = new bytes[](1);
         pubkeyArray[0] = pubkey;
-        IPenalty(staderConfig.getPenaltyContract()).updateTotalPenaltyAmount(pubkeyArray);
-        return IPenalty(staderConfig.getPenaltyContract()).totalPenaltyAmount(pubkey);
+        IPenalty(_staderConfig.getPenaltyContract()).updateTotalPenaltyAmount(pubkeyArray);
+        return IPenalty(_staderConfig.getPenaltyContract()).totalPenaltyAmount(pubkey);
     }
 
-    function isWithdrawnValidator() internal view returns (bool) {
-        address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId);
-        (ValidatorStatus status, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(validatorId);
+    function isWithdrawnValidator(
+        uint8 _poolId,
+        uint256 _validatorId,
+        IStaderConfig _staderConfig
+    ) internal view returns (bool) {
+        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
+        (ValidatorStatus status, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(_validatorId);
         return status == ValidatorStatus.WITHDRAWN;
     }
 }

@@ -15,14 +15,4 @@ interface INodeELRewardVault {
 
     // methods
     function withdraw() external;
-
-    // setters
-    function updateStaderConfig(address _staderConfig) external;
-
-    // getters
-    function staderConfig() external view returns (IStaderConfig);
-
-    function poolId() external view returns (uint8);
-
-    function operatorId() external view returns (uint256);
 }

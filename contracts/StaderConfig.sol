@@ -55,6 +55,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
     bytes32 public constant override PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
     bytes32 public constant override PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
+    bytes32 public constant override NODE_EL_REWARD_VAULT_IMPLEMENTATION =
+        keccak256('NODE_EL_REWARD_VAULT_IMPLEMENTATION');
+    bytes32 public constant override VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION =
+        keccak256('VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION');
 
     //Roles
     bytes32 public constant override MANAGER = keccak256('MANAGER');
@@ -256,6 +260,17 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setContract(PERMISSIONLESS_SOCIALIZING_POOL, _permissionlessSocializePool);
     }
 
+    function updateNodeELRewardImplementation(address _nodeELRewardVaultImpl) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(NODE_EL_REWARD_VAULT_IMPLEMENTATION, _nodeELRewardVaultImpl);
+    }
+
+    function updateValidatorWithdrawalVaultImplementation(address _validatorWithdrawalVaultImpl)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setContract(VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION, _validatorWithdrawalVaultImpl);
+    }
+
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setToken(SD, _staderToken);
     }
@@ -410,6 +425,14 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getPermissionlessSocializingPool() external view override returns (address) {
         return contractsMap[PERMISSIONLESS_SOCIALIZING_POOL];
+    }
+
+    function getNodeELRewardVaultImplementation() external view override returns (address) {
+        return contractsMap[NODE_EL_REWARD_VAULT_IMPLEMENTATION];
+    }
+
+    function getValidatorWithdrawalVaultImplementation() external view override returns (address) {
+        return contractsMap[VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION];
     }
 
     //Token Getters

@@ -2,10 +2,7 @@
 pragma solidity ^0.8.16;
 
 import '../library/UtilLib.sol';
-
-import '../ValidatorWithdrawalVault.sol';
-import '../NodeELRewardVault.sol';
-
+import '../VaultProxy.sol';
 import '../interfaces/IVaultFactory.sol';
 import '../interfaces/IStaderConfig.sol';
 
@@ -14,8 +11,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
-    address public nodeELRewardVaultImplementation;
-    address public validatorWithdrawalVaultImplementation;
+    address vaultProxyImplementation;
 
     bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
@@ -30,8 +26,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         __AccessControl_init_unchained();
 
         staderConfig = IStaderConfig(_staderConfig);
-        nodeELRewardVaultImplementation = address(new NodeELRewardVault());
-        validatorWithdrawalVaultImplementation = address(new ValidatorWithdrawalVault());
+        vaultProxyImplementation = address(new VaultProxy());
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -42,14 +37,9 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 _validatorCount,
         uint256 _validatorId
     ) public override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
-        address withdrawVaultAddress;
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
-        withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(validatorWithdrawalVaultImplementation, salt);
-        ValidatorWithdrawalVault(payable(withdrawVaultAddress)).initialize(
-            _poolId,
-            address(staderConfig),
-            _validatorId
-        );
+        address withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
+        VaultProxy(payable(withdrawVaultAddress)).initialise(true, _poolId, _validatorId, address(staderConfig));
 
         emit WithdrawVaultCreated(withdrawVaultAddress);
         return withdrawVaultAddress;
@@ -61,10 +51,9 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         onlyRole(NODE_REGISTRY_CONTRACT)
         returns (address)
     {
-        address nodeELRewardVaultAddress;
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
-        nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(nodeELRewardVaultImplementation, salt);
-        NodeELRewardVault(payable(nodeELRewardVaultAddress)).initialize(_poolId, _operatorId, address(staderConfig));
+        address nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
+        VaultProxy(payable(nodeELRewardVaultAddress)).initialise(false, _poolId, _operatorId, address(staderConfig));
 
         emit NodeELRewardVaultCreated(nodeELRewardVaultAddress);
         return nodeELRewardVaultAddress;
@@ -76,7 +65,7 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         uint256 _validatorCount
     ) public view override returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
-        return ClonesUpgradeable.predictDeterministicAddress(validatorWithdrawalVaultImplementation, salt);
+        return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }
 
     function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId)
@@ -86,17 +75,24 @@ contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable 
         returns (address)
     {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
-        return ClonesUpgradeable.predictDeterministicAddress(nodeELRewardVaultImplementation, salt);
+        return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }
 
-    function getValidatorWithdrawCredential(address _withdrawVault) public pure override returns (bytes memory) {
+    function getValidatorWithdrawCredential(address _withdrawVault) external pure override returns (bytes memory) {
         return abi.encodePacked(bytes1(0x01), bytes11(0x0), address(_withdrawVault));
     }
 
     //update the address of staderConfig
-    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    //update the implementation address of vaultProxy contract
+    function updateVaultProxyAddress(address _vaultProxyImpl) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_vaultProxyImpl);
+        vaultProxyImplementation = _vaultProxyImpl;
+        emit UpdatedVaultProxyImplementation(vaultProxyImplementation);
     }
 }

@@ -20,16 +20,4 @@ interface IValidatorWithdrawalVault {
     function distributeRewards() external;
 
     function settleFunds() external;
-
-    // setters
-    function updateStaderConfig(address _staderConfig) external;
-
-    // getters
-    function vaultSettleStatus() external view returns (bool);
-
-    function poolId() external view returns (uint8);
-
-    function staderConfig() external view returns (IStaderConfig);
-
-    function validatorId() external view returns (uint256);
 }
