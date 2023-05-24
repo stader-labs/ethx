@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import './library/UtilLib.sol';
 
@@ -42,7 +42,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
         emit AuctionDurationUpdated(duration);
-        emit BidInrementUpdated(bidIncrement);
+        emit BidIncrementUpdated(bidIncrement);
     }
 
     function createLot(uint256 _sdAmount) external override whenNotPaused {
@@ -55,7 +55,8 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
-        emit LotCreated(nextLot++, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
+        emit LotCreated(nextLot, lotItem.sdAmount, lotItem.startBlock, lotItem.endBlock, bidIncrement);
+        nextLot++;
     }
 
     function addBid(uint256 lotId) external payable override whenNotPaused {
@@ -150,6 +151,6 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
     function updateBidIncrement(uint256 _bidIncrement) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         bidIncrement = _bidIncrement;
-        emit BidInrementUpdated(_bidIncrement);
+        emit BidIncrementUpdated(_bidIncrement);
     }
 }

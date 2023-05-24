@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
@@ -82,6 +82,7 @@ interface IStaderOracle {
     error NotATrustedNode();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();
+    error InsufficientTrustedNodes();
 
     // Events
     event BalancesSubmitted(

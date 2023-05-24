@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import './library/UtilLib.sol';
 
@@ -105,10 +105,11 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
     }
 
     /// @notice for max approval to auction contract for spending SD tokens
-    /// @param spenderAddr contract to approve for spending SD
-    function maxApproveSD(address spenderAddr) external override {
+    function maxApproveSD() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        IERC20(staderConfig.getStaderToken()).approve(spenderAddr, type(uint256).max);
+        address auctionContract = staderConfig.getAuctionContract();
+        UtilLib.checkNonZeroAddress(auctionContract);
+        IERC20(staderConfig.getStaderToken()).approve(auctionContract, type(uint256).max);
     }
 
     // SETTERS
