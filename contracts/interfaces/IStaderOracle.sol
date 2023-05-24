@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity 0.8.16;
 
 import '../library/ValidatorStatus.sol';
 
@@ -84,6 +84,7 @@ interface IStaderOracle {
     error ERChangeLimitNotCrossed();
     error DifferentBlockDataSubmitted();
     error ERPermissibleChangeOutofBounds();
+    error InsufficientTrustedNodes();
 
     // Events
     event ERDataSourceToggled(bool isPORBasedERData);
