@@ -517,10 +517,10 @@ contract PermissionlessNodeRegistry is
         }
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
-        Validator[] memory validators = new Validator[](endIndex - startIndex);
+        Validator[] memory validators = new Validator[](endIndex > startIndex ? endIndex - startIndex : 0);
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
-            validators[i] = validatorRegistry[validatorId];
+            validators[i - startIndex] = validatorRegistry[validatorId];
         }
 
         return validators;
