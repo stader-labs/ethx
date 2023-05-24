@@ -98,7 +98,7 @@ contract UserWithdrawalManager is
         if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount()) {
             revert InvalidWithdrawAmount();
         }
-        if (requestIdsByUserAddress[msg.sender].length + 1 > maxNonRedeemedUserRequestCount) {
+        if (requestIdsByUserAddress[_owner].length + 1 > maxNonRedeemedUserRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
         }
         IERC20Upgradeable(staderConfig.getETHxToken()).safeTransferFrom(msg.sender, (address(this)), _ethXAmount);
