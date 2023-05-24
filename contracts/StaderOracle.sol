@@ -19,6 +19,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     ValidatorStats public validatorStats;
 
     uint256 public constant MAX_ER_UPDATE_FREQUENCY = 7200 * 7; // 7 days
+    uint256 public constant MIN_TRUSTED_NODES = 5;
 
     /// @inheritdoc IStaderOracle
     uint256 public override reportingBlockNumberForWithdrawnValidators;
@@ -89,7 +90,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(ExchangeRate calldata _exchangeRate) external override trustedNodeOnly whenNotPaused {
+    function submitBalances(ExchangeRate calldata _exchangeRate)
+        external
+        override
+        trustedNodeOnly
+        checkMinTrustedNodes
+        whenNotPaused
+    {
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -156,6 +163,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         external
         override
         trustedNodeOnly
+        checkMinTrustedNodes
         whenNotPaused
         nonReentrant
     {
@@ -220,7 +228,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         }
     }
 
-    function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly {
+    function submitSDPrice(SDPriceData calldata _sdPriceData) external override trustedNodeOnly checkMinTrustedNodes {
         if (_sdPriceData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -272,6 +280,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         external
         override
         trustedNodeOnly
+        checkMinTrustedNodes
         whenNotPaused
     {
         if (_validatorStats.reportingBlockNumber >= block.number) {
@@ -345,6 +354,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         external
         override
         trustedNodeOnly
+        checkMinTrustedNodes
         whenNotPaused
         nonReentrant
     {
@@ -401,6 +411,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         external
         override
         trustedNodeOnly
+        checkMinTrustedNodes
         whenNotPaused
     {
         if (_mapd.reportingBlockNumber >= block.number) {
@@ -568,6 +579,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     modifier trustedNodeOnly() {
         if (!isTrustedNode[msg.sender]) {
             revert NotATrustedNode();
+        }
+        _;
+    }
+
+    modifier checkMinTrustedNodes() {
+        if (trustedNodesCount < MIN_TRUSTED_NODES) {
+            revert InsufficientTrustedNodes();
         }
         _;
     }
