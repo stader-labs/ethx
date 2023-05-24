@@ -243,11 +243,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if ((submissionCount == (2 * trustedNodesCount) / 3 + 1)) {
             lastReportedSDPriceData = _sdPriceData;
             lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
-            uint256 len = sdPrices.length;
-            while (len > 0) {
-                sdPrices.pop();
-                len--;
-            }
+            delete sdPrices;
 
             // Emit SD Price updated event
             emit SDPriceUpdated(_sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
