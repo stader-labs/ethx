@@ -102,7 +102,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 msg.sender,
                 _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
@@ -111,7 +111,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             )
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
                 _exchangeRate.totalStakingETHBalance,
@@ -171,7 +171,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 msg.sender,
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
@@ -183,7 +183,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             )
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 _rewardsData.index,
                 _rewardsData.merkleRoot,
                 _rewardsData.poolId,
@@ -232,8 +232,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         }
 
         // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _sdPriceData.reportingBlockNumber));
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_sdPriceData.reportingBlockNumber));
+        bytes32 nodeSubmissionKey = keccak256(abi.encode(msg.sender, _sdPriceData.reportingBlockNumber));
+        bytes32 submissionCountKey = keccak256(abi.encode(_sdPriceData.reportingBlockNumber));
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
         insertSDPrice(_sdPriceData.sdPriceInETH);
         // Emit SD Price submitted event
@@ -283,7 +283,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 msg.sender,
                 _validatorStats.reportingBlockNumber,
                 _validatorStats.exitingValidatorsBalance,
@@ -295,7 +295,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             )
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 _validatorStats.reportingBlockNumber,
                 _validatorStats.exitingValidatorsBalance,
                 _validatorStats.exitedValidatorsBalance,
@@ -358,7 +358,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         bytes memory encodedPubkeys = abi.encode(_withdrawnValidators.sortedPubkeys);
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
-            abi.encodePacked(
+            abi.encode(
                 msg.sender,
                 _withdrawnValidators.reportingBlockNumber,
                 _withdrawnValidators.nodeRegistry,
@@ -366,11 +366,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             )
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encodePacked(
-                _withdrawnValidators.reportingBlockNumber,
-                _withdrawnValidators.nodeRegistry,
-                encodedPubkeys
-            )
+            abi.encode(_withdrawnValidators.reportingBlockNumber, _withdrawnValidators.nodeRegistry, encodedPubkeys)
         );
 
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
@@ -420,8 +416,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         bytes memory encodedPubkeys = abi.encode(_mapd.sortedPubkeys);
 
         // Get submission keys
-        bytes32 nodeSubmissionKey = keccak256(abi.encodePacked(msg.sender, _mapd.index, encodedPubkeys));
-        bytes32 submissionCountKey = keccak256(abi.encodePacked(_mapd.index, encodedPubkeys));
+        bytes32 nodeSubmissionKey = keccak256(abi.encode(msg.sender, _mapd.index, encodedPubkeys));
+        bytes32 submissionCountKey = keccak256(abi.encode(_mapd.index, encodedPubkeys));
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         // Emit missed attestation penalty submitted event
