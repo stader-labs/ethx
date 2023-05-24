@@ -70,7 +70,6 @@ interface IStaderOracle {
     error NodeNotTrusted();
     error ZeroFrequency();
     error FrequencyUnchanged();
-    error InvalidNetworkBalances();
     error DuplicateSubmissionFromNode();
     error ReportingFutureBlockData();
     error InvalidMerkleRootIndex();
@@ -78,10 +77,18 @@ interface IStaderOracle {
     error InvalidMAPDIndex();
     error PageNumberAlreadyReported();
     error NotATrustedNode();
+    error InvalidERDataSource();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();
+    error ERChangeLimitCrossed();
+    error ERChangeLimitNotCrossed();
+    error DifferentBlockDataSubmitted();
+    error ERPermissibleChangeOutofBounds();
 
     // Events
+    event ERDataSourceToggled(bool isPORBasedERData);
+    event UpdatedERChangeLimit(uint256 erChangeLimit);
+    event ERInspectionModeActivated(bool erInspectionMode, uint256 time);
     event ExchangeRateSubmitted(
         address indexed from,
         uint256 block,
@@ -157,6 +164,12 @@ interface IStaderOracle {
     */
     function submitExchangeRateData(ExchangeRate calldata _exchangeRate) external;
 
+    //update the exchange rate
+    function updateExchangeRate() external;
+
+    //update exchange rate via `MANAGER` when ER change limit is crossed
+    function closeERInspectionMode() external;
+
     /**
     @notice Submits the root of the merkle tree containing the socializing rewards.
     sends user ETH Rewrds to SSPM
@@ -216,8 +229,18 @@ interface IStaderOracle {
 
     function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external;
 
+    function updateERChangeLimit(uint256 _erChangeLimit) external;
+
+    function togglePORFeedBasedERData() external;
+
     // getters
+    function erInspectionMode() external view returns (bool);
+
+    function isPORFeedBasedERData() external view returns (bool);
+
     function staderConfig() external view returns (IStaderConfig);
+
+    function erChangeLimit() external view returns (uint256);
 
     function reportingBlockNumberForWithdrawnValidators() external view returns (uint256);
 

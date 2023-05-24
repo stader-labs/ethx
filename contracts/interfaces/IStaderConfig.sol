@@ -57,6 +57,11 @@ interface IStaderConfig {
 
     function VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION() external view returns (bytes32);
 
+    //POR Feed Proxy
+    function ETH_BALANCE_POR_FEED() external view returns (bytes32);
+
+    function ETHX_SUPPLY_POR_FEED() external view returns (bytes32);
+
     //Roles
     function MANAGER() external view returns (bytes32);
 
@@ -139,6 +144,10 @@ interface IStaderConfig {
     function getNodeELRewardVaultImplementation() external view returns (address);
 
     function getValidatorWithdrawalVaultImplementation() external view returns (address);
+
+    function getETHBalancePORFeedProxy() external view returns (address);
+
+    function getETHXSupplyPORFeedProxy() external view returns (address);
 
     // Tokens
     function getStaderToken() external view returns (address);
