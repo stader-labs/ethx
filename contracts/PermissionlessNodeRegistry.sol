@@ -92,7 +92,7 @@ contract PermissionlessNodeRegistry is
         address payable _operatorRewardAddress
     ) external override whenNotPaused returns (address feeRecipientAddress) {
         address poolUtils = staderConfig.getPoolUtils();
-        if (IPoolUtils(poolUtils).isExistingPoolId(POOL_ID)) {
+        if (IPoolUtils(poolUtils).poolAddressById(POOL_ID) != staderConfig.getPermissionlessPool()) {
             revert DuplicatePoolID();
         }
         IPoolUtils(poolUtils).onlyValidName(_operatorName);
