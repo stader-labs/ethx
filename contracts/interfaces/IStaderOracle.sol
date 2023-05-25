@@ -83,7 +83,6 @@ interface IStaderOracle {
     error InvalidReportingBlock();
     error ERChangeLimitCrossed();
     error ERChangeLimitNotCrossed();
-    error DifferentBlockDataSubmitted();
     error ERPermissibleChangeOutofBounds();
     error InsufficientTrustedNodes();
 
