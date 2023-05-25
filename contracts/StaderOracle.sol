@@ -530,6 +530,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     function togglePORFeedBasedERData() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (erInspectionMode) {
+            revert InspectionModeActive();
+        }
         isPORFeedBasedERData = !isPORFeedBasedERData;
         emit ERDataSourceToggled(isPORFeedBasedERData);
     }

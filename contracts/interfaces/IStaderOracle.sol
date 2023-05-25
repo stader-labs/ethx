@@ -78,6 +78,7 @@ interface IStaderOracle {
     error PageNumberAlreadyReported();
     error NotATrustedNode();
     error InvalidERDataSource();
+    error InspectionModeActive();
     error UpdateFrequencyNotSet();
     error InvalidReportingBlock();
     error ERChangeLimitCrossed();
