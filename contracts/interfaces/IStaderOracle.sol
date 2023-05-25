@@ -85,6 +85,7 @@ interface IStaderOracle {
     error ERChangeLimitNotCrossed();
     error ERPermissibleChangeOutofBounds();
     error InsufficientTrustedNodes();
+    error CooldownNotComplete();
 
     // Events
     event ERDataSourceToggled(bool isPORBasedERData);
@@ -170,8 +171,9 @@ interface IStaderOracle {
     function updateERFromPORFeed() external;
 
     //update exchange rate via POR Feed when ER change limit is crossed
-    //only `MANAGER` role can call
     function closeERInspectionMode() external;
+
+    function disableERInspectionMode() external;
 
     /**
     @notice Submits the root of the merkle tree containing the socializing rewards.
@@ -252,6 +254,8 @@ interface IStaderOracle {
 
     //returns the latest consensus index for missed attestation penalty data report
     function lastReportedMAPDIndex() external view returns (uint256);
+
+    function erInspectionModeStartBlock() external view returns (uint256);
 
     function safeMode() external view returns (bool);
 

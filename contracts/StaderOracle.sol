@@ -34,6 +34,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     uint256 public override trustedNodesCount;
     /// @inheritdoc IStaderOracle
     uint256 public override lastReportedMAPDIndex;
+    uint256 public override erInspectionModeStartBlock;
 
     // indicate the health of protocol on beacon chain
     // enabled by `MANAGER` if heavy slashing on protocol on beacon chain
@@ -108,6 +109,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (isPORFeedBasedERData) {
             revert InvalidERDataSource();
         }
+        if (erInspectionMode) {
+            revert ERChangeLimitCrossed();
+        }
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -143,6 +147,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         ) {
             if (!isNewERWithInLimit(_exchangeRate.totalETHBalance, _exchangeRate.totalETHXSupply)) {
                 erInspectionMode = true;
+                erInspectionModeStartBlock = block.number;
                 inspectionModeExchangeRate = _exchangeRate;
                 emit ERInspectionModeActivated(erInspectionMode, block.timestamp);
                 return;
@@ -166,6 +171,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         (uint256 _newTotalETHBalance, uint256 _newTotalETHXSupply, uint256 blockNumber) = getPORFeedData();
         if (!isNewERWithInLimit(_newTotalETHBalance, _newTotalETHXSupply)) {
             erInspectionMode = true;
+            erInspectionModeStartBlock = block.number;
             inspectionModeExchangeRate.totalETHBalance = _newTotalETHBalance;
             inspectionModeExchangeRate.totalETHXSupply = _newTotalETHXSupply;
             inspectionModeExchangeRate.reportingBlockNumber = blockNumber;
@@ -176,19 +182,36 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /**
-     * @notice update the exchange rate when er change limit crossed, after figuring out the reason for change
-     * @dev `erInspectionMode` must be true to call this function and only MANAGER is allowed
+     * @notice update the exchange rate when er change limit crossed, after verifying `inspectionModeExchangeRate` data
+     * @dev `erInspectionMode` must be true to call this function
      */
     function closeERInspectionMode() external override whenNotPaused {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (!erInspectionMode) {
             revert ERChangeLimitNotCrossed();
         }
+        if (
+            !staderConfig.onlyManagerRole(msg.sender) &&
+            erInspectionModeStartBlock + MAX_ER_UPDATE_FREQUENCY > block.number
+        ) {
+            revert CooldownNotComplete();
+        }
+        erInspectionMode = false;
         _updateExchangeRate(
             inspectionModeExchangeRate.totalETHBalance,
             inspectionModeExchangeRate.totalETHXSupply,
             inspectionModeExchangeRate.reportingBlockNumber
         );
+    }
+
+    // turn off erInspectionMode if `inspectionModeExchangeRate` is incorrect so that oracle/POR can push new data
+    function disableERInspectionMode() external override whenNotPaused {
+        if (
+            !staderConfig.onlyManagerRole(msg.sender) &&
+            erInspectionModeStartBlock + MAX_ER_UPDATE_FREQUENCY > block.number
+        ) {
+            revert CooldownNotComplete();
+        }
+        erInspectionMode = false;
     }
 
     /// @notice submits merkle root and handles reward
@@ -666,9 +689,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         uint256 _totalETHXSupply,
         uint256 _reportingBlockNumber
     ) internal {
-        if (erInspectionMode) {
-            erInspectionMode = false;
-        }
         exchangeRate.totalETHBalance = _totalETHBalance;
         exchangeRate.totalETHXSupply = _totalETHXSupply;
         exchangeRate.reportingBlockNumber = _reportingBlockNumber;
