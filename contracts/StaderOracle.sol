@@ -166,6 +166,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         (uint256 _newTotalETHBalance, uint256 _newTotalETHXSupply, uint256 blockNumber) = getPORFeedData();
         if (!isNewERWithInLimit(_newTotalETHBalance, _newTotalETHXSupply)) {
             erInspectionMode = true;
+            inspectionModeExchangeRate.totalETHBalance = _newTotalETHBalance;
+            inspectionModeExchangeRate.totalETHXSupply = _newTotalETHXSupply;
+            inspectionModeExchangeRate.reportingBlockNumber = blockNumber;
             emit ERInspectionModeActivated(erInspectionMode, block.timestamp);
             return;
         }
@@ -181,10 +184,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (!erInspectionMode) {
             revert ERChangeLimitNotCrossed();
         }
-        (uint256 totalETHBalance, uint256 totalETHXSupply, uint256 blockNumber) = isPORFeedBasedERData
-            ? getPORFeedData()
-            : getInspectionModeERData();
-        _updateExchangeRate(totalETHBalance, totalETHXSupply, blockNumber);
+        _updateExchangeRate(
+            inspectionModeExchangeRate.totalETHBalance,
+            inspectionModeExchangeRate.totalETHXSupply,
+            inspectionModeExchangeRate.reportingBlockNumber
+        );
     }
 
     /// @notice submits merkle root and handles reward
@@ -638,33 +642,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             uint256
         )
     {
-        //TODO how to get block number of report for POR Feed
         (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
             staderConfig.getETHBalancePORFeedProxy()
         ).latestRoundData();
-        (, int256 totalETHXSupplyInInt, , uint256 ethXPORUpdatedAt, ) = AggregatorV3Interface(
-            staderConfig.getETHXSupplyPORFeedProxy()
-        ).latestRoundData();
-        if (ethPORUpdatedAt != ethXPORUpdatedAt) {
-            revert DifferentBlockDataSubmitted();
-        }
+        (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
+            .latestRoundData();
         return (uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
-    }
-
-    function getInspectionModeERData()
-        internal
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        return (
-            inspectionModeExchangeRate.totalETHBalance,
-            inspectionModeExchangeRate.totalETHXSupply,
-            inspectionModeExchangeRate.reportingBlockNumber
-        );
     }
 
     function isNewERWithInLimit(uint256 _newTotalETHBalance, uint256 _newTotalETHXSupply) internal view returns (bool) {
