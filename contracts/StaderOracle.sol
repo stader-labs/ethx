@@ -141,17 +141,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             submissionCount == trustedNodesCount / 2 + 1 &&
             _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
         ) {
-            uint256 currentExchangeRate = UtilLib.computeExchangeRate(
-                exchangeRate.totalETHBalance,
-                exchangeRate.totalETHXSupply,
-                staderConfig
-            );
-            uint256 newExchangeRate = UtilLib.computeExchangeRate(
-                _exchangeRate.totalETHBalance,
-                _exchangeRate.totalETHXSupply,
-                staderConfig
-            );
-            if (!isNewERWithInLimit(newExchangeRate, currentExchangeRate)) {
+            if (!isNewERWithInLimit(_exchangeRate.totalETHBalance, _exchangeRate.totalETHXSupply)) {
                 erInspectionMode = true;
                 inspectionModeExchangeRate = _exchangeRate;
                 emit ERInspectionModeActivated(erInspectionMode, block.timestamp);
@@ -173,19 +163,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (erInspectionMode) {
             revert ERChangeLimitCrossed();
         }
-        (uint256 totalETHBalance, uint256 totalETHXSupply, uint256 blockNumber) = getPORFeedData();
-        uint256 currentExchangeRate = UtilLib.computeExchangeRate(
-            exchangeRate.totalETHBalance,
-            exchangeRate.totalETHXSupply,
-            staderConfig
-        );
-        uint256 newExchangeRate = UtilLib.computeExchangeRate(totalETHBalance, totalETHXSupply, staderConfig);
-        if (!isNewERWithInLimit(newExchangeRate, currentExchangeRate)) {
+        (uint256 _newTotalETHBalance, uint256 _newTotalETHXSupply, uint256 blockNumber) = getPORFeedData();
+        if (!isNewERWithInLimit(_newTotalETHBalance, _newTotalETHXSupply)) {
             erInspectionMode = true;
             emit ERInspectionModeActivated(erInspectionMode, block.timestamp);
             return;
         }
-        _updateExchangeRate(totalETHBalance, totalETHXSupply, blockNumber);
+        _updateExchangeRate(_newTotalETHBalance, _newTotalETHXSupply, blockNumber);
     }
 
     /**
@@ -683,9 +667,15 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
     }
 
-    function isNewERWithInLimit(uint256 _newExchangeRate, uint256 _currentExchangeRate) internal view returns (bool) {
-        return (_newExchangeRate >= (_currentExchangeRate * (ER_CHANGE_MAX_BPS - erChangeLimit)) / ER_CHANGE_MAX_BPS &&
-            _newExchangeRate <= ((_currentExchangeRate * (ER_CHANGE_MAX_BPS + erChangeLimit)) / ER_CHANGE_MAX_BPS));
+    function isNewERWithInLimit(uint256 _newTotalETHBalance, uint256 _newTotalETHXSupply) internal view returns (bool) {
+        uint256 currentExchangeRate = UtilLib.computeExchangeRate(
+            exchangeRate.totalETHBalance,
+            exchangeRate.totalETHXSupply,
+            staderConfig
+        );
+        uint256 newExchangeRate = UtilLib.computeExchangeRate(_newTotalETHBalance, _newTotalETHXSupply, staderConfig);
+        return (newExchangeRate >= (currentExchangeRate * (ER_CHANGE_MAX_BPS - erChangeLimit)) / ER_CHANGE_MAX_BPS &&
+            newExchangeRate <= ((currentExchangeRate * (ER_CHANGE_MAX_BPS + erChangeLimit)) / ER_CHANGE_MAX_BPS));
     }
 
     function _updateExchangeRate(
