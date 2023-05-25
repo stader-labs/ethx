@@ -171,17 +171,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getTotalActiveValidatorCount();
     }
 
-    // returns array of nodeELRewardVault address for opt out of socializing pool operators
-    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        returns (address[] memory)
-    {
-        return
-            IPermissionlessNodeRegistry(staderConfig.getPermissionlessNodeRegistry())
-                .getAllSocializingPoolOptOutOperators(_pageNumber, _pageSize);
-    }
-
     /**
      * @notice returns the total non terminal keys of a operator
      */
