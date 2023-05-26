@@ -104,13 +104,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         override
         trustedNodeOnly
         checkMinTrustedNodes
+        checkERInspectionMode
         whenNotPaused
     {
         if (isPORFeedBasedERData) {
             revert InvalidERDataSource();
-        }
-        if (erInspectionMode) {
-            revert ERChangeLimitCrossed();
         }
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -154,12 +152,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function updateERFromPORFeed() external override whenNotPaused {
+    function updateERFromPORFeed() external override checkERInspectionMode whenNotPaused {
         if (!isPORFeedBasedERData) {
             revert InvalidERDataSource();
-        }
-        if (erInspectionMode) {
-            revert ERChangeLimitCrossed();
         }
         (uint256 newTotalETHBalance, uint256 newTotalETHXSupply, uint256 reportingBlockNumber) = getPORFeedData();
         updateWithInLimitER(newTotalETHBalance, newTotalETHXSupply, reportingBlockNumber);
@@ -517,11 +512,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 
-    function togglePORFeedBasedERData() external override {
+    function togglePORFeedBasedERData() external override checkERInspectionMode {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (erInspectionMode) {
-            revert InspectionModeActive();
-        }
         isPORFeedBasedERData = !isPORFeedBasedERData;
         emit ERDataSourceToggled(isPORFeedBasedERData);
     }
@@ -693,6 +685,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             exchangeRate.totalETHXSupply,
             block.timestamp
         );
+    }
+
+    modifier checkERInspectionMode() {
+        if (erInspectionMode) {
+            revert InspectionModeActive();
+        }
+        _;
     }
 
     modifier trustedNodeOnly() {
