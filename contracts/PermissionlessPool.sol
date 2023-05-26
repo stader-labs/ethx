@@ -18,7 +18,6 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
-    uint8 public constant override POOL_ID = 1;
     IStaderConfig public staderConfig;
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
@@ -99,7 +98,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         uint256 pubkeyCount = _pubkey.length;
         for (uint256 i = 0; i < pubkeyCount; i++) {
             address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(
-                POOL_ID,
+                INodeRegistry((staderConfig).getPermissionlessNodeRegistry()).POOL_ID(),
                 _operatorId,
                 _operatorTotalKeys + i
             );

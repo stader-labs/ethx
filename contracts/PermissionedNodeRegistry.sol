@@ -110,6 +110,9 @@ contract PermissionedNodeRegistry is
         returns (address feeRecipientAddress)
     {
         address poolUtils = staderConfig.getPoolUtils();
+        if (IPoolUtils(poolUtils).poolAddressById(POOL_ID) != staderConfig.getPermissionedPool()) {
+            revert DuplicatePoolIDOrPoolNotAdded();
+        }
         IPoolUtils(poolUtils).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_operatorRewardAddress);
         if (nextOperatorId > maxOperatorId) {
