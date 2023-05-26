@@ -142,7 +142,7 @@ contract SocializingPool is
         bytes32[][] calldata _merkleProof
     ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
         uint256 indexLength = _index.length;
-        for (uint256 i; i < indexLength; ) {
+        for (uint256 i = 0; i < indexLength; i++) {
             if (_amountSD[i] == 0 && _amountETH[i] == 0) {
                 revert InvalidAmount();
             }
@@ -156,9 +156,6 @@ contract SocializingPool is
 
             if (!verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
                 revert InvalidProof(_index[i], _operator);
-            }
-            unchecked {
-                ++i;
             }
         }
     }
