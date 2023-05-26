@@ -111,7 +111,7 @@ contract PermissionedNodeRegistry is
     {
         address poolUtils = staderConfig.getPoolUtils();
         if (IPoolUtils(poolUtils).poolAddressById(POOL_ID) != staderConfig.getPermissionedPool()) {
-            revert DuplicatePoolID();
+            revert DuplicatePoolIDOrPoolNotAdded();
         }
         IPoolUtils(poolUtils).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_operatorRewardAddress);
