@@ -36,7 +36,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
 
         staderConfig = IStaderConfig(_staderConfig);
         duration = 2 * MIN_AUCTION_DURATION;
-        bidIncrement = 5e16;
+        bidIncrement = 5e15;
         nextLot = 1;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
