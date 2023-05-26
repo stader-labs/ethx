@@ -113,7 +113,7 @@ contract SDCollateralTest is Test {
         vm.assume(approveAmount >= sdAmount);
         staderToken.approve(address(sdCollateral), approveAmount);
         sdCollateral.depositSDAsCollateral(sdAmount);
-        assertEq(sdCollateral.totalSDCollateral(), sdAmount);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
         assertEq(sdCollateral.operatorSDBalance(user), sdAmount);
         assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
     }
@@ -215,12 +215,12 @@ contract SDCollateralTest is Test {
 
         vm.assume(_depositSDAmount >= sdCollateral.getOperatorWithdrawThreshold(operator) + _requestedSD);
 
-        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), _depositSDAmount);
         assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount);
 
         sdCollateral.withdraw(_requestedSD);
 
-        assertEq(sdCollateral.totalSDCollateral(), _depositSDAmount - _requestedSD);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), _depositSDAmount - _requestedSD);
         assertEq(sdCollateral.operatorSDBalance(operator), _depositSDAmount - _requestedSD);
     }
 
@@ -284,13 +284,13 @@ contract SDCollateralTest is Test {
         sdCollateral.slashValidatorSD(1, 1);
 
         vm.prank(staderManager);
-        sdCollateral.maxApproveSD(address(auction));
+        sdCollateral.maxApproveSD();
 
         vm.prank(validatorWithdrawVault);
         sdCollateral.slashValidatorSD(1, 1);
 
         assertEq(auction.nextLot(), 2);
-        assertEq(sdCollateral.totalSDCollateral(), 5);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), 5);
         assertEq(sdCollateral.operatorSDBalance(operator), 5);
 
         (uint256 _startBlock, uint256 _endBlock, uint256 _sdAmount, , , bool sdClaimed, bool ethExtracted) = auction
@@ -308,7 +308,7 @@ contract SDCollateralTest is Test {
         sdCollateral.slashValidatorSD(1, 1);
 
         assertEq(auction.nextLot(), 3);
-        assertEq(sdCollateral.totalSDCollateral(), 0);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), 0);
         assertEq(sdCollateral.operatorSDBalance(operator), 0);
 
         (_startBlock, _endBlock, _sdAmount, , , sdClaimed, ethExtracted) = auction.lots(2);

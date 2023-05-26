@@ -15,7 +15,6 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
-    uint256 public override totalSDCollateral;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;
 
@@ -43,8 +42,6 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
      */
     function depositSDAsCollateral(uint256 _sdAmount) external override {
         address operator = msg.sender;
-
-        totalSDCollateral += _sdAmount;
         operatorSDBalance[operator] += _sdAmount;
 
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount)) {
@@ -65,8 +62,6 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         if (opSDBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
             revert InsufficientSDToWithdraw(opSDBalance);
         }
-
-        totalSDCollateral -= _requestedSD;
         operatorSDBalance[operator] -= _requestedSD;
 
         // cannot use safeERC20 as this contract is an upgradeable contract
@@ -99,7 +94,6 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
             return;
         }
         operatorSDBalance[_operator] -= sdSlashed;
-        totalSDCollateral -= sdSlashed;
         IAuction(staderConfig.getAuctionContract()).createLot(sdSlashed);
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
