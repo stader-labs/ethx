@@ -161,8 +161,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (erInspectionMode) {
             revert ERChangeLimitCrossed();
         }
-        (uint256 newTotalETHBalance, uint256 newTotalETHXSupply, uint256 blockNumber) = getPORFeedData();
-        updateWithInLimitER(newTotalETHBalance, newTotalETHXSupply, blockNumber);
+        (uint256 newTotalETHBalance, uint256 newTotalETHXSupply, uint256 reportingBlockNumber) = getPORFeedData();
+        updateWithInLimitER(newTotalETHBalance, newTotalETHXSupply, reportingBlockNumber);
     }
 
     /**
