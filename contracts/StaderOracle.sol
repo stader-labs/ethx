@@ -189,13 +189,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (!erInspectionMode) {
             revert ERChangeLimitNotCrossed();
         }
-        if (
-            !staderConfig.onlyManagerRole(msg.sender) &&
-            erInspectionModeStartBlock + MAX_ER_UPDATE_FREQUENCY > block.number
-        ) {
-            revert CooldownNotComplete();
-        }
-        erInspectionMode = false;
+        disableERInspectionMode();
         _updateExchangeRate(
             inspectionModeExchangeRate.totalETHBalance,
             inspectionModeExchangeRate.totalETHXSupply,
@@ -204,7 +198,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     // turn off erInspectionMode if `inspectionModeExchangeRate` is incorrect so that oracle/POR can push new data
-    function disableERInspectionMode() external override whenNotPaused {
+    function disableERInspectionMode() public override whenNotPaused {
         if (
             !staderConfig.onlyManagerRole(msg.sender) &&
             erInspectionModeStartBlock + MAX_ER_UPDATE_FREQUENCY > block.number
