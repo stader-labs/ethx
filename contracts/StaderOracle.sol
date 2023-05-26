@@ -7,18 +7,25 @@ import './interfaces/IPoolUtils.sol';
 import './interfaces/IStaderOracle.sol';
 import './interfaces/ISocializingPool.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/IStaderStakePoolManager.sol';
 
+import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+    bool public override erInspectionMode;
+    bool public override isPORFeedBasedERData;
     SDPriceData public lastReportedSDPriceData;
     IStaderConfig public override staderConfig;
+    ExchangeRate public inspectionModeExchangeRate;
     ExchangeRate public exchangeRate;
     ValidatorStats public validatorStats;
 
     uint256 public constant MAX_ER_UPDATE_FREQUENCY = 7200 * 7; // 7 days
+    uint256 public constant ER_CHANGE_MAX_BPS = 10000;
+    uint256 public override erChangeLimit;
     uint256 public constant MIN_TRUSTED_NODES = 5;
 
     /// @inheritdoc IStaderOracle
@@ -27,6 +34,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     uint256 public override trustedNodesCount;
     /// @inheritdoc IStaderOracle
     uint256 public override lastReportedMAPDIndex;
+    uint256 public override erInspectionModeStartBlock;
 
     // indicate the health of protocol on beacon chain
     // enabled by `MANAGER` if heavy slashing on protocol on beacon chain
@@ -58,6 +66,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
+        erChangeLimit = 100; //1% deviation threshold
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -90,21 +99,22 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitBalances(ExchangeRate calldata _exchangeRate)
+    function submitExchangeRateData(ExchangeRate calldata _exchangeRate)
         external
         override
         trustedNodeOnly
         checkMinTrustedNodes
+        checkERInspectionMode
         whenNotPaused
     {
+        if (isPORFeedBasedERData) {
+            revert InvalidERDataSource();
+        }
         if (_exchangeRate.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
         if (_exchangeRate.reportingBlockNumber % updateFrequencyMap[ETHX_ER_UF] > 0) {
             revert InvalidReportingBlock();
-        }
-        if (_exchangeRate.totalStakingETHBalance > _exchangeRate.totalETHBalance) {
-            revert InvalidNetworkBalances();
         }
 
         // Get submission keys
@@ -113,25 +123,18 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
                 msg.sender,
                 _exchangeRate.reportingBlockNumber,
                 _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply
             )
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encode(
-                _exchangeRate.reportingBlockNumber,
-                _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
-                _exchangeRate.totalETHXSupply
-            )
+            abi.encode(_exchangeRate.reportingBlockNumber, _exchangeRate.totalETHBalance, _exchangeRate.totalETHXSupply)
         );
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
         // Emit balances submitted event
-        emit BalancesSubmitted(
+        emit ExchangeRateSubmitted(
             msg.sender,
             _exchangeRate.reportingBlockNumber,
             _exchangeRate.totalETHBalance,
-            _exchangeRate.totalStakingETHBalance,
             _exchangeRate.totalETHXSupply,
             block.timestamp
         );
@@ -140,17 +143,48 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             submissionCount == trustedNodesCount / 2 + 1 &&
             _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
         ) {
-            exchangeRate = _exchangeRate;
-
-            // Emit balances updated event
-            emit BalancesUpdated(
-                _exchangeRate.reportingBlockNumber,
+            updateWithInLimitER(
                 _exchangeRate.totalETHBalance,
-                _exchangeRate.totalStakingETHBalance,
                 _exchangeRate.totalETHXSupply,
-                block.timestamp
+                _exchangeRate.reportingBlockNumber
             );
         }
+    }
+
+    /// @inheritdoc IStaderOracle
+    function updateERFromPORFeed() external override checkERInspectionMode whenNotPaused {
+        if (!isPORFeedBasedERData) {
+            revert InvalidERDataSource();
+        }
+        (uint256 newTotalETHBalance, uint256 newTotalETHXSupply, uint256 reportingBlockNumber) = getPORFeedData();
+        updateWithInLimitER(newTotalETHBalance, newTotalETHXSupply, reportingBlockNumber);
+    }
+
+    /**
+     * @notice update the exchange rate when er change limit crossed, after verifying `inspectionModeExchangeRate` data
+     * @dev `erInspectionMode` must be true to call this function
+     */
+    function closeERInspectionMode() external override whenNotPaused {
+        if (!erInspectionMode) {
+            revert ERChangeLimitNotCrossed();
+        }
+        disableERInspectionMode();
+        _updateExchangeRate(
+            inspectionModeExchangeRate.totalETHBalance,
+            inspectionModeExchangeRate.totalETHXSupply,
+            inspectionModeExchangeRate.reportingBlockNumber
+        );
+    }
+
+    // turn off erInspectionMode if `inspectionModeExchangeRate` is incorrect so that oracle/POR can push new data
+    function disableERInspectionMode() public override whenNotPaused {
+        if (
+            !staderConfig.onlyManagerRole(msg.sender) &&
+            erInspectionModeStartBlock + MAX_ER_UPDATE_FREQUENCY > block.number
+        ) {
+            revert CooldownNotComplete();
+        }
+        erInspectionMode = false;
     }
 
     /// @notice submits merkle root and handles reward
@@ -478,6 +512,22 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(ETHX_ER_UF, _updateFrequency);
     }
 
+    function togglePORFeedBasedERData() external override checkERInspectionMode {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        isPORFeedBasedERData = !isPORFeedBasedERData;
+        emit ERDataSourceToggled(isPORFeedBasedERData);
+    }
+
+    //update the deviation threshold value, 0 deviationThreshold not allowed
+    function updateERChangeLimit(uint256 _erChangeLimit) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (_erChangeLimit == 0 || _erChangeLimit > ER_CHANGE_MAX_BPS) {
+            revert ERPermissibleChangeOutofBounds();
+        }
+        erChangeLimit = _erChangeLimit;
+        emit UpdatedERChangeLimit(erChangeLimit);
+    }
+
     function setSDPriceUpdateFrequency(uint256 _updateFrequency) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         setUpdateFrequency(SD_PRICE_UF, _updateFrequency);
@@ -574,6 +624,74 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     function getSDPriceInETH() external view override returns (uint256) {
         return lastReportedSDPriceData.sdPriceInETH;
+    }
+
+    function getPORFeedData()
+        internal
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
+            staderConfig.getETHBalancePORFeedProxy()
+        ).latestRoundData();
+        (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
+            .latestRoundData();
+        return (uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
+    }
+
+    function updateWithInLimitER(
+        uint256 _newTotalETHBalance,
+        uint256 _newTotalETHXSupply,
+        uint256 _reportingBlockNumber
+    ) internal {
+        uint256 currentExchangeRate = UtilLib.computeExchangeRate(
+            exchangeRate.totalETHBalance,
+            exchangeRate.totalETHXSupply,
+            staderConfig
+        );
+        uint256 newExchangeRate = UtilLib.computeExchangeRate(_newTotalETHBalance, _newTotalETHXSupply, staderConfig);
+        if (
+            !(newExchangeRate >= (currentExchangeRate * (ER_CHANGE_MAX_BPS - erChangeLimit)) / ER_CHANGE_MAX_BPS &&
+                newExchangeRate <= ((currentExchangeRate * (ER_CHANGE_MAX_BPS + erChangeLimit)) / ER_CHANGE_MAX_BPS))
+        ) {
+            erInspectionMode = true;
+            erInspectionModeStartBlock = block.number;
+            inspectionModeExchangeRate.totalETHBalance = _newTotalETHBalance;
+            inspectionModeExchangeRate.totalETHXSupply = _newTotalETHXSupply;
+            inspectionModeExchangeRate.reportingBlockNumber = _reportingBlockNumber;
+            emit ERInspectionModeActivated(erInspectionMode, block.timestamp);
+            return;
+        }
+        _updateExchangeRate(_newTotalETHBalance, _newTotalETHXSupply, _reportingBlockNumber);
+    }
+
+    function _updateExchangeRate(
+        uint256 _totalETHBalance,
+        uint256 _totalETHXSupply,
+        uint256 _reportingBlockNumber
+    ) internal {
+        exchangeRate.totalETHBalance = _totalETHBalance;
+        exchangeRate.totalETHXSupply = _totalETHXSupply;
+        exchangeRate.reportingBlockNumber = _reportingBlockNumber;
+
+        // Emit balances updated event
+        emit ExchangeRateUpdated(
+            exchangeRate.reportingBlockNumber,
+            exchangeRate.totalETHBalance,
+            exchangeRate.totalETHXSupply,
+            block.timestamp
+        );
+    }
+
+    modifier checkERInspectionMode() {
+        if (erInspectionMode) {
+            revert InspectionModeActive();
+        }
+        _;
     }
 
     modifier trustedNodeOnly() {
