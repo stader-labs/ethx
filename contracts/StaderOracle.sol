@@ -477,9 +477,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if ((submissionCount == trustedNodesCount / 2 + 1)) {
             lastReportedMAPDIndex = _mapd.index;
             uint256 keyCount = _mapd.sortedPubkeys.length;
-            for (uint256 i = 0; i < keyCount; i++) {
+            for (uint256 i; i < keyCount; ) {
                 bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_mapd.sortedPubkeys[i]);
                 missedAttestationPenalty[pubkeyRoot]++;
+                unchecked {
+                    ++i;
+                }
             }
             emit MissedAttestationPenaltyUpdated(_mapd.index, block.number, _mapd.sortedPubkeys);
         }

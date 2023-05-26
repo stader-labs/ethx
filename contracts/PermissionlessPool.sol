@@ -96,7 +96,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         address vaultFactory = staderConfig.getVaultFactory();
         uint256 pubkeyCount = _pubkey.length;
-        for (uint256 i = 0; i < pubkeyCount; i++) {
+        for (uint256 i; i < pubkeyCount; ) {
             address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(
                 INodeRegistry((staderConfig).getPermissionlessNodeRegistry()).POOL_ID(),
                 _operatorId,
@@ -118,6 +118,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 depositDataRoot
             );
             emit ValidatorPreDepositedOnBeaconChain(_pubkey[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -136,7 +139,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         address vaultFactoryAddress = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
         uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistryAddress).nextQueuedValidatorIndex();
-        for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
+        for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; ) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
             fullDepositOnBeaconChain(
                 nodeRegistryAddress,
@@ -145,6 +148,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 validatorId,
                 staderConfig.getFullDepositSize()
             );
+            unchecked {
+                ++i;
+            }
         }
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(
             depositQueueStartIndex + requiredValidators

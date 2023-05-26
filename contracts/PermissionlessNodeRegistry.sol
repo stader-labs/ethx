@@ -137,7 +137,7 @@ contract PermissionlessNodeRegistry is
 
         address vaultFactory = staderConfig.getVaultFactory();
         address poolUtils = staderConfig.getPoolUtils();
-        for (uint256 i = 0; i < keyCount; i++) {
+        for (uint256 i; i < keyCount; ) {
             IPoolUtils(poolUtils).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 POOL_ID,
@@ -160,6 +160,9 @@ contract PermissionlessNodeRegistry is
             validatorIdsByOperatorId[operatorId].push(nextValidatorId);
             emit AddedValidatorKey(msg.sender, _pubkey[i], nextValidatorId);
             nextValidatorId++;
+            unchecked {
+                ++i;
+            }
         }
 
         //slither-disable-next-line arbitrary-send-eth
@@ -192,11 +195,15 @@ contract PermissionlessNodeRegistry is
         ) {
             revert TooManyVerifiedKeysReported();
         }
-        for (uint256 i = 0; i < readyToDepositValidatorsLength; i++) {
+
+        for (uint256 i; i < readyToDepositValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             onlyInitializedValidator(validatorId);
             markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_readyToDepositPubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
 
         if (frontRunValidatorsLength > 0) {
@@ -204,18 +211,25 @@ contract PermissionlessNodeRegistry is
                 value: frontRunValidatorsLength * FRONT_RUN_PENALTY
             }();
         }
-        for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
+
+        for (uint256 i; i < frontRunValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_frontRunPubkey[i]];
             onlyInitializedValidator(validatorId);
             handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_frontRunPubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
 
-        for (uint256 i = 0; i < invalidSignatureValidatorsLength; i++) {
+        for (uint256 i; i < invalidSignatureValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkey[i]];
             onlyInitializedValidator(validatorId);
             handleInvalidSignature(validatorId);
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -230,7 +244,7 @@ contract PermissionlessNodeRegistry is
         if (withdrawnValidatorCount > staderConfig.getWithdrawnKeyBatchSize()) {
             revert TooManyWithdrawnKeysReported();
         }
-        for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
+        for (uint256 i; i < withdrawnValidatorCount; ) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!isActiveValidator(validatorId)) {
                 revert UNEXPECTED_STATUS();
@@ -238,8 +252,10 @@ contract PermissionlessNodeRegistry is
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnBlock = block.number;
             IValidatorWithdrawalVault(validatorRegistry[validatorId].withdrawVaultAddress).settleFunds();
-
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
         decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
     }
@@ -396,10 +412,13 @@ contract PermissionlessNodeRegistry is
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
         uint64 totalNonWithdrawnKeyCount;
-        for (uint256 i = _startIndex; i < _endIndex; i++) {
+        for (uint256 i = _startIndex; i < _endIndex; ) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (isNonTerminalValidator(validatorId)) {
                 totalNonWithdrawnKeyCount++;
+            }
+            unchecked {
+                ++i;
             }
         }
         return totalNonWithdrawnKeyCount;

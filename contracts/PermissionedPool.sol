@@ -95,7 +95,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
         // i is the operator Id
         uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;
-        for (uint256 i = 1; i < selectedOperatorCapacityLength; i++) {
+        for (uint256 i = 1; i < selectedOperatorCapacityLength; ) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;
@@ -116,6 +116,9 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 i,
                 nextQueuedValidatorIndex + validatorToDeposit
             );
+            unchecked {
+                ++i;
+            }
         }
         IPermissionedNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
     }
@@ -129,7 +132,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         uint256 pubkeyCount = _pubkey.length;
         //decrease the preDeposit validator count
         decreasePreDepositValidatorCount(pubkeyCount);
-        for (uint256 i = 0; i < pubkeyCount; i++) {
+        for (uint256 i; i < pubkeyCount; ) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
@@ -155,6 +158,9 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
             IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
             emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
