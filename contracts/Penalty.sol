@@ -97,7 +97,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
     /// @inheritdoc IPenalty
     function updateTotalPenaltyAmount(bytes[] calldata _pubkey) external override nonReentrant {
         uint256 reportedValidatorCount = _pubkey.length;
-        for (uint256 i = 0; i < reportedValidatorCount; i++) {
+        for (uint256 i; i < reportedValidatorCount; ) {
             if (UtilLib.getValidatorSettleStatus(_pubkey[i], staderConfig)) {
                 revert ValidatorSettled();
             }
@@ -112,6 +112,9 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
             totalPenaltyAmount[_pubkey[i]] = totalPenalty;
             if (totalPenalty >= validatorExitPenaltyThreshold) {
                 emit ForceExitValidator(_pubkey[i]);
+            }
+            unchecked {
+                ++i;
             }
         }
     }

@@ -72,8 +72,11 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     function processValidatorExitList(bytes[] calldata _pubkeys) external override {
         UtilLib.onlyOperatorRole(msg.sender, staderConfig);
         uint256 exitValidatorCount = _pubkeys.length;
-        for (uint256 i = 0; i < exitValidatorCount; i++) {
+        for (uint256 i; i < exitValidatorCount; ) {
             emit ExitValidator(_pubkeys[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -95,7 +98,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolUtils
-    function getTotalActiveValidatorCount() public view override returns (uint256) {
+    function getTotalActiveValidatorCount() external view override returns (uint256) {
         uint256 totalActiveValidatorCount;
         uint256 poolCount = getPoolCount();
         for (uint256 i = 0; i < poolCount; i++) {
