@@ -37,7 +37,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
-        poolAllocationMaxSize = 100;
+        poolAllocationMaxSize = 50;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }

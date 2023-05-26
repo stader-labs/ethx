@@ -43,7 +43,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
         ratedOracleAddress = _ratedOracleAddress;
         mevTheftPenaltyPerStrike = 1 ether;
         missedAttestationPenaltyPerStrike = 0.2 ether;
-        validatorExitPenaltyThreshold = 2.5 ether;
+        validatorExitPenaltyThreshold = 2 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
@@ -110,7 +110,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
             // taking into account additional penalties and penalty reversals from the DAO.
             uint256 totalPenalty = _mevTheftPenalty + _missedAttestationPenalty + additionalPenaltyAmount[pubkeyRoot];
             totalPenaltyAmount[_pubkey[i]] = totalPenalty;
-            if (totalPenalty > validatorExitPenaltyThreshold) {
+            if (totalPenalty >= validatorExitPenaltyThreshold) {
                 emit ForceExitValidator(_pubkey[i]);
             }
         }
