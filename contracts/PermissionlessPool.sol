@@ -40,6 +40,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
+        protocolFee = 500;
+        operatorFee = 500;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }

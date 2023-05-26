@@ -43,7 +43,7 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
         ratedOracleAddress = _ratedOracleAddress;
         mevTheftPenaltyPerStrike = 1 ether;
         missedAttestationPenaltyPerStrike = 0.2 ether;
-        validatorExitPenaltyThreshold = 2.5 ether;
+        validatorExitPenaltyThreshold = 1 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
 
         emit UpdatedPenaltyOracleAddress(_ratedOracleAddress);
