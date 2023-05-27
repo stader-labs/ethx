@@ -68,13 +68,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         if (_protocolFee + _operatorFee > MAX_COMMISSION_LIMIT_BIPS) {
             revert InvalidCommission();
         }
-        if (protocolFee == _protocolFee) {
-            revert ProtocolFeeUnchanged();
-        }
-        if (operatorFee == _operatorFee) {
-            revert OperatorFeeUnchanged();
-        }
-
         protocolFee = _protocolFee;
         operatorFee = _operatorFee;
 
