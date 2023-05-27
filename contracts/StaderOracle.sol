@@ -643,12 +643,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             uint256
         )
     {
-        (, int256 totalETHBalanceInInt, , uint256 ethPORUpdatedAt, ) = AggregatorV3Interface(
-            staderConfig.getETHBalancePORFeedProxy()
-        ).latestRoundData();
+        (, int256 totalETHBalanceInInt, , , ) = AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy())
+            .latestRoundData();
         (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
             .latestRoundData();
-        return (uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), ethPORUpdatedAt);
+        return (uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), block.number);
     }
 
     function updateWithInLimitER(
