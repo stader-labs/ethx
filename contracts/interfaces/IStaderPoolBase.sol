@@ -5,8 +5,6 @@ import './INodeRegistry.sol';
 
 interface IStaderPoolBase {
     // Errors
-    error ProtocolFeeUnchanged();
-    error OperatorFeeUnchanged();
     error UnsupportedOperation();
     error InvalidCommission();
     error CouldNotDetermineExcessETH();
