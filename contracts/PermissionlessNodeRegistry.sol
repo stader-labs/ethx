@@ -72,7 +72,7 @@ contract PermissionlessNodeRegistry is
         staderConfig = IStaderConfig(_staderConfig);
         nextOperatorId = 1;
         nextValidatorId = 1;
-        inputKeyCountLimit = 50;
+        inputKeyCountLimit = 30;
         maxNonTerminalKeyPerOperator = 50;
         verifiedKeyBatchSize = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
