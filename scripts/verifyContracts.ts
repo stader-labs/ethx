@@ -6,6 +6,7 @@ const vaultFactory = process.env.VAULT_FACTORY ?? ''
 const auction = process.env.AUCTION ?? ''
 const ETHxToken = process.env.ETHx ?? ''
 const staderToken = process.env.SD_TOKEN ?? ''
+const operatorRewardCollector = process.env.OPERATOR_REWARD_COLLECTOR ?? ''
 const penaltyContract = process.env.PENALTY ?? ''
 const permissionedNodeRegistry = process.env.PERMISSIONED_NODE_REGISTRY ?? ''
 const permissionedPool = process.env.PERMISSIONED_POOL ?? ''
@@ -21,11 +22,14 @@ const insuranceFund = process.env.STADER_INSURANCE_FUND ?? ''
 const staderOracle = process.env.STADER_ORACLE ?? ''
 const stakePoolManager = process.env.STAKE_POOL_MANAGER ?? ''
 const userWithdrawManager = process.env.USER_WITHDRAW_MANAGER ?? ''
+const nodeELRewardVault = process.env.NODE_EL_REWARD_VAULT_IMPL ?? ''
+const withdrawVaultImpl = process.env.WITHDRAW_VAULT_IMPL ?? ''
 
 const contractAddresses = [
   vaultFactory,
   auction,
   ETHxToken,
+  operatorRewardCollector,
   penaltyContract,
   permissionedNodeRegistry,
   permissionedPool,
@@ -41,6 +45,8 @@ const contractAddresses = [
   staderOracle,
   stakePoolManager,
   userWithdrawManager,
+  nodeELRewardVault,
+  withdrawVaultImpl,
 ]
 
 async function main() {

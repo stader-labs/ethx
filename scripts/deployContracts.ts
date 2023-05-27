@@ -1,15 +1,14 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-
   console.log('starting deployment process...')
-  const tempAdmin = process.env.TEMP_ADMIN ?? ''
+  const staderAdmin = process.env.STADER_ADMIN ?? ''
   const externalAdmin = process.env.EXTERNAL_ADMIN ?? ''
   const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT ?? ''
   const ratedOracle = process.env.RATED ?? ''
 
   const StaderConfig = await ethers.getContractFactory('StaderConfig')
-  const staderConfig = await upgrades.deployProxy(StaderConfig, [tempAdmin, ethDepositContract])
+  const staderConfig = await upgrades.deployProxy(StaderConfig, [staderAdmin, ethDepositContract])
   console.log('stader config deployed at ', staderConfig.address)
 
   const vaultFactory = await ethers.getContractFactory('VaultFactory')
@@ -17,15 +16,19 @@ async function main() {
   console.log('vaultFactoryInstance deployed at ', vaultFactoryInstance.address)
 
   const auctionFactory = await ethers.getContractFactory('Auction')
-  const auctionInstance = await upgrades.deployProxy(auctionFactory, [
-    externalAdmin,
-    staderConfig.address
-  ])
+  const auctionInstance = await upgrades.deployProxy(auctionFactory, [externalAdmin, staderConfig.address])
   console.log('auction contract deployed at ', auctionInstance.address)
 
   const ETHxFactory = await ethers.getContractFactory('ETHx')
   const ETHxToken = await upgrades.deployProxy(ETHxFactory, [externalAdmin, staderConfig.address])
   console.log('ETHx deployed at ', ETHxToken.address)
+
+  const operatorRewardCollectorFactory = await ethers.getContractFactory('OperatorRewardsCollector')
+  const operatorRewardCollector = await upgrades.deployProxy(operatorRewardCollectorFactory, [
+    externalAdmin,
+    staderConfig.address,
+  ])
+  console.log('operator reward collector at ', operatorRewardCollector.address)
 
   const penaltyFactory = await ethers.getContractFactory('Penalty')
   const penaltyInstance = await upgrades.deployProxy(penaltyFactory, [externalAdmin, staderConfig.address, ratedOracle])
@@ -50,14 +53,14 @@ async function main() {
   console.log('permissionlessNodeRegistry deployed at ', permissionlessNodeRegistry.address)
 
   const permissionlessPoolFactory = await ethers.getContractFactory('PermissionlessPool')
-  const permissionlessPool = await upgrades.deployProxy(permissionlessPoolFactory, [externalAdmin, staderConfig.address])
+  const permissionlessPool = await upgrades.deployProxy(permissionlessPoolFactory, [
+    externalAdmin,
+    staderConfig.address,
+  ])
   console.log('permissionlessPool deployed at ', permissionlessPool.address)
 
   const poolSelectorFactory = await ethers.getContractFactory('PoolSelector')
-  const poolSelector = await upgrades.deployProxy(poolSelectorFactory, [
-    externalAdmin,
-    staderConfig.address
-  ])
+  const poolSelector = await upgrades.deployProxy(poolSelectorFactory, [externalAdmin, staderConfig.address])
   console.log('poolSelector deployed at ', poolSelector.address)
 
   const poolUtilsFactory = await ethers.getContractFactory('PoolUtils')
@@ -96,7 +99,7 @@ async function main() {
   const userWithdrawFactory = await ethers.getContractFactory('UserWithdrawalManager')
   const userWithdrawManager = await upgrades.deployProxy(userWithdrawFactory, [externalAdmin, staderConfig.address])
   console.log('userWithdrawManager deployed at ', userWithdrawManager.address)
-  
+
   const NodeELRewardVault = await ethers.getContractFactory('NodeELRewardVault')
   const nodeELRewardVault = await NodeELRewardVault.deploy()
   await nodeELRewardVault.deployed()
@@ -106,7 +109,6 @@ async function main() {
   const validatorWithdrawalVault = await ValidatorWithdrawalVault.deploy()
   await validatorWithdrawalVault.deployed()
   console.log('validatorWithdrawalVault ', validatorWithdrawalVault.address)
-
 }
 
 main()
