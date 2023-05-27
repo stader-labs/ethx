@@ -54,7 +54,7 @@ contract StaderStakePoolsManager is
         __Pausable_init();
         __ReentrancyGuard_init();
         lastExcessETHDepositBlock = block.number;
-        excessETHDepositCoolDown = 7200;
+        excessETHDepositCoolDown = 3 * 7200;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }

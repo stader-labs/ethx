@@ -66,7 +66,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        erChangeLimit = 100; //1% deviation threshold
+        erChangeLimit = 500; //5% deviation threshold
+        setUpdateFrequency(ETHX_ER_UF, 7200);
+        setUpdateFrequency(SD_PRICE_UF, 7200);
+        setUpdateFrequency(VALIDATOR_STATS_UF, 7200);
+        setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, 14400);
+        setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, 50400);
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);

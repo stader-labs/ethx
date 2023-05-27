@@ -73,9 +73,9 @@ contract PermissionedNodeRegistry is
         nextOperatorId = 1;
         nextValidatorId = 1;
         operatorIdForExcessDeposit = 1;
-        inputKeyCountLimit = 100;
-        maxOperatorId = 50;
-        maxNonTerminalKeyPerOperator = 1000;
+        inputKeyCountLimit = 50;
+        maxOperatorId = 10;
+        maxNonTerminalKeyPerOperator = 50;
         verifiedKeyBatchSize = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
