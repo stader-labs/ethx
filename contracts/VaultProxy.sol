@@ -8,6 +8,7 @@ import './interfaces/IVaultProxy.sol';
 contract VaultProxy is IVaultProxy {
     bool public override vaultSettleStatus;
     bool public override isValidatorWithdrawalVault;
+    bool public override isInitialized;
     uint8 public override poolId;
     uint256 public override id; //validatorId or operatorId based on vault type
     address public override owner;
@@ -22,8 +23,12 @@ contract VaultProxy is IVaultProxy {
         uint256 _id,
         address _staderConfig
     ) external {
+        if (isInitialized) {
+            revert AlreadyInitialized();
+        }
         UtilLib.checkNonZeroAddress(_staderConfig);
         isValidatorWithdrawalVault = _isValidatorWithdrawalVault;
+        isInitialized = true;
         poolId = _poolId;
         id = _id;
         staderConfig = IStaderConfig(_staderConfig);

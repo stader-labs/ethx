@@ -5,6 +5,7 @@ import './IStaderConfig.sol';
 
 interface IVaultProxy {
     error CallerNotOwner();
+    error AlreadyInitialized();
     event UpdatedOwner(address owner);
     event UpdatedStaderConfig(address staderConfig);
 
@@ -12,6 +13,8 @@ interface IVaultProxy {
     function vaultSettleStatus() external view returns (bool);
 
     function isValidatorWithdrawalVault() external view returns (bool);
+
+    function isInitialized() external view returns (bool);
 
     function poolId() external view returns (uint8);
 
