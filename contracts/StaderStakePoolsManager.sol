@@ -54,7 +54,7 @@ contract StaderStakePoolsManager is
         __Pausable_init();
         __ReentrancyGuard_init();
         lastExcessETHDepositBlock = block.number;
-        excessETHDepositCoolDown = 7200;
+        excessETHDepositCoolDown = 3 * 7200;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -123,14 +123,12 @@ contract StaderStakePoolsManager is
      * @notice returns the amount of ETH equivalent 1 ETHX (with 18 decimals)
      */
     function getExchangeRate() public view override returns (uint256) {
-        uint256 DECIMALS = staderConfig.getDecimals();
-        uint256 totalETH = totalAssets();
-        uint256 totalETHx = IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply;
-
-        if (totalETH == 0 || totalETHx == 0) {
-            return DECIMALS;
-        }
-        return (totalETH * DECIMALS) / totalETHx;
+        return
+            UtilLib.computeExchangeRate(
+                totalAssets(),
+                IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHXSupply,
+                staderConfig
+            );
     }
 
     /** @dev See {IERC4626-totalAssets}. */

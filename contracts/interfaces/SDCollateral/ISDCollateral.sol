@@ -54,8 +54,6 @@ interface ISDCollateral {
     // getters
     function staderConfig() external view returns (IStaderConfig);
 
-    function totalSDCollateral() external view returns (uint256);
-
     function operatorSDBalance(address) external view returns (uint256);
 
     function getOperatorWithdrawThreshold(address _operator) external view returns (uint256 operatorWithdrawThreshold);

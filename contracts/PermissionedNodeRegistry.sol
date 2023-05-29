@@ -73,9 +73,9 @@ contract PermissionedNodeRegistry is
         nextOperatorId = 1;
         nextValidatorId = 1;
         operatorIdForExcessDeposit = 1;
-        inputKeyCountLimit = 100;
-        maxOperatorId = 50;
-        maxNonTerminalKeyPerOperator = 1000;
+        inputKeyCountLimit = 50;
+        maxOperatorId = 10;
+        maxNonTerminalKeyPerOperator = 50;
         verifiedKeyBatchSize = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -110,6 +110,9 @@ contract PermissionedNodeRegistry is
         returns (address feeRecipientAddress)
     {
         address poolUtils = staderConfig.getPoolUtils();
+        if (IPoolUtils(poolUtils).poolAddressById(POOL_ID) != staderConfig.getPermissionedPool()) {
+            revert DuplicatePoolIDOrPoolNotAdded();
+        }
         IPoolUtils(poolUtils).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_operatorRewardAddress);
         if (nextOperatorId > maxOperatorId) {
@@ -149,7 +152,7 @@ contract PermissionedNodeRegistry is
 
         address vaultFactory = staderConfig.getVaultFactory();
         address poolUtils = staderConfig.getPoolUtils();
-        for (uint256 i = 0; i < keyCount; i++) {
+        for (uint256 i; i < keyCount; ) {
             IPoolUtils(poolUtils).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 POOL_ID,
@@ -171,6 +174,9 @@ contract PermissionedNodeRegistry is
             validatorIdsByOperatorId[operatorId].push(nextValidatorId);
             emit AddedValidatorKey(msg.sender, _pubkey[i], nextValidatorId);
             nextValidatorId++;
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -197,7 +203,7 @@ contract PermissionedNodeRegistry is
         uint256 totalValidatorToDeposit;
         bool validatorPerOperatorGreaterThanZero = (validatorPerOperator > 0);
         if (validatorPerOperatorGreaterThanZero) {
-            for (uint256 i = 1; i < nextOperatorId; i++) {
+            for (uint256 i = 1; i < nextOperatorId; ) {
                 if (!operatorStructById[i].active) {
                     continue;
                 }
@@ -205,6 +211,9 @@ contract PermissionedNodeRegistry is
                 selectedOperatorCapacity[i] = Math.min(remainingOperatorCapacity[i], validatorPerOperator);
                 totalValidatorToDeposit += selectedOperatorCapacity[i];
                 remainingOperatorCapacity[i] -= selectedOperatorCapacity[i];
+                unchecked {
+                    ++i;
+                }
             }
         }
 
@@ -260,23 +269,29 @@ contract PermissionedNodeRegistry is
         }
 
         //handle the front run validators
-        for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
+        for (uint256 i; i < frontRunValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_frontRunPubkey[i]];
             // only PRE_DEPOSIT status check will also include validatorId = 0 check
             // as status for that will be INITIALIZED(default status)
             onlyPreDepositValidator(validatorId);
             handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_frontRunPubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
 
         //handle the invalid signature validators
-        for (uint256 i = 0; i < invalidSignatureValidatorsLength; i++) {
+        for (uint256 i; i < invalidSignatureValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkey[i]];
             // only PRE_DEPOSIT status check will also include validatorId = 0 check
             // as status for that will be INITIALIZED(default status)
             onlyPreDepositValidator(validatorId);
             validatorRegistry[validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
 
         address permissionedPool = staderConfig.getPermissionedPool();
@@ -299,7 +314,7 @@ contract PermissionedNodeRegistry is
         if (withdrawnValidatorCount > staderConfig.getWithdrawnKeyBatchSize()) {
             revert TooManyWithdrawnKeysReported();
         }
-        for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
+        for (uint256 i; i < withdrawnValidatorCount; ) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (validatorRegistry[validatorId].status != ValidatorStatus.DEPOSITED) {
                 revert UNEXPECTED_STATUS();
@@ -308,6 +323,9 @@ contract PermissionedNodeRegistry is
             validatorRegistry[validatorId].withdrawnBlock = block.number;
             IValidatorWithdrawalVault(validatorRegistry[validatorId].withdrawVaultAddress).settleFunds();
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
         decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
     }
@@ -467,9 +485,12 @@ contract PermissionedNodeRegistry is
      */
     function getTotalQueuedValidatorCount() external view override returns (uint256) {
         uint256 totalQueuedValidators;
-        for (uint256 i = 1; i < nextOperatorId; i++) {
+        for (uint256 i = 1; i < nextOperatorId; ) {
             if (operatorStructById[i].active) {
                 totalQueuedValidators += getOperatorQueuedValidatorCount(i);
+            }
+            unchecked {
+                ++i;
             }
         }
         return totalQueuedValidators;
@@ -510,10 +531,13 @@ contract PermissionedNodeRegistry is
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
         uint64 totalNonWithdrawnKeyCount;
-        for (uint256 i = _startIndex; i < _endIndex; i++) {
+        for (uint256 i = _startIndex; i < _endIndex; ) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (isNonTerminalValidator(validatorId)) {
                 totalNonWithdrawnKeyCount++;
+            }
+            unchecked {
+                ++i;
             }
         }
         return totalNonWithdrawnKeyCount;
@@ -609,10 +633,10 @@ contract PermissionedNodeRegistry is
         }
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
-        Validator[] memory validators = new Validator[](endIndex - startIndex);
+        Validator[] memory validators = new Validator[](endIndex > startIndex ? endIndex - startIndex : 0);
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
-            validators[i] = validatorRegistry[validatorId];
+            validators[i - startIndex] = validatorRegistry[validatorId];
         }
 
         return validators;

@@ -129,7 +129,7 @@ contract UserWithdrawalManager is
         uint256 ethToSendToFinalizeRequest;
         uint256 requestId;
         uint256 pooledETH = poolManager.balance;
-        for (requestId = nextRequestIdToFinalize; requestId <= maxRequestIdToFinalize; requestId++) {
+        for (requestId = nextRequestIdToFinalize; requestId <= maxRequestIdToFinalize; ) {
             UserWithdrawInfo memory userWithdrawInfo = userWithdrawRequests[requestId];
             uint256 requiredEth = userWithdrawInfo.ethExpected;
             uint256 lockedEthX = userWithdrawInfo.ethXAmount;
@@ -145,6 +145,9 @@ contract UserWithdrawalManager is
             ethRequestedForWithdraw -= requiredEth;
             lockedEthXToBurn += lockedEthX;
             ethToSendToFinalizeRequest += minEThRequiredToFinalizeRequest;
+            unchecked {
+                ++requestId;
+            }
         }
         // at here, upto (requestId-1) is finalized
         if (requestId > nextRequestIdToFinalize) {
@@ -204,11 +207,14 @@ contract UserWithdrawalManager is
         delete (userWithdrawRequests[_requestId]);
         uint256 userRequestCount = requestIdsByUserAddress[_owner].length;
         uint256[] storage requestIds = requestIdsByUserAddress[_owner];
-        for (uint256 i = 0; i < userRequestCount; i++) {
+        for (uint256 i; i < userRequestCount; ) {
             if (_requestId == requestIds[i]) {
                 requestIds[i] = requestIds[userRequestCount - 1];
                 requestIds.pop();
                 return;
+            }
+            unchecked {
+                ++i;
             }
         }
         revert CannotFindRequestId();

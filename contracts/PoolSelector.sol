@@ -37,7 +37,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
-        poolAllocationMaxSize = 100;
+        poolAllocationMaxSize = 50;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -87,7 +87,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         selectedPoolCapacity = new uint256[](poolCount);
         uint256 selectedValidatorCount;
         uint256 i = poolIdArrayIndexForExcessDeposit;
-        for (uint256 j = 0; j < poolCount; j++) {
+        for (uint256 j; j < poolCount; ) {
             uint256 poolCapacity = poolUtils.getQueuedValidatorCountByPool(poolIdArray[i]);
             uint256 poolDepositSize = ETH_PER_NODE - poolUtils.getCollateralETH(poolIdArray[i]);
             uint256 remainingValidatorsToDeposit = ethToDeposit / poolDepositSize;
@@ -103,6 +103,9 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
             if (ethToDeposit < ETH_PER_NODE || selectedValidatorCount >= poolAllocationMaxSize) {
                 poolIdArrayIndexForExcessDeposit = i;
                 break;
+            }
+            unchecked {
+                ++j;
             }
         }
     }

@@ -5,8 +5,6 @@ import './INodeRegistry.sol';
 
 interface IStaderPoolBase {
     // Errors
-    error ProtocolFeeUnchanged();
-    error OperatorFeeUnchanged();
     error UnsupportedOperation();
     error InvalidCommission();
     error CouldNotDetermineExcessETH();
@@ -25,8 +23,6 @@ interface IStaderPoolBase {
     function setCommissionFees(uint256 _protocolFee, uint256 _operatorFee) external; // sets the commission fees, protocol and operator
 
     //Getters
-
-    function POOL_ID() external view returns (uint8);
 
     function protocolFee() external view returns (uint256); // returns the protocol fee
 

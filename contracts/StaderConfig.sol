@@ -60,6 +60,10 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
     bytes32 public constant override VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION =
         keccak256('VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION');
 
+    //POR Feed Proxy
+    bytes32 public constant override ETH_BALANCE_POR_FEED = keccak256('ETH_BALANCE_POR_FEED');
+    bytes32 public constant override ETHX_SUPPLY_POR_FEED = keccak256('ETHX_SUPPLY_POR_FEED');
+
     //Roles
     bytes32 public constant override MANAGER = keccak256('MANAGER');
     bytes32 public constant override OPERATOR = keccak256('OPERATOR');
@@ -88,11 +92,12 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setConstant(TOTAL_FEE, 10000);
         setConstant(DECIMALS, 10**18);
         setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
-        setVariable(MIN_DEPOSIT_AMOUNT, 10**12);
+        setVariable(MIN_DEPOSIT_AMOUNT, 10**14);
         setVariable(MAX_DEPOSIT_AMOUNT, 10000 ether);
-        setVariable(MIN_WITHDRAW_AMOUNT, 10**12);
+        setVariable(MIN_WITHDRAW_AMOUNT, 10**14);
         setVariable(MAX_WITHDRAW_AMOUNT, 10000 ether);
-        setVariable(WITHDRAWN_KEYS_BATCH_SIZE, 100);
+        setVariable(WITHDRAWN_KEYS_BATCH_SIZE, 50);
+        setVariable(MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, 600);
         setContract(ETH_DEPOSIT_CONTRACT, _ethDepositContract);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -271,6 +276,14 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
         setContract(VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION, _validatorWithdrawalVaultImpl);
     }
 
+    function updateETHBalancePORFeedProxy(address _ethBalanceProxy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(ETH_BALANCE_POR_FEED, _ethBalanceProxy);
+    }
+
+    function updateETHXSupplyPORFeedProxy(address _ethXSupplyProxy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(ETHX_SUPPLY_POR_FEED, _ethXSupplyProxy);
+    }
+
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setToken(SD, _staderToken);
     }
@@ -433,6 +446,15 @@ contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable 
 
     function getValidatorWithdrawalVaultImplementation() external view override returns (address) {
         return contractsMap[VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION];
+    }
+
+    //POR Feed Proxy Getters
+    function getETHBalancePORFeedProxy() external view override returns (address) {
+        return contractsMap[ETH_BALANCE_POR_FEED];
+    }
+
+    function getETHXSupplyPORFeedProxy() external view override returns (address) {
+        return contractsMap[ETHX_SUPPLY_POR_FEED];
     }
 
     //Token Getters

@@ -25,6 +25,7 @@ struct Operator {
 // Interface for the NodeRegistry contract
 interface INodeRegistry {
     // Errors
+    error DuplicatePoolIDOrPoolNotAdded();
     error OperatorAlreadyOnBoardedInProtocol();
     error maxKeyLimitReached();
     error OperatorNotOnBoarded();

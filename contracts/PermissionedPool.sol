@@ -22,8 +22,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
     using Math for uint256;
 
     IStaderConfig public staderConfig;
-    uint8 public constant override POOL_ID = 2;
-
     // @inheritdoc IStaderPoolBase
     uint256 public override protocolFee;
 
@@ -44,6 +42,8 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
+        protocolFee = 500;
+        operatorFee = 500;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -78,7 +78,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: amountToSendToPoolManager
-        }(POOL_ID);
+        }(INodeRegistry((staderConfig).getPermissionedNodeRegistry()).POOL_ID());
         emit TransferredETHToSSPMForDefectiveKeys(amountToSendToPoolManager);
     }
 
@@ -97,7 +97,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
         // i is the operator Id
         uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;
-        for (uint256 i = 1; i < selectedOperatorCapacityLength; i++) {
+        for (uint256 i = 1; i < selectedOperatorCapacityLength; ) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;
@@ -118,6 +118,9 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 i,
                 nextQueuedValidatorIndex + validatorToDeposit
             );
+            unchecked {
+                ++i;
+            }
         }
         IPermissionedNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
     }
@@ -131,7 +134,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         uint256 pubkeyCount = _pubkey.length;
         //decrease the preDeposit validator count
         decreasePreDepositValidatorCount(pubkeyCount);
-        for (uint256 i = 0; i < pubkeyCount; i++) {
+        for (uint256 i; i < pubkeyCount; ) {
             IPermissionedNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
             uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
@@ -157,6 +160,9 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
             );
             IPermissionedNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
             emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -170,7 +176,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         }
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: address(this).balance
-        }(POOL_ID);
+        }(INodeRegistry((staderConfig).getPermissionedNodeRegistry()).POOL_ID());
     }
 
     /**
@@ -232,13 +238,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
         if (_protocolFee + _operatorFee > MAX_COMMISSION_LIMIT_BIPS) {
             revert InvalidCommission();
         }
-        if (protocolFee == _protocolFee) {
-            revert ProtocolFeeUnchanged();
-        }
-        if (operatorFee == _operatorFee) {
-            revert OperatorFeeUnchanged();
-        }
-
         protocolFee = _protocolFee;
         operatorFee = _operatorFee;
 

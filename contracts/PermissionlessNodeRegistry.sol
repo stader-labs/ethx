@@ -72,7 +72,7 @@ contract PermissionlessNodeRegistry is
         staderConfig = IStaderConfig(_staderConfig);
         nextOperatorId = 1;
         nextValidatorId = 1;
-        inputKeyCountLimit = 100;
+        inputKeyCountLimit = 30;
         maxNonTerminalKeyPerOperator = 50;
         verifiedKeyBatchSize = 50;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -92,6 +92,9 @@ contract PermissionlessNodeRegistry is
         address payable _operatorRewardAddress
     ) external override whenNotPaused returns (address feeRecipientAddress) {
         address poolUtils = staderConfig.getPoolUtils();
+        if (IPoolUtils(poolUtils).poolAddressById(POOL_ID) != staderConfig.getPermissionlessPool()) {
+            revert DuplicatePoolIDOrPoolNotAdded();
+        }
         IPoolUtils(poolUtils).onlyValidName(_operatorName);
         UtilLib.checkNonZeroAddress(_operatorRewardAddress);
 
@@ -134,7 +137,7 @@ contract PermissionlessNodeRegistry is
 
         address vaultFactory = staderConfig.getVaultFactory();
         address poolUtils = staderConfig.getPoolUtils();
-        for (uint256 i = 0; i < keyCount; i++) {
+        for (uint256 i; i < keyCount; ) {
             IPoolUtils(poolUtils).onlyValidKeys(_pubkey[i], _preDepositSignature[i], _depositSignature[i]);
             address withdrawVault = IVaultFactory(vaultFactory).deployWithdrawVault(
                 POOL_ID,
@@ -157,6 +160,9 @@ contract PermissionlessNodeRegistry is
             validatorIdsByOperatorId[operatorId].push(nextValidatorId);
             emit AddedValidatorKey(msg.sender, _pubkey[i], nextValidatorId);
             nextValidatorId++;
+            unchecked {
+                ++i;
+            }
         }
 
         //slither-disable-next-line arbitrary-send-eth
@@ -189,11 +195,15 @@ contract PermissionlessNodeRegistry is
         ) {
             revert TooManyVerifiedKeysReported();
         }
-        for (uint256 i = 0; i < readyToDepositValidatorsLength; i++) {
+
+        for (uint256 i; i < readyToDepositValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_readyToDepositPubkey[i]];
             onlyInitializedValidator(validatorId);
             markKeyReadyToDeposit(validatorId);
             emit ValidatorMarkedReadyToDeposit(_readyToDepositPubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
 
         if (frontRunValidatorsLength > 0) {
@@ -201,18 +211,25 @@ contract PermissionlessNodeRegistry is
                 value: frontRunValidatorsLength * FRONT_RUN_PENALTY
             }();
         }
-        for (uint256 i = 0; i < frontRunValidatorsLength; i++) {
+
+        for (uint256 i; i < frontRunValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_frontRunPubkey[i]];
             onlyInitializedValidator(validatorId);
             handleFrontRun(validatorId);
             emit ValidatorMarkedAsFrontRunned(_frontRunPubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
 
-        for (uint256 i = 0; i < invalidSignatureValidatorsLength; i++) {
+        for (uint256 i; i < invalidSignatureValidatorsLength; ) {
             uint256 validatorId = validatorIdByPubkey[_invalidSignaturePubkey[i]];
             onlyInitializedValidator(validatorId);
             handleInvalidSignature(validatorId);
             emit ValidatorStatusMarkedAsInvalidSignature(_invalidSignaturePubkey[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -227,7 +244,7 @@ contract PermissionlessNodeRegistry is
         if (withdrawnValidatorCount > staderConfig.getWithdrawnKeyBatchSize()) {
             revert TooManyWithdrawnKeysReported();
         }
-        for (uint256 i = 0; i < withdrawnValidatorCount; i++) {
+        for (uint256 i; i < withdrawnValidatorCount; ) {
             uint256 validatorId = validatorIdByPubkey[_pubkeys[i]];
             if (!isActiveValidator(validatorId)) {
                 revert UNEXPECTED_STATUS();
@@ -235,8 +252,10 @@ contract PermissionlessNodeRegistry is
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnBlock = block.number;
             IValidatorWithdrawalVault(validatorRegistry[validatorId].withdrawVaultAddress).settleFunds();
-
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
+            unchecked {
+                ++i;
+            }
         }
         decreaseTotalActiveValidatorCount(withdrawnValidatorCount);
     }
@@ -393,10 +412,13 @@ contract PermissionlessNodeRegistry is
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
         uint64 totalNonWithdrawnKeyCount;
-        for (uint256 i = _startIndex; i < _endIndex; i++) {
+        for (uint256 i = _startIndex; i < _endIndex; ) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
             if (isNonTerminalValidator(validatorId)) {
                 totalNonWithdrawnKeyCount++;
+            }
+            unchecked {
+                ++i;
             }
         }
         return totalNonWithdrawnKeyCount;
@@ -517,10 +539,10 @@ contract PermissionlessNodeRegistry is
         }
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         endIndex = endIndex > validatorCount ? validatorCount : endIndex;
-        Validator[] memory validators = new Validator[](endIndex - startIndex);
+        Validator[] memory validators = new Validator[](endIndex > startIndex ? endIndex - startIndex : 0);
         for (uint256 i = startIndex; i < endIndex; i++) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
-            validators[i] = validatorRegistry[validatorId];
+            validators[i - startIndex] = validatorRegistry[validatorId];
         }
 
         return validators;
@@ -534,7 +556,7 @@ contract PermissionlessNodeRegistry is
      *
      * @return An array of `address` objects representing the nodeELRewardVault contract address.
      */
-    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
+    function getNodeELVaultAddressForOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
         external
         view
         override

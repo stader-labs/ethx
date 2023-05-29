@@ -18,7 +18,6 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
-    uint8 public constant override POOL_ID = 1;
     IStaderConfig public staderConfig;
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
@@ -41,6 +40,8 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
         __ReentrancyGuard_init();
+        protocolFee = 500;
+        operatorFee = 500;
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
@@ -67,13 +68,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         if (_protocolFee + _operatorFee > MAX_COMMISSION_LIMIT_BIPS) {
             revert InvalidCommission();
         }
-        if (protocolFee == _protocolFee) {
-            revert ProtocolFeeUnchanged();
-        }
-        if (operatorFee == _operatorFee) {
-            revert OperatorFeeUnchanged();
-        }
-
         protocolFee = _protocolFee;
         operatorFee = _operatorFee;
 
@@ -97,9 +91,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         address vaultFactory = staderConfig.getVaultFactory();
         uint256 pubkeyCount = _pubkey.length;
-        for (uint256 i = 0; i < pubkeyCount; i++) {
+        for (uint256 i; i < pubkeyCount; ) {
             address withdrawVault = IVaultFactory(vaultFactory).computeWithdrawVaultAddress(
-                POOL_ID,
+                INodeRegistry((staderConfig).getPermissionlessNodeRegistry()).POOL_ID(),
                 _operatorId,
                 _operatorTotalKeys + i
             );
@@ -119,6 +113,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 depositDataRoot
             );
             emit ValidatorPreDepositedOnBeaconChain(_pubkey[i]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -137,7 +134,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         address vaultFactoryAddress = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
         uint256 depositQueueStartIndex = IPermissionlessNodeRegistry(nodeRegistryAddress).nextQueuedValidatorIndex();
-        for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; i++) {
+        for (uint256 i = depositQueueStartIndex; i < requiredValidators + depositQueueStartIndex; ) {
             uint256 validatorId = IPermissionlessNodeRegistry(nodeRegistryAddress).queuedValidators(i);
             fullDepositOnBeaconChain(
                 nodeRegistryAddress,
@@ -146,6 +143,9 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
                 validatorId,
                 staderConfig.getFullDepositSize()
             );
+            unchecked {
+                ++i;
+            }
         }
         IPermissionlessNodeRegistry(nodeRegistryAddress).updateNextQueuedValidatorIndex(
             depositQueueStartIndex + requiredValidators
@@ -170,17 +170,6 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
      */
     function getTotalActiveValidatorCount() external view override returns (uint256) {
         return INodeRegistry(staderConfig.getPermissionlessNodeRegistry()).getTotalActiveValidatorCount();
-    }
-
-    // returns array of nodeELRewardVault address for opt out of socializing pool operators
-    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        returns (address[] memory)
-    {
-        return
-            IPermissionlessNodeRegistry(staderConfig.getPermissionlessNodeRegistry())
-                .getAllSocializingPoolOptOutOperators(_pageNumber, _pageSize);
     }
 
     /**
