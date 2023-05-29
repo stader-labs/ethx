@@ -11,7 +11,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
-    address vaultProxyImplementation;
+    address public vaultProxyImplementation;
 
     bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 

@@ -83,7 +83,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     }
 
     function calculateValidatorWithdrawalShare()
-        public
+        internal
         view
         returns (
             uint256 _userShare,
@@ -147,15 +147,5 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
         pubkeyArray[0] = pubkey;
         IPenalty(_staderConfig.getPenaltyContract()).updateTotalPenaltyAmount(pubkeyArray);
         return IPenalty(_staderConfig.getPenaltyContract()).totalPenaltyAmount(pubkey);
-    }
-
-    function isWithdrawnValidator(
-        uint8 _poolId,
-        uint256 _validatorId,
-        IStaderConfig _staderConfig
-    ) internal view returns (bool) {
-        address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
-        (ValidatorStatus status, , , , , , , ) = INodeRegistry(nodeRegistry).validatorRegistry(_validatorId);
-        return status == ValidatorStatus.WITHDRAWN;
     }
 }
