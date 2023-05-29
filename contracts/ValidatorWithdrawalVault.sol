@@ -83,7 +83,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     }
 
     function calculateValidatorWithdrawalShare()
-        internal
+        public
         view
         returns (
             uint256 _userShare,
