@@ -111,8 +111,7 @@ contract NodeELRewardVaultTest is Test {
     }
 
     // NOTE: used uint128 to avoid arithmetic underflow overflow in calculateRewardShare
-    function test_withdraw() public {
-        uint128 rewardEth = 1;
+    function test_withdraw(uint128 rewardEth) public {
         assertEq(address(nodeELRewardVault).balance, 0);
         vm.expectRevert(INodeELRewardVault.NotEnoughRewardToWithdraw.selector);
         INodeELRewardVault(address(nodeELRewardVault)).withdraw();
