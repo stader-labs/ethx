@@ -79,7 +79,7 @@ contract PenaltyTest is Test {
 
         assertEq(penaltyContract.mevTheftPenaltyPerStrike(), 1 ether);
         assertEq(penaltyContract.missedAttestationPenaltyPerStrike(), 0.2 ether);
-        assertEq(penaltyContract.validatorExitPenaltyThreshold(), 2.5 ether);
+        assertEq(penaltyContract.validatorExitPenaltyThreshold(), 2 ether);
         assertTrue(penaltyContract.hasRole(penaltyContract.DEFAULT_ADMIN_ROLE(), staderAdmin));
         UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
@@ -139,7 +139,7 @@ contract PenaltyTest is Test {
         vm.expectRevert(UtilLib.CallerNotManager.selector);
         penaltyContract.updateValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
 
-        assertEq(penaltyContract.validatorExitPenaltyThreshold(), 2.5 ether);
+        assertEq(penaltyContract.validatorExitPenaltyThreshold(), 2 ether);
         vm.prank(staderManager);
         penaltyContract.updateValidatorExitPenaltyThreshold(_validatorExitPenaltyThreshold);
         assertEq(penaltyContract.validatorExitPenaltyThreshold(), _validatorExitPenaltyThreshold);
@@ -221,7 +221,7 @@ contract PenaltyTest is Test {
         address mockWithdrawVaultAddr = address(1);
         vm.mockCall(
             mockWithdrawVaultAddr,
-            abi.encodeWithSelector(IValidatorWithdrawalVault.vaultSettleStatus.selector),
+            abi.encodeWithSelector(IVaultProxy.vaultSettleStatus.selector),
             abi.encode(true)
         );
         vm.expectRevert(IPenalty.ValidatorSettled.selector);
@@ -230,7 +230,7 @@ contract PenaltyTest is Test {
         // validator not settled
         vm.mockCall(
             mockWithdrawVaultAddr,
-            abi.encodeWithSelector(IValidatorWithdrawalVault.vaultSettleStatus.selector),
+            abi.encodeWithSelector(IVaultProxy.vaultSettleStatus.selector),
             abi.encode(false)
         );
 
