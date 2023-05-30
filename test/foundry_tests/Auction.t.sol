@@ -57,8 +57,8 @@ contract AuctionTest is Test {
 
     function test_auctionInitialize() public {
         assertEq(address(auction.staderConfig()), address(staderConfig));
-        assertEq(auction.duration(), auction.MIN_AUCTION_DURATION());
-        assertEq(auction.bidIncrement(), 1e16);
+        assertEq(auction.duration(), 2 * auction.MIN_AUCTION_DURATION());
+        assertEq(auction.bidIncrement(), 5e15);
         assertEq(auction.nextLot(), 1);
         assertTrue(auction.hasRole(auction.DEFAULT_ADMIN_ROLE(), staderAdmin));
         UtilLib.onlyManagerRole(staderManager, staderConfig);
