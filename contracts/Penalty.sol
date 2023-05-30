@@ -124,8 +124,8 @@ contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, Reentranc
         // Retrieve the epochs in which the validator violated the fee recipient change rule.
         uint256[] memory violatedEpochs = IRatedV1(ratedOracleAddress).getViolationsForValidator(_pubkeyRoot);
 
-        // first strike is not penalized, after that each strike will attract `mevTheftPenaltyPerStrike` penalty
-        return violatedEpochs.length > 1 ? (violatedEpochs.length - 1) * mevTheftPenaltyPerStrike : 0;
+        // each strike attracts `mevTheftPenaltyPerStrike` penalty
+        return violatedEpochs.length * mevTheftPenaltyPerStrike;
     }
 
     /// @inheritdoc IPenalty
