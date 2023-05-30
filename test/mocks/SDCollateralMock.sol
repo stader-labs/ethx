@@ -9,4 +9,6 @@ contract SDCollateralMock {
     ) external pure returns (bool) {
         return true;
     }
+
+    function slashValidatorSD(uint256, uint8) external {}
 }

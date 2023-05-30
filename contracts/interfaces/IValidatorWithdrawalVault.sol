@@ -20,4 +20,15 @@ interface IValidatorWithdrawalVault {
     function distributeRewards() external;
 
     function settleFunds() external;
+
+    // getters
+
+    function calculateValidatorWithdrawalShare()
+        external
+        view
+        returns (
+            uint256 _userShare,
+            uint256 _operatorShare,
+            uint256 _protocolShare
+        );
 }
