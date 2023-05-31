@@ -425,7 +425,7 @@ contract PermissionedNodeRegistry is
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }
