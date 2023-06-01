@@ -153,6 +153,7 @@ interface IStaderOracle {
     event SafeModeEnabled();
     event SafeModeDisabled();
     event UpdatedStaderConfig(address staderConfig);
+    event TrustedNodeChangeCoolingPeriodUpdated(uint256 trustedNodeChangeCoolingPeriod);
 
     // methods
 
@@ -239,6 +240,10 @@ interface IStaderOracle {
     function togglePORFeedBasedERData() external;
 
     // getters
+    function trustedNodeChangeCoolingPeriod() external view returns (uint256);
+
+    function lastTrustedNodeCountChangeBlock() external view returns (uint256);
+
     function erInspectionMode() external view returns (bool);
 
     function isPORFeedBasedERData() external view returns (bool);
@@ -259,7 +264,6 @@ interface IStaderOracle {
 
     function safeMode() external view returns (bool);
 
-    // The root of the merkle tree containing the socializing rewards of operator
     function isTrustedNode(address) external view returns (bool);
 
     function missedAttestationPenalty(bytes32 _pubkey) external view returns (uint16);

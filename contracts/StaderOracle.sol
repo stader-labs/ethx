@@ -27,6 +27,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     uint256 public constant ER_CHANGE_MAX_BPS = 10000;
     uint256 public override erChangeLimit;
     uint256 public constant MIN_TRUSTED_NODES = 5;
+    uint256 public override trustedNodeChangeCoolingPeriod;
 
     /// @inheritdoc IStaderOracle
     uint256 public override reportingBlockNumberForWithdrawnValidators;
@@ -35,6 +36,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     /// @inheritdoc IStaderOracle
     uint256 public override lastReportedMAPDIndex;
     uint256 public override erInspectionModeStartBlock;
+    uint256 public override lastTrustedNodeCountChangeBlock;
 
     // indicate the health of protocol on beacon chain
     // enabled by `MANAGER` if heavy slashing on protocol on beacon chain
@@ -84,6 +86,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (isTrustedNode[_nodeAddress]) {
             revert NodeAlreadyTrusted();
         }
+        if (block.number < lastTrustedNodeCountChangeBlock + trustedNodeChangeCoolingPeriod) {
+            revert CooldownNotComplete();
+        }
+        lastTrustedNodeCountChangeBlock = block.number;
+
         isTrustedNode[_nodeAddress] = true;
         trustedNodesCount++;
 
@@ -97,6 +104,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (!isTrustedNode[_nodeAddress]) {
             revert NodeNotTrusted();
         }
+        if (block.number < lastTrustedNodeCountChangeBlock + trustedNodeChangeCoolingPeriod) {
+            revert CooldownNotComplete();
+        }
+        lastTrustedNodeCountChangeBlock = block.number;
+
         isTrustedNode[_nodeAddress] = false;
         trustedNodesCount--;
 
@@ -500,6 +512,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     function disableSafeMode() external override onlyRole(DEFAULT_ADMIN_ROLE) {
         safeMode = false;
         emit SafeModeDisabled();
+    }
+
+    function updateTrustedNodeChangeCoolingPeriod(uint256 _trustedNodeChangeCoolingPeriod) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        trustedNodeChangeCoolingPeriod = _trustedNodeChangeCoolingPeriod;
+        emit TrustedNodeChangeCoolingPeriodUpdated(_trustedNodeChangeCoolingPeriod);
     }
 
     //update the address of staderConfig
