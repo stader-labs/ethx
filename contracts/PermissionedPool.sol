@@ -97,7 +97,7 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
 
         // i is the operator Id
         uint256 selectedOperatorCapacityLength = selectedOperatorCapacity.length;
-        for (uint256 i = 1; i < selectedOperatorCapacityLength; ) {
+        for (uint256 i = 1; i < selectedOperatorCapacityLength; i++) {
             uint256 validatorToDeposit = selectedOperatorCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;
@@ -118,9 +118,6 @@ contract PermissionedPool is IStaderPoolBase, Initializable, AccessControlUpgrad
                 i,
                 nextQueuedValidatorIndex + validatorToDeposit
             );
-            unchecked {
-                ++i;
-            }
         }
         IPermissionedNodeRegistry(nodeRegistryAddress).increaseTotalActiveValidatorCount(requiredValidators);
     }
