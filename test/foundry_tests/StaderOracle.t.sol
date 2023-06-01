@@ -390,6 +390,75 @@ contract StaderOracleTest is Test {
         assertEq(lastSDPrice, 199323);
     }
 
+    function test_submitSDPrice_by_malicious_oracles() public {
+        SDPriceData memory sdPriceData = SDPriceData({reportingBlockNumber: 1212, sdPriceInETH: 1});
+
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        address trustedNode1 = vm.addr(701);
+        address trustedNode2 = vm.addr(702);
+        address trustedNode3 = vm.addr(703);
+        address trustedNode4 = vm.addr(704);
+        address trustedNode5 = vm.addr(705);
+        vm.startPrank(staderManager);
+        staderOracle.addTrustedNode(trustedNode1);
+        staderOracle.addTrustedNode(trustedNode2);
+        staderOracle.addTrustedNode(trustedNode3);
+        staderOracle.addTrustedNode(trustedNode4);
+        staderOracle.addTrustedNode(trustedNode5);
+        vm.stopPrank();
+
+        // cycle 1
+        vm.roll(7200 + 1);
+        sdPriceData.reportingBlockNumber = 1 * 7200;
+        sdPriceData.sdPriceInETH = 1;
+
+        vm.prank(trustedNode1);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        vm.prank(trustedNode3);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        // cycle 2
+        vm.roll(2 * 7200 + 1);
+        sdPriceData.reportingBlockNumber = 2 * 7200;
+        sdPriceData.sdPriceInETH = 1;
+
+        vm.prank(trustedNode1);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        vm.prank(trustedNode3);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        // trustedNode4 submits for cycle 1
+        sdPriceData.reportingBlockNumber = 1 * 7200;
+        sdPriceData.sdPriceInETH = 1;
+        vm.prank(trustedNode4);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        // consensus met for cycle 1
+        (uint256 lastSDReportingBlockNumber, uint256 lastSDPrice) = staderOracle.lastReportedSDPriceData();
+        assertEq(lastSDReportingBlockNumber, 7200);
+        assertEq(lastSDPrice, 1);
+
+        // now sdPrice array len is 0
+        // now trustedNode4 submits some random sdPrice for cycle 2 and that's gets updated
+        sdPriceData.reportingBlockNumber = 2 * 7200;
+        sdPriceData.sdPriceInETH = 199323;
+        vm.prank(trustedNode4);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        // consensus met for cycle 2
+        (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
+        assertEq(lastSDReportingBlockNumber, 2 * 7200);
+        assertEq(lastSDPrice, 199323);
+    }
+
     function test_submitMerkleData() public {
         address trustedNode = vm.addr(123);
         vm.prank(staderManager);
