@@ -287,6 +287,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             revert InvalidReportingBlock();
         }
 
+        if (_sdPriceData.reportingBlockNumber <= lastReportedSDPriceData.reportingBlockNumber) {
+            revert ReportingPreviousCycleData();
+        }
+
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(abi.encode(msg.sender, _sdPriceData.reportingBlockNumber));
         bytes32 submissionCountKey = keccak256(abi.encode(_sdPriceData.reportingBlockNumber));
