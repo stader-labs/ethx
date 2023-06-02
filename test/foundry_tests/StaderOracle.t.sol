@@ -192,7 +192,7 @@ contract StaderOracleTest is Test {
         vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
         staderOracle.submitSDPrice(sdPriceData);
 
-        // let's reporting at next reporting block
+        // let's report at next reporting block
         vm.roll(7200);
         assertEq(staderOracle.getSDPriceReportableBlock(), 7200);
 
@@ -254,143 +254,47 @@ contract StaderOracleTest is Test {
         // sdPrice has not updated, i.e. consensus not met
         assertEq(lastSDPrice, 0);
 
-        // other trusted nodes submits for reporting block num 1 = 7200
+        // other trusted nodes submits for reporting block num = 7200, previous round
         assertEq(block.number, 5 * 7200 + 1); // current block number
+        assertEq(staderOracle.getSDPriceReportableBlock(), 5 * 7200);
 
         sdPriceData.reportingBlockNumber = 7200;
         sdPriceData.sdPriceInETH = 6;
         vm.prank(trustedNode2);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
         staderOracle.submitSDPrice(sdPriceData);
 
-        sdPriceData.reportingBlockNumber = 7200;
+        sdPriceData.reportingBlockNumber = 5 * 7200;
+        sdPriceData.sdPriceInETH = 6;
+        vm.prank(trustedNode2);
+        staderOracle.submitSDPrice(sdPriceData);
+
+        sdPriceData.reportingBlockNumber = 5 * 7200;
         sdPriceData.sdPriceInETH = 2;
         vm.prank(trustedNode3);
         staderOracle.submitSDPrice(sdPriceData);
 
-        sdPriceData.reportingBlockNumber = 7200;
+        sdPriceData.reportingBlockNumber = 5 * 7200;
         sdPriceData.sdPriceInETH = 4;
         vm.prank(trustedNode4);
         staderOracle.submitSDPrice(sdPriceData);
 
-        // now consensus is met for reporting block num 7200
+        // now consensus is met for reporting block num 5 * 7200
         // trustedNode1 manipulated the sd price if other oracles are not wrking properly
-        // sdPrice submited were [1,1,1,1,1,6,2,4] => hence median = 1
+        // sdPrice submited were [1,6,2,4] => hence median = (2+4)/2 = 3
         (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 7200);
-        assertEq(lastSDPrice, 1);
+        assertEq(lastSDReportingBlockNumber, 5 * 7200);
+        assertEq(lastSDPrice, 3);
 
-        // trusted node 5 tries to submit at reportable block 7200
-        sdPriceData.reportingBlockNumber = 7200;
+        // trusted node 5 tries to submit at reportable block 5 * 7200
+        sdPriceData.reportingBlockNumber = 5 * 7200;
         sdPriceData.sdPriceInETH = 4;
         vm.prank(trustedNode5);
         vm.expectRevert(IStaderOracle.ReportingPreviousCycleData.selector);
         staderOracle.submitSDPrice(sdPriceData);
-
-        // trustedNode1 won't be able to submit again for reporting blockNum = 2 * 7200
-        // as it has already submitted for 5 cycles
-        // and now as sdPrice is deleted, its data won't be used for evaluation
-        sdPriceData.reportingBlockNumber = 2 * 7200;
-        sdPriceData.sdPriceInETH = 4;
-        vm.prank(trustedNode1);
-        vm.expectRevert(IStaderOracle.DuplicateSubmissionFromNode.selector);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        // other Trustednodes will be able to submit data
-        sdPriceData.reportingBlockNumber = 2 * 7200;
-        sdPriceData.sdPriceInETH = 6;
-        vm.prank(trustedNode2);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        sdPriceData.reportingBlockNumber = 2 * 7200;
-        sdPriceData.sdPriceInETH = 2;
-        vm.prank(trustedNode3);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        sdPriceData.reportingBlockNumber = 2 * 7200;
-        sdPriceData.sdPriceInETH = 4;
-        vm.prank(trustedNode4);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        // sdPrices[] = [6,2,4], median = 4
-        // although data in array is 3, the submission count is 4 due to trustedNode1, hence consensus is met
-        (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 2 * 7200);
-        assertEq(lastSDPrice, 4);
-
-        // lets assume now trustedNode4, trustedNode5 are malicious
-        // trustedNode1 has already submitted for 5 cycles and lost its data
-        // now trustedNode4, trustedNode5 plans to not submit data for few cycles
-
-        // cycle 3
-        sdPriceData.reportingBlockNumber = 3 * 7200;
-        sdPriceData.sdPriceInETH = 1;
-
-        vm.prank(trustedNode2);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        vm.prank(trustedNode3);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        // consensus not yet met
-        (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 2 * 7200);
-        assertEq(lastSDPrice, 4);
-
-        // cycle 4
-        sdPriceData.reportingBlockNumber = 4 * 7200;
-        sdPriceData.sdPriceInETH = 1;
-
-        vm.prank(trustedNode2);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        vm.prank(trustedNode3);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        // consensus not yet met
-        (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 2 * 7200);
-        assertEq(lastSDPrice, 4);
-
-        // cycle 5
-        sdPriceData.reportingBlockNumber = 5 * 7200;
-        sdPriceData.sdPriceInETH = 1;
-
-        vm.prank(trustedNode2);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        vm.prank(trustedNode3);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        // consensus not yet met
-        (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 2 * 7200);
-        assertEq(lastSDPrice, 4);
-
-        // now trustedNode4 submits data for cycle 3 and all data for cycle 3,4,5 will be used and deleted
-        sdPriceData.reportingBlockNumber = 3 * 7200;
-        sdPriceData.sdPriceInETH = 1;
-        vm.prank(trustedNode4);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        // consensus met for cycle 3
-        (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 3 * 7200);
-        assertEq(lastSDPrice, 1);
-
-        // now sdPrice array len is 0
-        // now trustedNode4 submits some random sdPrice for cycle 4 and that's gets updated
-        sdPriceData.reportingBlockNumber = 4 * 7200;
-        sdPriceData.sdPriceInETH = 199323;
-        vm.prank(trustedNode4);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        // consensus met for cycle 4
-        (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 4 * 7200);
-        assertEq(lastSDPrice, 199323);
     }
 
-    function test_submitSDPrice_by_malicious_oracles() public {
+    function test_submitSDPrice_manipulation_not_possible_by_minority_malicious_oracles() public {
         SDPriceData memory sdPriceData = SDPriceData({reportingBlockNumber: 1212, sdPriceInETH: 1});
 
         assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
@@ -439,12 +343,13 @@ contract StaderOracleTest is Test {
         sdPriceData.reportingBlockNumber = 1 * 7200;
         sdPriceData.sdPriceInETH = 1;
         vm.prank(trustedNode4);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
         staderOracle.submitSDPrice(sdPriceData);
 
-        // consensus met for cycle 1
+        // consensus not met yet
         (uint256 lastSDReportingBlockNumber, uint256 lastSDPrice) = staderOracle.lastReportedSDPriceData();
-        assertEq(lastSDReportingBlockNumber, 7200);
-        assertEq(lastSDPrice, 1);
+        assertEq(lastSDReportingBlockNumber, 0);
+        assertEq(lastSDPrice, 0);
 
         // now sdPrice array len is 0
         // now trustedNode4 submits some random sdPrice for cycle 2 and that's gets updated
@@ -456,7 +361,7 @@ contract StaderOracleTest is Test {
         // consensus met for cycle 2
         (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
         assertEq(lastSDReportingBlockNumber, 2 * 7200);
-        assertEq(lastSDPrice, 199323);
+        assertEq(lastSDPrice, 1); // but median sd price is 1
     }
 
     function test_submitMerkleData() public {
