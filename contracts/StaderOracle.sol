@@ -291,6 +291,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         bytes32 nodeSubmissionKey = keccak256(abi.encode(msg.sender, _sdPriceData.reportingBlockNumber));
         bytes32 submissionCountKey = keccak256(abi.encode(_sdPriceData.reportingBlockNumber));
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        // clean the sd price array before the start of every round of submissions
+        if (submissionCount == 1) {
+            delete sdPrices;
+        }
         insertSDPrice(_sdPriceData.sdPriceInETH);
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
