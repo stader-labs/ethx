@@ -286,7 +286,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_sdPriceData.reportingBlockNumber != getSDPriceReportableBlock()) {
             revert InvalidReportingBlock();
         }
-
         if (_sdPriceData.reportingBlockNumber <= lastReportedSDPriceData.reportingBlockNumber) {
             revert ReportingPreviousCycleData();
         }
