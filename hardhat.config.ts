@@ -31,12 +31,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {},
     goerli: {
-      url: process.env.PROVIDER_URL ?? '',
-      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
-    },
-    zang: {
-      url: process.env.PROVIDER_URL ?? '',
-      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+      url: process.env.PROVIDER_URL_TESTNET ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY_TESTNET ?? ethers.Wallet.createRandom().privateKey],
     },
     mainnet: {
       url: process.env.PROVIDER_URL_MAINNET ?? '',
