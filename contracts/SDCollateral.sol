@@ -51,10 +51,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         emit SDDeposited(operator, _sdAmount);
     }
 
-    /// @notice for operator to request withdraw of sd
-    /// @dev it does not transfer sd tokens immediately
-    /// operator should come back after withdrawal-delay time to claim
-    /// this requested sd is subject to slashes
+    /// @notice for operator to withdraw their sd collateral, which is over and above withdraw threshold
     function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
         uint256 opSDBalance = operatorSDBalance[operator];
@@ -64,7 +61,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         }
         operatorSDBalance[operator] -= _requestedSD;
 
-        // cannot use safeERC20 as this contract is an upgradeable contract
+        // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
         if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
             revert SDTransferFailed();
         }
