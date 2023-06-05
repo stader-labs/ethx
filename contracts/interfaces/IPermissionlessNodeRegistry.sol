@@ -36,10 +36,7 @@ interface IPermissionlessNodeRegistry {
 
     function nodeELRewardVaultByOperatorId(uint256) external view returns (address);
 
-    function getNodeELVaultAddressForOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        returns (address[] memory);
+    function getAllNodeELVaultAddress(uint256 _pageNumber, uint256 _pageSize) external view returns (address[] memory);
 
     //Setters
 
