@@ -16,7 +16,6 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract SocializingPool is
     ISocializingPool,
-    Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
@@ -36,7 +35,7 @@ contract SocializingPool is
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
@@ -142,7 +141,7 @@ contract SocializingPool is
         bytes32[][] calldata _merkleProof
     ) internal returns (uint256 _totalAmountSD, uint256 _totalAmountETH) {
         uint256 indexLength = _index.length;
-        for (uint256 i = 0; i < indexLength; i++) {
+        for (uint256 i; i < indexLength; i++) {
             if (_amountSD[i] == 0 && _amountETH[i] == 0) {
                 revert InvalidAmount();
             }
@@ -180,6 +179,23 @@ contract SocializingPool is
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    /**
+     * @dev Triggers stopped state.
+     * Contract must not be paused.
+     */
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * Contract must be paused
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     // GETTERS

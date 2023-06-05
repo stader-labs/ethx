@@ -10,12 +10,7 @@ import './interfaces/IStaderInsuranceFund.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract StaderInsuranceFund is
-    IStaderInsuranceFund,
-    Initializable,
-    AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public staderConfig;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -23,7 +18,7 @@ contract StaderInsuranceFund is
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();

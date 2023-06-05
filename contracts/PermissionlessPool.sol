@@ -16,7 +16,7 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
     IStaderConfig public staderConfig;
 
@@ -35,7 +35,7 @@ contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgr
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();

@@ -61,7 +61,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
@@ -213,10 +213,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData)
         external
         override
+        nonReentrant
         trustedNodeOnly
         checkMinTrustedNodes
         whenNotPaused
-        nonReentrant
     {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -407,10 +407,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators)
         external
         override
+        nonReentrant
         trustedNodeOnly
         checkMinTrustedNodes
         whenNotPaused
-        nonReentrant
     {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -589,7 +589,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit UpdateFrequencyUpdated(_updateFrequency);
     }
 
-    function getERReportableBlock() public view override returns (uint256) {
+    function getERReportableBlock() external view override returns (uint256) {
         return getReportableBlockFor(ETHX_ER_UF);
     }
 
@@ -604,11 +604,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return getReportableBlockFor(SD_PRICE_UF);
     }
 
-    function getValidatorStatsReportableBlock() public view override returns (uint256) {
+    function getValidatorStatsReportableBlock() external view override returns (uint256) {
         return getReportableBlockFor(VALIDATOR_STATS_UF);
     }
 
-    function getWithdrawnValidatorReportableBlock() public view override returns (uint256) {
+    function getWithdrawnValidatorReportableBlock() external view override returns (uint256) {
         return getReportableBlockFor(WITHDRAWN_VALIDATORS_UF);
     }
 
@@ -713,6 +713,23 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             exchangeRate.totalETHXSupply,
             block.timestamp
         );
+    }
+
+    /**
+     * @dev Triggers stopped state.
+     * Contract must not be paused.
+     */
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * Contract must be paused
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     modifier checkERInspectionMode() {

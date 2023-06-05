@@ -11,7 +11,7 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable {
+contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
     using Math for uint256;
     using SafeMath for uint256;
 
@@ -127,7 +127,7 @@ contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable 
         }
 
         uint256 totalWeight;
-        for (uint256 i = 0; i < poolTargetLength; i++) {
+        for (uint256 i; i < poolTargetLength; i++) {
             totalWeight += _poolTargets[i];
             poolWeights[poolIdArray[i]] = _poolTargets[i];
             emit UpdatedPoolWeight(poolIdArray[i], _poolTargets[i]);

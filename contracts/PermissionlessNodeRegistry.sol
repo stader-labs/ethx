@@ -63,7 +63,7 @@ contract PermissionlessNodeRegistry is
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
@@ -437,7 +437,7 @@ contract PermissionlessNodeRegistry is
      * @notice return total queued keys for permissionless pool
      * @return _validatorCount total queued validator count
      */
-    function getTotalQueuedValidatorCount() public view override returns (uint256) {
+    function getTotalQueuedValidatorCount() external view override returns (uint256) {
         return validatorQueueSize - nextQueuedValidatorIndex;
     }
 
@@ -500,7 +500,7 @@ contract PermissionlessNodeRegistry is
         uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
         Validator[] memory validators = new Validator[](_pageSize);
-        uint256 validatorCount = 0;
+        uint256 validatorCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (isActiveValidator(i)) {
                 validators[validatorCount] = validatorRegistry[i];

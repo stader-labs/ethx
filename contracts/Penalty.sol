@@ -11,7 +11,7 @@ import './interfaces/IStaderConfig.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract Penalty is IPenalty, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract Penalty is IPenalty, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public staderConfig;
     address public override ratedOracleAddress;
     uint256 public override mevTheftPenaltyPerStrike;

@@ -13,7 +13,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;
@@ -23,7 +23,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
@@ -199,7 +199,7 @@ contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable,
         return (sdBalance < totalMinThreshold ? 0 : Math.min(sdBalance, totalMaxThreshold));
     }
 
-    function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
+    function convertSDToETH(uint256 _sdAmount) external view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
         return (_sdAmount * sdPriceInETH) / staderConfig.getDecimals();
     }
