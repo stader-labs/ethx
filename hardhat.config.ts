@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  defaultNetwork: 'goerli',
+  defaultNetwork: 'mainnet',
   networks: {
     hardhat: {},
     goerli: {
