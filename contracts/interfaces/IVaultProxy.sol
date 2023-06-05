@@ -25,7 +25,7 @@ interface IVaultProxy {
     function staderConfig() external view returns (IStaderConfig);
 
     //Setters
-    function updateOwner(address _owner) external;
+    function updateOwner() external;
 
     function updateStaderConfig(address _staderConfig) external;
 }

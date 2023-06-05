@@ -61,13 +61,11 @@ contract VaultProxy is IVaultProxy {
     }
 
     /**
-     * @notice @update the owner of vault proxy contrat
+     * @notice update the owner of vault proxy contract to staderConfig Admin
      * @dev only owner can call
-     * @param _owner new owner account
      */
-    function updateOwner(address _owner) external override onlyOwner {
-        UtilLib.checkNonZeroAddress(_owner);
-        owner = _owner;
+    function updateOwner() external override {
+        owner = staderConfig.getAdmin();
         emit UpdatedOwner(owner);
     }
 
