@@ -14,7 +14,7 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     bytes32 public constant PRE_DEPOSIT_SIZE = keccak256('PRE_DEPOSIT_SIZE');
     //amount of ETH for full deposit on beacon chain i.e 31 ETH
     bytes32 public constant FULL_DEPOSIT_SIZE = keccak256('FULL_DEPOSIT_SIZE');
-    // ETH to WEI ratio i.e 10**18
+    // ETH to WEI ratio i.e 1e18
     bytes32 public constant DECIMALS = keccak256('DECIMALS');
     //Total fee bips
     bytes32 public constant TOTAL_FEE = keccak256('TOTAL_FEE');
@@ -90,11 +90,11 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setConstant(PRE_DEPOSIT_SIZE, 1 ether);
         setConstant(FULL_DEPOSIT_SIZE, 31 ether);
         setConstant(TOTAL_FEE, 10000);
-        setConstant(DECIMALS, 10**18);
+        setConstant(DECIMALS, 1e18);
         setConstant(OPERATOR_MAX_NAME_LENGTH, 255);
-        setVariable(MIN_DEPOSIT_AMOUNT, 10**14);
+        setVariable(MIN_DEPOSIT_AMOUNT, 1e14);
         setVariable(MAX_DEPOSIT_AMOUNT, 10000 ether);
-        setVariable(MIN_WITHDRAW_AMOUNT, 10**14);
+        setVariable(MIN_WITHDRAW_AMOUNT, 1e14);
         setVariable(MAX_WITHDRAW_AMOUNT, 10000 ether);
         setVariable(WITHDRAWN_KEYS_BATCH_SIZE, 50);
         setVariable(MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, 600);
