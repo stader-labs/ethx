@@ -4,6 +4,7 @@ async function main() {
   console.log('starting deployment process...')
   const staderAdmin = process.env.STADER_ADMIN ?? ''
   const externalAdmin = process.env.EXTERNAL_ADMIN ?? ''
+  //check for network and change accordingly
   const ethDepositContract = process.env.ETH_DEPOSIT_CONTRACT ?? ''
   const ratedOracle = process.env.RATED ?? ''
 

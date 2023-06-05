@@ -38,9 +38,9 @@ const config: HardhatUserConfig = {
       url: process.env.PROVIDER_URL ?? '',
       accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
     },
-    ethereum: {
-      url: process.env.PROVIDER_URL ?? '',
-      accounts: [process.env.OWNER_PRIVATE_KEY ?? ethers.Wallet.createRandom().privateKey],
+    mainnet: {
+      url: process.env.PROVIDER_URL_MAINNET ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY_MAINNET ?? ethers.Wallet.createRandom().privateKey],
     },
   },
   etherscan: {
