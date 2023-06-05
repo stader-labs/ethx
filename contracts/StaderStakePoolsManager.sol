@@ -47,7 +47,7 @@ contract StaderStakePoolsManager is
      * @dev Stader initialized with following variables
      * @param _staderConfig config contract
      */
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init();
