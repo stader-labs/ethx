@@ -36,7 +36,7 @@ contract VaultProxy is IVaultProxy {
     }
 
     /**route all call to this proxy contract to the respective latest vault contract
-     * fetched from staderConfig. This approch will help in changing the implementation
+     * fetched from staderConfig. This approach will help in changing the implementation
      * of validatorWithdrawalVault/nodeELRewardVault for already deployed vaults*/
     fallback(bytes calldata _input) external payable returns (bytes memory) {
         address vaultImplementation = isValidatorWithdrawalVault
