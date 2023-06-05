@@ -213,10 +213,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData)
         external
         override
+        nonReentrant
         trustedNodeOnly
         checkMinTrustedNodes
         whenNotPaused
-        nonReentrant
     {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
@@ -407,10 +407,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators)
         external
         override
+        nonReentrant
         trustedNodeOnly
         checkMinTrustedNodes
         whenNotPaused
-        nonReentrant
     {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
