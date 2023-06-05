@@ -258,12 +258,12 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
         uint256 protocolFeeBps = getProtocolFee(_poolId);
         uint256 operatorFeeBps = getOperatorFee(_poolId);
 
-        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
+        uint256 _userShareBeforeCommission = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        protocolShare = (protocolFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+        protocolShare = (protocolFeeBps * _userShareBeforeCommission) / staderConfig.getTotalFee();
 
         operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        operatorShare += (operatorFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+        operatorShare += (operatorFeeBps * _userShareBeforeCommission) / staderConfig.getTotalFee();
 
         userShare = _totalRewards - protocolShare - operatorShare;
     }
