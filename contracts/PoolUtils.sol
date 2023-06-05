@@ -9,7 +9,7 @@ import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
+contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
     IStaderConfig public staderConfig;
@@ -22,7 +22,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
@@ -101,7 +101,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
     function getTotalActiveValidatorCount() external view override returns (uint256) {
         uint256 totalActiveValidatorCount;
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             totalActiveValidatorCount += getActiveValidatorCountByPool(poolIdArray[i]);
         }
 
@@ -134,7 +134,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     /// @inheritdoc IPoolUtils
     function getSocializingPoolAddress(uint8 _poolId)
-        public
+        external
         view
         override
         onlyExistingPoolId(_poolId)
@@ -149,7 +149,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
-    ) public view override onlyExistingPoolId(_poolId) returns (uint256) {
+    ) external view override onlyExistingPoolId(_poolId) returns (uint256) {
         address nodeRegistry = getNodeRegistry(_poolId);
         return INodeRegistry(nodeRegistry).getOperatorTotalNonTerminalKeys(_nodeOperator, _startIndex, _endIndex);
     }
@@ -165,7 +165,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     function isExistingPubkey(bytes calldata _pubkey) public view override returns (bool) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingPubkey(_pubkey)) {
                 return true;
@@ -176,7 +176,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     function isExistingOperator(address _operAddr) external view override returns (bool) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingOperator(_operAddr)) {
                 return true;
@@ -187,7 +187,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     function getOperatorPoolId(address _operAddr) external view override returns (uint8) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingOperator(_operAddr)) {
                 return poolIdArray[i];
@@ -198,7 +198,7 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
 
     function getValidatorPoolId(bytes calldata _pubkey) external view override returns (uint8) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingPubkey(_pubkey)) {
                 return poolIdArray[i];
@@ -258,19 +258,19 @@ contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
         uint256 protocolFeeBps = getProtocolFee(_poolId);
         uint256 operatorFeeBps = getOperatorFee(_poolId);
 
-        uint256 _userShareBeforeCommision = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
+        uint256 _userShareBeforeCommission = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
 
-        protocolShare = (protocolFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+        protocolShare = (protocolFeeBps * _userShareBeforeCommission) / staderConfig.getTotalFee();
 
         operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
-        operatorShare += (operatorFeeBps * _userShareBeforeCommision) / staderConfig.getTotalFee();
+        operatorShare += (operatorFeeBps * _userShareBeforeCommission) / staderConfig.getTotalFee();
 
         userShare = _totalRewards - protocolShare - operatorShare;
     }
 
     function isExistingPoolId(uint8 _poolId) public view override returns (bool) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             if (poolIdArray[i] == _poolId) {
                 return true;
             }

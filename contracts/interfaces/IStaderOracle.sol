@@ -178,7 +178,7 @@ interface IStaderOracle {
 
     /**
     @notice Submits the root of the merkle tree containing the socializing rewards.
-    sends user ETH Rewrds to SSPM
+    sends user ETH Rewards to SSPM
     sends protocol ETH Rewards to stader treasury
     @param _rewardsData contains rewards merkleRoot and rewards split
     */

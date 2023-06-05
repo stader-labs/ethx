@@ -3,13 +3,11 @@ import { ethers } from 'ethers'
 import { HardhatUserConfig, task } from 'hardhat/config'
 import '@typechain/hardhat'
 import '@nomiclabs/hardhat-ethers'
-import '@nomiclabs/hardhat-waffle'
 import '@nomiclabs/hardhat-etherscan'
 import '@openzeppelin/hardhat-upgrades'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 import '@nomiclabs/hardhat-solhint'
-import '@nomicfoundation/hardhat-chai-matchers'
 import '@nomicfoundation/hardhat-foundry'
 
 const config: HardhatUserConfig = {

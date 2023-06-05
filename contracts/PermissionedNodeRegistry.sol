@@ -21,7 +21,6 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 contract PermissionedNodeRegistry is
     INodeRegistry,
     IPermissionedNodeRegistry,
-    Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
@@ -63,7 +62,7 @@ contract PermissionedNodeRegistry is
         _disableInitializers();
     }
 
-    function initialize(address _admin, address _staderConfig) public initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         __AccessControl_init_unchained();
@@ -88,7 +87,7 @@ contract PermissionedNodeRegistry is
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         uint256 permissionedNosLength = _permissionedNOs.length;
-        for (uint256 i = 0; i < permissionedNosLength; i++) {
+        for (uint256 i; i < permissionedNosLength; i++) {
             address operator = _permissionedNOs[i];
             UtilLib.checkNonZeroAddress(operator);
             permissionList[operator] = true;
@@ -592,7 +591,7 @@ contract PermissionedNodeRegistry is
         uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
         Validator[] memory validators = new Validator[](_pageSize);
-        uint256 validatorCount = 0;
+        uint256 validatorCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (isActiveValidator(i)) {
                 validators[validatorCount] = validatorRegistry[i];
