@@ -589,7 +589,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit UpdateFrequencyUpdated(_updateFrequency);
     }
 
-    function getERReportableBlock() public view override returns (uint256) {
+    function getERReportableBlock() external view override returns (uint256) {
         return getReportableBlockFor(ETHX_ER_UF);
     }
 
@@ -604,11 +604,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return getReportableBlockFor(SD_PRICE_UF);
     }
 
-    function getValidatorStatsReportableBlock() public view override returns (uint256) {
+    function getValidatorStatsReportableBlock() external view override returns (uint256) {
         return getReportableBlockFor(VALIDATOR_STATS_UF);
     }
 
-    function getWithdrawnValidatorReportableBlock() public view override returns (uint256) {
+    function getWithdrawnValidatorReportableBlock() external view override returns (uint256) {
         return getReportableBlockFor(WITHDRAWN_VALIDATORS_UF);
     }
 

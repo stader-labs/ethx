@@ -199,7 +199,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         return (sdBalance < totalMinThreshold ? 0 : Math.min(sdBalance, totalMaxThreshold));
     }
 
-    function convertSDToETH(uint256 _sdAmount) public view override returns (uint256) {
+    function convertSDToETH(uint256 _sdAmount) external view override returns (uint256) {
         uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
         return (_sdAmount * sdPriceInETH) / staderConfig.getDecimals();
     }

@@ -437,7 +437,7 @@ contract PermissionlessNodeRegistry is
      * @notice return total queued keys for permissionless pool
      * @return _validatorCount total queued validator count
      */
-    function getTotalQueuedValidatorCount() public view override returns (uint256) {
+    function getTotalQueuedValidatorCount() external view override returns (uint256) {
         return validatorQueueSize - nextQueuedValidatorIndex;
     }
 

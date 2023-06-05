@@ -122,7 +122,7 @@ contract StaderStakePoolsManager is
     /**
      * @notice returns the amount of ETH equivalent 1 ETHX (with 18 decimals)
      */
-    function getExchangeRate() public view override returns (uint256) {
+    function getExchangeRate() external view override returns (uint256) {
         return
             UtilLib.computeExchangeRate(
                 totalAssets(),
@@ -137,12 +137,12 @@ contract StaderStakePoolsManager is
     }
 
     /** @dev See {IERC4626-convertToShares}. */
-    function convertToShares(uint256 _assets) public view override returns (uint256) {
+    function convertToShares(uint256 _assets) external view override returns (uint256) {
         return _convertToShares(_assets, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-convertToAssets}. */
-    function convertToAssets(uint256 _shares) public view override returns (uint256) {
+    function convertToAssets(uint256 _shares) external view override returns (uint256) {
         return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
@@ -161,12 +161,12 @@ contract StaderStakePoolsManager is
     }
 
     /** @dev See {IERC4626-previewWithdraw}. */
-    function previewWithdraw(uint256 _shares) public view override returns (uint256) {
+    function previewWithdraw(uint256 _shares) external view override returns (uint256) {
         return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
     /** @dev See {IERC4626-deposit}. */
-    function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
+    function deposit(address _receiver) external payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < minDeposit()) {
             revert InvalidDepositAmount();

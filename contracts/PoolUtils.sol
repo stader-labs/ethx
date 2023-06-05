@@ -134,7 +134,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
 
     /// @inheritdoc IPoolUtils
     function getSocializingPoolAddress(uint8 _poolId)
-        public
+        external
         view
         override
         onlyExistingPoolId(_poolId)
@@ -149,7 +149,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
         address _nodeOperator,
         uint256 _startIndex,
         uint256 _endIndex
-    ) public view override onlyExistingPoolId(_poolId) returns (uint256) {
+    ) external view override onlyExistingPoolId(_poolId) returns (uint256) {
         address nodeRegistry = getNodeRegistry(_poolId);
         return INodeRegistry(nodeRegistry).getOperatorTotalNonTerminalKeys(_nodeOperator, _startIndex, _endIndex);
     }

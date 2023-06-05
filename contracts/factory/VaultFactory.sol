@@ -36,7 +36,7 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         uint256 _operatorId,
         uint256 _validatorCount,
         uint256 _validatorId
-    ) public override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
+    ) external override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
         address withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
         VaultProxy(payable(withdrawVaultAddress)).initialise(true, _poolId, _validatorId, address(staderConfig));
@@ -46,7 +46,7 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
     }
 
     function deployNodeELRewardVault(uint8 _poolId, uint256 _operatorId)
-        public
+        external
         override
         onlyRole(NODE_REGISTRY_CONTRACT)
         returns (address)
@@ -63,13 +63,13 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         uint8 _poolId,
         uint256 _operatorId,
         uint256 _validatorCount
-    ) public view override returns (address) {
+    ) external view override returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
         return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }
 
     function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId)
-        public
+        external
         view
         override
         returns (address)

@@ -501,11 +501,11 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         return (_addr == contractsMap[_contractName]);
     }
 
-    function onlyManagerRole(address account) public view override returns (bool) {
+    function onlyManagerRole(address account) external view override returns (bool) {
         return hasRole(MANAGER, account);
     }
 
-    function onlyOperatorRole(address account) public view override returns (bool) {
+    function onlyOperatorRole(address account) external view override returns (bool) {
         return hasRole(OPERATOR, account);
     }
 
