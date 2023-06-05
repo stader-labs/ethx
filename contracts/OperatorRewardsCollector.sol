@@ -7,14 +7,8 @@ import './interfaces/IOperatorRewardsCollector.sol';
 import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 
-contract OperatorRewardsCollector is
-    IOperatorRewardsCollector,
-    Initializable,
-    AccessControlUpgradeable,
-    PausableUpgradeable
-{
+contract OperatorRewardsCollector is IOperatorRewardsCollector, Initializable, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
 
     mapping(address => uint256) public balances;
@@ -29,7 +23,6 @@ contract OperatorRewardsCollector is
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
-        __Pausable_init();
 
         staderConfig = IStaderConfig(_staderConfig);
 
@@ -43,7 +36,7 @@ contract OperatorRewardsCollector is
         emit DepositedFor(msg.sender, _receiver, msg.value);
     }
 
-    function claim() external whenNotPaused {
+    function claim() external {
         address operator = msg.sender;
         uint256 amount = balances[operator];
         balances[operator] -= amount;

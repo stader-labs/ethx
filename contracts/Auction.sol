@@ -8,10 +8,9 @@ import '../contracts/interfaces/IStaderStakePoolManager.sol';
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+contract Auction is IAuction, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
     uint256 public override nextLot;
     uint256 public override bidIncrement;
@@ -31,7 +30,6 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         __AccessControl_init();
-        __Pausable_init();
         __ReentrancyGuard_init();
 
         staderConfig = IStaderConfig(_staderConfig);
@@ -45,7 +43,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         emit BidIncrementUpdated(bidIncrement);
     }
 
-    function createLot(uint256 _sdAmount) external override whenNotPaused {
+    function createLot(uint256 _sdAmount) external override {
         lots[nextLot].startBlock = block.number;
         lots[nextLot].endBlock = block.number + duration;
         lots[nextLot].sdAmount = _sdAmount;
@@ -59,7 +57,7 @@ contract Auction is IAuction, Initializable, AccessControlUpgradeable, PausableU
         nextLot++;
     }
 
-    function addBid(uint256 lotId) external payable override whenNotPaused {
+    function addBid(uint256 lotId) external payable override {
         // reject payments of 0 ETH
         if (msg.value == 0) revert InSufficientETH();
 

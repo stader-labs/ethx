@@ -715,6 +715,23 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
     }
 
+    /**
+     * @dev Triggers stopped state.
+     * Contract must not be paused.
+     */
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * Contract must be paused
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
     modifier checkERInspectionMode() {
         if (erInspectionMode) {
             revert InspectionModeActive();

@@ -182,6 +182,23 @@ contract SocializingPool is
         emit UpdatedStaderConfig(_staderConfig);
     }
 
+    /**
+     * @dev Triggers stopped state.
+     * Contract must not be paused.
+     */
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        _pause();
+    }
+
+    /**
+     * @dev Returns to normal state.
+     * Contract must be paused
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
     // GETTERS
 
     function getCurrentRewardsIndex() public view returns (uint256 index) {
