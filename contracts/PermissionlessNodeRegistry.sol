@@ -549,14 +549,14 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice Returns an array of nodeELRewardVault address for operators opting out of socializing pool
+     * @notice Returns an array of nodeELRewardVault address for all operators
      *
      * @param _pageNumber The page number of the results to fetch (starting from 1).
      * @param _pageSize The maximum number of items per page.
      *
      * @return An array of `address` objects representing the nodeELRewardVault contract address.
      */
-    function getNodeELVaultAddressForOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
+    function getAllNodeELVaultAddress(uint256 _pageNumber, uint256 _pageSize)
         external
         view
         override
@@ -568,20 +568,10 @@ contract PermissionlessNodeRegistry is
         uint256 startIndex = (_pageNumber - 1) * _pageSize + 1;
         uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextOperatorId ? nextOperatorId : endIndex;
-        address[] memory nodeELRewardVault = new address[](_pageSize);
-        uint256 optOutOperatorCount;
+        address[] memory nodeELRewardVault = new address[](endIndex > startIndex ? endIndex - startIndex : 0);
         for (uint256 i = startIndex; i < endIndex; i++) {
-            if (!operatorStructById[i].optedForSocializingPool) {
-                nodeELRewardVault[optOutOperatorCount] = nodeELRewardVaultByOperatorId[i];
-                optOutOperatorCount++;
-            }
+            nodeELRewardVault[i - startIndex] = nodeELRewardVaultByOperatorId[i];
         }
-
-        // If the result array isn't full, resize it to remove the unused elements
-        assembly {
-            mstore(nodeELRewardVault, optOutOperatorCount)
-        }
-
         return nodeELRewardVault;
     }
 
