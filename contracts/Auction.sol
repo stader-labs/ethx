@@ -10,7 +10,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract Auction is IAuction, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract Auction is IAuction, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
     uint256 public override nextLot;
     uint256 public override bidIncrement;

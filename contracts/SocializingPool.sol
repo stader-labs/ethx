@@ -16,7 +16,6 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 contract SocializingPool is
     ISocializingPool,
-    Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable

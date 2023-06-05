@@ -9,7 +9,7 @@ import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract PoolUtils is IPoolUtils, Initializable, AccessControlUpgradeable {
+contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
     uint64 private constant PUBKEY_LENGTH = 48;
     uint64 private constant SIGNATURE_LENGTH = 96;
     IStaderConfig public staderConfig;

@@ -16,7 +16,7 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract PermissionlessPool is IStaderPoolBase, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
     IStaderConfig public staderConfig;
 

@@ -17,7 +17,6 @@ import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 contract UserWithdrawalManager is
     IUserWithdrawalManager,
-    Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable

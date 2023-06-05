@@ -9,7 +9,7 @@ import '../interfaces/IStaderConfig.sol';
 import '@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract VaultFactory is IVaultFactory, Initializable, AccessControlUpgradeable {
+contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
     address public vaultProxyImplementation;
 

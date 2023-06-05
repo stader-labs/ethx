@@ -11,7 +11,7 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract PoolSelector is IPoolSelector, Initializable, AccessControlUpgradeable {
+contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
     using Math for uint256;
     using SafeMath for uint256;
 

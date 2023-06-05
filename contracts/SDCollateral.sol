@@ -13,7 +13,7 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-contract SDCollateral is ISDCollateral, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;

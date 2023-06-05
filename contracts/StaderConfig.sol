@@ -7,7 +7,7 @@ import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract StaderConfig is IStaderConfig, Initializable, AccessControlUpgradeable {
+contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     // staked ETH per node on beacon chain i.e. 32 ETH
     bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
     //amount of ETH for pre-deposit on beacon chain i.e 1 ETH

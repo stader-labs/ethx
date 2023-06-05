@@ -8,7 +8,7 @@ import './interfaces/IStaderConfig.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract OperatorRewardsCollector is IOperatorRewardsCollector, Initializable, AccessControlUpgradeable {
+contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
 
     mapping(address => uint256) public balances;

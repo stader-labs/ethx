@@ -10,12 +10,7 @@ import './interfaces/IStaderInsuranceFund.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
 
-contract StaderInsuranceFund is
-    IStaderInsuranceFund,
-    Initializable,
-    AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public staderConfig;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
