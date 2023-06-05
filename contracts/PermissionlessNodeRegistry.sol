@@ -549,7 +549,7 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
-     * @notice Returns an array of nodeELRewardVault address for operators opting out of socializing pool
+     * @notice Returns an array of nodeELRewardVault address for all operators
      *
      * @param _pageNumber The page number of the results to fetch (starting from 1).
      * @param _pageSize The maximum number of items per page.
