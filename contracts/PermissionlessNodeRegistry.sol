@@ -500,7 +500,7 @@ contract PermissionlessNodeRegistry is
         uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
         Validator[] memory validators = new Validator[](_pageSize);
-        uint256 validatorCount = 0;
+        uint256 validatorCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (isActiveValidator(i)) {
                 validators[validatorCount] = validatorRegistry[i];
@@ -569,7 +569,7 @@ contract PermissionlessNodeRegistry is
         uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextOperatorId ? nextOperatorId : endIndex;
         address[] memory nodeELRewardVault = new address[](_pageSize);
-        uint256 optOutOperatorCount = 0;
+        uint256 optOutOperatorCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (!operatorStructById[i].optedForSocializingPool) {
                 nodeELRewardVault[optOutOperatorCount] = nodeELRewardVaultByOperatorId[i];

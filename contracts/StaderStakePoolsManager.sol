@@ -229,7 +229,7 @@ contract StaderStakePoolsManager is
         ).poolAllocationForExcessETHDeposit(availableETHForNewDeposit);
 
         uint256 poolCount = poolIdArray.length;
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             uint256 validatorToDeposit = selectedPoolCapacity[i];
             if (validatorToDeposit == 0) {
                 continue;

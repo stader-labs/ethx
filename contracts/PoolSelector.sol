@@ -127,7 +127,7 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
         }
 
         uint256 totalWeight;
-        for (uint256 i = 0; i < poolTargetLength; i++) {
+        for (uint256 i; i < poolTargetLength; i++) {
             totalWeight += _poolTargets[i];
             poolWeights[poolIdArray[i]] = _poolTargets[i];
             emit UpdatedPoolWeight(poolIdArray[i], _poolTargets[i]);

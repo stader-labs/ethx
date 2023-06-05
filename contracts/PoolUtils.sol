@@ -101,7 +101,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
     function getTotalActiveValidatorCount() external view override returns (uint256) {
         uint256 totalActiveValidatorCount;
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             totalActiveValidatorCount += getActiveValidatorCountByPool(poolIdArray[i]);
         }
 
@@ -165,7 +165,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
 
     function isExistingPubkey(bytes calldata _pubkey) public view override returns (bool) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingPubkey(_pubkey)) {
                 return true;
@@ -176,7 +176,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
 
     function isExistingOperator(address _operAddr) external view override returns (bool) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingOperator(_operAddr)) {
                 return true;
@@ -187,7 +187,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
 
     function getOperatorPoolId(address _operAddr) external view override returns (uint8) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingOperator(_operAddr)) {
                 return poolIdArray[i];
@@ -198,7 +198,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
 
     function getValidatorPoolId(bytes calldata _pubkey) external view override returns (uint8) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             address nodeRegistry = getNodeRegistry(poolIdArray[i]);
             if (INodeRegistry(nodeRegistry).isExistingPubkey(_pubkey)) {
                 return poolIdArray[i];
@@ -270,7 +270,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
 
     function isExistingPoolId(uint8 _poolId) public view override returns (bool) {
         uint256 poolCount = getPoolCount();
-        for (uint256 i = 0; i < poolCount; i++) {
+        for (uint256 i; i < poolCount; i++) {
             if (poolIdArray[i] == _poolId) {
                 return true;
             }

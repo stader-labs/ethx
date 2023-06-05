@@ -591,7 +591,7 @@ contract PermissionedNodeRegistry is
         uint256 endIndex = startIndex + _pageSize;
         endIndex = endIndex > nextValidatorId ? nextValidatorId : endIndex;
         Validator[] memory validators = new Validator[](_pageSize);
-        uint256 validatorCount = 0;
+        uint256 validatorCount;
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (isActiveValidator(i)) {
                 validators[validatorCount] = validatorRegistry[i];
