@@ -27,6 +27,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     uint256 public constant ER_CHANGE_MAX_BPS = 10000;
     uint256 public override erChangeLimit;
     uint256 public constant MIN_TRUSTED_NODES = 5;
+    uint256 public override trustedNodeChangeCoolingPeriod;
 
     /// @inheritdoc IStaderOracle
     uint256 public override reportingBlockNumberForWithdrawnValidators;
@@ -35,6 +36,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     /// @inheritdoc IStaderOracle
     uint256 public override lastReportedMAPDIndex;
     uint256 public override erInspectionModeStartBlock;
+    uint256 public override lastTrustedNodeCountChangeBlock;
 
     // indicate the health of protocol on beacon chain
     // enabled by `MANAGER` if heavy slashing on protocol on beacon chain
@@ -84,6 +86,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (isTrustedNode[_nodeAddress]) {
             revert NodeAlreadyTrusted();
         }
+        if (block.number < lastTrustedNodeCountChangeBlock + trustedNodeChangeCoolingPeriod) {
+            revert CooldownNotComplete();
+        }
+        lastTrustedNodeCountChangeBlock = block.number;
+
         isTrustedNode[_nodeAddress] = true;
         trustedNodesCount++;
 
@@ -97,6 +104,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (!isTrustedNode[_nodeAddress]) {
             revert NodeNotTrusted();
         }
+        if (block.number < lastTrustedNodeCountChangeBlock + trustedNodeChangeCoolingPeriod) {
+            revert CooldownNotComplete();
+        }
+        lastTrustedNodeCountChangeBlock = block.number;
+
         isTrustedNode[_nodeAddress] = false;
         trustedNodesCount--;
 
@@ -271,7 +283,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (_sdPriceData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
-        if (_sdPriceData.reportingBlockNumber % updateFrequencyMap[SD_PRICE_UF] > 0) {
+        if (_sdPriceData.reportingBlockNumber != getSDPriceReportableBlock()) {
             revert InvalidReportingBlock();
         }
         if (_sdPriceData.reportingBlockNumber <= lastReportedSDPriceData.reportingBlockNumber) {
@@ -282,6 +294,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         bytes32 nodeSubmissionKey = keccak256(abi.encode(msg.sender, _sdPriceData.reportingBlockNumber));
         bytes32 submissionCountKey = keccak256(abi.encode(_sdPriceData.reportingBlockNumber));
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        // clean the sd price array before the start of every round of submissions
+        if (submissionCount == 1) {
+            delete sdPrices;
+        }
         insertSDPrice(_sdPriceData.sdPriceInETH);
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
@@ -290,7 +306,6 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if ((submissionCount == (2 * trustedNodesCount) / 3 + 1)) {
             lastReportedSDPriceData = _sdPriceData;
             lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
-            delete sdPrices;
 
             // Emit SD Price updated event
             emit SDPriceUpdated(_sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
@@ -503,6 +518,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     function disableSafeMode() external override onlyRole(DEFAULT_ADMIN_ROLE) {
         safeMode = false;
         emit SafeModeDisabled();
+    }
+
+    function updateTrustedNodeChangeCoolingPeriod(uint256 _trustedNodeChangeCoolingPeriod) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        trustedNodeChangeCoolingPeriod = _trustedNodeChangeCoolingPeriod;
+        emit TrustedNodeChangeCoolingPeriodUpdated(_trustedNodeChangeCoolingPeriod);
     }
 
     //update the address of staderConfig

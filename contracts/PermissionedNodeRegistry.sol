@@ -203,7 +203,7 @@ contract PermissionedNodeRegistry is
         uint256 totalValidatorToDeposit;
         bool validatorPerOperatorGreaterThanZero = (validatorPerOperator > 0);
         if (validatorPerOperatorGreaterThanZero) {
-            for (uint256 i = 1; i < nextOperatorId; ) {
+            for (uint256 i = 1; i < nextOperatorId; i++) {
                 if (!operatorStructById[i].active) {
                     continue;
                 }
@@ -211,9 +211,6 @@ contract PermissionedNodeRegistry is
                 selectedOperatorCapacity[i] = Math.min(remainingOperatorCapacity[i], validatorPerOperator);
                 totalValidatorToDeposit += selectedOperatorCapacity[i];
                 remainingOperatorCapacity[i] -= selectedOperatorCapacity[i];
-                unchecked {
-                    ++i;
-                }
             }
         }
 
@@ -225,6 +222,7 @@ contract PermissionedNodeRegistry is
             uint256 i = operatorIdForExcessDeposit;
             do {
                 if (!operatorStructById[i].active) {
+                    i = (i % totalOperators) + 1;
                     continue;
                 }
                 uint256 remainingCapacity = validatorPerOperatorGreaterThanZero
@@ -425,7 +423,7 @@ contract PermissionedNodeRegistry is
      * @param _inputKeyCountLimit updated maximum key limit in the input
      */
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
         inputKeyCountLimit = _inputKeyCountLimit;
         emit UpdatedInputKeyCountLimit(inputKeyCountLimit);
     }

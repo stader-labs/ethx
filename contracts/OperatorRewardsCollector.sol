@@ -52,4 +52,10 @@ contract OperatorRewardsCollector is
         UtilLib.sendValue(operatorRewardsAddr, amount);
         emit Claimed(operatorRewardsAddr, amount);
     }
+
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
 }
