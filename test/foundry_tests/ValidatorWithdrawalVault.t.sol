@@ -340,12 +340,10 @@ contract ValidatorWithdrawalVaultTest is Test {
     }
 
     function test_updateOwner() public {
-        vm.expectRevert(IVaultProxy.CallerNotOwner.selector);
-        withdrawVault.updateOwner(vm.addr(203));
-
         assertEq(withdrawVault.owner(), staderAdmin);
         vm.prank(staderAdmin);
-        withdrawVault.updateOwner(vm.addr(203));
+        staderConfig.updateAdmin(vm.addr(203));
+        withdrawVault.updateOwner();
         assertEq(withdrawVault.owner(), vm.addr(203));
     }
 }
