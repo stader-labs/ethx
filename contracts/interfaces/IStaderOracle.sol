@@ -63,6 +63,14 @@ struct WithdrawnValidators {
     bytes[] sortedPubkeys;
 }
 
+struct ReadyToDepositValidators {
+    uint256 reportingBlockNumber;
+    address nodeRegistry;
+    bytes[] sortedReadyToDepositPubkeys;
+    bytes[] sortedFrontRunPubkeys;
+    bytes[] sortedInvalidSignaturePubkeys;
+}
+
 interface IStaderOracle {
     // Error
     error InvalidUpdate();
@@ -150,6 +158,23 @@ interface IStaderOracle {
         uint256 time
     );
     event WithdrawnValidatorsUpdated(uint256 block, address nodeRegistry, bytes[] pubkeys, uint256 time);
+    event ReadyToDepositValidatorsSubmitted(
+        address indexed from,
+        uint256 block,
+        address nodeRegistry,
+        bytes[] sortedReadyToDepositPubkeys,
+        bytes[] sortedFrontRunPubkeys,
+        bytes[] sortedInvalidSignaturePubkeys,
+        uint256 time
+    );
+    event ReadyToDepositValidatorsUpdated(
+        uint256 block,
+        address nodeRegistry,
+        bytes[] sortedReadyToDepositPubkeys,
+        bytes[] sortedFrontRunPubkeys,
+        bytes[] sortedInvalidSignaturePubkeys,
+        uint256 time
+    );
     event SafeModeEnabled();
     event SafeModeDisabled();
     event UpdatedStaderConfig(address staderConfig);
@@ -206,8 +231,16 @@ interface IStaderOracle {
     /// @notice Submit the withdrawn validators list to the oracle.
     /// @dev The function checks if the submitted data is for a valid and newer block,
     ///      and if the submission count reaches the required threshold, it updates the withdrawn validators list (NodeRegistry).
-    /// @param _withdrawnValidators The withdrawn validators data, including lastUpdatedBlockNumber and sorted pubkeys.
+    /// @param _withdrawnValidators The withdrawn validators data, including blockNumber and sorted pubkeys.
     function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators) external;
+
+    /**
+     * @notice submit the ready to deposit keys, front run keys and invalid signature keys
+     * @dev The function checks if the submitted data is for a valid and newer block,
+     *  and if the submission count reaches the required threshold, it updates the markValidatorReadyToDeposit (NodeRegistry).
+     * @param _readyToDepositValidators ready to deposit validators data, containing valid pubkeys, front run and invalid signature
+     */
+    function submitReadyToDepositValidators(ReadyToDepositValidators calldata _readyToDepositValidators) external;
 
     /**
      * @notice store the missed attestation penalty strike on validator
@@ -252,7 +285,11 @@ interface IStaderOracle {
 
     function erChangeLimit() external view returns (uint256);
 
-    function reportingBlockNumberForWithdrawnValidators() external view returns (uint256);
+    // returns the last reported block number of withdrawn validators
+    function lastReportingBlockNumberForWithdrawnValidators() external view returns (uint256);
+
+    // returns the last reported block number of ready to deposit validators
+    function lastReportingBlockNumberForReadyToDepositValidators() external view returns (uint256);
 
     // returns the count of trusted nodes
     function trustedNodesCount() external view returns (uint256);

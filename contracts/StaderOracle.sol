@@ -30,7 +30,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     uint256 public override trustedNodeChangeCoolingPeriod;
 
     /// @inheritdoc IStaderOracle
-    uint256 public override reportingBlockNumberForWithdrawnValidators;
+    uint256 public override lastReportingBlockNumberForWithdrawnValidators;
+    /// @inheritdoc IStaderOracle
+    uint256 public override lastReportingBlockNumberForReadyToDepositValidators;
     /// @inheritdoc IStaderOracle
     uint256 public override trustedNodesCount;
     /// @inheritdoc IStaderOracle
@@ -54,6 +56,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     bytes32 public constant VALIDATOR_STATS_UF = keccak256('VALIDATOR_STATS_UF'); // Validator Status Update Frequency Key
     bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256('WITHDRAWN_VALIDATORS_UF'); // Withdrawn Validator Update Frequency Key
     bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256('MISSED_ATTESTATION_PENALTY_UF'); // Missed Attestation Penalty Update Frequency Key
+    // Ready to Deposit Validators Update Frequency Key
+    bytes32 public constant READY_TO_DEPOSIT_VALIDATORS_UF = keccak256('READY_TO_DEPOSIT_VALIDATORS_UF');
     mapping(bytes32 => uint256) public updateFrequencyMap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -74,6 +78,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(VALIDATOR_STATS_UF, 7200);
         setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, 14400);
         setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, 50400);
+        setUpdateFrequency(READY_TO_DEPOSIT_VALIDATORS_UF, 7200);
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -445,9 +450,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         if (
             submissionCount == trustedNodesCount / 2 + 1 &&
-            _withdrawnValidators.reportingBlockNumber > reportingBlockNumberForWithdrawnValidators
+            _withdrawnValidators.reportingBlockNumber > lastReportingBlockNumberForWithdrawnValidators
         ) {
-            reportingBlockNumberForWithdrawnValidators = _withdrawnValidators.reportingBlockNumber;
+            lastReportingBlockNumberForWithdrawnValidators = _withdrawnValidators.reportingBlockNumber;
             INodeRegistry(_withdrawnValidators.nodeRegistry).withdrawnValidators(_withdrawnValidators.sortedPubkeys);
 
             // Emit withdrawn validators updated event
@@ -455,6 +460,80 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
                 _withdrawnValidators.reportingBlockNumber,
                 _withdrawnValidators.nodeRegistry,
                 _withdrawnValidators.sortedPubkeys,
+                block.timestamp
+            );
+        }
+    }
+
+    /// @inheritdoc IStaderOracle
+    function submitReadyToDepositValidators(ReadyToDepositValidators calldata _readyToDepositValidators)
+        external
+        override
+        nonReentrant
+        trustedNodeOnly
+        checkMinTrustedNodes
+        whenNotPaused
+    {
+        if (_readyToDepositValidators.reportingBlockNumber >= block.number) {
+            revert ReportingFutureBlockData();
+        }
+        if (_readyToDepositValidators.reportingBlockNumber % updateFrequencyMap[READY_TO_DEPOSIT_VALIDATORS_UF] > 0) {
+            revert InvalidReportingBlock();
+        }
+
+        bytes memory encodedPubkeys = abi.encode(
+            _readyToDepositValidators.sortedReadyToDepositPubkeys,
+            _readyToDepositValidators.sortedFrontRunPubkeys,
+            _readyToDepositValidators.sortedInvalidSignaturePubkeys
+        );
+
+        // Get submission keys
+        bytes32 nodeSubmissionKey = keccak256(
+            abi.encode(
+                msg.sender,
+                _readyToDepositValidators.reportingBlockNumber,
+                _readyToDepositValidators.nodeRegistry,
+                encodedPubkeys
+            )
+        );
+        bytes32 submissionCountKey = keccak256(
+            abi.encode(
+                _readyToDepositValidators.reportingBlockNumber,
+                _readyToDepositValidators.nodeRegistry,
+                encodedPubkeys
+            )
+        );
+
+        uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
+        // Emit Ready To Deposit validators submitted event
+        emit ReadyToDepositValidatorsSubmitted(
+            msg.sender,
+            _readyToDepositValidators.reportingBlockNumber,
+            _readyToDepositValidators.nodeRegistry,
+            _readyToDepositValidators.sortedReadyToDepositPubkeys,
+            _readyToDepositValidators.sortedFrontRunPubkeys,
+            _readyToDepositValidators.sortedInvalidSignaturePubkeys,
+            block.timestamp
+        );
+
+        if (
+            submissionCount == trustedNodesCount / 2 + 1 &&
+            _readyToDepositValidators.reportingBlockNumber > lastReportingBlockNumberForReadyToDepositValidators
+        ) {
+            lastReportingBlockNumberForReadyToDepositValidators = _readyToDepositValidators.reportingBlockNumber;
+            INodeRegistry(_readyToDepositValidators.nodeRegistry).markValidatorReadyToDeposit(
+                _readyToDepositValidators.sortedReadyToDepositPubkeys,
+                _readyToDepositValidators.sortedFrontRunPubkeys,
+                _readyToDepositValidators.sortedInvalidSignaturePubkeys
+            );
+
+            // Emit Ready To Deposit validators updated event
+            emit ReadyToDepositValidatorsUpdated(
+                _readyToDepositValidators.reportingBlockNumber,
+                _readyToDepositValidators.nodeRegistry,
+                _readyToDepositValidators.sortedReadyToDepositPubkeys,
+                _readyToDepositValidators.sortedFrontRunPubkeys,
+                _readyToDepositValidators.sortedInvalidSignaturePubkeys,
                 block.timestamp
             );
         }
