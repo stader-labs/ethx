@@ -33,6 +33,7 @@ contract VaultProxy is IVaultProxy {
         id = _id;
         staderConfig = IStaderConfig(_staderConfig);
         owner = staderConfig.getAdmin();
+        UtilLib.checkNonZeroAddress(owner);
     }
 
     /**route all call to this proxy contract to the respective latest vault contract
@@ -42,6 +43,7 @@ contract VaultProxy is IVaultProxy {
         address vaultImplementation = isValidatorWithdrawalVault
             ? staderConfig.getValidatorWithdrawalVaultImplementation()
             : staderConfig.getNodeELRewardVaultImplementation();
+        UtilLib.checkNonZeroAddress(vaultImplementation);
         (bool success, bytes memory data) = vaultImplementation.delegatecall(_input);
         if (!success) {
             revert(string(data));
