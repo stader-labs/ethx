@@ -48,7 +48,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     /// @inheritdoc IStaderOracle
     mapping(uint8 => uint256) public override lastReportingBlockNumberForWithdrawnValidatorsByPoolId;
     /// @inheritdoc IStaderOracle
-    mapping(uint8 => uint256) public override lastReportingBlockNumberForReadyToDepositValidatorsByPoolId;
+    mapping(uint8 => uint256) public override lastReportingBlockNumberForValidatorVerificationDetailByPoolId;
 
     uint256[] private sdPrices;
 
@@ -58,7 +58,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256('WITHDRAWN_VALIDATORS_UF'); // Withdrawn Validator Update Frequency Key
     bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256('MISSED_ATTESTATION_PENALTY_UF'); // Missed Attestation Penalty Update Frequency Key
     // Ready to Deposit Validators Update Frequency Key
-    bytes32 public constant READY_TO_DEPOSIT_VALIDATORS_UF = keccak256('READY_TO_DEPOSIT_VALIDATORS_UF');
+    bytes32 public constant VALIDATOR_VERIFICATION_DETAIL_UF = keccak256('VALIDATOR_VERIFICATION_DETAIL_UF');
     mapping(bytes32 => uint256) public updateFrequencyMap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -79,7 +79,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(VALIDATOR_STATS_UF, 7200);
         setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, 14400);
         setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, 50400);
-        setUpdateFrequency(READY_TO_DEPOSIT_VALIDATORS_UF, 7200);
+        setUpdateFrequency(VALIDATOR_VERIFICATION_DETAIL_UF, 7200);
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -471,7 +471,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitReadyToDepositValidators(ReadyToDepositValidators calldata _readyToDepositValidators)
+    function submitValidatorVerificationDetail(ValidatorVerificationDetail calldata _validatorVerificationDetail)
         external
         override
         nonReentrant
@@ -479,66 +479,72 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         checkMinTrustedNodes
         whenNotPaused
     {
-        if (_readyToDepositValidators.reportingBlockNumber >= block.number) {
+        if (_validatorVerificationDetail.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
-        if (_readyToDepositValidators.reportingBlockNumber % updateFrequencyMap[READY_TO_DEPOSIT_VALIDATORS_UF] > 0) {
+        if (
+            _validatorVerificationDetail.reportingBlockNumber % updateFrequencyMap[VALIDATOR_VERIFICATION_DETAIL_UF] > 0
+        ) {
             revert InvalidReportingBlock();
         }
 
         bytes memory encodedPubkeys = abi.encode(
-            _readyToDepositValidators.sortedReadyToDepositPubkeys,
-            _readyToDepositValidators.sortedFrontRunPubkeys,
-            _readyToDepositValidators.sortedInvalidSignaturePubkeys
+            _validatorVerificationDetail.sortedReadyToDepositPubkeys,
+            _validatorVerificationDetail.sortedFrontRunPubkeys,
+            _validatorVerificationDetail.sortedInvalidSignaturePubkeys
         );
 
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
             abi.encode(
                 msg.sender,
-                _readyToDepositValidators.poolId,
-                _readyToDepositValidators.reportingBlockNumber,
+                _validatorVerificationDetail.poolId,
+                _validatorVerificationDetail.reportingBlockNumber,
                 encodedPubkeys
             )
         );
         bytes32 submissionCountKey = keccak256(
-            abi.encode(_readyToDepositValidators.poolId, _readyToDepositValidators.reportingBlockNumber, encodedPubkeys)
+            abi.encode(
+                _validatorVerificationDetail.poolId,
+                _validatorVerificationDetail.reportingBlockNumber,
+                encodedPubkeys
+            )
         );
 
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
-        // Emit Ready To Deposit validators submitted event
-        emit ReadyToDepositValidatorsSubmitted(
+        // Emit validator verification detail submitted event
+        emit ValidatorVerificationDetailSubmitted(
             msg.sender,
-            _readyToDepositValidators.poolId,
-            _readyToDepositValidators.reportingBlockNumber,
-            _readyToDepositValidators.sortedReadyToDepositPubkeys,
-            _readyToDepositValidators.sortedFrontRunPubkeys,
-            _readyToDepositValidators.sortedInvalidSignaturePubkeys,
+            _validatorVerificationDetail.poolId,
+            _validatorVerificationDetail.reportingBlockNumber,
+            _validatorVerificationDetail.sortedReadyToDepositPubkeys,
+            _validatorVerificationDetail.sortedFrontRunPubkeys,
+            _validatorVerificationDetail.sortedInvalidSignaturePubkeys,
             block.timestamp
         );
 
         if (
             submissionCount == trustedNodesCount / 2 + 1 &&
-            _readyToDepositValidators.reportingBlockNumber >
-            lastReportingBlockNumberForReadyToDepositValidatorsByPoolId[_readyToDepositValidators.poolId]
+            _validatorVerificationDetail.reportingBlockNumber >
+            lastReportingBlockNumberForValidatorVerificationDetailByPoolId[_validatorVerificationDetail.poolId]
         ) {
-            lastReportingBlockNumberForReadyToDepositValidatorsByPoolId[
-                _readyToDepositValidators.poolId
-            ] = _readyToDepositValidators.reportingBlockNumber;
-            INodeRegistry(IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_readyToDepositValidators.poolId))
+            lastReportingBlockNumberForValidatorVerificationDetailByPoolId[
+                _validatorVerificationDetail.poolId
+            ] = _validatorVerificationDetail.reportingBlockNumber;
+            INodeRegistry(IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_validatorVerificationDetail.poolId))
                 .markValidatorReadyToDeposit(
-                    _readyToDepositValidators.sortedReadyToDepositPubkeys,
-                    _readyToDepositValidators.sortedFrontRunPubkeys,
-                    _readyToDepositValidators.sortedInvalidSignaturePubkeys
+                    _validatorVerificationDetail.sortedReadyToDepositPubkeys,
+                    _validatorVerificationDetail.sortedFrontRunPubkeys,
+                    _validatorVerificationDetail.sortedInvalidSignaturePubkeys
                 );
 
-            // Emit Ready To Deposit validators updated event
-            emit ReadyToDepositValidatorsUpdated(
-                _readyToDepositValidators.poolId,
-                _readyToDepositValidators.reportingBlockNumber,
-                _readyToDepositValidators.sortedReadyToDepositPubkeys,
-                _readyToDepositValidators.sortedFrontRunPubkeys,
-                _readyToDepositValidators.sortedInvalidSignaturePubkeys,
+            // Emit validator verification detail updated event
+            emit ValidatorVerificationDetailUpdated(
+                _validatorVerificationDetail.poolId,
+                _validatorVerificationDetail.reportingBlockNumber,
+                _validatorVerificationDetail.sortedReadyToDepositPubkeys,
+                _validatorVerificationDetail.sortedFrontRunPubkeys,
+                _validatorVerificationDetail.sortedInvalidSignaturePubkeys,
                 block.timestamp
             );
         }
@@ -656,9 +662,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, _updateFrequency);
     }
 
-    function setReadyToDepositValidatorsUpdateFrequency(uint256 _updateFrequency) external override {
+    function setValidatorVerificationDetailUpdateFrequency(uint256 _updateFrequency) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        setUpdateFrequency(READY_TO_DEPOSIT_VALIDATORS_UF, _updateFrequency);
+        setUpdateFrequency(VALIDATOR_VERIFICATION_DETAIL_UF, _updateFrequency);
     }
 
     function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external override {
@@ -701,8 +707,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return getReportableBlockFor(WITHDRAWN_VALIDATORS_UF);
     }
 
-    function getReadyToDepositValidatorReportableBlock() external view override returns (uint256) {
-        return getReportableBlockFor(READY_TO_DEPOSIT_VALIDATORS_UF);
+    function getValidatorVerificationDetailReportableBlock() external view override returns (uint256) {
+        return getReportableBlockFor(VALIDATOR_VERIFICATION_DETAIL_UF);
     }
 
     function getMissedAttestationPenaltyReportableBlock() public view override returns (uint256) {

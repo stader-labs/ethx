@@ -63,7 +63,7 @@ struct WithdrawnValidators {
     bytes[] sortedPubkeys;
 }
 
-struct ReadyToDepositValidators {
+struct ValidatorVerificationDetail {
     uint8 poolId;
     uint256 reportingBlockNumber;
     bytes[] sortedReadyToDepositPubkeys;
@@ -158,7 +158,7 @@ interface IStaderOracle {
         uint256 time
     );
     event WithdrawnValidatorsUpdated(uint8 poolId, uint256 block, bytes[] pubkeys, uint256 time);
-    event ReadyToDepositValidatorsSubmitted(
+    event ValidatorVerificationDetailSubmitted(
         address indexed from,
         uint8 poolId,
         uint256 block,
@@ -167,7 +167,7 @@ interface IStaderOracle {
         bytes[] sortedInvalidSignaturePubkeys,
         uint256 time
     );
-    event ReadyToDepositValidatorsUpdated(
+    event ValidatorVerificationDetailUpdated(
         uint8 poolId,
         uint256 block,
         bytes[] sortedReadyToDepositPubkeys,
@@ -238,9 +238,10 @@ interface IStaderOracle {
      * @notice submit the ready to deposit keys, front run keys and invalid signature keys
      * @dev The function checks if the submitted data is for a valid and newer block,
      *  and if the submission count reaches the required threshold, it updates the markValidatorReadyToDeposit (NodeRegistry).
-     * @param _readyToDepositValidators ready to deposit validators data, containing valid pubkeys, front run and invalid signature
+     * @param _validatorVerificationDetail validator verification data, containing valid pubkeys, front run and invalid signature
      */
-    function submitReadyToDepositValidators(ReadyToDepositValidators calldata _readyToDepositValidators) external;
+    function submitValidatorVerificationDetail(ValidatorVerificationDetail calldata _validatorVerificationDetail)
+        external;
 
     /**
      * @notice store the missed attestation penalty strike on validator
@@ -264,7 +265,7 @@ interface IStaderOracle {
 
     function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external;
 
-    function setReadyToDepositValidatorsUpdateFrequency(uint256 _updateFrequency) external;
+    function setValidatorVerificationDetailUpdateFrequency(uint256 _updateFrequency) external;
 
     function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency) external;
 
@@ -290,8 +291,8 @@ interface IStaderOracle {
     // returns the last reported block number of withdrawn validators for a poolId
     function lastReportingBlockNumberForWithdrawnValidatorsByPoolId(uint8) external view returns (uint256);
 
-    // returns the last reported block number of ready to deposit validators for a poolId
-    function lastReportingBlockNumberForReadyToDepositValidatorsByPoolId(uint8) external view returns (uint256);
+    // returns the last reported block number of validator verification detail for a poolId
+    function lastReportingBlockNumberForValidatorVerificationDetailByPoolId(uint8) external view returns (uint256);
 
     // returns the count of trusted nodes
     function trustedNodesCount() external view returns (uint256);
@@ -320,7 +321,7 @@ interface IStaderOracle {
 
     function getWithdrawnValidatorReportableBlock() external view returns (uint256);
 
-    function getReadyToDepositValidatorReportableBlock() external view returns (uint256);
+    function getValidatorVerificationDetailReportableBlock() external view returns (uint256);
 
     function getMissedAttestationPenaltyReportableBlock() external view returns (uint256);
 
