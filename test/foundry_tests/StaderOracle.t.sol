@@ -8,6 +8,7 @@ import '../../contracts/StaderConfig.sol';
 
 import '../mocks/StaderTokenMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
+import '../mocks/PoolUtilsMock.sol';
 
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -20,7 +21,7 @@ contract StaderOracleTest is Test {
     StaderOracle staderOracle;
     SocializingPool permissionedSP;
     SocializingPool permissionlessSP;
-
+    PoolUtilsMock poolUtils;
     StaderConfig staderConfig;
     StaderTokenMock staderToken;
 
@@ -67,11 +68,14 @@ contract StaderOracleTest is Test {
         permissionlessSP = SocializingPool(payable(permissionlessSPProxy));
         permissionlessSP.initialize(staderAdmin, address(staderConfig));
 
+        poolUtils = new PoolUtilsMock(address(staderConfig));
+
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderOracle(address(staderOracle));
         staderConfig.updatePermissionedSocializingPool(address(permissionedSP));
         staderConfig.updatePermissionlessSocializingPool(address(permissionlessSP));
         staderConfig.updateStaderToken(address(staderToken));
+        staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
     }
@@ -364,23 +368,181 @@ contract StaderOracleTest is Test {
         assertEq(lastSDPrice, 1); // but median sd price is 1
     }
 
-    function test_submitMerkleData() public {
-        address trustedNode = vm.addr(123);
-        vm.prank(staderManager);
-        staderOracle.addTrustedNode(trustedNode);
+    function test_merkleReportableBlock() public {
+        vm.mockCall(
+            address(poolUtils),
+            abi.encodeWithSelector(IPoolUtils.getSocializingPoolAddress.selector),
+            abi.encode(address(permissionlessSP))
+        );
 
+        uint256 reportableBlock = staderOracle.getMerkleRootReportableBlockByPoolId(1);
+        assertEq(staderConfig.getSocializingPoolCycleDuration(), 0);
+        assertEq(reportableBlock, 1);
+
+        vm.prank(staderManager);
+        staderConfig.updateSocializingPoolCycleDuration(100);
+
+        reportableBlock = staderOracle.getMerkleRootReportableBlockByPoolId(1);
+        assertEq(staderConfig.getSocializingPoolCycleDuration(), 100);
+        assertEq(reportableBlock, 101);
+    }
+
+    function test_submitMerkleData() public {
         RewardsData memory rewardsData = RewardsData({
             reportingBlockNumber: 12345,
             index: 1,
             merkleRoot: 0xc519b25edb1c5e9f374e77870577765f38af5983687097318df124630fbd7a70,
             poolId: 1,
-            operatorETHRewards: 1234,
-            userETHRewards: 1234,
-            protocolETHRewards: 1234,
-            operatorSDRewards: 1234
+            operatorETHRewards: 1111,
+            userETHRewards: 2222,
+            protocolETHRewards: 3333,
+            operatorSDRewards: 4444
         });
 
         vm.expectRevert(IStaderOracle.NotATrustedNode.selector);
         staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        address trustedNode1 = vm.addr(701);
+        address trustedNode2 = vm.addr(702);
+        address trustedNode3 = vm.addr(703);
+        address trustedNode4 = vm.addr(704);
+        address trustedNode5 = vm.addr(705);
+
+        vm.prank(staderManager);
+        staderOracle.addTrustedNode(trustedNode1);
+
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.InsufficientTrustedNodes.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        vm.startPrank(staderManager);
+        staderOracle.addTrustedNode(trustedNode2);
+        staderOracle.addTrustedNode(trustedNode3);
+        staderOracle.addTrustedNode(trustedNode4);
+        staderOracle.addTrustedNode(trustedNode5);
+        vm.stopPrank();
+
+        assertEq(block.number, 1);
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        vm.mockCall(
+            address(poolUtils),
+            abi.encodeWithSelector(IPoolUtils.getSocializingPoolAddress.selector),
+            abi.encode(address(permissionlessSP))
+        );
+
+        vm.prank(staderManager);
+        staderConfig.updateSocializingPoolCycleDuration(100);
+
+        uint256 reportingBlockNumber = staderOracle.getMerkleRootReportableBlockByPoolId(1);
+        rewardsData.reportingBlockNumber = reportingBlockNumber;
+
+        // current block num = 1, reportingBlockNum = 101
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        vm.roll(reportingBlockNumber);
+
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        // wait reportBlock to pass
+        vm.roll(reportingBlockNumber + 1);
+        rewardsData.reportingBlockNumber = 45; // try subimitting a wrong reportingBlock
+
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        // trying to submit for future index
+        rewardsData.reportingBlockNumber = reportingBlockNumber; // correct reporting blockNumber
+        rewardsData.index = 6; // wrong index
+
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.InvalidMerkleRootIndex.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        rewardsData.index = staderOracle.getCurrentRewardsIndexByPoolId(1); // correct index 1
+
+        // successful submission
+        vm.prank(trustedNode1);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        // tries to submit again
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.DuplicateSubmissionFromNode.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        // let's suppose it submitted some wrong data earlier
+        // oracle can submit again with modified data
+
+        rewardsData.operatorETHRewards = 100;
+        vm.prank(trustedNode1);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        // consensus submission
+        vm.prank(trustedNode3);
+        vm.expectRevert(ISocializingPool.InsufficientETHRewards.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        // send eth rewards to SocializingPool
+        uint256 totalEthRewards = rewardsData.userETHRewards +
+            rewardsData.protocolETHRewards +
+            rewardsData.operatorETHRewards;
+        vm.deal(address(permissionlessSP), totalEthRewards);
+
+        vm.prank(trustedNode3);
+        vm.expectRevert(ISocializingPool.InsufficientSDRewards.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        // send SD tokens to socializingPool
+        staderToken.transfer(address(permissionlessSP), rewardsData.operatorSDRewards);
+
+        // setup sspm and treasury address
+        StakePoolManagerMock sspm = new StakePoolManagerMock();
+        address treasury = vm.addr(3);
+
+        vm.prank(staderAdmin);
+        staderConfig.updateStakePoolManager(address(sspm));
+
+        vm.prank(staderManager);
+        staderConfig.updateStaderTreasury(treasury);
+
+        assertEq(staderToken.balanceOf(address(permissionlessSP)), rewardsData.operatorSDRewards);
+        assertEq(address(permissionlessSP).balance, totalEthRewards);
+        assertEq(treasury.balance, 0);
+        assertEq(address(sspm).balance, 0);
+        assertFalse(permissionlessSP.handledRewards(rewardsData.index));
+        assertEq(permissionlessSP.totalOperatorETHRewardsRemaining(), 0);
+        assertEq(permissionlessSP.totalOperatorSDRewardsRemaining(), 0);
+
+        vm.prank(trustedNode3);
+        // vm.expectRevert(ISocializingPool.InsufficientSDRewards.selector);
+        staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
+
+        assertTrue(permissionlessSP.handledRewards(rewardsData.index));
+        assertEq(staderToken.balanceOf(address(permissionlessSP)), rewardsData.operatorSDRewards);
+        assertEq(address(permissionlessSP).balance, rewardsData.operatorETHRewards);
+        assertEq(address(treasury).balance, rewardsData.protocolETHRewards);
+        assertEq(address(sspm).balance, rewardsData.userETHRewards);
+
+        assertEq(permissionlessSP.totalOperatorETHRewardsRemaining(), rewardsData.operatorETHRewards);
+        assertEq(permissionlessSP.totalOperatorSDRewardsRemaining(), rewardsData.operatorSDRewards);
+
+        // index = 1, has been completed till now
+
+        // vm.skip()
+        // // lets try submitting index = 3;
+
+        // rewardsData.index = 3;
+        // vm.prank(trustedNode1);
+        // staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
     }
 }
