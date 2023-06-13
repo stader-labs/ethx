@@ -235,7 +235,7 @@ contract SocializingPool is
 
         uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
         if (_index == 1) {
-            return (initialBlock, initialBlock + cycleDuration);
+            return (initialBlock, initialBlock + cycleDuration - 1);
         }
         if (rewardsDataMap[_index - 1].reportingBlockNumber != 0) {
             _startBlock = rewardsDataMap[_index - 1].reportingBlockNumber + 1;
