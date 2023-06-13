@@ -163,7 +163,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount == trustedNodesCount / 2 + 1 &&
+            submissionCount >= trustedNodesCount / 2 + 1 &&
             _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
         ) {
             updateWithInLimitER(
@@ -270,7 +270,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
-        if ((submissionCount == trustedNodesCount / 2 + 1)) {
+        if ((submissionCount >= trustedNodesCount / 2 + 1)) {
             address socializingPool = IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(
                 _rewardsData.poolId
             );
@@ -309,7 +309,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
         // price can be derived once more than 66% percent oracles have submitted price
-        if ((submissionCount == (2 * trustedNodesCount) / 3 + 1)) {
+        if ((submissionCount >= (2 * trustedNodesCount) / 3 + 1)) {
             lastReportedSDPriceData = _sdPriceData;
             lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
 
@@ -390,7 +390,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount == trustedNodesCount / 2 + 1 &&
+            submissionCount >= trustedNodesCount / 2 + 1 &&
             _validatorStats.reportingBlockNumber > validatorStats.reportingBlockNumber
         ) {
             validatorStats = _validatorStats;
@@ -450,7 +450,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount == trustedNodesCount / 2 + 1 &&
+            submissionCount >= trustedNodesCount / 2 + 1 &&
             _withdrawnValidators.reportingBlockNumber >
             lastReportingBlockNumberForWithdrawnValidatorsByPoolId[_withdrawnValidators.poolId]
         ) {
@@ -524,7 +524,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount == trustedNodesCount / 2 + 1 &&
+            submissionCount >= trustedNodesCount / 2 + 1 &&
             _validatorVerificationDetail.reportingBlockNumber >
             lastReportingBlockNumberForValidatorVerificationDetailByPoolId[_validatorVerificationDetail.poolId]
         ) {
@@ -584,7 +584,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
             _mapd.sortedPubkeys
         );
 
-        if ((submissionCount == trustedNodesCount / 2 + 1)) {
+        if ((submissionCount >= trustedNodesCount / 2 + 1)) {
             lastReportedMAPDIndex = _mapd.index;
             uint256 keyCount = _mapd.sortedPubkeys.length;
             for (uint256 i; i < keyCount; ) {
