@@ -43,7 +43,6 @@ contract VaultProxy is IVaultProxy {
         address vaultImplementation = isValidatorWithdrawalVault
             ? staderConfig.getValidatorWithdrawalVaultImplementation()
             : staderConfig.getNodeELRewardVaultImplementation();
-        UtilLib.checkNonZeroAddress(vaultImplementation);
         (bool success, bytes memory data) = vaultImplementation.delegatecall(_input);
         if (!success) {
             revert(string(data));
