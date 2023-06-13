@@ -33,6 +33,7 @@ contract VaultProxy is IVaultProxy {
         id = _id;
         staderConfig = IStaderConfig(_staderConfig);
         owner = staderConfig.getAdmin();
+        UtilLib.checkNonZeroAddress(owner);
     }
 
     /**route all call to this proxy contract to the respective latest vault contract

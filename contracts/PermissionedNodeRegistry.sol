@@ -243,7 +243,7 @@ contract PermissionedNodeRegistry is
      * @notice move validator state from PRE_DEPOSIT to DEPOSIT
      * after verifying pre-sign message, front running and deposit signature.
      * report front run and invalid signature pubkeys
-     * @dev only `OPERATOR` role can call
+     * @dev only stader oracle contract can call
      * @param _readyToDepositPubkey array of pubkeys ready to be moved to DEPOSIT state
      * @param _frontRunPubkey array for pubkeys which got front deposit
      * @param _invalidSignaturePubkey array of pubkey which has invalid signature for deposit
@@ -253,7 +253,7 @@ contract PermissionedNodeRegistry is
         bytes[] calldata _frontRunPubkey,
         bytes[] calldata _invalidSignaturePubkey
     ) external override nonReentrant whenNotPaused {
-        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
         uint256 readyToDepositValidatorsLength = _readyToDepositPubkey.length;
         uint256 frontRunValidatorsLength = _frontRunPubkey.length;
         uint256 invalidSignatureValidatorsLength = _invalidSignaturePubkey.length;
