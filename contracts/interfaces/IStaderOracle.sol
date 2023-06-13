@@ -58,9 +58,17 @@ struct ValidatorStats {
 }
 
 struct WithdrawnValidators {
+    uint8 poolId;
     uint256 reportingBlockNumber;
-    address nodeRegistry;
     bytes[] sortedPubkeys;
+}
+
+struct ValidatorVerificationDetail {
+    uint8 poolId;
+    uint256 reportingBlockNumber;
+    bytes[] sortedReadyToDepositPubkeys;
+    bytes[] sortedFrontRunPubkeys;
+    bytes[] sortedInvalidSignaturePubkeys;
 }
 
 interface IStaderOracle {
@@ -144,12 +152,29 @@ interface IStaderOracle {
     );
     event WithdrawnValidatorsSubmitted(
         address indexed from,
+        uint8 poolId,
         uint256 block,
-        address nodeRegistry,
         bytes[] pubkeys,
         uint256 time
     );
-    event WithdrawnValidatorsUpdated(uint256 block, address nodeRegistry, bytes[] pubkeys, uint256 time);
+    event WithdrawnValidatorsUpdated(uint8 poolId, uint256 block, bytes[] pubkeys, uint256 time);
+    event ValidatorVerificationDetailSubmitted(
+        address indexed from,
+        uint8 poolId,
+        uint256 block,
+        bytes[] sortedReadyToDepositPubkeys,
+        bytes[] sortedFrontRunPubkeys,
+        bytes[] sortedInvalidSignaturePubkeys,
+        uint256 time
+    );
+    event ValidatorVerificationDetailUpdated(
+        uint8 poolId,
+        uint256 block,
+        bytes[] sortedReadyToDepositPubkeys,
+        bytes[] sortedFrontRunPubkeys,
+        bytes[] sortedInvalidSignaturePubkeys,
+        uint256 time
+    );
     event SafeModeEnabled();
     event SafeModeDisabled();
     event UpdatedStaderConfig(address staderConfig);
@@ -206,8 +231,17 @@ interface IStaderOracle {
     /// @notice Submit the withdrawn validators list to the oracle.
     /// @dev The function checks if the submitted data is for a valid and newer block,
     ///      and if the submission count reaches the required threshold, it updates the withdrawn validators list (NodeRegistry).
-    /// @param _withdrawnValidators The withdrawn validators data, including lastUpdatedBlockNumber and sorted pubkeys.
+    /// @param _withdrawnValidators The withdrawn validators data, including blockNumber and sorted pubkeys.
     function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators) external;
+
+    /**
+     * @notice submit the ready to deposit keys, front run keys and invalid signature keys
+     * @dev The function checks if the submitted data is for a valid and newer block,
+     *  and if the submission count reaches the required threshold, it updates the markValidatorReadyToDeposit (NodeRegistry).
+     * @param _validatorVerificationDetail validator verification data, containing valid pubkeys, front run and invalid signature
+     */
+    function submitValidatorVerificationDetail(ValidatorVerificationDetail calldata _validatorVerificationDetail)
+        external;
 
     /**
      * @notice store the missed attestation penalty strike on validator
@@ -231,6 +265,8 @@ interface IStaderOracle {
 
     function setValidatorStatsUpdateFrequency(uint256 _updateFrequency) external;
 
+    function setValidatorVerificationDetailUpdateFrequency(uint256 _updateFrequency) external;
+
     function setWithdrawnValidatorsUpdateFrequency(uint256 _updateFrequency) external;
 
     function setMissedAttestationPenaltyUpdateFrequency(uint256 _updateFrequency) external;
@@ -252,7 +288,11 @@ interface IStaderOracle {
 
     function erChangeLimit() external view returns (uint256);
 
-    function reportingBlockNumberForWithdrawnValidators() external view returns (uint256);
+    // returns the last reported block number of withdrawn validators for a poolId
+    function lastReportingBlockNumberForWithdrawnValidatorsByPoolId(uint8) external view returns (uint256);
+
+    // returns the last reported block number of validator verification detail for a poolId
+    function lastReportingBlockNumberForValidatorVerificationDetailByPoolId(uint8) external view returns (uint256);
 
     // returns the count of trusted nodes
     function trustedNodesCount() external view returns (uint256);
@@ -280,6 +320,8 @@ interface IStaderOracle {
     function getValidatorStatsReportableBlock() external view returns (uint256);
 
     function getWithdrawnValidatorReportableBlock() external view returns (uint256);
+
+    function getValidatorVerificationDetailReportableBlock() external view returns (uint256);
 
     function getMissedAttestationPenaltyReportableBlock() external view returns (uint256);
 
