@@ -223,22 +223,27 @@ contract SocializingPool is
         if (_index == 0) {
             revert InvalidCycleIndex();
         }
-        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
-        // for 1st cycle
-        if (_index == 1) {
-            return (initialBlock, initialBlock + cycleDuration);
-        }
 
-        // for past cycles
-        _startBlock = rewardsDataMap[_index - 1].reportingBlockNumber + 1;
-        _endBlock = rewardsDataMap[_index].reportingBlockNumber;
+        // past cycles
+        if (rewardsDataMap[_index].reportingBlockNumber != 0) {
+            _startBlock = rewardsDataMap[_index - 1].reportingBlockNumber + 1;
+            _endBlock = rewardsDataMap[_index].reportingBlockNumber;
+            return (_startBlock, _endBlock);
+        }
 
         // for current cycle
-        if (rewardsDataMap[_index].reportingBlockNumber == 0) {
-            if (rewardsDataMap[_index - 1].reportingBlockNumber == 0) {
-                revert FutureCycleIndex();
-            }
-            _endBlock = rewardsDataMap[_index - 1].reportingBlockNumber + cycleDuration;
+
+        uint256 cycleDuration = staderConfig.getSocializingPoolCycleDuration();
+        if (_index == 1) {
+            return (initialBlock, initialBlock + cycleDuration - 1);
         }
+        if (rewardsDataMap[_index - 1].reportingBlockNumber != 0) {
+            _startBlock = rewardsDataMap[_index - 1].reportingBlockNumber + 1;
+            _endBlock = rewardsDataMap[_index - 1].reportingBlockNumber + cycleDuration;
+            return (_startBlock, _endBlock);
+        }
+
+        // everything else is a future cycle
+        revert FutureCycleIndex();
     }
 }

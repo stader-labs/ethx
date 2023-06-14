@@ -170,12 +170,10 @@ contract NodeELRewardVaultTest is Test {
     }
 
     function test_updateOwner() public {
-        vm.expectRevert(IVaultProxy.CallerNotOwner.selector);
-        nodeELRewardVault.updateOwner(vm.addr(203));
-
         assertEq(nodeELRewardVault.owner(), staderAdmin);
         vm.prank(staderAdmin);
-        nodeELRewardVault.updateOwner(vm.addr(203));
+        staderConfig.updateAdmin(vm.addr(203));
+        nodeELRewardVault.updateOwner();
         assertEq(nodeELRewardVault.owner(), vm.addr(203));
     }
 }
