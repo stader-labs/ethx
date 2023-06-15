@@ -221,7 +221,8 @@ contract StaderStakePoolsManager is
             address(this).balance,
             IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).ethRequestedForWithdraw()
         );
-        if (availableETHForNewDeposit == 0) {
+        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
+        if (availableETHForNewDeposit < ETH_PER_NODE) {
             revert InsufficientBalance();
         }
         (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) = IPoolSelector(
@@ -235,8 +236,7 @@ contract StaderStakePoolsManager is
                 continue;
             }
             address poolAddress = IPoolUtils(poolUtils).poolAddressById(poolIdArray[i]);
-            uint256 poolDepositSize = staderConfig.getStakedEthPerNode() -
-                IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
+            uint256 poolDepositSize = ETH_PER_NODE - IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
 
             lastExcessETHDepositBlock = block.number;
             //slither-disable-next-line arbitrary-send-eth
