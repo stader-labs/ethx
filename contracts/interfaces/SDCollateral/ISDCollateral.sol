@@ -11,11 +11,6 @@ interface ISDCollateral {
         string units;
     }
 
-    struct WithdrawRequestInfo {
-        uint256 lastWithdrawReqTimestamp;
-        uint256 totalSDWithdrawReqAmount;
-    }
-
     // errors
     error InsufficientSDToWithdraw(uint256 operatorSDCollateral);
     error InvalidPoolId();
