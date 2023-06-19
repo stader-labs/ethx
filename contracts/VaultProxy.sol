@@ -14,7 +14,9 @@ contract VaultProxy is IVaultProxy {
     address public override owner;
     IStaderConfig public override staderConfig;
 
-    constructor() {}
+    constructor() {
+        isInitialized = true;
+    }
 
     //initialise the vault proxy with data
     function initialise(
