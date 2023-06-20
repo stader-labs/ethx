@@ -59,7 +59,9 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UtilLib.checkNonZeroAddress(_newPoolAddress);
-        verifyNewPool(_poolId, _newPoolAddress);
+        if (INodeRegistry(IStaderPoolBase(_newPoolAddress).getNodeRegistry()).POOL_ID() != _poolId) {
+            revert MismatchingPoolId();
+        }
         poolAddressById[_poolId] = _newPoolAddress;
         emit PoolAddressUpdated(_poolId, _newPoolAddress);
     }

@@ -44,24 +44,34 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
 
     /**
      * @notice calculates the count of validator to deposit on beacon chain for a pool based on target weight and supply
-     * @param _newValidatorToRegister new validator that can be deposited for pool `_poolId` based on supply
+     * @param _availableETHForNewDeposit ETH available in SSPM for validator deposit
      * @return selectedPoolCapacity validator count to deposit for pool
      */
-    function computePoolAllocationForDeposit(uint8 _poolId, uint256 _newValidatorToRegister)
+    function computePoolAllocationForDeposit(uint8 _poolId, uint256 _availableETHForNewDeposit)
         external
         view
         override
         returns (uint256 selectedPoolCapacity)
     {
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
-        uint256 totalActiveValidatorCount = poolUtils.getTotalActiveValidatorCount();
-        uint256 totalValidatorsRequired = (totalActiveValidatorCount + _newValidatorToRegister);
+        uint256 ETH_PER_NODE = staderConfig.getStakedEthPerNode();
+        uint8[] memory poolIdArray = IPoolUtils(poolUtils).getPoolIdArray();
+        uint256 poolCount = poolIdArray.length;
+        uint256 totalStakedETH = _availableETHForNewDeposit;
+        for (uint8 i = 0; i < poolCount; i++) {
+            uint8 poolID = poolIdArray[i];
+            totalStakedETH +=
+                poolUtils.getActiveValidatorCountByPool(poolID) *
+                (ETH_PER_NODE - poolUtils.getCollateralETH(poolID));
+        }
+        uint256 poolTotalETHTarget = (poolWeights[_poolId] * totalStakedETH) / POOL_WEIGHTS_SUM;
+        uint256 poolDepositSize = (ETH_PER_NODE - poolUtils.getCollateralETH(_poolId));
+        uint256 poolTotalTarget = poolTotalETHTarget / poolDepositSize;
         uint256 remainingPoolCapacity = poolUtils.getQueuedValidatorCountByPool(_poolId);
         uint256 currentActiveValidators = poolUtils.getActiveValidatorCountByPool(_poolId);
-        uint256 poolTotalTarget = (poolWeights[_poolId] * totalValidatorsRequired) / POOL_WEIGHTS_SUM;
         (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);
         selectedPoolCapacity = Math.min(
-            Math.min(poolAllocationMaxSize, _newValidatorToRegister),
+            Math.min(poolAllocationMaxSize, _availableETHForNewDeposit / poolDepositSize),
             Math.min(remainingPoolCapacity, remainingPoolTarget)
         );
     }
