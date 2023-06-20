@@ -469,28 +469,43 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     // SETTER HELPERS
     function setConstant(bytes32 key, uint256 val) internal {
+        if (constantsMap[key] == val) {
+            revert SameAsPreviousValue();
+        }
         constantsMap[key] = val;
         emit SetConstant(key, val);
     }
 
     function setVariable(bytes32 key, uint256 val) internal {
+        if (variablesMap[key] == val) {
+            revert SameAsPreviousValue();
+        }
         variablesMap[key] = val;
         emit SetConstant(key, val);
     }
 
     function setAccount(bytes32 key, address val) internal {
+        if (accountsMap[key] == val) {
+            revert SameAsPreviousValue();
+        }
         UtilLib.checkNonZeroAddress(val);
         accountsMap[key] = val;
         emit SetAccount(key, val);
     }
 
     function setContract(bytes32 key, address val) internal {
+        if (contractsMap[key] == val) {
+            revert SameAsPreviousValue();
+        }
         UtilLib.checkNonZeroAddress(val);
         contractsMap[key] = val;
         emit SetContract(key, val);
     }
 
     function setToken(bytes32 key, address val) internal {
+        if (tokensMap[key] == val) {
+            revert SameAsPreviousValue();
+        }
         UtilLib.checkNonZeroAddress(val);
         tokensMap[key] = val;
         emit SetToken(key, val);
