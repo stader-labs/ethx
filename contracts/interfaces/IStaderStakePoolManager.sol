@@ -5,7 +5,6 @@ pragma solidity 0.8.16;
 interface IStaderStakePoolManager {
     // Errors
     error InvalidDepositAmount();
-    error UnsupportedOperation();
     error InsufficientBalance();
     error TransferFailed();
     error PoolIdDoesNotExit();

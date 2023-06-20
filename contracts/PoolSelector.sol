@@ -64,9 +64,9 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
                 poolUtils.getActiveValidatorCountByPool(poolID) *
                 (ETH_PER_NODE - poolUtils.getCollateralETH(poolID));
         }
-        uint256 poolTotalETHTarget = (poolWeights[_poolId] * totalStakedETH) / POOL_WEIGHTS_SUM;
         uint256 poolDepositSize = (ETH_PER_NODE - poolUtils.getCollateralETH(_poolId));
-        uint256 poolTotalTarget = poolTotalETHTarget / poolDepositSize;
+        // compute poolTotalTarget based on poolTotalETHTarget derived from `totalStakedETH`
+        uint256 poolTotalTarget = ((poolWeights[_poolId] * totalStakedETH) / POOL_WEIGHTS_SUM) / poolDepositSize;
         uint256 remainingPoolCapacity = poolUtils.getQueuedValidatorCountByPool(_poolId);
         uint256 currentActiveValidators = poolUtils.getActiveValidatorCountByPool(_poolId);
         (, uint256 remainingPoolTarget) = SafeMath.trySub(poolTotalTarget, currentActiveValidators);

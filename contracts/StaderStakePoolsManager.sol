@@ -59,16 +59,6 @@ contract StaderStakePoolsManager is
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
-    // protection against accidental submissions by calling non-existent function
-    fallback() external payable {
-        revert UnsupportedOperation();
-    }
-
-    // protection against accidental submissions by calling non-existent function
-    receive() external payable {
-        revert UnsupportedOperation();
-    }
-
     // payable function for receiving execution layer rewards.
     function receiveExecutionLayerRewards() external payable override {
         emit ExecutionLayerRewardsReceived(msg.value);
