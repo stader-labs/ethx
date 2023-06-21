@@ -6,6 +6,7 @@ import '../../contracts/StaderConfig.sol';
 import '../../contracts/VaultProxy.sol';
 import '../../contracts/ValidatorWithdrawalVault.sol';
 import '../../contracts/OperatorRewardsCollector.sol';
+import '../../contracts/factory/VaultFactory.sol';
 
 import '../mocks/PoolUtilsMock.sol';
 import '../mocks/PenaltyMockForVault.sol';
@@ -26,8 +27,9 @@ contract ValidatorWithdrawalVaultTest is Test {
     uint256 validatorId;
 
     StaderConfig staderConfig;
-    VaultProxy withdrawVault;
+    address payable withdrawVaultClone;
     OperatorRewardsCollector operatorRC;
+    VaultFactory vaultFactory;
 
     function setUp() public {
         poolId = 1;
@@ -62,18 +64,25 @@ contract ValidatorWithdrawalVaultTest is Test {
         SDCollateralMock sdCollateral = new SDCollateralMock();
         ValidatorWithdrawalVault withdrawVaultImpl = new ValidatorWithdrawalVault();
 
+        VaultFactory vfImpl = new VaultFactory();
+        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), '');
+        vaultFactory = VaultFactory(address(vfProxy));
+        vaultFactory.initialize(staderAdmin, address(staderConfig));
+
         vm.startPrank(staderAdmin);
         staderConfig.updateAdmin(staderAdmin);
+        staderConfig.updateVaultFactory(address(vaultFactory));
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updatePenaltyContract(address(penaltyContract));
         staderConfig.updateSDCollateral(address(sdCollateral));
         staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.updateValidatorWithdrawalVaultImplementation(address(withdrawVaultImpl));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
+        vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(poolUtils.nodeRegistry()));
         vm.stopPrank();
 
-        withdrawVault = new VaultProxy();
-        withdrawVault.initialise(true, poolId, validatorId, address(staderConfig));
+        vm.prank(address(poolUtils.nodeRegistry()));
+        withdrawVaultClone = payable(vaultFactory.deployWithdrawVault(poolId, 1, 1, validatorId));
     }
 
     function test_JustToIncreaseCoverage() public {
@@ -86,48 +95,45 @@ contract ValidatorWithdrawalVaultTest is Test {
         );
         OperatorRewardsCollector operatorRC2 = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC2.initialize(staderAdmin, address(staderConfig));
-
-        VaultProxy withdrawVault2 = new VaultProxy();
-        withdrawVault2.initialise(true, poolId, validatorId, address(staderConfig));
     }
 
     function test_initialise() public {
-        assertTrue(withdrawVault.isInitialized());
+        assertTrue(VaultProxy(withdrawVaultClone).isInitialized());
 
         address randomUser = vm.addr(2342);
         vm.prank(randomUser);
         vm.expectRevert(IVaultProxy.AlreadyInitialized.selector);
-        withdrawVault.initialise(true, poolId, validatorId, address(staderConfig));
+        VaultProxy(withdrawVaultClone).initialise(true, poolId, validatorId, address(staderConfig));
 
-        assertEq(address(withdrawVault.staderConfig()), address(staderConfig));
-        assertEq(withdrawVault.owner(), staderAdmin);
-        assertTrue(withdrawVault.isValidatorWithdrawalVault());
-        assertEq(withdrawVault.poolId(), poolId);
-        assertEq(withdrawVault.id(), validatorId);
+        assertEq(address(VaultProxy(withdrawVaultClone).staderConfig()), address(staderConfig));
+        assertEq(VaultProxy(withdrawVaultClone).owner(), staderAdmin);
+        assertTrue(VaultProxy(withdrawVaultClone).isValidatorWithdrawalVault());
+        assertEq(VaultProxy(withdrawVaultClone).poolId(), poolId);
+        assertEq(VaultProxy(withdrawVaultClone).id(), validatorId);
     }
 
     function test_receive(uint64 randomPrivateKey, uint256 amount) public {
         vm.assume(randomPrivateKey > 0);
         address randomEOA = vm.addr(randomPrivateKey);
 
-        assertEq(address(withdrawVault).balance, 0);
+        assertEq(withdrawVaultClone.balance, 0);
         hoax(randomEOA, amount); // provides amount eth to user and makes it the caller for next call
-        (bool success, ) = payable(withdrawVault).call{value: amount}('');
+        (bool success, ) = withdrawVaultClone.call{value: amount}('');
         assertTrue(success);
-        assertEq(address(withdrawVault).balance, amount);
+        assertEq(withdrawVaultClone.balance, amount);
     }
 
     // NOTE: used uint128 to avoid arithmetic underflow overflow in calculateRewardShare
     function test_distributeRewards(uint128 rewardEth) public {
-        assertEq(address(withdrawVault).balance, 0);
+        assertEq(withdrawVaultClone.balance, 0);
         vm.expectRevert(IValidatorWithdrawalVault.NotEnoughRewardToDistribute.selector);
-        IValidatorWithdrawalVault(address(withdrawVault)).distributeRewards();
+        IValidatorWithdrawalVault(withdrawVaultClone).distributeRewards();
 
         vm.prank(staderManager);
         staderConfig.updateRewardsThreshold(8 ether);
 
         vm.assume(rewardEth > 0 && rewardEth <= 8 ether);
-        vm.deal(address(withdrawVault), rewardEth); // send rewardEth to withdrawVault
+        vm.deal(withdrawVaultClone, rewardEth); // send rewardEth to withdrawVault
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
@@ -140,10 +146,10 @@ contract ValidatorWithdrawalVaultTest is Test {
         vm.prank(staderManager);
         staderConfig.updateStaderTreasury(treasury);
 
-        assertEq(address(withdrawVault).balance, rewardEth);
+        assertEq(withdrawVaultClone.balance, rewardEth);
         assertEq(operatorRC.balances(operator), 0);
 
-        IValidatorWithdrawalVault(address(withdrawVault)).distributeRewards();
+        IValidatorWithdrawalVault(withdrawVaultClone).distributeRewards();
 
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = poolUtils.calculateRewardShare(
             1,
@@ -175,10 +181,10 @@ contract ValidatorWithdrawalVaultTest is Test {
         staderConfig.updateRewardsThreshold(8 ether);
 
         vm.assume(rewardEth > 8 ether);
-        vm.deal(address(withdrawVault), rewardEth); // send rewardEth to withdrawVault
+        vm.deal(withdrawVaultClone, rewardEth); // send rewardEth to withdrawVault
 
         vm.expectRevert(IValidatorWithdrawalVault.InvalidRewardAmount.selector);
-        IValidatorWithdrawalVault(address(withdrawVault)).distributeRewards();
+        IValidatorWithdrawalVault(withdrawVaultClone).distributeRewards();
 
         // by operatorRole
         address staderOperator = vm.addr(9945);
@@ -196,16 +202,16 @@ contract ValidatorWithdrawalVaultTest is Test {
         vm.prank(staderManager);
         staderConfig.updateStaderTreasury(treasury);
 
-        assertEq(address(withdrawVault).balance, rewardEth);
+        assertEq(withdrawVaultClone.balance, rewardEth);
 
         vm.prank(staderOperator);
-        IValidatorWithdrawalVault(address(withdrawVault)).distributeRewards();
-        assertEq(address(withdrawVault).balance, 0);
+        IValidatorWithdrawalVault(withdrawVaultClone).distributeRewards();
+        assertEq(withdrawVaultClone.balance, 0);
     }
 
     function test_calculateValidatorWithdrawalShare(uint128 rewardEth) public {
         vm.assume(rewardEth < 100 ether);
-        vm.deal(address(withdrawVault), rewardEth); // send rewardEth to withdrawVault
+        vm.deal(withdrawVaultClone, rewardEth); // send rewardEth to withdrawVault
 
         // assuming permisionless operator as poolID = 1
         assertEq(staderConfig.getStakedEthPerNode(), 32 ether);
@@ -218,14 +224,14 @@ contract ValidatorWithdrawalVaultTest is Test {
         uint256 operatorShare;
 
         if (rewardEth <= usersEth) {
-            (userShare, operatorShare, protocolShare) = IValidatorWithdrawalVault(address(withdrawVault))
+            (userShare, operatorShare, protocolShare) = IValidatorWithdrawalVault(withdrawVaultClone)
                 .calculateValidatorWithdrawalShare();
 
             assertEq(userShare, rewardEth);
             assertEq(operatorShare, 0);
             assertEq(protocolShare, 0);
         } else if (rewardEth <= totalStakedEth) {
-            (userShare, operatorShare, protocolShare) = IValidatorWithdrawalVault(address(withdrawVault))
+            (userShare, operatorShare, protocolShare) = IValidatorWithdrawalVault(withdrawVaultClone)
                 .calculateValidatorWithdrawalShare();
 
             assertEq(userShare, usersEth);
@@ -237,7 +243,7 @@ contract ValidatorWithdrawalVaultTest is Test {
                 poolId,
                 totalRewards
             );
-            (userShare, operatorShare, protocolShare) = IValidatorWithdrawalVault(address(withdrawVault))
+            (userShare, operatorShare, protocolShare) = IValidatorWithdrawalVault(withdrawVaultClone)
                 .calculateValidatorWithdrawalShare();
             assertEq(userShare, usersEth + userReward);
             assertEq(operatorShare, collateralEth + operatorReward);
@@ -247,10 +253,10 @@ contract ValidatorWithdrawalVaultTest is Test {
 
     function test_settleFunds() public {
         uint256 rewardEth = 36 ether;
-        vm.deal(address(withdrawVault), rewardEth); // send rewardEth to withdrawVault
+        vm.deal(withdrawVaultClone, rewardEth); // send rewardEth to withdrawVault
 
         vm.expectRevert(IValidatorWithdrawalVault.CallerNotNodeRegistryContract.selector);
-        IValidatorWithdrawalVault(address(withdrawVault)).settleFunds();
+        IValidatorWithdrawalVault(withdrawVaultClone).settleFunds();
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
@@ -266,11 +272,11 @@ contract ValidatorWithdrawalVaultTest is Test {
         address nodeRegistry = address(poolUtils.nodeRegistry());
 
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = IValidatorWithdrawalVault(
-            address(withdrawVault)
+            withdrawVaultClone
         ).calculateValidatorWithdrawalShare();
 
         vm.prank(nodeRegistry);
-        IValidatorWithdrawalVault(address(withdrawVault)).settleFunds();
+        IValidatorWithdrawalVault(withdrawVaultClone).settleFunds();
 
         assertEq(address(sspm).balance, userShare + operatorShare);
         assertEq(address(treasury).balance, protocolShare);
@@ -281,7 +287,7 @@ contract ValidatorWithdrawalVaultTest is Test {
 
     function test_settleFunds_noSlashing() public {
         uint256 rewardEth = 36 ether;
-        vm.deal(address(withdrawVault), rewardEth); // send rewardEth to withdrawVault
+        vm.deal(withdrawVaultClone, rewardEth); // send rewardEth to withdrawVault
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
@@ -297,7 +303,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         address nodeRegistry = address(poolUtils.nodeRegistry());
 
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = IValidatorWithdrawalVault(
-            address(withdrawVault)
+            withdrawVaultClone
         ).calculateValidatorWithdrawalShare();
 
         uint256 penaltyAmt = 1.5 ether; // less than operatorShare
@@ -308,7 +314,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         );
 
         vm.prank(nodeRegistry);
-        IValidatorWithdrawalVault(address(withdrawVault)).settleFunds();
+        IValidatorWithdrawalVault(withdrawVaultClone).settleFunds();
 
         assertEq(address(sspm).balance, userShare + penaltyAmt);
         assertEq(address(treasury).balance, protocolShare);
@@ -332,18 +338,18 @@ contract ValidatorWithdrawalVaultTest is Test {
 
     function test_updateStaderConfig() public {
         vm.expectRevert(IVaultProxy.CallerNotOwner.selector);
-        withdrawVault.updateStaderConfig(vm.addr(203));
+        VaultProxy(withdrawVaultClone).updateStaderConfig(vm.addr(203));
 
         vm.prank(staderAdmin);
-        withdrawVault.updateStaderConfig(vm.addr(203));
-        assertEq(address(withdrawVault.staderConfig()), vm.addr(203));
+        VaultProxy(withdrawVaultClone).updateStaderConfig(vm.addr(203));
+        assertEq(address(VaultProxy(withdrawVaultClone).staderConfig()), vm.addr(203));
     }
 
     function test_updateOwner() public {
-        assertEq(withdrawVault.owner(), staderAdmin);
+        assertEq(VaultProxy(withdrawVaultClone).owner(), staderAdmin);
         vm.prank(staderAdmin);
         staderConfig.updateAdmin(vm.addr(203));
-        withdrawVault.updateOwner();
-        assertEq(withdrawVault.owner(), vm.addr(203));
+        VaultProxy(withdrawVaultClone).updateOwner();
+        assertEq(VaultProxy(withdrawVaultClone).owner(), vm.addr(203));
     }
 }
