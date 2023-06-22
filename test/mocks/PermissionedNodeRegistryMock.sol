@@ -44,5 +44,7 @@ contract PermissionedNodeRegistryMock {
         return 1;
     }
 
-    function validatorIdByPubkey(bytes memory) external returns (uint256) {}
+    function validatorIdByPubkey(bytes memory) external returns (uint256) {};
+
+    function onlyPreDepositValidator(bytes memory) external;
 }

@@ -124,7 +124,7 @@ contract PermissionedPoolTest is Test {
     }
 
     function test_StakeUserETHToBeaconChain() public {
-        startHoax(address(poolManager), 70 ether);
+        startHoax(address(poolManager));
         vm.mockCall(
             address(nodeRegistry),
             abi.encodeWithSelector(INodeRegistry.validatorRegistry.selector),
@@ -140,8 +140,13 @@ contract PermissionedPoolTest is Test {
             )
         );
         permissionedPool.stakeUserETHToBeaconChain{value: 64 ether}();
-        assertEq(address(permissionedPool).balance, 62 ether);
-        assertEq(address(ethDepositAddr).balance, 2 ether);
-        assertEq(permissionedPool.preDepositValidatorCount(), 2);
+        permissionedPool.stakeUserETHToBeaconChain{value: 64 ether}();
+        assertEq(address(permissionedPool).balance, 124 ether);
+        assertEq(address(ethDepositAddr).balance, 4 ether);
+        assertEq(permissionedPool.preDepositValidatorCount(), 4);
+
+        vm.prank(nodeRegistry);
+        permissionedPool.fullDepositOnBeaconChain()
+
     }
 }
