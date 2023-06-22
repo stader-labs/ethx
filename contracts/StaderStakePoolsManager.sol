@@ -131,22 +131,22 @@ contract StaderStakePoolsManager is
             );
     }
 
-    /** @dev See {IERC4626-totalAssets}. */
+    // returns total ETH balance of protocol
     function totalAssets() public view override returns (uint256) {
         return IStaderOracle(staderConfig.getStaderOracle()).getExchangeRate().totalETHBalance;
     }
 
-    /** @dev See {IERC4626-convertToShares}. */
+    // return the amount of share corresponding to `_assets` assets
     function convertToShares(uint256 _assets) external view override returns (uint256) {
         return _convertToShares(_assets, Math.Rounding.Down);
     }
 
-    /** @dev See {IERC4626-convertToAssets}. */
+    // return the amount of assets corresponding to `_shares` shares
     function convertToAssets(uint256 _shares) external view override returns (uint256) {
         return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
-    /** @dev See {IERC4626-maxDeposit}. */
+    // returns the amount of max deposit limit based on vault health
     function maxDeposit() public view override returns (uint256) {
         return isVaultHealthy() ? staderConfig.getMaxDepositAmount() : 0;
     }
@@ -155,17 +155,17 @@ contract StaderStakePoolsManager is
         return isVaultHealthy() ? staderConfig.getMinDepositAmount() : 0;
     }
 
-    /** @dev See {IERC4626-previewDeposit}. */
+    // returns the amount of share corresponding to `_assets` assets
     function previewDeposit(uint256 _assets) public view override returns (uint256) {
         return _convertToShares(_assets, Math.Rounding.Down);
     }
 
-    /** @dev See {IERC4626-previewWithdraw}. */
+    // return the amount of assets corresponding to `_shares` shares
     function previewWithdraw(uint256 _shares) external view override returns (uint256) {
         return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
-    /** @dev See {IERC4626-deposit}. */
+    // stake ETH to get equivalent amount of ETHx token based on exchange rate
     function deposit(address _receiver) external payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < minDeposit()) {
