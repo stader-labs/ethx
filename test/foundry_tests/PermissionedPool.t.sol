@@ -69,6 +69,7 @@ contract PermissionedPoolTest is Test {
         staderConfig.updateVaultFactory(address(vaultFactory));
         staderConfig.updateStaderInsuranceFund(address(insuranceFund));
         staderConfig.updatePermissionedNodeRegistry(address(nodeRegistry));
+        staderConfig.updatePermissionedSocializingPool(vm.addr(105));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
         vm.stopPrank();
@@ -106,9 +107,7 @@ contract PermissionedPoolTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderPoolBase.UnsupportedOperation.selector);
-        (bool success, ) = payable(permissionedPool).call{value: 1 ether}(
-            'abi.encodeWithSignature("nonExistentFunction()")'
-        );
+        payable(permissionedPool).call{value: 1 ether}('abi.encodeWithSignature("nonExistentFunction()")');
         vm.stopPrank();
     }
 
@@ -145,8 +144,97 @@ contract PermissionedPoolTest is Test {
         assertEq(address(ethDepositAddr).balance, 4 ether);
         assertEq(permissionedPool.preDepositValidatorCount(), 4);
 
-        vm.prank(nodeRegistry);
-        permissionedPool.fullDepositOnBeaconChain()
+        vm.deal(address(insuranceFund), 50 ether);
+        vm.prank(address(nodeRegistry));
+        permissionedPool.transferETHOfDefectiveKeysToSSPM(2);
+        assertEq(permissionedPool.preDepositValidatorCount(), 2);
+        assertEq(address(permissionedPool).balance, 62 ether);
+        assertEq(address(insuranceFund).balance, 48 ether);
 
+        bytes[] memory pubkey = new bytes[](2);
+        pubkey[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        pubkey[1] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        vm.prank(address(nodeRegistry));
+        permissionedPool.fullDepositOnBeaconChain(pubkey);
+        assertEq(permissionedPool.preDepositValidatorCount(), 0);
+        assertEq(address(permissionedPool).balance, 0);
+    }
+
+    function test_transferExcessETHToSSPM() public {
+        vm.deal(address(this), 5 ether);
+        vm.expectRevert(IStaderPoolBase.CouldNotDetermineExcessETH.selector);
+        permissionedPool.transferExcessETHToSSPM();
+        address payable addr = payable(address(permissionedPool));
+        selfdestruct(addr);
+        assertEq(address(permissionedPool).balance, 5 ether);
+        permissionedPool.transferExcessETHToSSPM();
+        assertEq(address(permissionedPool).balance, 0 ether);
+    }
+
+    function test_getTotalQueuedValidatorCount() public {
+        assertEq(permissionedPool.getTotalQueuedValidatorCount(), 5);
+    }
+
+    function test_getTotalActiveValidatorCount() public {
+        assertEq(permissionedPool.getTotalActiveValidatorCount(), 5);
+    }
+
+    function test_getOperatorTotalNonTerminalKeys() public {
+        assertEq(permissionedPool.getOperatorTotalNonTerminalKeys(address(this), 0, 100), 5);
+    }
+
+    function test_getSocializingPoolAddress() public {
+        assertEq(permissionedPool.getSocializingPoolAddress(), vm.addr(105));
+    }
+
+    function test_getCollateralETH() public {
+        assertEq(permissionedPool.getCollateralETH(), 0);
+    }
+
+    function test_getNodeRegistry() public {
+        assertEq(permissionedPool.getNodeRegistry(), address(nodeRegistry));
+    }
+
+    function test_isExistingPubkey() public {
+        bytes memory pubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        assertEq(permissionedPool.isExistingPubkey(pubkey), true);
+    }
+
+    function test_isExistingOperatory() public {
+        assertEq(permissionedPool.isExistingOperator(address(this)), true);
+    }
+
+    function test_setCommissionFees(uint64 protocolFee, uint64 operatorFee) public {
+        vm.assume(protocolFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+        vm.assume(operatorFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+        vm.assume(protocolFee + operatorFee <= permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+        vm.prank(staderManager);
+        permissionedPool.setCommissionFees(protocolFee, operatorFee);
+        assertEq(permissionedPool.protocolFee(), protocolFee);
+        assertEq(permissionedPool.operatorFee(), operatorFee);
+    }
+
+    function test_test_setCommissionFeesWithInvalidInput(uint64 protocolFee, uint64 operatorFee) public {
+        vm.assume(protocolFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+        vm.assume(operatorFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+        vm.assume(protocolFee + operatorFee > permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+        vm.expectRevert(IStaderPoolBase.InvalidCommission.selector);
+        vm.prank(staderManager);
+        permissionedPool.setCommissionFees(protocolFee, operatorFee);
+    }
+
+    function test_updateStaderConfig(uint64 _staderConfigSeed) public {
+        vm.assume(_staderConfigSeed > 0);
+        address newStaderConfig = vm.addr(_staderConfigSeed);
+        vm.startPrank(staderAdmin);
+        permissionedPool.updateStaderConfig(newStaderConfig);
+        assertEq(address(permissionedPool.staderConfig()), newStaderConfig);
+    }
+
+    function testFail_updateStaderConfig(uint64 _staderConfigSeed) public {
+        vm.assume(_staderConfigSeed > 0);
+        address newStaderConfig = vm.addr(_staderConfigSeed);
+        permissionedPool.updateStaderConfig(newStaderConfig);
+        assertEq(address(permissionedPool.staderConfig()), newStaderConfig);
     }
 }

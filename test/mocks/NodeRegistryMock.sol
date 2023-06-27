@@ -22,4 +22,20 @@ contract NodeRegistryMock {
     function getOperatorTotalKeys(uint256) external pure returns (uint256 totalKeys) {
         return 5;
     }
+
+    function POOL_ID() external pure returns (uint8) {
+        return 1;
+    }
+
+    function getTotalQueuedValidatorCount() external pure returns (uint256) {
+        return 10;
+    }
+
+    function getTotalActiveValidatorCount() external pure returns (uint256) {
+        return 10;
+    }
+
+    function getCollateralETH() external pure returns (uint256) {
+        return 4 ether;
+    }
 }
