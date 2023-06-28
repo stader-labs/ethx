@@ -79,12 +79,6 @@ contract UserWithdrawalManager is
         emit UpdatedFinalizationBatchLimit(_finalizationBatchLimit);
     }
 
-    function updateMaxNonRedeemedUserRequestCount(uint256 _maxNonRedeemedUserRequestCount) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        maxNonRedeemedUserRequestCount = _maxNonRedeemedUserRequestCount;
-        emit UpdatedMaxNonRedeemedUserRequestCount(maxNonRedeemedUserRequestCount);
-    }
-
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);

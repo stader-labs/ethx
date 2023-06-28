@@ -99,7 +99,7 @@ contract PermissionedPoolTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderPoolBase.UnsupportedOperation.selector);
-        payable(permissionedPool).send(1 ether);
+        payable(permissionedPool).call{value: 1 ether}('');
         vm.stopPrank();
     }
 

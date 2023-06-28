@@ -84,7 +84,7 @@ contract UserWithdrawalManagerTest is Test {
         userWithdrawalManager.initialize(staderAdmin, address(staderConfig));
     }
 
-    function test_PoolSelectorInitialize() public {
+    function test_UserWithdrawalManagerInitialize() public {
         assertEq(address(userWithdrawalManager.staderConfig()), address(staderConfig));
         assertEq(userWithdrawalManager.nextRequestIdToFinalize(), 1);
         assertEq(userWithdrawalManager.nextRequestId(), 1);
@@ -151,8 +151,6 @@ contract UserWithdrawalManagerTest is Test {
         vm.expectRevert(IUserWithdrawalManager.InvalidWithdrawAmount.selector);
         userWithdrawalManager.requestWithdraw(100000 ether, owner);
 
-        vm.prank(staderManager);
-        userWithdrawalManager.updateMaxNonRedeemedUserRequestCount(1);
         vm.prank(address(staderStakePoolManager));
         ethX.mint(ethXHolder, 100 ether);
         assertEq(ethX.balanceOf(ethXHolder), 100 ether);
@@ -165,9 +163,6 @@ contract UserWithdrawalManagerTest is Test {
 
         vm.expectRevert();
         userWithdrawalManager.requestWithdraw(100 ether, owner);
-
-        vm.expectRevert(IUserWithdrawalManager.MaxLimitOnWithdrawRequestCountReached.selector);
-        userWithdrawalManager.requestWithdraw(10 ether, owner);
     }
 
     function test_finalizeUserWithdrawalRequest(uint64 randomPrivateKey, uint64 randomPrivateKey2) public {

@@ -19,4 +19,7 @@ contract PoolMock {
     function operatorFee() external pure returns (uint256) {
         return 500;
     }
+
+    function stakeUserETHToBeaconChain() external payable {}
+
 }

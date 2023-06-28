@@ -18,7 +18,6 @@ interface IUserWithdrawalManager {
 
     // Events
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
-    event UpdatedMaxNonRedeemedUserRequestCount(uint256 maxNonRedeemedUserRequestCount);
     event UpdatedStaderConfig(address staderConfig);
     event WithdrawRequestReceived(
         address indexed _msgSender,
@@ -62,8 +61,6 @@ interface IUserWithdrawalManager {
     function requestIdsByUserAddress(address, uint256) external view returns (uint256);
 
     function updateFinalizationBatchLimit(uint256 _paginationLimit) external;
-
-    function updateMaxNonRedeemedUserRequestCount(uint256 _maxNonRedeemedUserRequestCount) external;
 
     function requestWithdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
 

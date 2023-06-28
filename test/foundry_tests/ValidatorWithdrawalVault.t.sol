@@ -204,7 +204,7 @@ contract ValidatorWithdrawalVaultTest is Test {
 
         assertEq(withdrawVaultClone.balance, rewardEth);
 
-        vm.prank(staderOperator);
+        vm.prank(staderManager);
         IValidatorWithdrawalVault(withdrawVaultClone).distributeRewards();
         assertEq(withdrawVaultClone.balance, 0);
     }

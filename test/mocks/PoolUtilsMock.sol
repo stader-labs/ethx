@@ -19,10 +19,6 @@ contract PoolUtilsMock {
         return 1;
     }
 
-    // function getValidatorPoolId(bytes calldata) external pure returns (uint8) {
-    //     return 1;
-    // }
-
     function getNodeRegistry(uint8) public view returns (address) {
         return address(nodeRegistry);
     }
@@ -81,4 +77,10 @@ contract PoolUtilsMock {
     function getOperatorFee(uint8) public pure returns (uint256) {
         return 500;
     }
+
+    function poolAddressById(uint8 poolID) external view returns (address poolAddress){
+        if(poolID==1) return staderConfig.getPermissionlessPool();
+        else return staderConfig.getPermissionedPool();
+    }
+
 }
