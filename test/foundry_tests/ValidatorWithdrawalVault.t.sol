@@ -186,13 +186,6 @@ contract ValidatorWithdrawalVaultTest is Test {
         vm.expectRevert(IValidatorWithdrawalVault.InvalidRewardAmount.selector);
         IValidatorWithdrawalVault(withdrawVaultClone).distributeRewards();
 
-        // by operatorRole
-        address staderOperator = vm.addr(9945);
-
-        vm.startPrank(staderAdmin);
-        staderConfig.grantRole(staderConfig.OPERATOR(), staderOperator);
-        vm.stopPrank();
-
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
 

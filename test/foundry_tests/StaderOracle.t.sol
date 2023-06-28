@@ -145,6 +145,32 @@ contract StaderOracleTest is Test {
 
         assertEq(staderOracle.trustedNodesCount(), 0);
         assertFalse(staderOracle.isTrustedNode(trustedNode));
+
+        // lets update trustedNode cooling period
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        staderOracle.updateTrustedNodeChangeCoolingPeriod(100);
+
+        vm.startPrank(staderManager);
+        staderOracle.updateTrustedNodeChangeCoolingPeriod(100);
+
+        vm.expectRevert(IStaderOracle.CooldownNotComplete.selector);
+        staderOracle.addTrustedNode(vm.addr(78));
+
+        // wait for 100 blocks
+        vm.roll(block.number + 100);
+        staderOracle.addTrustedNode(vm.addr(78));
+        assertEq(staderOracle.trustedNodesCount(), 1);
+        assertTrue(staderOracle.isTrustedNode(vm.addr(78)));
+
+        vm.expectRevert(IStaderOracle.CooldownNotComplete.selector);
+        staderOracle.removeTrustedNode(vm.addr(78));
+
+        // wait for 100 blocks
+        vm.roll(block.number + 100);
+        staderOracle.removeTrustedNode(vm.addr(78));
+        assertEq(staderOracle.trustedNodesCount(), 0);
+        assertFalse(staderOracle.isTrustedNode(vm.addr(78)));
+        vm.stopPrank();
     }
 
     function test_submitSDPrice() public {
@@ -762,5 +788,606 @@ contract StaderOracleTest is Test {
         (bool success, ) = payable(permissionlessSP).call{value: amount}('');
         assertTrue(success);
         assertEq(address(permissionlessSP).balance, amount);
+    }
+
+    function test_submitExchangeRate() public {
+        ExchangeRate memory erData = ExchangeRate({
+            reportingBlockNumber: 100,
+            totalETHBalance: 101,
+            totalETHXSupply: 100
+        });
+
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        address trustedNode1 = vm.addr(701);
+        address trustedNode2 = vm.addr(702);
+        address trustedNode3 = vm.addr(703);
+        address trustedNode4 = vm.addr(704);
+        address trustedNode5 = vm.addr(705);
+        vm.startPrank(staderManager);
+        staderOracle.addTrustedNode(trustedNode1);
+        staderOracle.addTrustedNode(trustedNode2);
+        staderOracle.addTrustedNode(trustedNode3);
+        staderOracle.addTrustedNode(trustedNode4);
+        staderOracle.addTrustedNode(trustedNode5);
+        vm.stopPrank();
+
+        // if PORFeed is enabled
+        assertFalse(staderOracle.isPORFeedBasedERData());
+        vm.prank(staderManager);
+        staderOracle.togglePORFeedBasedERData();
+        assertTrue(staderOracle.isPORFeedBasedERData());
+
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.InvalidERDataSource.selector);
+        staderOracle.submitExchangeRateData(erData);
+
+        vm.prank(staderManager);
+        staderOracle.togglePORFeedBasedERData();
+        assertFalse(staderOracle.isPORFeedBasedERData());
+
+        assertEq(staderOracle.getERReportableBlock(), 0);
+        vm.roll(7100);
+        assertEq(staderOracle.getERReportableBlock(), 0);
+
+        erData.reportingBlockNumber = 7105;
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitExchangeRateData(erData);
+
+        vm.roll(7205);
+        assertEq(staderOracle.getERReportableBlock(), 7200);
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
+        staderOracle.submitExchangeRateData(erData);
+
+        erData.reportingBlockNumber = 7200;
+        vm.prank(trustedNode1);
+        staderOracle.submitExchangeRateData(erData);
+
+        vm.prank(trustedNode1);
+        vm.expectRevert(IStaderOracle.DuplicateSubmissionFromNode.selector);
+        staderOracle.submitExchangeRateData(erData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitExchangeRateData(erData);
+
+        assertFalse(staderOracle.erInspectionMode());
+
+        ExchangeRate memory erDataTemp = staderOracle.getExchangeRate();
+
+        (uint256 reportingBlockNum, uint256 totalEthBalance, uint256 totalEthxBalance) = staderOracle.exchangeRate();
+        assertEq(erDataTemp.reportingBlockNumber, 0);
+        assertEq(reportingBlockNum, 0);
+        assertEq(totalEthBalance, 0);
+        assertEq(totalEthxBalance, 0);
+
+        vm.prank(trustedNode3);
+        staderOracle.submitExchangeRateData(erData);
+
+        assertFalse(staderOracle.erInspectionMode());
+
+        (reportingBlockNum, totalEthBalance, totalEthxBalance) = staderOracle.exchangeRate();
+        assertEq(reportingBlockNum, 7200);
+        assertEq(totalEthBalance, 101);
+        assertEq(totalEthxBalance, 100);
+
+        // t4 tries to push after consesus
+        vm.prank(trustedNode4);
+        staderOracle.submitExchangeRateData(erData);
+
+        // lets try pushing extra-ordinary ER
+
+        erData.reportingBlockNumber = 2 * 7200;
+        erData.totalETHXSupply = 100;
+        erData.totalETHBalance = 120;
+
+        vm.roll(erData.reportingBlockNumber + 5);
+        assertEq(staderOracle.getERReportableBlock(), erData.reportingBlockNumber);
+
+        vm.prank(trustedNode1);
+        staderOracle.submitExchangeRateData(erData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitExchangeRateData(erData);
+
+        vm.prank(trustedNode3);
+        staderOracle.submitExchangeRateData(erData);
+
+        // moved to inspectionMode and erData not changed
+        assertTrue(staderOracle.erInspectionMode());
+        (reportingBlockNum, totalEthBalance, totalEthxBalance) = staderOracle.exchangeRate();
+        assertEq(reportingBlockNum, 7200);
+        assertEq(totalEthBalance, 101);
+        assertEq(totalEthxBalance, 100);
+
+        // if data is wrong, manager can disable inspection mode and wait for new set of data
+        vm.prank(staderManager);
+        staderOracle.disableERInspectionMode();
+
+        // turned off inspectionMode and erData not changed
+        assertFalse(staderOracle.erInspectionMode());
+        (reportingBlockNum, totalEthBalance, totalEthxBalance) = staderOracle.exchangeRate();
+        assertEq(reportingBlockNum, 7200);
+        assertEq(totalEthBalance, 101);
+        assertEq(totalEthxBalance, 100);
+
+        // t4 tries to submit at same reportingBlock
+        vm.prank(trustedNode4);
+        staderOracle.submitExchangeRateData(erData);
+
+        // consensus again
+        // moved to inspectionMode and erData not changed
+        assertTrue(staderOracle.erInspectionMode());
+
+        // if anyone else tries to close
+        vm.expectRevert(IStaderOracle.CooldownNotComplete.selector);
+        staderOracle.closeERInspectionMode();
+
+        // if manager thinks data is correct, he can accept it
+        vm.prank(staderManager);
+        staderOracle.closeERInspectionMode();
+
+        // turned off inspectionMode and erData changed
+        assertFalse(staderOracle.erInspectionMode());
+        (reportingBlockNum, totalEthBalance, totalEthxBalance) = staderOracle.exchangeRate();
+        assertEq(reportingBlockNum, 2 * 7200);
+        assertEq(totalEthBalance, 120);
+        assertEq(totalEthxBalance, 100);
+
+        // if 7 days passed, anyone can close
+        // some wrong data again
+        vm.roll(3 * 7200 + 9);
+        erData.reportingBlockNumber = staderOracle.getERReportableBlock();
+        erData.totalETHBalance = 100;
+        erData.totalETHXSupply = 100;
+
+        vm.prank(trustedNode2);
+        staderOracle.submitExchangeRateData(erData);
+        vm.prank(trustedNode5);
+        staderOracle.submitExchangeRateData(erData);
+        vm.prank(trustedNode1);
+        staderOracle.submitExchangeRateData(erData);
+
+        // moved to inspectionMode and erData not changed
+        assertTrue(staderOracle.erInspectionMode());
+        (reportingBlockNum, totalEthBalance, totalEthxBalance) = staderOracle.exchangeRate();
+        assertEq(reportingBlockNum, 2 * 7200);
+        assertEq(totalEthBalance, 120);
+        assertEq(totalEthxBalance, 100);
+
+        // wait for 7 more days
+        vm.roll(block.number + 7 * 7200 + 9);
+
+        // now anyone can closeInspection/disable mode
+        staderOracle.disableERInspectionMode();
+        assertFalse(staderOracle.erInspectionMode());
+
+        vm.prank(trustedNode3);
+        staderOracle.submitExchangeRateData(erData);
+
+        assertTrue(staderOracle.erInspectionMode());
+        // moved to inspectiodMode again, now they have to wait 7 more days
+        vm.expectRevert(IStaderOracle.CooldownNotComplete.selector);
+        staderOracle.closeERInspectionMode();
+
+        // wait for 7 more days
+        vm.roll(block.number + 7 * 7200 + 4);
+
+        staderOracle.closeERInspectionMode();
+        assertFalse(staderOracle.erInspectionMode());
+
+        // turned off inspectionMode and erData changed
+        assertFalse(staderOracle.erInspectionMode());
+        (reportingBlockNum, totalEthBalance, totalEthxBalance) = staderOracle.exchangeRate();
+        assertEq(reportingBlockNum, 3 * 7200);
+        assertEq(totalEthBalance, 100);
+        assertEq(totalEthxBalance, 100);
+
+        // if someone tries to closeInspectionMode, when it is not in inspectionMode
+        vm.expectRevert(IStaderOracle.ERChangeLimitNotCrossed.selector);
+        staderOracle.closeERInspectionMode();
+    }
+
+    function test_submitValidatorVerificationDetail() public {
+        bytes[] memory readyToDepositPubkeys = new bytes[](1);
+        readyToDepositPubkeys[0] = 'readyToDepositPubkey1';
+        bytes[] memory frontRunPubkeys = new bytes[](1);
+        frontRunPubkeys[0] = 'frontRunPubkey1';
+        bytes[] memory invalidSignaturePubkeys = new bytes[](1);
+        invalidSignaturePubkeys[0] = 'invalidSignaturePubkey1';
+
+        ValidatorVerificationDetail memory vvData = ValidatorVerificationDetail({
+            poolId: 1,
+            reportingBlockNumber: 1,
+            sortedReadyToDepositPubkeys: readyToDepositPubkeys,
+            sortedFrontRunPubkeys: frontRunPubkeys,
+            sortedInvalidSignaturePubkeys: invalidSignaturePubkeys
+        });
+
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        address trustedNode1 = vm.addr(701);
+        address trustedNode2 = vm.addr(702);
+        address trustedNode3 = vm.addr(703);
+        address trustedNode4 = vm.addr(704);
+        address trustedNode5 = vm.addr(705);
+        vm.startPrank(staderManager);
+        staderOracle.addTrustedNode(trustedNode1);
+        staderOracle.addTrustedNode(trustedNode2);
+        staderOracle.addTrustedNode(trustedNode3);
+        staderOracle.addTrustedNode(trustedNode4);
+        staderOracle.addTrustedNode(trustedNode5);
+        vm.stopPrank();
+
+        vm.roll(7205);
+        vvData.reportingBlockNumber = staderOracle.getValidatorVerificationDetailReportableBlock();
+
+        vm.prank(trustedNode1);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        assertEq(staderOracle.lastReportingBlockNumberForValidatorVerificationDetailByPoolId(1), 0);
+
+        // consensus
+        vm.prank(trustedNode3);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        assertEq(staderOracle.lastReportingBlockNumberForValidatorVerificationDetailByPoolId(1), 7200);
+
+        // even if t4 submmits, it is accepted
+        vm.prank(trustedNode4);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        // if it tries again
+        vm.prank(trustedNode4);
+        vm.expectRevert(IStaderOracle.DuplicateSubmissionFromNode.selector);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        // future reporting block num
+        vvData.reportingBlockNumber = block.number + 1;
+
+        vm.prank(trustedNode5);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        vm.roll(block.number + 7207);
+        vm.prank(trustedNode5);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        // if more time passed
+        vm.roll(block.number + 7207);
+
+        // node can submit twice as well
+        vvData.reportingBlockNumber = 2 * 7200;
+        vm.prank(trustedNode5);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+
+        vvData.reportingBlockNumber = 3 * 7200;
+        vm.prank(trustedNode5);
+        staderOracle.submitValidatorVerificationDetail(vvData);
+    }
+
+    function test_submitMissedAttestationPenalties() public {
+        bytes[] memory sortedPubkeys = new bytes[](1);
+        sortedPubkeys[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+
+        MissedAttestationPenaltyData memory mapData = MissedAttestationPenaltyData({
+            reportingBlockNumber: 1,
+            index: 1,
+            sortedPubkeys: sortedPubkeys
+        });
+
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        address trustedNode1 = vm.addr(701);
+        address trustedNode2 = vm.addr(702);
+        address trustedNode3 = vm.addr(703);
+        address trustedNode4 = vm.addr(704);
+        address trustedNode5 = vm.addr(705);
+        vm.startPrank(staderManager);
+        staderOracle.addTrustedNode(trustedNode1);
+        staderOracle.addTrustedNode(trustedNode2);
+        staderOracle.addTrustedNode(trustedNode3);
+        staderOracle.addTrustedNode(trustedNode4);
+        staderOracle.addTrustedNode(trustedNode5);
+        vm.stopPrank();
+
+        vm.roll(50400 + 7);
+        assertEq(staderOracle.getMissedAttestationPenaltyReportableBlock(), 50400);
+
+        mapData.reportingBlockNumber = staderOracle.getMissedAttestationPenaltyReportableBlock();
+
+        vm.prank(trustedNode1);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        bytes32 pubkeyRoot = sha256(abi.encodePacked(sortedPubkeys[0], bytes16(0)));
+
+        assertEq(staderOracle.missedAttestationPenalty(pubkeyRoot), 0);
+        assertEq(staderOracle.lastReportedMAPDIndex(), 0);
+
+        vm.prank(trustedNode3);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        assertEq(staderOracle.lastReportedMAPDIndex(), 1);
+        assertEq(staderOracle.missedAttestationPenalty(pubkeyRoot), 1);
+
+        // t3 tries again
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.InvalidMAPDIndex.selector);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        // t4 tries after consensus
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.InvalidMAPDIndex.selector);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        // 2nd index
+        vm.roll(block.number + 50409);
+        mapData.reportingBlockNumber = 2 * 50400 + 90;
+
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        mapData.reportingBlockNumber = 2 * 50400 + 1;
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        mapData.reportingBlockNumber = 2 * 50400;
+        mapData.index = 3;
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.InvalidMAPDIndex.selector);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+
+        mapData.index = 2;
+        vm.prank(trustedNode3);
+        staderOracle.submitMissedAttestationPenalties(mapData);
+    }
+
+    function test_submitWithdrawnValidators() public {
+        bytes[] memory sortedPubkeys = new bytes[](1);
+        sortedPubkeys[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+
+        WithdrawnValidators memory wvData = WithdrawnValidators({
+            reportingBlockNumber: 1,
+            poolId: 1,
+            sortedPubkeys: sortedPubkeys
+        });
+
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        address trustedNode1 = vm.addr(701);
+        address trustedNode2 = vm.addr(702);
+        address trustedNode3 = vm.addr(703);
+        address trustedNode4 = vm.addr(704);
+        address trustedNode5 = vm.addr(705);
+        vm.startPrank(staderManager);
+        staderOracle.addTrustedNode(trustedNode1);
+        staderOracle.addTrustedNode(trustedNode2);
+        staderOracle.addTrustedNode(trustedNode3);
+        staderOracle.addTrustedNode(trustedNode4);
+        staderOracle.addTrustedNode(trustedNode5);
+        vm.stopPrank();
+
+        vm.roll(14400 + 7);
+        assertEq(staderOracle.getWithdrawnValidatorReportableBlock(), 14400);
+
+        wvData.reportingBlockNumber = staderOracle.getWithdrawnValidatorReportableBlock();
+
+        vm.prank(trustedNode1);
+        staderOracle.submitWithdrawnValidators(wvData);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitWithdrawnValidators(wvData);
+
+        assertEq(staderOracle.lastReportingBlockNumberForWithdrawnValidatorsByPoolId(1), 0);
+
+        vm.prank(trustedNode3);
+        staderOracle.submitWithdrawnValidators(wvData);
+
+        assertEq(staderOracle.lastReportingBlockNumberForWithdrawnValidatorsByPoolId(1), 14400);
+
+        // t3 tries again
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.DuplicateSubmissionFromNode.selector);
+        staderOracle.submitWithdrawnValidators(wvData);
+
+        // t4 tries after consensus
+        vm.prank(trustedNode4);
+        staderOracle.submitWithdrawnValidators(wvData);
+
+        // 2nd round
+        vm.roll(block.number + 14400);
+        wvData.reportingBlockNumber = 2 * 14400 + 90;
+
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitWithdrawnValidators(wvData);
+
+        wvData.reportingBlockNumber = 2 * 14400 + 1;
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
+        staderOracle.submitWithdrawnValidators(wvData);
+
+        wvData.reportingBlockNumber = 2 * 14400;
+        vm.prank(trustedNode3);
+        staderOracle.submitWithdrawnValidators(wvData);
+    }
+
+    function test_submitValidatorStats() public {
+        ValidatorStats memory valStats = ValidatorStats({
+            reportingBlockNumber: 123,
+            exitingValidatorsBalance: 100,
+            exitedValidatorsBalance: 200,
+            slashedValidatorsBalance: 12,
+            exitingValidatorsCount: 2,
+            exitedValidatorsCount: 3,
+            slashedValidatorsCount: 4
+        });
+
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        address trustedNode1 = vm.addr(701);
+        address trustedNode2 = vm.addr(702);
+        address trustedNode3 = vm.addr(703);
+        address trustedNode4 = vm.addr(704);
+        address trustedNode5 = vm.addr(705);
+        vm.startPrank(staderManager);
+        staderOracle.addTrustedNode(trustedNode1);
+        staderOracle.addTrustedNode(trustedNode2);
+        staderOracle.addTrustedNode(trustedNode3);
+        staderOracle.addTrustedNode(trustedNode4);
+        staderOracle.addTrustedNode(trustedNode5);
+        vm.stopPrank();
+
+        vm.roll(7200 + 7);
+        assertEq(staderOracle.getValidatorStatsReportableBlock(), 7200);
+
+        valStats.reportingBlockNumber = staderOracle.getValidatorStatsReportableBlock();
+
+        vm.prank(trustedNode1);
+        staderOracle.submitValidatorStats(valStats);
+
+        vm.prank(trustedNode2);
+        staderOracle.submitValidatorStats(valStats);
+
+        ValidatorStats memory valStatsRes = staderOracle.getValidatorStats();
+
+        assertEq(valStatsRes.reportingBlockNumber, 0);
+        assertEq(valStatsRes.exitingValidatorsBalance, 0);
+        assertEq(valStatsRes.exitedValidatorsBalance, 0);
+        assertEq(valStatsRes.slashedValidatorsBalance, 0);
+        assertEq(valStatsRes.exitingValidatorsCount, 0);
+        assertEq(valStatsRes.exitedValidatorsCount, 0);
+        assertEq(valStatsRes.slashedValidatorsCount, 0);
+
+        vm.prank(trustedNode3);
+        staderOracle.submitValidatorStats(valStats);
+
+        valStatsRes = staderOracle.getValidatorStats();
+
+        assertEq(valStatsRes.reportingBlockNumber, 7200);
+        assertEq(valStatsRes.exitingValidatorsBalance, 100);
+        assertEq(valStatsRes.exitedValidatorsBalance, 200);
+        assertEq(valStatsRes.slashedValidatorsBalance, 12);
+        assertEq(valStatsRes.exitingValidatorsCount, 2);
+        assertEq(valStatsRes.exitedValidatorsCount, 3);
+        assertEq(valStatsRes.slashedValidatorsCount, 4);
+
+        // t3 tries again
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.DuplicateSubmissionFromNode.selector);
+        staderOracle.submitValidatorStats(valStats);
+
+        // t4 tries after consensus
+        vm.prank(trustedNode4);
+        staderOracle.submitValidatorStats(valStats);
+
+        // 2nd round
+        vm.roll(block.number + 7200);
+        valStats.reportingBlockNumber = 2 * 7200 + 90;
+
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.ReportingFutureBlockData.selector);
+        staderOracle.submitValidatorStats(valStats);
+
+        valStats.reportingBlockNumber = 2 * 7200 + 1;
+        vm.prank(trustedNode3);
+        vm.expectRevert(IStaderOracle.InvalidReportingBlock.selector);
+        staderOracle.submitValidatorStats(valStats);
+
+        valStats.reportingBlockNumber = 2 * 7200;
+        vm.prank(trustedNode3);
+        staderOracle.submitValidatorStats(valStats);
+    }
+
+    function test_safeMode() public {
+        assertFalse(staderOracle.safeMode());
+
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        staderOracle.enableSafeMode();
+
+        vm.prank(staderManager);
+        staderOracle.enableSafeMode();
+        assertTrue(staderOracle.safeMode());
+
+        vm.expectRevert();
+        staderOracle.disableSafeMode();
+
+        vm.prank(staderAdmin);
+        staderOracle.disableSafeMode();
+        assertFalse(staderOracle.safeMode());
+    }
+
+    function test_updateFrequencySetters() public {
+        vm.roll(7309);
+
+        assertEq(staderOracle.getSDPriceReportableBlock(), 7200);
+
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        staderOracle.setSDPriceUpdateFrequency(7201);
+
+        vm.prank(staderManager);
+        staderOracle.setSDPriceUpdateFrequency(7201);
+
+        assertEq(staderOracle.getSDPriceReportableBlock(), 7201);
+
+        vm.expectRevert(IStaderOracle.FrequencyUnchanged.selector);
+        vm.prank(staderManager);
+        staderOracle.setSDPriceUpdateFrequency(7201);
+
+        vm.expectRevert(IStaderOracle.ZeroFrequency.selector);
+        vm.prank(staderManager);
+        staderOracle.setSDPriceUpdateFrequency(0);
+
+        vm.startPrank(staderManager);
+        staderOracle.setERUpdateFrequency(7202);
+        staderOracle.setMissedAttestationPenaltyUpdateFrequency(7203);
+        staderOracle.setValidatorStatsUpdateFrequency(7204);
+        staderOracle.setWithdrawnValidatorsUpdateFrequency(7205);
+        staderOracle.setValidatorVerificationDetailUpdateFrequency(7206);
+        vm.stopPrank();
+
+        assertEq(staderOracle.getSDPriceReportableBlock(), 7201);
+        assertEq(staderOracle.getERReportableBlock(), 7202);
+        assertEq(staderOracle.getMissedAttestationPenaltyReportableBlock(), 7203);
+        assertEq(staderOracle.getValidatorStatsReportableBlock(), 7204);
+        assertEq(staderOracle.getWithdrawnValidatorReportableBlock(), 7205);
+        assertEq(staderOracle.getValidatorVerificationDetailReportableBlock(), 7206);
+
+        vm.prank(staderManager);
+        vm.expectRevert(IStaderOracle.InvalidUpdate.selector);
+        staderOracle.setERUpdateFrequency(7200 * 7 + 1);
+
+        vm.prank(staderManager);
+        staderOracle.setERUpdateFrequency(7200 * 7 - 1);
+    }
+
+    function test_updateERChangeLimit() public {
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        staderOracle.updateERChangeLimit(100);
+
+        vm.prank(staderManager);
+        vm.expectRevert(IStaderOracle.ERPermissibleChangeOutofBounds.selector);
+        staderOracle.updateERChangeLimit(0);
+
+        vm.prank(staderManager);
+        vm.expectRevert(IStaderOracle.ERPermissibleChangeOutofBounds.selector);
+        staderOracle.updateERChangeLimit(10001);
+
+        assertEq(staderOracle.erChangeLimit(), 500);
+
+        vm.prank(staderManager);
+        staderOracle.updateERChangeLimit(10000);
+
+        assertEq(staderOracle.erChangeLimit(), 10000);
+
+        vm.prank(staderManager);
+        staderOracle.updateERChangeLimit(200);
+
+        assertEq(staderOracle.erChangeLimit(), 200);
     }
 }
