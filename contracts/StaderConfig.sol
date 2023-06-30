@@ -481,7 +481,7 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
             revert IndenticalValue();
         }
         variablesMap[key] = val;
-        emit SetVariable(key, val);
+        emit SetConstant(key, val);
     }
 
     function setAccount(bytes32 key, address val) internal {
