@@ -5,13 +5,13 @@ import '../../contracts/library/UtilLib.sol';
 import '../../contracts/StaderConfig.sol';
 import '../../contracts/factory/VaultFactory.sol';
 import '../../contracts/NodeELRewardVault.sol';
-import '../../contracts/PermissionlessNodeRegistry.sol';
+import '../../contracts/PermissionedNodeRegistry.sol';
 
 import '../mocks/PenaltyMock.sol';
 import '../mocks/SocializingPoolMock.sol';
 import '../mocks/SDCollateralMock.sol';
 import '../mocks/StaderOracleMock.sol';
-import '../mocks/PermissionlessPoolMock.sol';
+import '../mocks/PermissionedPoolMock.sol';
 import '../mocks/StaderInsuranceFundMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
 import '../mocks/OperatorRewardsCollectorMock.sol';
@@ -22,26 +22,28 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
-contract PermissionlessNodeRegistryTest is Test {
+contract PermissionedNodeRegistryTest is Test {
     address staderAdmin;
     address staderManager;
     address operator;
+    address permissionedNO;
 
     StaderConfig staderConfig;
     VaultFactory vaultFactory;
-    PermissionlessNodeRegistry nodeRegistry;
+    PermissionedNodeRegistry nodeRegistry;
     PoolUtilsMockForDepositFlow poolUtils;
 
     SocializingPoolMock socializingPoolMock;
     StaderOracleMock staderOracle;
     SDCollateralMock sdCollateral;
-    PermissionlessPoolMock permissionlessPool;
+    PermissionedPoolMock permissionedPool;
 
     function setUp() public {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
         address ethDepositAddr = vm.addr(103);
+        permissionedNO = vm.addr(104);
 
         PenaltyMock penalty = new PenaltyMock();
         socializingPoolMock = new SocializingPoolMock();
@@ -51,7 +53,6 @@ contract PermissionlessNodeRegistryTest is Test {
         StakePoolManagerMock poolManager = new StakePoolManagerMock();
         StaderInsuranceFundMock insuranceFund = new StaderInsuranceFundMock();
         OperatorRewardsCollectorMock rewardCollector = new OperatorRewardsCollectorMock();
-        permissionlessPool = new PermissionlessPoolMock();
         ProxyAdmin admin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
@@ -69,13 +70,14 @@ contract PermissionlessNodeRegistryTest is Test {
         vaultFactory = VaultFactory(address(vaultProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
 
-        PermissionlessNodeRegistry nodeRegistryImpl = new PermissionlessNodeRegistry();
+        PermissionedNodeRegistry nodeRegistryImpl = new PermissionedNodeRegistry();
         TransparentUpgradeableProxy nodeRegistryProxy = new TransparentUpgradeableProxy(
             address(nodeRegistryImpl),
             address(admin),
             ''
         );
-        nodeRegistry = PermissionlessNodeRegistry(address(nodeRegistryProxy));
+        permissionedPool = new PermissionedPoolMock(address(staderConfig));
+        nodeRegistry = PermissionedNodeRegistry(address(nodeRegistryProxy));
         nodeRegistry.initialize(staderAdmin, address(staderConfig));
         poolUtils = new PoolUtilsMockForDepositFlow(address(nodeRegistry), address(staderConfig));
         vm.startPrank(staderAdmin);
@@ -87,39 +89,43 @@ contract PermissionlessNodeRegistryTest is Test {
         staderConfig.updateSDCollateral(address(sdCollateral));
         staderConfig.updateStaderOracle(address(staderOracle));
         staderConfig.updateStaderInsuranceFund(address(insuranceFund));
-        staderConfig.updatePermissionlessPool(address(permissionlessPool));
+        staderConfig.updatePermissionedPool(address(permissionedPool));
         staderConfig.updateOperatorRewardsCollector(address(rewardCollector));
         staderConfig.updateNodeELRewardImplementation(address(nodeELImpl));
-        staderConfig.updatePermissionlessSocializingPool(address(socializingPoolMock));
+        staderConfig.updatePermissionedSocializingPool(address(socializingPoolMock));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(nodeRegistry));
         vm.stopPrank();
+        vm.prank(staderManager);
+        address[] memory whitelistedNO = new address[](1);
+        whitelistedNO[0] = permissionedNO;
+        nodeRegistry.whitelistPermissionedNOs(whitelistedNO);
     }
 
     function test_JustToIncreaseCoverage() public {
         ProxyAdmin admin = new ProxyAdmin();
-        PermissionlessNodeRegistry nodeRegistryImpl = new PermissionlessNodeRegistry();
+        PermissionedNodeRegistry nodeRegistryImpl = new PermissionedNodeRegistry();
         TransparentUpgradeableProxy nodeRegistryProxy = new TransparentUpgradeableProxy(
             address(nodeRegistryImpl),
             address(admin),
             ''
         );
-        nodeRegistry = PermissionlessNodeRegistry(address(nodeRegistryProxy));
+        nodeRegistry = PermissionedNodeRegistry(address(nodeRegistryProxy));
         nodeRegistry.initialize(staderAdmin, address(staderConfig));
     }
 
-    function test_permissionlessNodeRegistryInitialize() public {
+    function test_PermissionedNodeRegistryInitialize() public {
         assertEq(address(nodeRegistry.staderConfig()), address(staderConfig));
         assertEq(nodeRegistry.nextValidatorId(), 1);
         assertEq(nodeRegistry.nextOperatorId(), 1);
-        assertEq(nodeRegistry.inputKeyCountLimit(), 30);
+        assertEq(nodeRegistry.inputKeyCountLimit(), 50);
         assertEq(nodeRegistry.maxNonTerminalKeyPerOperator(), 50);
         assertEq(nodeRegistry.verifiedKeyBatchSize(), 50);
         assertTrue(nodeRegistry.hasRole(nodeRegistry.DEFAULT_ADMIN_ROLE(), staderAdmin));
     }
 
-    function test_OnboardOperatorWithOptIn(
+    function test_OnboardOperator(
         string calldata _operatorName,
         uint64 __opAddrSeed,
         uint64 _opRewardAddrSeed
@@ -129,6 +135,17 @@ contract PermissionlessNodeRegistryTest is Test {
         vm.assume(_opRewardAddrSeed > 0);
         address operatorAddr = vm.addr(__opAddrSeed);
         address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
+        assertFalse(nodeRegistry.isExistingOperator(operatorAddr));
+        vm.expectRevert(IPermissionedNodeRegistry.NotAPermissionedNodeOperator.selector);
+        nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
+        whitelistOperator(operatorAddr);
+        vm.prank(operator);
+        nodeRegistry.updateMaxOperatorId(0);
+        vm.prank(operatorAddr);
+        vm.expectRevert(IPermissionedNodeRegistry.MaxOperatorLimitReached.selector);
+        nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
+        vm.prank(operator);
+        nodeRegistry.updateMaxOperatorId(10);
         vm.startPrank(operatorAddr);
         vm.mockCall(
             address(poolUtils),
@@ -136,39 +153,20 @@ contract PermissionlessNodeRegistryTest is Test {
             abi.encode(address(0))
         );
         vm.expectRevert(INodeRegistry.DuplicatePoolIDOrPoolNotAdded.selector);
-        nodeRegistry.onboardNodeOperator(true, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
         vm.mockCall(
             address(poolUtils),
             abi.encodeWithSelector(IPoolUtils.poolAddressById.selector),
-            abi.encode(address(permissionlessPool))
+            abi.encode(address(permissionedPool))
         );
-        address output = nodeRegistry.onboardNodeOperator(true, _operatorName, opRewardAddr);
+        address output = nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
         uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
         assertEq(output, address(socializingPoolMock));
+        assertTrue(nodeRegistry.isExistingOperator(operatorAddr));
         assertEq(nodeRegistry.getOperatorRewardAddress(operatorId), opRewardAddr);
         assertEq(nodeRegistry.socializingPoolStateChangeBlock(operatorId), block.number);
-        assertNotEq(output, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
+        assertEq(nodeRegistry.getSocializingPoolStateChangeBlock(operatorId), block.number);
         vm.stopPrank();
-    }
-
-    function test_OnboardOperatorWithOptOut(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
-        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
-        address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        vm.prank(operatorAddr);
-        address output = nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
-        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
-        address nodeELVault = vaultFactory.computeNodeELRewardVaultAddress(nodeRegistry.POOL_ID(), operatorId);
-        assertEq(output, nodeELVault);
-        assertEq(nodeRegistry.socializingPoolStateChangeBlock(operatorId), block.number);
-        assertEq(output, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
-        assertEq(nodeRegistry.isExistingOperator(operatorAddr), true);
     }
 
     function test_OnboardExistingOperator(
@@ -181,6 +179,7 @@ contract PermissionlessNodeRegistryTest is Test {
         vm.assume(_opRewardAddrSeed > 0);
         address operatorAddr = vm.addr(__opAddrSeed);
         address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
+        whitelistOperator(operatorAddr);
         vm.startPrank(operatorAddr);
         vm.mockCall(
             address(poolUtils),
@@ -188,7 +187,7 @@ contract PermissionlessNodeRegistryTest is Test {
             abi.encode(true)
         );
         vm.expectRevert(INodeRegistry.OperatorAlreadyOnBoardedInProtocol.selector);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
         vm.stopPrank();
     }
 
@@ -204,9 +203,10 @@ contract PermissionlessNodeRegistryTest is Test {
         address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
         vm.prank(staderManager);
         nodeRegistry.pause();
+        whitelistOperator(operatorAddr);
         vm.startPrank(operatorAddr);
         vm.expectRevert('Pausable: paused');
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
         vm.stopPrank();
         vm.prank(staderManager);
         nodeRegistry.unpause();
@@ -218,9 +218,9 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory preDepositSignature,
             bytes[] memory depositSignature
         ) = getValidatorKeys();
-        startHoax(address(this));
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
         uint256 nextValidatorId = nodeRegistry.nextValidatorId();
         assertEq(nextValidatorId, 4);
@@ -237,10 +237,10 @@ contract PermissionlessNodeRegistryTest is Test {
         preDepositSignature[
             0
         ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f5';
-        startHoax(address(this));
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
         vm.expectRevert(INodeRegistry.MisMatchingInputKeysSize.selector);
-        nodeRegistry.addValidatorKeys{value: 4 ether}(pubkeys, preDepositSignature, depositSignature);
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
     }
 
@@ -248,10 +248,10 @@ contract PermissionlessNodeRegistryTest is Test {
         bytes[] memory pubkeys = new bytes[](0);
         bytes[] memory preDepositSignature = new bytes[](0);
         bytes[] memory depositSignature = new bytes[](0);
-        startHoax(address(this));
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
         vm.expectRevert(INodeRegistry.InvalidKeyCount.selector);
-        nodeRegistry.addValidatorKeys{value: 4 ether}(pubkeys, preDepositSignature, depositSignature);
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
     }
 
@@ -263,24 +263,10 @@ contract PermissionlessNodeRegistryTest is Test {
         ) = getValidatorKeys();
         vm.prank(staderManager);
         nodeRegistry.updateMaxNonTerminalKeyPerOperator(2);
-        startHoax(address(this));
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
         vm.expectRevert(INodeRegistry.maxKeyLimitReached.selector);
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
-        vm.stopPrank();
-    }
-
-    function test_addValidatorKeysWithInvalidBondETH() public {
-        (
-            bytes[] memory pubkeys,
-            bytes[] memory preDepositSignature,
-            bytes[] memory depositSignature
-        ) = getValidatorKeys();
-
-        startHoax(address(this));
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
-        vm.expectRevert(IPermissionlessNodeRegistry.InvalidBondEthValue.selector);
-        nodeRegistry.addValidatorKeys{value: 2 ether}(pubkeys, preDepositSignature, depositSignature);
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
     }
 
@@ -291,15 +277,15 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory depositSignature
         ) = getValidatorKeys();
 
-        startHoax(address(this));
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
         vm.mockCall(
             address(sdCollateral),
             abi.encodeWithSelector(ISDCollateral.hasEnoughSDCollateral.selector),
             abi.encode(false)
         );
         vm.expectRevert(INodeRegistry.NotEnoughSDCollateral.selector);
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
     }
 
@@ -310,10 +296,25 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory depositSignature
         ) = getValidatorKeys();
 
-        startHoax(operator);
+        vm.prank(operator);
         nodeRegistry.updateVerifiedKeysBatchSize(2);
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
+        assertEq(nodeRegistry.getTotalQueuedValidatorCount(), pubkeys.length);
+        vm.startPrank(address(permissionedPool));
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(permissionedNO);
+        uint256 nextQueuedValidatorIndexBefore = nodeRegistry.nextQueuedValidatorIndexByOperatorId(operatorId);
+        assertEq(nextQueuedValidatorIndexBefore, 0);
+        vm.expectRevert(INodeRegistry.UNEXPECTED_STATUS.selector);
+        nodeRegistry.onlyPreDepositValidator(pubkeys[0]);
+        nodeRegistry.markValidatorStatusAsPreDeposit(pubkeys[0]);
+        nodeRegistry.markValidatorStatusAsPreDeposit(pubkeys[1]);
+        nodeRegistry.markValidatorStatusAsPreDeposit(pubkeys[2]);
+        nodeRegistry.onlyPreDepositValidator(pubkeys[0]);
+        nodeRegistry.updateQueuedValidatorIndex(operatorId, nextQueuedValidatorIndexBefore + 3);
+        nodeRegistry.increaseTotalActiveValidatorCount(3);
+
         bytes[] memory readyToDepositKeys = new bytes[](1);
         bytes[] memory frontRunKeys = new bytes[](1);
         bytes[] memory invalidSigKeys = new bytes[](1);
@@ -323,7 +324,7 @@ contract PermissionlessNodeRegistryTest is Test {
         uint256 readyToDepositValidatorId = nodeRegistry.validatorIdByPubkey(readyToDepositKeys[0]);
         uint256 frontRunValidatorId = nodeRegistry.validatorIdByPubkey(frontRunKeys[0]);
         uint256 invalidSigValidatorId = nodeRegistry.validatorIdByPubkey(invalidSigKeys[0]);
-        vm.startPrank(address(staderOracle));
+        vm.prank(address(staderOracle));
         vm.expectRevert(INodeRegistry.TooManyVerifiedKeysReported.selector);
         nodeRegistry.markValidatorReadyToDeposit(readyToDepositKeys, frontRunKeys, invalidSigKeys);
         vm.prank(operator);
@@ -332,7 +333,6 @@ contract PermissionlessNodeRegistryTest is Test {
         nodeRegistry.markValidatorReadyToDeposit(readyToDepositKeys, frontRunKeys, invalidSigKeys);
         vm.expectRevert(INodeRegistry.UNEXPECTED_STATUS.selector);
         nodeRegistry.markValidatorReadyToDeposit(readyToDepositKeys, frontRunKeys, invalidSigKeys);
-        assertEq(nodeRegistry.getTotalQueuedValidatorCount(), readyToDepositKeys.length);
         (ValidatorStatus readyToDepositStatus, , , , , , , ) = nodeRegistry.validatorRegistry(
             readyToDepositValidatorId
         );
@@ -341,10 +341,11 @@ contract PermissionlessNodeRegistryTest is Test {
         require(readyToDepositStatus == ValidatorStatus.PRE_DEPOSIT);
         require(frontRunStatus == ValidatorStatus.FRONT_RUN);
         require(invalidSigStatus == ValidatorStatus.INVALID_SIGNATURE);
-        startHoax(operator);
-        vm.expectRevert(INodeRegistry.OperatorIsDeactivate.selector);
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
+        assertEq(nodeRegistry.totalActiveValidatorCount(), 1);
+        vm.prank(permissionedNO);
+        vm.expectRevert(INodeRegistry.OperatorIsDeactivate.selector);
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
     }
 
     function test_withdrawnValidators() public {
@@ -356,15 +357,15 @@ contract PermissionlessNodeRegistryTest is Test {
 
         vm.prank(operator);
         staderConfig.updateWithdrawnKeysBatchSize(1);
-        startHoax(address(this));
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
         uint256 validatorId1 = nodeRegistry.validatorIdByPubkey(pubkeys[0]);
         uint256 validatorId2 = nodeRegistry.validatorIdByPubkey(pubkeys[1]);
         uint256 validatorId3 = nodeRegistry.validatorIdByPubkey(pubkeys[2]);
 
-        vm.startPrank(address(permissionlessPool));
+        vm.startPrank(address(permissionedPool));
         nodeRegistry.updateDepositStatusAndBlock(validatorId1);
         nodeRegistry.updateDepositStatusAndBlock(validatorId2);
         nodeRegistry.updateDepositStatusAndBlock(validatorId3);
@@ -383,89 +384,18 @@ contract PermissionlessNodeRegistryTest is Test {
         vm.stopPrank();
     }
 
-    function test_updateNextQueuedValidatorIndex(uint256 _nextQueuedValidatorIndex) public {
+    function test_updateNextQueuedValidatorIndex(uint64 __opAddrSeed, uint256 _nextQueuedValidatorIndex) public {
         vm.assume(_nextQueuedValidatorIndex > 0);
-        vm.startPrank(address(permissionlessPool));
-        nodeRegistry.updateNextQueuedValidatorIndex(_nextQueuedValidatorIndex);
-        uint256 nextQueuedValidatorIndex = nodeRegistry.nextQueuedValidatorIndex();
+        vm.assume(__opAddrSeed > 0);
+        address operatorAddr = vm.addr(__opAddrSeed);
+        whitelistOperator(operatorAddr);
+        vm.prank(operatorAddr);
+        nodeRegistry.onboardNodeOperator('testOP', payable(operatorAddr));
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
+        vm.startPrank(address(permissionedPool));
+        nodeRegistry.updateQueuedValidatorIndex(operatorId, _nextQueuedValidatorIndex);
+        uint256 nextQueuedValidatorIndex = nodeRegistry.nextQueuedValidatorIndexByOperatorId(operatorId);
         assertEq(nextQueuedValidatorIndex, _nextQueuedValidatorIndex);
-    }
-
-    function test_changeSocializingPoolStateWithZeroCoolDown(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
-        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
-        address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        vm.startPrank(operatorAddr);
-        address feeRecipientAddressBefore = nodeRegistry.onboardNodeOperator(true, _operatorName, opRewardAddr);
-        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
-        assertEq(feeRecipientAddressBefore, address(socializingPoolMock));
-        address feeRecipientAddressAfter = nodeRegistry.changeSocializingPoolState(false);
-        assertEq(feeRecipientAddressAfter, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
-        assertEq(nodeRegistry.getSocializingPoolStateChangeBlock(operatorId), block.number);
-    }
-
-    function test_changeSocializingPoolStateWithSomeCoolDown(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
-        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
-        address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        vm.prank(staderManager);
-        staderConfig.updateSocializingPoolOptInCoolingPeriod(50);
-        vm.startPrank(operatorAddr);
-        address feeRecipientAddressBefore = nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
-        uint256 lastStateChangedBlock = block.number;
-        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
-        assertEq(feeRecipientAddressBefore, nodeRegistry.nodeELRewardVaultByOperatorId(operatorId));
-        uint256 latestStateChangeBlock = lastStateChangedBlock + 50;
-        vm.roll(latestStateChangeBlock);
-        vm.deal(feeRecipientAddressBefore, 1 ether);
-        address feeRecipientAddressAfter = nodeRegistry.changeSocializingPoolState(true);
-        assertEq(address(feeRecipientAddressBefore).balance, 0);
-        assertEq(feeRecipientAddressAfter, address(socializingPoolMock));
-        assertEq(nodeRegistry.getSocializingPoolStateChangeBlock(operatorId), latestStateChangeBlock);
-    }
-
-    function testFail_changeSocializingPoolStateWithSameState(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
-        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
-        address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        vm.startPrank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
-        nodeRegistry.changeSocializingPoolState(false);
-    }
-
-    function testFail_changeSocializingPoolStateDuringCoolDown(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
-        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
-        address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        vm.prank(staderManager);
-        staderConfig.updateSocializingPoolOptInCoolingPeriod(50);
-        vm.startPrank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
-        nodeRegistry.changeSocializingPoolState(true);
     }
 
     function test_updateInputKeyCountLimit(uint16 _keyCountLimit) public {
@@ -536,8 +466,9 @@ contract PermissionlessNodeRegistryTest is Test {
         address operatorAddr = vm.addr(__opAddrSeed);
         address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
         address payable newOPRewardAddr = payable(vm.addr(_newOPRewardAddrSeed));
+        whitelistOperator(operatorAddr);
         vm.startPrank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
         uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
         string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
         nodeRegistry.updateOperatorDetails(newOpName, newOPRewardAddr);
@@ -546,37 +477,27 @@ contract PermissionlessNodeRegistryTest is Test {
         );
         assertEq(operatorName, newOpName);
         assertEq(operatorRewardAddress, newOPRewardAddr);
+        vm.stopPrank();
     }
 
-    function test_updateOperatorDetailWithInActiveOperator(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
+    function test_updateOperatorDetailWithInActiveOperator(string calldata _operatorName, uint64 _opRewardAddrSeed)
+        public
+    {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(__opAddrSeed > 0);
         vm.assume(_opRewardAddrSeed > 0);
-        address operatorAddr = vm.addr(__opAddrSeed);
         address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        vm.prank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
         string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
         vm.expectRevert(INodeRegistry.OperatorNotOnBoarded.selector);
-        nodeRegistry.updateOperatorDetails(newOpName, payable(operatorAddr));
+        nodeRegistry.updateOperatorDetails(newOpName, payable(opRewardAddr));
     }
 
-    function test_updateOperatorDetailWithZeroRewardAddr(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
+    function test_updateOperatorDetailWithZeroRewardAddr(string calldata _operatorName, uint64 __opAddrSeed) public {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
         address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
+        whitelistOperator(operatorAddr);
         vm.startPrank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(_operatorName, payable(operatorAddr));
         string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
         vm.expectRevert(UtilLib.ZeroAddress.selector);
         nodeRegistry.updateOperatorDetails(newOpName, payable(address(0)));
@@ -596,40 +517,25 @@ contract PermissionlessNodeRegistryTest is Test {
         address operatorAddr = vm.addr(__opAddrSeed);
         address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
         address payable newOPRewardAddr = payable(vm.addr(_newOPRewardAddrSeed));
+        whitelistOperator(operatorAddr);
         vm.startPrank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(_operatorName, opRewardAddr);
         string memory newOpName = string(abi.encodePacked(''));
         vm.expectRevert(PoolUtilsMockForDepositFlow.EmptyNameString.selector);
         nodeRegistry.updateOperatorDetails(newOpName, newOPRewardAddr);
-        vm.stopPrank();
     }
 
     function test_increaseTotalActiveValidatorCount(uint256 _count) public {
         uint256 totalActiveValidatorsBefore = nodeRegistry.totalActiveValidatorCount();
-        vm.prank(address(permissionlessPool));
+        vm.prank(address(permissionedPool));
         nodeRegistry.increaseTotalActiveValidatorCount(_count);
         uint256 totalActiveValidatorsAfter = nodeRegistry.totalActiveValidatorCount();
         assertEq(totalActiveValidatorsAfter - totalActiveValidatorsBefore, _count);
     }
 
-    function test_increaseTotalActiveValidatorCountCallerNotPermissionlessPool(uint256 _count) public {
+    function test_increaseTotalActiveValidatorCountCallerNotPermissionedPool(uint256 _count) public {
         vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
         nodeRegistry.increaseTotalActiveValidatorCount(_count);
-    }
-
-    function test_transferCollateralToPool(uint256 _amount) public {
-        uint256 permissionlessPoolBalanceBefore = address(permissionlessPool).balance;
-        vm.deal(address(nodeRegistry), _amount);
-        vm.prank(address(permissionlessPool));
-        nodeRegistry.transferCollateralToPool(_amount);
-        uint256 permissionlessPoolBalanceAfter = address(permissionlessPool).balance;
-        assertEq(permissionlessPoolBalanceAfter - permissionlessPoolBalanceBefore, _amount);
-    }
-
-    function test_transferCollateralToPoolCallerNotPermissionlessPool(uint256 _amount) public {
-        vm.deal(address(nodeRegistry), _amount);
-        vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
-        nodeRegistry.transferCollateralToPool(_amount);
     }
 
     function test_getOperatorTotalNonTerminalKeys(
@@ -648,11 +554,11 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory preDepositSignature,
             bytes[] memory depositSignature
         ) = getValidatorKeys();
-
-        startHoax(operatorAddr);
-        nodeRegistry.onboardNodeOperator(true, 'testOP', opRewardAddr);
+        whitelistOperator(operatorAddr);
+        vm.startPrank(operatorAddr);
+        nodeRegistry.onboardNodeOperator('testOP', opRewardAddr);
         uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         uint256 nonTerminalKeys = nodeRegistry.getOperatorTotalNonTerminalKeys(operatorAddr, _startIndex, _endIndex);
         uint256 validatorCount = nodeRegistry.getOperatorTotalKeys(operatorId);
         uint256 expectedNonTerminalKeys = _startIndex >= pubkeys.length
@@ -678,10 +584,10 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory preDepositSignature,
             bytes[] memory depositSignature
         ) = getValidatorKeys();
-
-        startHoax(operatorAddr);
-        nodeRegistry.onboardNodeOperator(true, 'testOP', opRewardAddr);
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
+        whitelistOperator(operatorAddr);
+        vm.startPrank(operatorAddr);
+        nodeRegistry.onboardNodeOperator('testOP', opRewardAddr);
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.expectRevert(INodeRegistry.InvalidStartAndEndIndex.selector);
         nodeRegistry.getOperatorTotalNonTerminalKeys(operatorAddr, _startIndex, _endIndex);
     }
@@ -695,22 +601,15 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory depositSignature
         ) = getValidatorKeys();
 
-        startHoax(operator);
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
-        bytes[] memory readyToDepositKeys = new bytes[](3);
-        bytes[] memory frontRunKeys = new bytes[](0);
-        bytes[] memory invalidSigKeys = new bytes[](0);
-        readyToDepositKeys[0] = pubkeys[0];
-        readyToDepositKeys[1] = pubkeys[1];
-        readyToDepositKeys[2] = pubkeys[2];
-        vm.prank(address(staderOracle));
-        nodeRegistry.markValidatorReadyToDeposit(readyToDepositKeys, frontRunKeys, invalidSigKeys);
-        assertEq(nodeRegistry.getTotalQueuedValidatorCount(), readyToDepositKeys.length);
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
+        vm.stopPrank();
+        assertEq(nodeRegistry.getTotalQueuedValidatorCount(), pubkeys.length);
         uint256 validatorId1 = nodeRegistry.validatorIdByPubkey(pubkeys[0]);
         uint256 validatorId2 = nodeRegistry.validatorIdByPubkey(pubkeys[1]);
         uint256 validatorId3 = nodeRegistry.validatorIdByPubkey(pubkeys[2]);
-        vm.startPrank(address(permissionlessPool));
+        vm.startPrank(address(permissionedPool));
         nodeRegistry.updateDepositStatusAndBlock(validatorId1);
         nodeRegistry.updateDepositStatusAndBlock(validatorId2);
         nodeRegistry.updateDepositStatusAndBlock(validatorId3);
@@ -734,18 +633,12 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory depositSignature
         ) = getValidatorKeys();
 
-        startHoax(operator);
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
-        bytes[] memory readyToDepositKeys = new bytes[](1);
-        bytes[] memory frontRunKeys = new bytes[](0);
-        bytes[] memory invalidSigKeys = new bytes[](0);
-        readyToDepositKeys[0] = pubkeys[0];
-        vm.prank(address(staderOracle));
-        nodeRegistry.markValidatorReadyToDeposit(readyToDepositKeys, frontRunKeys, invalidSigKeys);
-        assertEq(nodeRegistry.getTotalQueuedValidatorCount(), readyToDepositKeys.length);
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(address(this)));
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
+        assertEq(nodeRegistry.getTotalQueuedValidatorCount(), pubkeys.length);
         uint256 validatorId1 = nodeRegistry.validatorIdByPubkey(pubkeys[0]);
-        vm.startPrank(address(permissionlessPool));
+        vm.startPrank(address(permissionedPool));
         nodeRegistry.updateDepositStatusAndBlock(validatorId1);
         nodeRegistry.increaseTotalActiveValidatorCount(1);
         vm.stopPrank();
@@ -754,16 +647,15 @@ contract PermissionlessNodeRegistryTest is Test {
     }
 
     function test_getValidatorsByOperator() public {
-        address op = vm.addr(445);
         (
             bytes[] memory pubkeys,
             bytes[] memory preDepositSignature,
             bytes[] memory depositSignature
         ) = getValidatorKeys();
-        startHoax(op);
-        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(op));
-        nodeRegistry.addValidatorKeys{value: 12 ether}(pubkeys, preDepositSignature, depositSignature);
-        Validator[] memory validators = nodeRegistry.getValidatorsByOperator(op, 1, 100);
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP', payable(permissionedNO));
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
+        Validator[] memory validators = nodeRegistry.getValidatorsByOperator(permissionedNO, 1, 100);
         assertEq(validators.length, 3);
         // assertEq(validators[0].pubkey, pubkeys[0]);
     }
@@ -783,51 +675,98 @@ contract PermissionlessNodeRegistryTest is Test {
         nodeRegistry.getValidatorsByOperator(op, pageNumber, _pageSize);
     }
 
-    function test_getNodeELVaultAddressForOptOutOperators(uint256 _pageNumber, uint256 _pageSize) public {
-        vm.assume(_pageNumber > 0 && _pageNumber < 1000);
-        vm.assume(_pageSize < 10000);
-        address op1 = vm.addr(10000000);
-        address op2 = vm.addr(20000000);
-        address op3 = vm.addr(30000000);
-        address op4 = vm.addr(40000000);
-        vm.prank(op1);
-        nodeRegistry.onboardNodeOperator(false, 'op1', payable(op1));
-        vm.prank(op2);
-        nodeRegistry.onboardNodeOperator(false, 'op2', payable(op2));
-        vm.prank(op3);
-        nodeRegistry.onboardNodeOperator(false, 'op3', payable(op3));
-        vm.prank(op4);
-        nodeRegistry.onboardNodeOperator(false, 'op4', payable(op4));
-        address[] memory operatorAddr = nodeRegistry.getAllNodeELVaultAddress(_pageNumber, _pageSize);
-        uint256 startIndex = (_pageNumber - 1) * _pageSize + 1;
-        uint256 nextOperatorId = nodeRegistry.nextOperatorId();
-        uint256 expectedOptOutOperatorCount = startIndex >= nextOperatorId
-            ? 0
-            : Math.min(_pageSize, nextOperatorId - startIndex);
-        assertEq(operatorAddr.length, expectedOptOutOperatorCount);
+    function test_AllocateValidatorsAndUpdateOperatorId() public {
+        address operatorAddr = vm.addr(999);
+        whitelistOperator(operatorAddr);
+        (
+            bytes[] memory pubkeys,
+            bytes[] memory preDepositSignature,
+            bytes[] memory depositSignature
+        ) = getValidatorKeys();
+        (
+            bytes[] memory pubkeys1,
+            bytes[] memory preDepositSignature1,
+            bytes[] memory depositSignature1
+        ) = getDifferentSetOfValidatorKeys();
+
+        vm.startPrank(operatorAddr);
+        nodeRegistry.onboardNodeOperator('testOP1', payable(operatorAddr));
+        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
+        uint256 operatorId1 = nodeRegistry.operatorIDByAddress(operatorAddr);
+        vm.stopPrank();
+        vm.startPrank(permissionedNO);
+        nodeRegistry.onboardNodeOperator('testOP2', payable(permissionedNO));
+        nodeRegistry.addValidatorKeys(pubkeys1, preDepositSignature1, depositSignature1);
+        uint256 operatorId2 = nodeRegistry.operatorIDByAddress(permissionedNO);
+        vm.stopPrank();
+        assertEq(nodeRegistry.getTotalQueuedValidatorCount(), pubkeys.length + pubkeys1.length);
+        assertEq(nodeRegistry.operatorIdForExcessDeposit(), operatorId1);
+        vm.prank(address(permissionedPool));
+        uint256[] memory selectedOperatorCapacity = nodeRegistry.allocateValidatorsAndUpdateOperatorId(6);
+        assertEq(nodeRegistry.operatorIdForExcessDeposit(), operatorId1);
+        assertEq(selectedOperatorCapacity[operatorId1], pubkeys.length);
+        assertEq(selectedOperatorCapacity[operatorId2], pubkeys1.length);
+        vm.startPrank(address(permissionedPool));
+        nodeRegistry.markValidatorStatusAsPreDeposit(pubkeys[0]);
+        nodeRegistry.updateQueuedValidatorIndex(operatorId1, 1);
+        uint256[] memory selectedOperatorCapacity1 = nodeRegistry.allocateValidatorsAndUpdateOperatorId(6);
+        assertEq(nodeRegistry.operatorIdForExcessDeposit(), operatorId1);
+        assertEq(selectedOperatorCapacity1[operatorId1], pubkeys.length - 1);
+        assertEq(selectedOperatorCapacity1[operatorId2], pubkeys1.length);
+        uint256[] memory selectedOperatorCapacity2 = nodeRegistry.allocateValidatorsAndUpdateOperatorId(5);
+        assertEq(nodeRegistry.operatorIdForExcessDeposit(), operatorId1);
+        assertEq(selectedOperatorCapacity2[operatorId1], pubkeys.length - 1);
+        assertEq(selectedOperatorCapacity2[operatorId2], pubkeys1.length);
+        nodeRegistry.markValidatorStatusAsPreDeposit(pubkeys1[0]);
+        nodeRegistry.markValidatorStatusAsPreDeposit(pubkeys1[1]);
+        nodeRegistry.updateQueuedValidatorIndex(operatorId2, 2);
+        uint256[] memory selectedOperatorCapacity3 = nodeRegistry.allocateValidatorsAndUpdateOperatorId(3);
+        assertEq(nodeRegistry.operatorIdForExcessDeposit(), operatorId2);
+        assertEq(selectedOperatorCapacity3[operatorId1], pubkeys.length - 1);
+        assertEq(selectedOperatorCapacity3[operatorId2], pubkeys1.length - 2);
     }
 
-    function test_getNodeELVaultAddressForOptOutOperatorsWithZeroPageNumber(uint256 _pageSize) public {
-        uint256 pageNumber = 0;
-        vm.assume(_pageSize < 10000);
-        address op1 = vm.addr(10000000);
-        address op2 = vm.addr(20000000);
-        address op3 = vm.addr(30000000);
-        address op4 = vm.addr(40000000);
-        vm.prank(op1);
-        nodeRegistry.onboardNodeOperator(false, 'op1', payable(op1));
-        vm.prank(op2);
-        nodeRegistry.onboardNodeOperator(false, 'op2', payable(op2));
-        vm.prank(op3);
-        nodeRegistry.onboardNodeOperator(false, 'op3', payable(op3));
-        vm.prank(op4);
-        nodeRegistry.onboardNodeOperator(false, 'op4', payable(op4));
-        vm.expectRevert(INodeRegistry.PageNumberIsZero.selector);
-        nodeRegistry.getAllNodeELVaultAddress(pageNumber, _pageSize);
+    function test_DeactivateNodeOperator(uint64 __opAddrSeed, uint64 _opRewardAddrSeed) public {
+        vm.assume(__opAddrSeed > 0);
+        vm.assume(_opRewardAddrSeed > 0);
+        address operatorAddr = vm.addr(__opAddrSeed);
+        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
+        whitelistOperator(operatorAddr);
+        vm.prank(operatorAddr);
+        nodeRegistry.onboardNodeOperator('testOP', payable(opRewardAddr));
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
+        vm.startPrank(staderManager);
+        nodeRegistry.deactivateNodeOperator(operatorId);
+        vm.expectRevert(IPermissionedNodeRegistry.OperatorAlreadyDeactivate.selector);
+        nodeRegistry.deactivateNodeOperator(operatorId);
+    }
+
+    function test_ActivateNodeOperator(uint64 __opAddrSeed, uint64 _opRewardAddrSeed) public {
+        vm.assume(__opAddrSeed > 0);
+        vm.assume(_opRewardAddrSeed > 0);
+        address operatorAddr = vm.addr(__opAddrSeed);
+        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
+        whitelistOperator(operatorAddr);
+        vm.prank(operatorAddr);
+        nodeRegistry.onboardNodeOperator('testOP', opRewardAddr);
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
+        vm.startPrank(staderManager);
+        vm.expectRevert(IPermissionedNodeRegistry.OperatorAlreadyActive.selector);
+        nodeRegistry.activateNodeOperator(operatorId);
+        nodeRegistry.deactivateNodeOperator(operatorId);
+        nodeRegistry.activateNodeOperator(operatorId);
     }
 
     function test_getCollateralETH() public {
-        assertEq(nodeRegistry.getCollateralETH(), 4 ether);
+        uint256 collateralETH = nodeRegistry.getCollateralETH();
+        assertEq(collateralETH, 0);
+    }
+
+    function whitelistOperator(address operatorAddr) internal {
+        address[] memory whitelistAddr = new address[](1);
+        whitelistAddr[0] = operatorAddr;
+        vm.prank(staderManager);
+        nodeRegistry.whitelistPermissionedNOs(whitelistAddr);
     }
 
     function getValidatorKeys()
@@ -863,6 +802,43 @@ contract PermissionlessNodeRegistryTest is Test {
         depositSignature[
             2
         ] = '0x8c6c13d3cc575bd0e679481d6a730ee19e73d6918351b2d42eb77ff690664348a5060ccb8938df9cedfd2998d7278b';
+
+        return (pubkeys, preDepositSignature, depositSignature);
+    }
+
+    function getDifferentSetOfValidatorKeys()
+        internal
+        pure
+        returns (
+            bytes[] memory,
+            bytes[] memory,
+            bytes[] memory
+        )
+    {
+        bytes[] memory pubkeys = new bytes[](3);
+        bytes[] memory preDepositSignature = new bytes[](3);
+        bytes[] memory depositSignature = new bytes[](3);
+        pubkeys[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336751';
+        pubkeys[1] = '0xa119a476cd0f30f5117b823c5732c66199136f18e55e6b';
+        pubkeys[2] = '0x8c6c13d3cc575bd0e679481d6a730ee19e73d69183518b';
+        preDepositSignature[
+            0
+        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        preDepositSignature[
+            1
+        ] = '0xa119a476cd0f30f5117b823c5732c66199136f18e55e6a616a52a69f1986d8b08055bccbf7169baf47289fa2849959';
+        preDepositSignature[
+            2
+        ] = '0x8c6c13d3cc575bd0e679481d6a730ee19e73d6918351b2d42eb77ff690664348a5060ccb8938df9cedfd2998d7278c';
+        depositSignature[
+            0
+        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        depositSignature[
+            1
+        ] = '0xa119a476cd0f30f5117b823c5732c66199136f18e55e6a616a52a69f1986d8b08055bccbf7169baf47289fa2849959';
+        depositSignature[
+            2
+        ] = '0x8c6c13d3cc575bd0e679481d6a730ee19e73d6918351b2d42eb77ff690664348a5060ccb8938df9cedfd2998d7278c';
 
         return (pubkeys, preDepositSignature, depositSignature);
     }
