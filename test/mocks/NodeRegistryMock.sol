@@ -38,7 +38,7 @@ contract NodeRegistryMock {
     function getCollateralETH() external pure returns (uint256) {
         return 4 ether;
     }
-
+    
     function markValidatorReadyToDeposit(
         bytes[] calldata,
         bytes[] calldata,
