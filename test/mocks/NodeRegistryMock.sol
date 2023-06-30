@@ -22,4 +22,12 @@ contract NodeRegistryMock {
     function getOperatorTotalKeys(uint256) external pure returns (uint256 totalKeys) {
         return 5;
     }
+
+    function markValidatorReadyToDeposit(
+        bytes[] calldata,
+        bytes[] calldata,
+        bytes[] calldata
+    ) external {}
+
+    function withdrawnValidators(bytes[] calldata) external {}
 }
