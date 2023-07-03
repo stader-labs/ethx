@@ -32,7 +32,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
         uint256 validatorId = VaultProxy(payable(address(this))).id();
         IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
         uint256 totalRewards = address(this).balance;
-        if (!staderConfig.onlyOperatorRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
+        if (!staderConfig.onlyManagerRole(msg.sender) && totalRewards > staderConfig.getRewardsThreshold()) {
             emit DistributeRewardFailed(totalRewards, staderConfig.getRewardsThreshold());
             revert InvalidRewardAmount();
         }

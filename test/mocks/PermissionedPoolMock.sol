@@ -13,4 +13,8 @@ contract PermissionedPoolMock {
     function receiveInsuranceFund() external payable {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_INSURANCE_FUND());
     }
+
+    function transferETHOfDefectiveKeysToSSPM(uint256) external {}
+
+    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external {}
 }

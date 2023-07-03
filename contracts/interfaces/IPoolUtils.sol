@@ -8,6 +8,7 @@ interface IPoolUtils {
     // Errors
     error EmptyNameString();
     error PoolIdNotPresent();
+    error MismatchingPoolId();
     error PubkeyDoesNotExit();
     error PubkeyAlreadyExist();
     error NameCrossedMaxLength();

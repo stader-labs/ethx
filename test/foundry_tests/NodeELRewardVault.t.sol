@@ -6,6 +6,7 @@ import '../../contracts/StaderConfig.sol';
 import '../../contracts/VaultProxy.sol';
 import '../../contracts/NodeELRewardVault.sol';
 import '../../contracts/OperatorRewardsCollector.sol';
+import '../../contracts/factory/VaultFactory.sol';
 
 import '../mocks/PoolUtilsMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
@@ -24,8 +25,9 @@ contract NodeELRewardVaultTest is Test {
     uint256 operatorId;
 
     StaderConfig staderConfig;
-    VaultProxy nodeELRewardVault;
+    address payable nodeELCloneAddr;
     OperatorRewardsCollector operatorRC;
+    VaultFactory vaultFactory;
 
     function setUp() public {
         poolId = 1;
@@ -58,16 +60,23 @@ contract NodeELRewardVaultTest is Test {
         poolUtils = new PoolUtilsMock(address(staderConfig));
         NodeELRewardVault nodeELRewardVaultImpl = new NodeELRewardVault();
 
+        VaultFactory vfImpl = new VaultFactory();
+        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), '');
+        vaultFactory = VaultFactory(address(vfProxy));
+        vaultFactory.initialize(staderAdmin, address(staderConfig));
+
         vm.startPrank(staderAdmin);
         staderConfig.updateAdmin(staderAdmin);
+        staderConfig.updateVaultFactory(address(vaultFactory));
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.updateNodeELRewardImplementation(address(nodeELRewardVaultImpl));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
+        vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(poolUtils.nodeRegistry()));
         vm.stopPrank();
 
-        nodeELRewardVault = new VaultProxy();
-        nodeELRewardVault.initialise(false, poolId, operatorId, address(staderConfig));
+        vm.prank(address(poolUtils.nodeRegistry()));
+        nodeELCloneAddr = payable(vaultFactory.deployNodeELRewardVault(poolId, operatorId));
     }
 
     function test_JustToIncreaseCoverage() public {
@@ -83,41 +92,40 @@ contract NodeELRewardVaultTest is Test {
     }
 
     function test_initialise() public {
-        assertTrue(nodeELRewardVault.isInitialized());
+        assertTrue(VaultProxy(nodeELCloneAddr).isInitialized());
 
         address randomUser = vm.addr(2342);
         vm.prank(randomUser);
         vm.expectRevert(IVaultProxy.AlreadyInitialized.selector);
-        nodeELRewardVault.initialise(true, poolId, operatorId, address(staderConfig));
+        VaultProxy(nodeELCloneAddr).initialise(true, poolId, operatorId, address(staderConfig));
 
-        assertEq(address(nodeELRewardVault.staderConfig()), address(staderConfig));
-        assertEq(nodeELRewardVault.owner(), staderAdmin);
-        assertFalse(nodeELRewardVault.isValidatorWithdrawalVault());
-        assertEq(nodeELRewardVault.poolId(), poolId);
-        assertEq(nodeELRewardVault.id(), operatorId);
+        assertEq(address(VaultProxy(nodeELCloneAddr).staderConfig()), address(staderConfig));
+        assertEq(VaultProxy(nodeELCloneAddr).owner(), staderAdmin);
+        assertFalse(VaultProxy(nodeELCloneAddr).isValidatorWithdrawalVault());
+        assertEq(VaultProxy(nodeELCloneAddr).poolId(), poolId);
+        assertEq(VaultProxy(nodeELCloneAddr).id(), operatorId);
     }
 
-    function test_receive(uint64 randomPrivateKey, uint256 amount) public {
-        vm.assume(randomPrivateKey > 0);
-        address randomEOA = vm.addr(randomPrivateKey);
+    function test_receive(uint256 amount) public {
+        address randomEOA = vm.addr(567);
 
-        assertEq(address(nodeELRewardVault).balance, 0);
+        assertEq(nodeELCloneAddr.balance, 0);
+
         hoax(randomEOA, amount); // provides amount eth to user and makes it the caller for next call
-        // vm.expectEmit(true, true, true, true);
-        // emit nodeELRewardVault.ETHReceived(randomEOA, amount); // TODO: error: unable to access events
-        (bool success, ) = payable(nodeELRewardVault).call{value: amount}('');
+        (bool success, ) = nodeELCloneAddr.call{value: amount}('');
         assertTrue(success);
-        assertEq(address(nodeELRewardVault).balance, amount);
+
+        assertEq(nodeELCloneAddr.balance, amount);
     }
 
     // NOTE: used uint128 to avoid arithmetic underflow overflow in calculateRewardShare
     function test_withdraw(uint128 rewardEth) public {
-        assertEq(address(nodeELRewardVault).balance, 0);
+        assertEq(nodeELCloneAddr.balance, 0);
         vm.expectRevert(INodeELRewardVault.NotEnoughRewardToWithdraw.selector);
-        INodeELRewardVault(address(nodeELRewardVault)).withdraw();
+        INodeELRewardVault(nodeELCloneAddr).withdraw();
 
         vm.assume(rewardEth > 0);
-        vm.deal(address(nodeELRewardVault), rewardEth); // send rewardEth to nodeELRewardVault
+        vm.deal(nodeELCloneAddr, rewardEth); // send rewardEth to nodeELRewardVault
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
@@ -130,10 +138,10 @@ contract NodeELRewardVaultTest is Test {
         vm.prank(staderManager);
         staderConfig.updateStaderTreasury(treasury);
 
-        assertEq(address(nodeELRewardVault).balance, rewardEth);
+        assertEq(nodeELCloneAddr.balance, rewardEth);
         assertEq(operatorRC.balances(operator), 0);
 
-        INodeELRewardVault(address(nodeELRewardVault)).withdraw();
+        INodeELRewardVault(nodeELCloneAddr).withdraw();
 
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = poolUtils.calculateRewardShare(
             1,
@@ -162,18 +170,18 @@ contract NodeELRewardVaultTest is Test {
 
     function test_updateStaderConfig() public {
         vm.expectRevert(IVaultProxy.CallerNotOwner.selector);
-        nodeELRewardVault.updateStaderConfig(vm.addr(203));
+        VaultProxy(nodeELCloneAddr).updateStaderConfig(vm.addr(203));
 
         vm.prank(staderAdmin);
-        nodeELRewardVault.updateStaderConfig(vm.addr(203));
-        assertEq(address(nodeELRewardVault.staderConfig()), vm.addr(203));
+        VaultProxy(nodeELCloneAddr).updateStaderConfig(vm.addr(203));
+        assertEq(address(VaultProxy(nodeELCloneAddr).staderConfig()), vm.addr(203));
     }
 
     function test_updateOwner() public {
-        assertEq(nodeELRewardVault.owner(), staderAdmin);
+        assertEq(VaultProxy(nodeELCloneAddr).owner(), staderAdmin);
         vm.prank(staderAdmin);
         staderConfig.updateAdmin(vm.addr(203));
-        nodeELRewardVault.updateOwner();
-        assertEq(nodeELRewardVault.owner(), vm.addr(203));
+        VaultProxy(nodeELCloneAddr).updateOwner();
+        assertEq(VaultProxy(nodeELCloneAddr).owner(), vm.addr(203));
     }
 }

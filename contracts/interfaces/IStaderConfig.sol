@@ -8,6 +8,7 @@ interface IStaderConfig {
     error InvalidMaxDepositValue();
     error InvalidMinWithdrawValue();
     error InvalidMaxWithdrawValue();
+    error IndenticalValue();
 
     // Events
     event SetConstant(bytes32 key, uint256 amount);
