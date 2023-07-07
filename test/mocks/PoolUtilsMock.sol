@@ -78,9 +78,8 @@ contract PoolUtilsMock {
         return 500;
     }
 
-    function poolAddressById(uint8 poolID) external view returns (address poolAddress){
-        if(poolID==1) return staderConfig.getPermissionlessPool();
+    function poolAddressById(uint8 poolID) external view returns (address poolAddress) {
+        if (poolID == 1) return staderConfig.getPermissionlessPool();
         else return staderConfig.getPermissionedPool();
     }
-
 }
