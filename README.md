@@ -13,6 +13,8 @@ Our structure includes a permissionless pool, where anyone can participate and o
 
 # Deploy
 
+`NOTE`: Default Branch for repo is [mainnet_V0](https://github.com/stader-labs/ethx/tree/mainnet_V0)
+
 ```shell
 npx hardhat compile
 npx hardhat run scripts/deployContracts.ts
