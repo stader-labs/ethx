@@ -142,7 +142,7 @@ contract  Example {
 	 * @dev ensure that the contract has minimum `_amountInETHx` amount of ETHx and
 	 * ETHx approval should be given prior to this step
 	 * @param  _amountInETHx amount of ETHx to unstake
-     * @param _owner address to be set as owner of unstake request, only owner allowed to claim
+	 * @param _owner address to be set as owner of unstake request, only owner allowed to claim
 	*/
 	function  unstake(uint256  _amountInETHx, address  _owner) external {
 		IStaderConfig staderConfig = IStaderConfig(STADER_CONFIG_ADDRESS);
