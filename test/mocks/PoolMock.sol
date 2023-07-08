@@ -21,5 +21,4 @@ contract PoolMock {
     }
 
     function stakeUserETHToBeaconChain() external payable {}
-
 }
