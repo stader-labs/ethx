@@ -9,9 +9,7 @@ Our structure includes a permissionless pool, where anyone can participate and o
 
 - [ETHx Architecture](https://miro.com/app/board/uXjVMDv5XKo=/)
 - [Contract Addresses](https://staderlabs.gitbook.io/ethereum/smart-contracts#ethx-mainnet-smart-contracts)
-- [Contract Methods Description](https://docs.google.com/spreadsheets/d/1IjJ5z9oi9I-ejdRCitJsTT1on0WwjoKlbvurCtlB1KA/edit#gid=643619608)
-- [Documentation](https://staderlabs.gitbook.io/ethereum/)
-- [Blogs](https://blog.staderlabs.com/)
+- [Onboarding Documentation](https://staderlabs.gitbook.io/ethereum/)
 
 # Deploy
 
