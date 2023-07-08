@@ -12,19 +12,19 @@ Deployment addresses can be found at:
   
 
 
-Liquid staking is achieved through `StaderStakePoolManager` contract and the yield-bearing ERC-20 token `ETHx` is given to the user.
+Stader’s ETHx is an ERC-20 token that represents staked ETH. Following are the different actions a user can take to mint/burn ETHx.
 
 
 ### 1. Stake ETH
 
-Send ETH and receive liquid staking ETHx token.
+Send ETH and receive minted ETHx token.
  
 ```SOLIDITY
 
 IStaderConfig staderConfig = IStaderConfig(STADER_CONFIG_ADDRESS);
 
-//function call staderStakePoolManager deposit function, depositing ETH and minting
-//`amountInETHx` ETHx, sent to `_receiver` address
+// function call staderStakePoolManager deposit function, depositing ETH and minting
+// `amountInETHx` ETHx, sent to `_receiver` address
 uint256 amountInETHx = IStaderStakePoolManager(staderConfig.getStakePoolManager()).deposit{value: _amountInETH}(
 	_receiver
 );
@@ -33,7 +33,8 @@ emit  Deposited(msg.sender, _receiver, _amountInETH, amountInETHx);
 ```
 
 ### 2. Approve ETHx
-sets `_amountInETHx` as the allowance of userWithdrawalManager contract over this contract ETHx.
+
+Set `_amountInETHx` as the allowance for userWithdrawalManager as a spender. This can be done at the ETHx ERC20 token contract. Alternatively, a max approval can be performed once, and this step can be skipped after the first time.
 
 ```SOLIDITY
 
@@ -46,9 +47,7 @@ require(success, 'Approved Failed');
 
 ### 3. Unstake ETH 
 
-  
-
-Send ETHx and create a withdrawal request to initiate ETHx redemption.
+Create a withdrawal request to initiate ETH redemption.
 
 ```SOLIDITY
 
@@ -57,8 +56,8 @@ IStaderConfig staderConfig = IStaderConfig(STADER_CONFIG_ADDRESS);
 // get userWithdrawalManager contract from staderConfig
 IUserWithdrawalManager userWithdrawalManager = IUserWithdrawalManager(staderConfig.getUserWithdrawManager());
 
-//call stader userWithdrawalManager contract's requestWithdraw function, locking ETHx
-// generate a unique requestID, set the owner of unstake request to `_owner`
+// a call to userWithdrawalManager contract's requestWithdraw function generates 
+// a unique requestID, and sets the owner of unstake request to `_owner`
 uint256 requestID = userWithdrawalManager.requestWithdraw(_amountInETHx, _owner);
 
 emit  WithdrawRequestReceived(msg.sender, _owner, requestID, _amountInETHx);
@@ -67,7 +66,7 @@ emit  WithdrawRequestReceived(msg.sender, _owner, requestID, _amountInETHx);
 
 ### 4. Claim ETH
 
-Once the withdraw request is finalized, ETH can be withdrawn back to wallet. This step marks the end of ETHx redemption.
+Call the claim function to receive the ETH to the receiver address after the withdrawRequest is finalized. This step marks the end of ETH redemption.
 
 
 ```SOLIDITY
@@ -77,18 +76,17 @@ IStaderConfig staderConfig = IStaderConfig(STADER_CONFIG_ADDRESS);
 // get userWithdrawalManager contract from staderConfig
 IUserWithdrawalManager userWithdrawalManager = IUserWithdrawalManager(staderConfig.getUserWithdrawManager());
 
-//get the final amount of ETH to transfer during claim for a finalized request
+// pass requestId from Step 3. ethFinalized is the ETH amount redeemable through a claim
 (, , , uint256 ethFinalized, ) = userWithdrawalManager.userWithdrawRequests(_requestId);
 
-//calls stader userWithdrawManager contract to claim and receives ETH
-IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).claim(_requestId);
+// call stader userWithdrawManager contract to claim from _owner address in step 3 to receive ETH.IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).claim(_requestId);
 
 emit  RequestRedeemed(msg.sender, ethFinalized);
 ```
 
 
 
-### Sample Example of Stake, Unstake and Claim
+### Sample Example of Stake, Unstake, and Claim
 
   
 
@@ -120,8 +118,8 @@ contract  Example {
 	function  stake(uint256  _amountInETH, address  _receiver) external  payable {
 		IStaderConfig staderConfig = IStaderConfig(STADER_CONFIG_ADDRESS);
 
-		//function call staderStakePoolManager deposit function, depositing ETH and minting
-		//`amountInETHx` ETHx, sent to `_receiver` address
+		// function call staderStakePoolManager deposit function, depositing ETH and minting
+		// `amountInETHx` ETHx, sent to `_receiver` address
 		uint256 amountInETHx = IStaderStakePoolManager(staderConfig.getStakePoolManager()).deposit{value: _amountInETH}(
 			_receiver
 		);
@@ -130,7 +128,7 @@ contract  Example {
 	}
 
 	/**
-	 * @notice Sets `_amountInETHx` as the allowance of userWithdrawalManager contract over this contract ETHx.
+	 * @notice set `_amountInETHx` as the allowance for userWithdrawalManager as a spender
 	 * @param  _amountInETHx amount of ETHx to set as allowance
 	*/
 	function  approve(uint256  _amountInETHx) external {
@@ -140,11 +138,11 @@ contract  Example {
 	}
 
 	/**
-	 * @notice function to put unstake request by sending ETHx
+	 * @notice function to create unstake request by sending ETHx
 	 * @dev ensure that the contract has minimum `_amountInETHx` amount of ETHx and
-	 * ETHx approval should be given prior to stader userWithdrawManager contract
+	 * ETHx approval should be given prior to this step
 	 * @param  _amountInETHx amount of ETHx to unstake
-	 * @param  _owner address to be set as owner of unstake request, only owner allowed to claim
+     * @param _owner address to be set as owner of unstake request, only owner allowed to claim
 	*/
 	function  unstake(uint256  _amountInETHx, address  _owner) external {
 		IStaderConfig staderConfig = IStaderConfig(STADER_CONFIG_ADDRESS);
@@ -152,18 +150,17 @@ contract  Example {
 		// get userWithdrawalManager contract from staderConfig
 		IUserWithdrawalManager userWithdrawalManager = IUserWithdrawalManager(staderConfig.getUserWithdrawManager());
 
-		//call stader userWithdrawalManager contract's requestWithdraw function, locking ETHx
-		// generate a unique requestID, set the owner of unstake request to `_owner`
+		// a call to userWithdrawalManager contract's requestWithdraw function generates 
+		// a unique requestID, and sets the owner of unstake request to `_owner`
 		uint256 requestID = userWithdrawalManager.requestWithdraw(_amountInETHx, _owner);
 
 		emit  WithdrawRequestReceived(msg.sender, _owner, requestID, _amountInETHx);
 	}
 
 	/**
-	 * @notice claim the ETH for the finalized unstake request
-	 * finalized unstake request is the one which is ready to claim
-	 * @dev claimed ETH will go to the owner address set while putting unstake request
-	 * only owner is allowed to claim the request
+	 * @notice claim the ETH associated with a finalized unstake request
+	 * @dev call the claim function to receive the ETH to the receiver address after the 
+	 * withdrawRequest is finalized
 	 * @param  _requestId Request ID to claim
 	*/
 	function  claim(uint256  _requestId) external {
@@ -172,7 +169,7 @@ contract  Example {
 		// get userWithdrawalManager contract from staderConfig
 		IUserWithdrawalManager userWithdrawalManager = IUserWithdrawalManager(staderConfig.getUserWithdrawManager());
 
-		//get the final amount of ETH to transfer during claim for a finalized request
+		// ethFinalized is the ETH amount redeemable through a claim
 		(, , , uint256 ethFinalized, ) = userWithdrawalManager.userWithdrawRequests(_requestId);
 
 		//calls stader userWithdrawManager contract to claim and receives ETH
