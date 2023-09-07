@@ -39,6 +39,8 @@ interface INodeRegistry {
     error NotEnoughSDCollateral();
     error TooManyVerifiedKeysReported();
     error TooManyWithdrawnKeysReported();
+    error OnlyExistingRewardAddressCanProposeNewRewardAddress();
+    error OnlyNewRewardAddressCanConfirm();
 
     // Events
     event AddedValidatorKey(address indexed nodeOperator, bytes pubkey, uint256 validatorId);
@@ -49,7 +51,9 @@ interface INodeRegistry {
     event UpdatedMaxNonTerminalKeyPerOperator(uint64 maxNonTerminalKeyPerOperator);
     event UpdatedInputKeyCountLimit(uint256 batchKeyDepositLimit);
     event UpdatedStaderConfig(address staderConfig);
-    event UpdatedOperatorDetails(address indexed nodeOperator, string operatorName, address rewardAddress);
+    event InitiatedRewardAddressChange(address indexed nodeOperator, address indexed rewardAddress);
+    event UpdatedOperatorRewardAddress(address indexed nodeOperator, address indexed rewardAddress);
+    event UpdatedOperatorName(address indexed nodeOperator, string operatorName);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
     event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
     event UpdatedWithdrawnKeyBatchSize(uint256 withdrawnKeysBatchSize);

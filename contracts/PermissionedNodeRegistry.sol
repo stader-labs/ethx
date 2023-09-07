@@ -56,6 +56,7 @@ contract PermissionedNodeRegistry is
     //mapping of operator Id and nextQueuedValidatorIndex
     mapping(uint256 => uint256) public override nextQueuedValidatorIndexByOperatorId;
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
+    mapping(uint256 => address) public pendingRewardAddressByOperatorId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -390,19 +391,49 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice update the name and reward address of an operator
-     * @dev only operator msg.sender can update
-     * @param _operatorName new Name of the operator
+     * @notice propose the new reward address of an operator
+     * @dev only the existing reward address (msg.sender) can propose
+     * @param _operatorAddress operator address
      * @param _rewardAddress new reward address
      */
-    function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external override {
-        IPoolUtils(staderConfig.getPoolUtils()).onlyValidName(_operatorName);
+    function initiateRewardAddressChange(address _operatorAddress, address _rewardAddress) external override {
         UtilLib.checkNonZeroAddress(_rewardAddress);
+        uint256 _operatorId = operatorIDByAddress[_operatorAddress];
+        address operatorRewardAddress = operatorStructById[_operatorId].operatorRewardAddress;
+        if (msg.sender != operatorRewardAddress) {
+            revert OnlyExistingRewardAddressCanProposeNewRewardAddress();
+        }
+        pendingRewardAddressByOperatorId[_operatorId] = _rewardAddress;
+        emit InitiatedRewardAddressChange(_operatorAddress, _rewardAddress);
+    }
+
+    /**
+     * @notice confirms and sets the new reward address of an operator
+     * @dev only the new reward address (msg.sender) can confirm
+     * @param _operatorAddress operator address
+     */
+    function confirmRewardAddressChange(address _operatorAddress) external override {
+        uint256 _operatorId = operatorIDByAddress[_operatorAddress];
+        if (msg.sender != pendingRewardAddressByOperatorId[_operatorId]) {
+            revert OnlyNewRewardAddressCanConfirm();
+        }
+        delete pendingRewardAddressByOperatorId[_operatorId];
+
+        operatorStructById[_operatorId].operatorRewardAddress = payable(msg.sender);
+        emit UpdatedOperatorRewardAddress(_operatorAddress, msg.sender);
+    }
+
+    /**
+     * @notice update the name of an operator
+     * @dev only operator msg.sender can update
+     * @param _operatorName new Name of the operator
+     */
+    function updateOperatorName(string calldata _operatorName) external override {
+        IPoolUtils(staderConfig.getPoolUtils()).onlyValidName(_operatorName);
         onlyActiveOperator(msg.sender);
         uint256 operatorId = operatorIDByAddress[msg.sender];
         operatorStructById[operatorId].operatorName = _operatorName;
-        operatorStructById[operatorId].operatorRewardAddress = _rewardAddress;
-        emit UpdatedOperatorDetails(msg.sender, _operatorName, _rewardAddress);
+        emit UpdatedOperatorName(msg.sender, _operatorName);
     }
 
     /**
