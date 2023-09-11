@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import './library/UtilLib.sol';
 
 import '../contracts/interfaces/IPoolUtils.sol';
+import '../contracts/interfaces/DVT/SSV/ISSVNodeRegistry.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
@@ -78,6 +79,32 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
         uint256 sdToSlash = convertETHToSD(poolThreshold.minThreshold);
         slashSD(operator, sdToSlash);
+    }
+
+    /// @notice slashes one validator equi. SD amount
+    /// @dev callable only by respective withdrawVaults
+    /// @param _validatorId validator SD collateral to slash
+    function slashSSVOperatorSD(
+        uint8 _poolId,
+        uint256 _validatorId,
+        uint64[] memory operatorIds
+    ) external override nonReentrant {
+        (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(
+            IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId)
+        ).validatorRegistry(_validatorId);
+        if (msg.sender != withdrawVaultAddress) {
+            revert CallerNotWithdrawVault();
+        }
+        isPoolThresholdValid(_poolId);
+        uint256 sdToSlash = convertETHToSD(poolThresholdbyPoolId[_poolId].minThreshold);
+        for (uint8 i; i < operatorIds.length; i++) {
+            (bool operatorType, , , address operatorAddress, , , ) = ISSVNodeRegistry(msg.sender).operatorStructById(
+                operatorIds[i]
+            );
+            if (!operatorType) {
+                slashSD(operatorAddress, convertETHToSD(sdToSlash));
+            }
+        }
     }
 
     /// @notice used to slash operator SD, incase of operator default
