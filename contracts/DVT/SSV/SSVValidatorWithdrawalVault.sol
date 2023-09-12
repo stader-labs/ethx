@@ -44,8 +44,6 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
         (uint256 userShare, uint256 operatorShare, uint256 protocolShare) = IPoolUtils(staderConfig.getPoolUtils())
             .calculateRewardShare(poolId, totalRewards);
 
-        //TODO how to make sure only 4 operators
-        //TODO pull this number 4 from somewhere maybe ssv node registry
         //TODO add documentation for this formula
         // Distribute rewards
         uint64[] memory operatorIds = nodeRegistry.getOperatorsIdsForValidatorId(validatorId);
@@ -57,15 +55,15 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
                 operatorKeyLevelShare = getPermissionedOperatorShare(
                     operatorShare,
                     totalRewards,
-                    nodeRegistry.getCollateralETH(),
-                    staderConfig.getStakedEthPerNode()
+                    staderConfig.getStakedEthPerNode(),
+                    nodeRegistry
                 );
             } else {
                 operatorKeyLevelShare = getPermissionlessOperatorShare(
                     operatorShare,
                     totalRewards,
-                    nodeRegistry.getCollateralETH(),
-                    staderConfig.getStakedEthPerNode()
+                    staderConfig.getStakedEthPerNode(),
+                    nodeRegistry
                 );
             }
             IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{
@@ -100,24 +98,24 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
         uint256 permissionlessOperatorShare;
         uint256 collateralETH = ISSVNodeRegistry(msg.sender).getCollateralETH();
         if (operatorShare <= collateralETH) {
-            permissionlessOperatorShare = operatorShare / 2;
+            permissionlessOperatorShare = operatorShare / (ISSVNodeRegistry(msg.sender).CLUSTER_SIZE() / 2);
         } else {
             uint256 rewards = address(this).balance - staderConfig.getStakedEthPerNode();
             permissionedOperatorShare = getPermissionedOperatorShare(
                 operatorShare - collateralETH,
                 rewards,
-                collateralETH,
-                staderConfig.getStakedEthPerNode()
+                staderConfig.getStakedEthPerNode(),
+                ISSVNodeRegistry(msg.sender)
             );
 
             permissionlessOperatorShare =
                 collateralETH /
-                2 +
+                (ISSVNodeRegistry(msg.sender).CLUSTER_SIZE() / 2) +
                 getPermissionlessOperatorShare(
                     operatorShare - collateralETH,
                     rewards,
-                    collateralETH,
-                    staderConfig.getStakedEthPerNode()
+                    staderConfig.getStakedEthPerNode(),
+                    ISSVNodeRegistry(msg.sender)
                 );
         }
 
@@ -128,12 +126,14 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
         }
         uint256 userShare = userSharePrelim + penaltyAmount;
 
-        if (penaltyAmount >= 4 * permissionedOperatorShare) {
-            permissionlessOperatorShare -= (penaltyAmount - 2 * permissionedOperatorShare) / 2;
+        if (penaltyAmount >= ISSVNodeRegistry(msg.sender).CLUSTER_SIZE() * permissionedOperatorShare) {
+            permissionlessOperatorShare -=
+                (penaltyAmount - (ISSVNodeRegistry(msg.sender).CLUSTER_SIZE() / 2) * permissionedOperatorShare) /
+                2;
             permissionedOperatorShare = 0;
         } else {
-            permissionedOperatorShare -= penaltyAmount / 4;
-            permissionlessOperatorShare -= penaltyAmount / 4;
+            permissionedOperatorShare -= penaltyAmount / ISSVNodeRegistry(msg.sender).CLUSTER_SIZE();
+            permissionlessOperatorShare -= penaltyAmount / ISSVNodeRegistry(msg.sender).CLUSTER_SIZE();
         }
 
         // Final settlement
@@ -209,18 +209,20 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
     function getPermissionedOperatorShare(
         uint256 operatorShare,
         uint256 rewards,
-        uint256 collateralETH,
-        uint256 ETH_PER_NODE
-    ) internal pure returns (uint256) {
-        return (operatorShare - (rewards * collateralETH) / ETH_PER_NODE) / 4;
+        uint256 ETH_PER_NODE,
+        ISSVNodeRegistry nodeRegistry
+    ) internal view returns (uint256) {
+        return
+            (operatorShare - (rewards * nodeRegistry.getCollateralETH()) / ETH_PER_NODE) / nodeRegistry.CLUSTER_SIZE();
     }
 
     function getPermissionlessOperatorShare(
         uint256 operatorShare,
         uint256 rewards,
-        uint256 collateralETH,
-        uint256 ETH_PER_NODE
-    ) internal pure returns (uint256) {
-        return (operatorShare + (rewards * collateralETH) / ETH_PER_NODE) / 4;
+        uint256 ETH_PER_NODE,
+        ISSVNodeRegistry nodeRegistry
+    ) internal view returns (uint256) {
+        return
+            (operatorShare + (rewards * nodeRegistry.getCollateralETH()) / ETH_PER_NODE) / nodeRegistry.CLUSTER_SIZE();
     }
 }
