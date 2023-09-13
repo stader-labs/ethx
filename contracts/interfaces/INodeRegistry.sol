@@ -39,7 +39,7 @@ interface INodeRegistry {
     error NotEnoughSDCollateral();
     error TooManyVerifiedKeysReported();
     error TooManyWithdrawnKeysReported();
-    error OnlyExistingRewardAddressCanProposeNewRewardAddress();
+    error CallerNotExistingRewardAddress();
     error OnlyNewRewardAddressCanConfirm();
 
     // Events

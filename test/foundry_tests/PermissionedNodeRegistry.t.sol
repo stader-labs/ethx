@@ -469,14 +469,14 @@ contract PermissionedNodeRegistryTest is Test {
         string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
 
         // propose new reward addr
-        vm.expectRevert(INodeRegistry.OnlyExistingRewardAddressCanProposeNewRewardAddress.selector);
+        vm.expectRevert(INodeRegistry.CallerNotExistingRewardAddress.selector);
         vm.prank(operatorAddr);
         nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
 
         vm.prank(opRewardAddr);
         nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
 
-        address pendingRewardAddress = nodeRegistry.pendingRewardAddressByOperatorId(operatorId);
+        address pendingRewardAddress = nodeRegistry.proposedRewardAddressByOperatorId(operatorId);
         assertEq(pendingRewardAddress, newOPRewardAddr);
 
         // confirm new reward address
@@ -495,7 +495,9 @@ contract PermissionedNodeRegistryTest is Test {
         assertEq(operatorRewardAddress, newOPRewardAddr);
     }
 
-    function test_updateOperatorDetailWithZeroRewardAddr(string calldata _operatorName, uint64 __opAddrSeed) public {
+    function test_updateOperatorRewardAddressWithZeroRewardAddr(string calldata _operatorName, uint64 __opAddrSeed)
+        public
+    {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         vm.assume(__opAddrSeed > 0);
         address operatorAddr = vm.addr(__opAddrSeed);

@@ -57,7 +57,7 @@ contract PermissionlessNodeRegistry is
     mapping(uint256 => uint256) public socializingPoolStateChangeBlock;
     //mapping of operator address with nodeELReward vault address
     mapping(uint256 => address) public override nodeELRewardVaultByOperatorId;
-    mapping(uint256 => address) public pendingRewardAddressByOperatorId;
+    mapping(uint256 => address) public proposedRewardAddressByOperatorId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -369,9 +369,9 @@ contract PermissionlessNodeRegistry is
         uint256 _operatorId = operatorIDByAddress[_operatorAddress];
         address operatorRewardAddress = operatorStructById[_operatorId].operatorRewardAddress;
         if (msg.sender != operatorRewardAddress) {
-            revert OnlyExistingRewardAddressCanProposeNewRewardAddress();
+            revert CallerNotExistingRewardAddress();
         }
-        pendingRewardAddressByOperatorId[_operatorId] = _rewardAddress;
+        proposedRewardAddressByOperatorId[_operatorId] = _rewardAddress;
         emit InitiatedRewardAddressChange(_operatorAddress, _rewardAddress);
     }
 
@@ -382,10 +382,10 @@ contract PermissionlessNodeRegistry is
      */
     function confirmRewardAddressChange(address _operatorAddress) external override {
         uint256 _operatorId = operatorIDByAddress[_operatorAddress];
-        if (msg.sender != pendingRewardAddressByOperatorId[_operatorId]) {
+        if (msg.sender != proposedRewardAddressByOperatorId[_operatorId]) {
             revert OnlyNewRewardAddressCanConfirm();
         }
-        delete pendingRewardAddressByOperatorId[_operatorId];
+        delete proposedRewardAddressByOperatorId[_operatorId];
 
         operatorStructById[_operatorId].operatorRewardAddress = payable(msg.sender);
         emit UpdatedOperatorRewardAddress(_operatorAddress, msg.sender);
