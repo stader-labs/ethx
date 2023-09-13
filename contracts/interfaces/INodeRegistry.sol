@@ -40,7 +40,7 @@ interface INodeRegistry {
     error TooManyVerifiedKeysReported();
     error TooManyWithdrawnKeysReported();
     error CallerNotExistingRewardAddress();
-    error OnlyNewRewardAddressCanConfirm();
+    error CallerNotNewRewardAddress();
 
     // Events
     event AddedValidatorKey(address indexed nodeOperator, bytes pubkey, uint256 validatorId);

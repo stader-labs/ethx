@@ -480,11 +480,11 @@ contract PermissionedNodeRegistryTest is Test {
         assertEq(pendingRewardAddress, newOPRewardAddr);
 
         // confirm new reward address
-        vm.expectRevert(INodeRegistry.OnlyNewRewardAddressCanConfirm.selector);
+        vm.expectRevert(INodeRegistry.CallerNotNewRewardAddress.selector);
         vm.prank(opRewardAddr);
         nodeRegistry.confirmRewardAddressChange(operatorAddr);
 
-        vm.expectRevert(INodeRegistry.OnlyNewRewardAddressCanConfirm.selector);
+        vm.expectRevert(INodeRegistry.CallerNotNewRewardAddress.selector);
         vm.prank(operatorAddr);
         nodeRegistry.confirmRewardAddressChange(operatorAddr);
 

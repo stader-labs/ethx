@@ -383,7 +383,7 @@ contract PermissionlessNodeRegistry is
     function confirmRewardAddressChange(address _operatorAddress) external override {
         uint256 _operatorId = operatorIDByAddress[_operatorAddress];
         if (msg.sender != proposedRewardAddressByOperatorId[_operatorId]) {
-            revert OnlyNewRewardAddressCanConfirm();
+            revert CallerNotNewRewardAddress();
         }
         delete proposedRewardAddressByOperatorId[_operatorId];
 
