@@ -535,7 +535,6 @@ contract PermissionlessNodeRegistryTest is Test {
         nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
 
         uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
-        string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
 
         // propose new reward addr
         vm.expectRevert(INodeRegistry.CallerNotExistingRewardAddress.selector);
@@ -562,6 +561,20 @@ contract PermissionlessNodeRegistryTest is Test {
 
         (, , , address payable operatorRewardAddress, ) = nodeRegistry.operatorStructById(operatorId);
         assertEq(operatorRewardAddress, newOPRewardAddr);
+    }
+
+    function test_updateOperatorRewardAddressWithInvalidOperatorAddress() public {
+        address operatorAddr = vm.addr(778);
+        address payable opRewardAddr = payable(vm.addr(456));
+        address payable newOPRewardAddr = payable(vm.addr(567));
+
+        vm.expectRevert(INodeRegistry.CallerNotExistingRewardAddress.selector);
+        vm.prank(opRewardAddr);
+        nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
+
+        // it will pass if caller is address(0), which is not possible
+        vm.prank(address(0));
+        nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
     }
 
     function test_updateOperatorRewardAddressWithZeroRewardAddr(string calldata _operatorName, uint64 __opAddrSeed)
