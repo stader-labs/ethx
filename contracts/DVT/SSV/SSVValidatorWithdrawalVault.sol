@@ -46,7 +46,7 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
 
         //TODO add documentation for this formula
         // Distribute rewards
-        uint64[] memory operatorIds = nodeRegistry.getOperatorsIdsForValidatorId(validatorId);
+        uint256[] memory operatorIds = nodeRegistry.getOperatorsIdsForValidatorId(validatorId);
         uint256 totalOperators = operatorIds.length;
         for (uint8 i; i < totalOperators; ) {
             (bool operatorType, , , address operatorAddress, , , ) = nodeRegistry.operatorStructById(operatorIds[i]);
@@ -85,7 +85,7 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
         if (msg.sender != IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(poolId)) {
             revert CallerNotNodeRegistryContract();
         }
-        uint64[] memory operatorIds = ISSVNodeRegistry(msg.sender).getOperatorsIdsForValidatorId(validatorId);
+        uint256[] memory operatorIds = ISSVNodeRegistry(msg.sender).getOperatorsIdsForValidatorId(validatorId);
         uint256 totalOperators = operatorIds.length;
 
         (uint256 userSharePrelim, uint256 operatorShare, uint256 protocolShare) = calculateValidatorWithdrawalShare(

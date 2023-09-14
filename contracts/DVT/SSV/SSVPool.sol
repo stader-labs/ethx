@@ -109,7 +109,7 @@ contract SSVPool is ISSVPool, AccessControlUpgradeable, ReentrancyGuardUpgradeab
         //decrease the preDeposit validator count
         _decreasePreDepositValidatorCount(pubkeyCount);
         for (uint256 i; i < pubkeyCount; ) {
-            ISSVNodeRegistry(nodeRegistryAddress).onlyPreDepositValidator(_pubkey[i]);
+            ISSVNodeRegistry(nodeRegistryAddress).onlySSVRegisteredAndPreDepositValidator(_pubkey[i]);
             uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
                 nodeRegistryAddress

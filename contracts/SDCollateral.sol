@@ -87,7 +87,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     function slashSSVOperatorSD(
         uint8 _poolId,
         uint256 _validatorId,
-        uint64[] memory operatorIds
+        uint256[] memory operatorIds
     ) external override nonReentrant {
         (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(
             IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId)

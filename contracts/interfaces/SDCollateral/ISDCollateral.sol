@@ -37,7 +37,7 @@ interface ISDCollateral {
     function slashSSVOperatorSD(
         uint8 _poolId,
         uint256 _validatorId,
-        uint64[] memory operatorIds
+        uint256[] memory operatorIds
     ) external;
 
     function maxApproveSD() external;

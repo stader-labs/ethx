@@ -38,7 +38,7 @@ contract SSVNodeRegistry is
     ISSVNetwork public ssvNetwork;
     ISSVNetworkViews public ssvNetworkViews;
 
-    uint64 public nextOperatorId;
+    uint256 public nextOperatorId;
     uint256 public nextValidatorId;
     uint256 public verifiedKeyBatchSize;
     uint256 public nextQueuedValidatorIndex;
@@ -50,12 +50,12 @@ contract SSVNodeRegistry is
     mapping(uint256 => Validator) public validatorRegistry;
     // mapping of validator public key and validator Id
     mapping(bytes => uint256) public validatorIdByPubkey;
-    //mapping of SSV operators assigned to a validator
-    mapping(bytes => uint64[]) public operatorIdssByPubkey;
+    //mapping of stader operators Ids assigned to a validator
+    mapping(bytes => uint256[]) public operatorIdssByPubkey;
     // mapping of operator Id and Operator struct
-    mapping(uint64 => SSVOperator) public operatorStructById;
+    mapping(uint256 => SSVOperator) public operatorStructById;
     // mapping of operator address and operator Id
-    mapping(address => uint64) public operatorIDByAddress;
+    mapping(address => uint256) public operatorIDByAddress;
     // mapping of whitelisted permissioned node operator
     mapping(address => bool) public permissionList;
 
@@ -153,7 +153,7 @@ contract SSVNodeRegistry is
      * amount of collateral should be multiple of collateral required per key-share
      */
     function depositCollateral() external payable {
-        uint64 operatorId = operatorIDByAddress[msg.sender];
+        uint256 operatorId = operatorIDByAddress[msg.sender];
         _verifyOperatorAndDepositAmount(operatorId, msg.value);
         operatorStructById[operatorId].bondAmount += msg.value;
         emit BondDeposited(msg.sender, msg.value);
@@ -271,7 +271,7 @@ contract SSVNodeRegistry is
      */
     function registerValidatorsWithSSV(
         bytes[] calldata publicKey,
-        uint64[][] memory staderOperatorIds,
+        uint256[][] memory staderOperatorIds,
         bytes[] calldata sharesData,
         ISSVNetworkCore.Cluster[] memory cluster
     ) external {
@@ -333,7 +333,11 @@ contract SSVNodeRegistry is
             if (validatorRegistry[validatorId].status != ValidatorStatus.WITHDRAWN) {
                 revert ValidatorNotWithdrawn();
             }
-            ssvNetwork.removeValidator(publicKey[i], operatorIdssByPubkey[publicKey[i]], cluster[i]);
+            ssvNetwork.removeValidator(
+                publicKey[i],
+                _getSSVOperatorIds(operatorIdssByPubkey[publicKey[i]]),
+                cluster[i]
+            );
         }
     }
 
@@ -430,8 +434,12 @@ contract SSVNodeRegistry is
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    // check for only PRE_DEPOSIT state validators
-    function onlyPreDepositValidator(bytes calldata _pubkey) external view {
+    // check for the validator being registered with SSV along with the PRE_DEPOSIT status
+    function onlySSVRegisteredAndPreDepositValidator(bytes calldata _pubkey) external view {
+        bool active = ssvNetworkViews.getValidator(address(this), _pubkey);
+        if (!active) {
+            revert ValidatorNotRegisteredWithSSV();
+        }
         uint256 validatorId = validatorIdByPubkey[_pubkey];
         _onlyPreDepositValidator(validatorId);
     }
@@ -472,7 +480,15 @@ contract SSVNodeRegistry is
      * @param _operatorId Id of node operator
      */
     function getOperatorTotalKeys(uint256 _operatorId) public view override returns (uint256 _totalKeys) {
-        _totalKeys = operatorStructById[uint64(_operatorId)].keyShareCount;
+        _totalKeys = operatorStructById[_operatorId].keyShareCount;
+    }
+
+    /**
+     * @notice returns the operator reward address
+     * @param _operatorId operator Id
+     */
+    function getOperatorRewardAddress(uint256 _operatorId) external view override returns (address payable) {
+        return operatorStructById[_operatorId].operatorRewardAddress;
     }
 
     /**
@@ -488,11 +504,12 @@ contract SSVNodeRegistry is
         uint256 _startIndex,
         uint256 _endIndex
     ) external view returns (uint64) {
-        uint64 operatorId = operatorIDByAddress[_nodeOperator];
+        uint256 operatorId = operatorIDByAddress[_nodeOperator];
         return operatorStructById[operatorId].keyShareCount;
     }
 
-    function getOperatorsIdsForValidatorId(uint256 validatorId) external view returns (uint64[] memory) {
+    // returns stader defined operator IDs of SSV operators running a validator
+    function getOperatorsIdsForValidatorId(uint256 validatorId) external view returns (uint256[] memory) {
         return operatorIdssByPubkey[validatorRegistry[validatorId].pubkey];
     }
 
@@ -534,7 +551,7 @@ contract SSVNodeRegistry is
         return (validator.status == ValidatorStatus.PRE_DEPOSIT || validator.status == ValidatorStatus.DEPOSITED);
     }
 
-    function _verifyOperatorAndDepositAmount(uint64 _operatorId, uint256 _depositAmount) internal view {
+    function _verifyOperatorAndDepositAmount(uint256 _operatorId, uint256 _depositAmount) internal view {
         if (_operatorId == 0 || operatorStructById[_operatorId].operatorType) {
             revert OperatorNotOnboardOrPermissioned();
         }
@@ -556,7 +573,7 @@ contract SSVNodeRegistry is
         }
     }
 
-    function _validateStaderOperators(uint64[] memory staderOperatorIds)
+    function _validateStaderOperators(uint256[] memory staderOperatorIds)
         internal
         returns (uint64[] memory ssvOperatorIds)
     {
@@ -587,6 +604,13 @@ contract SSVNodeRegistry is
         }
     }
 
+    function _getSSVOperatorIds(uint256[] memory staderOperatorIds) internal returns (uint64[] memory ssvOperatorIds) {
+        ssvOperatorIds = new uint64[](CLUSTER_SIZE);
+        for (uint64 i = 0; i < CLUSTER_SIZE; i++) {
+            ssvOperatorIds[i] = operatorStructById[staderOperatorIds[i]].operatorSSVID;
+        }
+    }
+
     function _onlyPreDepositValidator(uint256 _validatorId) internal view {
         if (validatorRegistry[_validatorId].status != ValidatorStatus.PRE_DEPOSIT) {
             revert UNEXPECTED_STATUS();
@@ -600,7 +624,7 @@ contract SSVNodeRegistry is
     }
 
     function _decreaseOperatorsKeyShareCount(bytes calldata pubkey) internal {
-        uint64[] memory operatorIds = operatorIdssByPubkey[pubkey];
+        uint256[] memory operatorIds = operatorIdssByPubkey[pubkey];
         for (uint256 j; j < operatorIds.length; ) {
             operatorStructById[operatorIds[j]].keyShareCount -= 1;
             unchecked {

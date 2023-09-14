@@ -29,6 +29,7 @@ interface ISSVNodeRegistry {
     error TooManyWithdrawnKeysReported();
     error CallerFailingSSVOperatorChecks();
     error DuplicatePoolIDOrPoolNotAdded();
+    error ValidatorNotRegisteredWithSSV();
     error OperatorNotOnboardOrPermissioned();
     error OperatorAlreadyOnBoardedInProtocol();
     error NotSufficientCollateralPerKeyShare();
@@ -75,7 +76,7 @@ interface ISSVNodeRegistry {
         );
 
     // returns the operator struct given operator Id
-    function operatorStructById(uint64)
+    function operatorStructById(uint256)
         external
         view
         returns (
@@ -88,7 +89,7 @@ interface ISSVNodeRegistry {
             uint256 bondAmount
         );
 
-    function onlyPreDepositValidator(bytes calldata _pubkey) external view;
+    function onlySSVRegisteredAndPreDepositValidator(bytes calldata _pubkey) external view;
 
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 
@@ -106,19 +107,19 @@ interface ISSVNodeRegistry {
 
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
 
-    // returns the total number of queued validators across all operators
+    // returns the total number of queued validators
     function getTotalQueuedValidatorCount() external view returns (uint256);
 
-    // returns the total number of active validators across all operators
+    // returns the total number of active validators
     function getTotalActiveValidatorCount() external view returns (uint256);
 
     function getCollateralETH() external view returns (uint256);
 
     function getOperatorTotalKeys(uint256 _operatorId) external view returns (uint256 _totalKeys);
 
-    function operatorIDByAddress(address) external view returns (uint64);
+    function operatorIDByAddress(address) external view returns (uint256);
 
-    // function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
+    function getOperatorRewardAddress(uint256 _operatorId) external view returns (address payable);
 
     function isExistingPubkey(bytes calldata _pubkey) external view returns (bool);
 
@@ -130,7 +131,7 @@ interface ISSVNodeRegistry {
 
     function inputKeyCountLimit() external view returns (uint16);
 
-    function nextOperatorId() external view returns (uint64);
+    function nextOperatorId() external view returns (uint256);
 
     function nextValidatorId() external view returns (uint256);
 
@@ -140,5 +141,5 @@ interface ISSVNodeRegistry {
 
     function validatorIdByPubkey(bytes calldata _pubkey) external view returns (uint256);
 
-    function getOperatorsIdsForValidatorId(uint256 validatorId) external view returns (uint64[] memory);
+    function getOperatorsIdsForValidatorId(uint256 validatorId) external view returns (uint256[] memory);
 }
