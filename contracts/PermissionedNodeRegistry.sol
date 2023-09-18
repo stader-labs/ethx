@@ -426,7 +426,7 @@ contract PermissionedNodeRegistry is
     /**
      * @notice update the name of an operator
      * @dev only operator msg.sender can update
-     * @param _operatorName new Name of the operator
+     * @param _operatorName new name of the operator
      */
     function updateOperatorName(string calldata _operatorName) external override {
         IPoolUtils(staderConfig.getPoolUtils()).onlyValidName(_operatorName);

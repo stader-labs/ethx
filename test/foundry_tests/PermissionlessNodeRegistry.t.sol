@@ -541,6 +541,10 @@ contract PermissionlessNodeRegistryTest is Test {
         vm.prank(operatorAddr);
         nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
 
+        // passed wrong new reward address by mistake
+        vm.prank(opRewardAddr);
+        nodeRegistry.initiateRewardAddressChange(operatorAddr, vm.addr(666));
+
         vm.prank(opRewardAddr);
         nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
 
