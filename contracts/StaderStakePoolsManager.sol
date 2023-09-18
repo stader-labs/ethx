@@ -165,8 +165,30 @@ contract StaderStakePoolsManager is
         return _convertToAssets(_shares, Math.Rounding.Down);
     }
 
-    // stake ETH to get equivalent amount of ETHx token based on exchange rate
-    function deposit(address _receiver) external payable override whenNotPaused returns (uint256) {
+    /**
+     * @notice auxiliary method for KOL users/referrals to stake ETH and mints ETHx for _receiver based on exchange rate
+     * @param _receiver account where ETHx minted are sent
+     * @param _referralId referral id of KOL
+     * @return _shares amount of ETHx token minted and sent to receiver
+     * @dev emits an event with _referralId
+     */
+    function depositViaKOL(address _receiver, string calldata _referralId)
+        external
+        payable
+        override
+        whenNotPaused
+        returns (uint256 _shares)
+    {
+        _shares = deposit(_receiver);
+        emit DepositedViaKOL(msg.sender, _receiver, msg.value, _shares, _referralId);
+    }
+
+    /**
+     * @notice stake ETH and mints ETHx for _receiver based on exchange rate
+     * @param _receiver account where ETHx
+     * @return shares amount of ETHx token minted and sent to receiver
+     */
+    function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < minDeposit()) {
             revert InvalidDepositAmount();

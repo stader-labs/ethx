@@ -87,11 +87,30 @@ contract UserWithdrawalManager is
     }
 
     /**
+     * @notice auxiliary method to put a withdrawal request
+     * @param _ethXAmount amount of ethX shares to withdraw
+     * @param _owner owner of withdraw request to redeem
+     * @param _referralId referral id of KOL
+     * @return _requestId
+     * @dev emits an event with referralId
+     */
+    function requestWithdrawViaKOL(
+        uint256 _ethXAmount,
+        address _owner,
+        string calldata _referralId
+    ) external override whenNotPaused returns (uint256 _requestId) {
+        uint256 etherAmount = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
+        _requestId = requestWithdraw(_ethXAmount, _owner);
+        emit WithdrawRequestReceivedViaKOL(msg.sender, _owner, _requestId, _ethXAmount, etherAmount, _referralId);
+    }
+
+    /**
      * @notice put a withdrawal request
      * @param _ethXAmount amount of ethX shares to withdraw
      * @param _owner owner of withdraw request to redeem
+     * @return requestId
      */
-    function requestWithdraw(uint256 _ethXAmount, address _owner) external override whenNotPaused returns (uint256) {
+    function requestWithdraw(uint256 _ethXAmount, address _owner) public override whenNotPaused returns (uint256) {
         if (_owner == address(0)) revert ZeroAddressReceived();
         uint256 assets = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
         if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount()) {
