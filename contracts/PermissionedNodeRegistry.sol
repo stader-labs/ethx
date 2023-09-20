@@ -394,17 +394,17 @@ contract PermissionedNodeRegistry is
      * @notice propose the new reward address of an operator
      * @dev only the existing reward address (msg.sender) can propose
      * @param _operatorAddress operator address
-     * @param _rewardAddress new reward address
+     * @param _newRewardAddress new reward address
      */
-    function initiateRewardAddressChange(address _operatorAddress, address _rewardAddress) external override {
-        UtilLib.checkNonZeroAddress(_rewardAddress);
+    function proposeRewardAddress(address _operatorAddress, address _newRewardAddress) external override {
+        UtilLib.checkNonZeroAddress(_newRewardAddress);
         uint256 _operatorId = operatorIDByAddress[_operatorAddress];
-        address operatorRewardAddress = operatorStructById[_operatorId].operatorRewardAddress;
-        if (msg.sender != operatorRewardAddress) {
+        address existingRewardAddress = operatorStructById[_operatorId].operatorRewardAddress;
+        if (msg.sender != existingRewardAddress) {
             revert CallerNotExistingRewardAddress();
         }
-        proposedRewardAddressByOperatorId[_operatorId] = _rewardAddress;
-        emit InitiatedRewardAddressChange(_operatorAddress, _rewardAddress);
+        proposedRewardAddressByOperatorId[_operatorId] = _newRewardAddress;
+        emit RewardAddressProposed(_operatorAddress, _newRewardAddress);
     }
 
     /**
@@ -420,7 +420,7 @@ contract PermissionedNodeRegistry is
         delete proposedRewardAddressByOperatorId[_operatorId];
 
         operatorStructById[_operatorId].operatorRewardAddress = payable(msg.sender);
-        emit UpdatedOperatorRewardAddress(_operatorAddress, msg.sender);
+        emit OperatorRewardAddressUpdated(_operatorAddress, msg.sender);
     }
 
     /**

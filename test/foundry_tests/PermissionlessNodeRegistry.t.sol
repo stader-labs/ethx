@@ -539,14 +539,14 @@ contract PermissionlessNodeRegistryTest is Test {
         // propose new reward addr
         vm.expectRevert(INodeRegistry.CallerNotExistingRewardAddress.selector);
         vm.prank(operatorAddr);
-        nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
 
         // passed wrong new reward address by mistake
         vm.prank(opRewardAddr);
-        nodeRegistry.initiateRewardAddressChange(operatorAddr, vm.addr(666));
+        nodeRegistry.proposeRewardAddress(operatorAddr, vm.addr(666));
 
         vm.prank(opRewardAddr);
-        nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
 
         address pendingRewardAddress = nodeRegistry.proposedRewardAddressByOperatorId(operatorId);
         assertEq(pendingRewardAddress, newOPRewardAddr);
@@ -574,11 +574,11 @@ contract PermissionlessNodeRegistryTest is Test {
 
         vm.expectRevert(INodeRegistry.CallerNotExistingRewardAddress.selector);
         vm.prank(opRewardAddr);
-        nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
 
         // it will pass if caller is address(0), which is not possible
         vm.prank(address(0));
-        nodeRegistry.initiateRewardAddressChange(operatorAddr, newOPRewardAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
     }
 
     function test_updateOperatorRewardAddressWithZeroRewardAddr(string calldata _operatorName, uint64 __opAddrSeed)
@@ -592,7 +592,7 @@ contract PermissionlessNodeRegistryTest is Test {
 
         vm.expectRevert(UtilLib.ZeroAddress.selector);
         vm.prank(operatorAddr);
-        nodeRegistry.initiateRewardAddressChange(operatorAddr, payable(address(0)));
+        nodeRegistry.proposeRewardAddress(operatorAddr, payable(address(0)));
     }
 
     function test_updateOperatorName(string calldata _operatorName, uint64 __opAddrSeed) public {

@@ -68,7 +68,7 @@ interface IPermissionedNodeRegistry {
 
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external;
 
-    function initiateRewardAddressChange(address _operatorAddress, address _rewardAddress) external;
+    function proposeRewardAddress(address _operatorAddress, address _newRewardAddress) external;
 
     function confirmRewardAddressChange(address _operatorAddress) external;
 

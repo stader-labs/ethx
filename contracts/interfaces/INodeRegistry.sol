@@ -51,8 +51,8 @@ interface INodeRegistry {
     event UpdatedMaxNonTerminalKeyPerOperator(uint64 maxNonTerminalKeyPerOperator);
     event UpdatedInputKeyCountLimit(uint256 batchKeyDepositLimit);
     event UpdatedStaderConfig(address staderConfig);
-    event InitiatedRewardAddressChange(address indexed nodeOperator, address indexed rewardAddress);
-    event UpdatedOperatorRewardAddress(address indexed nodeOperator, address indexed rewardAddress);
+    event RewardAddressProposed(address indexed nodeOperator, address indexed rewardAddress);
+    event OperatorRewardAddressUpdated(address indexed nodeOperator, address indexed rewardAddress);
     event UpdatedOperatorName(address indexed nodeOperator, string operatorName);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
     event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
