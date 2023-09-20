@@ -19,7 +19,7 @@ interface IUserWithdrawalManager {
     // Events
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
     event UpdatedStaderConfig(address staderConfig);
-    event WithdrawRequestReceivedViaKOL(
+    event WithdrawRequestReferral(
         address indexed _msgSender,
         address _recipient,
         uint256 _requestId,
@@ -70,7 +70,7 @@ interface IUserWithdrawalManager {
 
     function updateFinalizationBatchLimit(uint256 _paginationLimit) external;
 
-    function requestWithdrawViaKOL(
+    function requestWithdraw(
         uint256 _ethXAmount,
         address receiver,
         string calldata referralId

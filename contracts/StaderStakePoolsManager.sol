@@ -166,13 +166,13 @@ contract StaderStakePoolsManager is
     }
 
     /**
-     * @notice auxiliary method for KOL users/referrals to stake ETH and mints ETHx for _receiver based on exchange rate
+     * @notice auxiliary method for KOL users/referrals to stake ETH and mint ETHx for _receiver based on exchange rate
      * @param _receiver account where ETHx minted are sent
      * @param _referralId referral id of KOL
      * @return _shares amount of ETHx token minted and sent to receiver
      * @dev emits an event with _referralId
      */
-    function depositViaKOL(address _receiver, string calldata _referralId)
+    function deposit(address _receiver, string calldata _referralId)
         external
         payable
         override
@@ -180,11 +180,11 @@ contract StaderStakePoolsManager is
         returns (uint256 _shares)
     {
         _shares = deposit(_receiver);
-        emit DepositedViaKOL(msg.sender, _receiver, msg.value, _shares, _referralId);
+        emit DepositReferral(msg.sender, _receiver, msg.value, _shares, _referralId);
     }
 
     /**
-     * @notice stake ETH and mints ETHx for _receiver based on exchange rate
+     * @notice stake ETH and mint ETHx for _receiver based on exchange rate
      * @param _receiver account where ETHx
      * @return shares amount of ETHx token minted and sent to receiver
      */

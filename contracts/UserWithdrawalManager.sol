@@ -94,14 +94,14 @@ contract UserWithdrawalManager is
      * @return _requestId
      * @dev emits an event with referralId
      */
-    function requestWithdrawViaKOL(
+    function requestWithdraw(
         uint256 _ethXAmount,
         address _owner,
         string calldata _referralId
     ) external override whenNotPaused returns (uint256 _requestId) {
         uint256 etherAmount = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
         _requestId = requestWithdraw(_ethXAmount, _owner);
-        emit WithdrawRequestReceivedViaKOL(msg.sender, _owner, _requestId, _ethXAmount, etherAmount, _referralId);
+        emit WithdrawRequestReferral(msg.sender, _owner, _requestId, _ethXAmount, etherAmount, _referralId);
     }
 
     /**

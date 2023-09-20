@@ -14,7 +14,7 @@ interface IStaderStakePoolManager {
 
     // Events
     event UpdatedStaderConfig(address staderConfig);
-    event DepositedViaKOL(
+    event DepositReferral(
         address indexed caller,
         address indexed owner,
         uint256 assets,
@@ -30,7 +30,7 @@ interface IStaderStakePoolManager {
     event WithdrawVaultUserShareReceived(uint256 amount);
     event UpdatedExcessETHDepositCoolDown(uint256 excessETHDepositCoolDown);
 
-    function depositViaKOL(address _receiver, string calldata _referralId) external payable returns (uint256);
+    function deposit(address _receiver, string calldata _referralId) external payable returns (uint256);
 
     function deposit(address _receiver) external payable returns (uint256);
 
