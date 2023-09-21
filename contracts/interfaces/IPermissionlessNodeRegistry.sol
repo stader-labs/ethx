@@ -64,7 +64,11 @@ interface IPermissionlessNodeRegistry {
 
     function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external;
 
-    function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
+    function proposeRewardAddress(address _operatorAddress, address _newRewardAddress) external;
+
+    function confirmRewardAddressChange(address _operatorAddress) external;
+
+    function updateOperatorName(string calldata _operatorName) external;
 
     function changeSocializingPoolState(bool _optInForSocializingPool)
         external
