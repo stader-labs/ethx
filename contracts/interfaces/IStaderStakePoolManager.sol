@@ -14,6 +14,13 @@ interface IStaderStakePoolManager {
 
     // Events
     event UpdatedStaderConfig(address staderConfig);
+    event DepositReferral(
+        address indexed caller,
+        address indexed owner,
+        uint256 assets,
+        uint256 shares,
+        string referralId
+    );
     event Deposited(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
     event ExecutionLayerRewardsReceived(uint256 amount);
     event AuctionedEthReceived(uint256 amount);
@@ -22,6 +29,8 @@ interface IStaderStakePoolManager {
     event ETHTransferredToPool(uint256 indexed poolId, address poolAddress, uint256 validatorCount);
     event WithdrawVaultUserShareReceived(uint256 amount);
     event UpdatedExcessETHDepositCoolDown(uint256 excessETHDepositCoolDown);
+
+    function deposit(address _receiver, string calldata _referralId) external payable returns (uint256);
 
     function deposit(address _receiver) external payable returns (uint256);
 
