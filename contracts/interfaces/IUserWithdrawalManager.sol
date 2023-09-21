@@ -19,6 +19,14 @@ interface IUserWithdrawalManager {
     // Events
     event UpdatedFinalizationBatchLimit(uint256 paginationLimit);
     event UpdatedStaderConfig(address staderConfig);
+    event WithdrawRequestReferral(
+        address indexed _msgSender,
+        address _recipient,
+        uint256 _requestId,
+        uint256 _sharesAmount,
+        uint256 _ethAmount,
+        string _referralId
+    );
     event WithdrawRequestReceived(
         address indexed _msgSender,
         address _recipient,
@@ -61,6 +69,12 @@ interface IUserWithdrawalManager {
     function requestIdsByUserAddress(address, uint256) external view returns (uint256);
 
     function updateFinalizationBatchLimit(uint256 _paginationLimit) external;
+
+    function requestWithdraw(
+        uint256 _ethXAmount,
+        address receiver,
+        string calldata referralId
+    ) external returns (uint256);
 
     function requestWithdraw(uint256 _ethXAmount, address receiver) external returns (uint256);
 
