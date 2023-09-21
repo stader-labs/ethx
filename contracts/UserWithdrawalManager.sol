@@ -99,9 +99,9 @@ contract UserWithdrawalManager is
         address _owner,
         string calldata _referralId
     ) external override whenNotPaused returns (uint256 _requestId) {
-        uint256 etherAmount = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
+        uint256 ethAmount = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
         _requestId = requestWithdraw(_ethXAmount, _owner);
-        emit WithdrawRequestReferral(msg.sender, _owner, _requestId, _ethXAmount, etherAmount, _referralId);
+        emit WithdrawRequestReferral(msg.sender, _owner, _requestId, _ethXAmount, ethAmount, _referralId);
     }
 
     /**

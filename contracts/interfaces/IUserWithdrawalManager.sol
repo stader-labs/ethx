@@ -24,8 +24,8 @@ interface IUserWithdrawalManager {
         address _recipient,
         uint256 _requestId,
         uint256 _sharesAmount,
-        uint256 _etherAmount,
-        string referralId
+        uint256 _ethAmount,
+        string _referralId
     );
     event WithdrawRequestReceived(
         address indexed _msgSender,
