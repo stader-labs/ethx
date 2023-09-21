@@ -524,85 +524,107 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(address(nodeRegistry.staderConfig()), newStaderConfig);
     }
 
-    function test_updateOperatorDetails(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed,
-        uint64 _newOPRewardAddrSeed
-    ) public {
+    function test_updateOperatorRewardAddress(string calldata _operatorName, uint64 __opAddrSeed) public {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
-        vm.assume(_newOPRewardAddrSeed > 0);
         address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        address payable newOPRewardAddr = payable(vm.addr(_newOPRewardAddrSeed));
-        vm.startPrank(operatorAddr);
+        address payable opRewardAddr = payable(vm.addr(456));
+        address payable newOPRewardAddr = payable(vm.addr(567));
+
+        vm.prank(operatorAddr);
         nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+
         uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
-        string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
-        nodeRegistry.updateOperatorDetails(newOpName, newOPRewardAddr);
-        (, , string memory operatorName, address payable operatorRewardAddress, ) = nodeRegistry.operatorStructById(
-            operatorId
-        );
-        assertEq(operatorName, newOpName);
+
+        // propose new reward addr
+        vm.expectRevert(INodeRegistry.CallerNotExistingRewardAddress.selector);
+        vm.prank(operatorAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
+
+        // passed wrong new reward address by mistake
+        vm.prank(opRewardAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, vm.addr(666));
+
+        vm.prank(opRewardAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
+
+        address pendingRewardAddress = nodeRegistry.proposedRewardAddressByOperatorId(operatorId);
+        assertEq(pendingRewardAddress, newOPRewardAddr);
+
+        // confirm new reward address
+        vm.expectRevert(INodeRegistry.CallerNotNewRewardAddress.selector);
+        vm.prank(opRewardAddr);
+        nodeRegistry.confirmRewardAddressChange(operatorAddr);
+
+        vm.expectRevert(INodeRegistry.CallerNotNewRewardAddress.selector);
+        vm.prank(operatorAddr);
+        nodeRegistry.confirmRewardAddressChange(operatorAddr);
+
+        vm.prank(newOPRewardAddr);
+        nodeRegistry.confirmRewardAddressChange(operatorAddr);
+
+        (, , , address payable operatorRewardAddress, ) = nodeRegistry.operatorStructById(operatorId);
         assertEq(operatorRewardAddress, newOPRewardAddr);
     }
 
-    function test_updateOperatorDetailWithInActiveOperator(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
+    function test_updateOperatorRewardAddressWithInvalidOperatorAddress() public {
+        address operatorAddr = vm.addr(778);
+        address payable opRewardAddr = payable(vm.addr(456));
+        address payable newOPRewardAddr = payable(vm.addr(567));
+
+        vm.expectRevert(INodeRegistry.CallerNotExistingRewardAddress.selector);
+        vm.prank(opRewardAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
+
+        // it will pass if caller is address(0), which is not possible
+        vm.prank(address(0));
+        nodeRegistry.proposeRewardAddress(operatorAddr, newOPRewardAddr);
+    }
+
+    function test_updateOperatorRewardAddressWithZeroRewardAddr(string calldata _operatorName, uint64 __opAddrSeed)
+        public
+    {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
         address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
         vm.prank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(false, _operatorName, payable(operatorAddr));
+
+        vm.expectRevert(UtilLib.ZeroAddress.selector);
+        vm.prank(operatorAddr);
+        nodeRegistry.proposeRewardAddress(operatorAddr, payable(address(0)));
+    }
+
+    function test_updateOperatorName(string calldata _operatorName, uint64 __opAddrSeed) public {
+        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
+        vm.assume(__opAddrSeed > 0);
+        address operatorAddr = vm.addr(__opAddrSeed);
+        vm.startPrank(operatorAddr);
+        nodeRegistry.onboardNodeOperator(false, _operatorName, payable(operatorAddr));
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operatorAddr);
+        string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
+        nodeRegistry.updateOperatorName(newOpName);
+        (, , string memory operatorName, , ) = nodeRegistry.operatorStructById(operatorId);
+        assertEq(operatorName, newOpName);
+        vm.stopPrank();
+    }
+
+    function test_updateOperatorNameWithInActiveOperator(string calldata _operatorName) public {
+        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
         vm.expectRevert(INodeRegistry.OperatorNotOnBoarded.selector);
-        nodeRegistry.updateOperatorDetails(newOpName, payable(operatorAddr));
+        nodeRegistry.updateOperatorName(newOpName);
     }
 
-    function test_updateOperatorDetailWithZeroRewardAddr(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed
-    ) public {
+    function test_updateOperatorNameWithInvalidName(string calldata _operatorName, uint64 __opAddrSeed) public {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
         address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
         vm.startPrank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
-        string memory newOpName = string(abi.encodePacked(_operatorName, 'test'));
-        vm.expectRevert(UtilLib.ZeroAddress.selector);
-        nodeRegistry.updateOperatorDetails(newOpName, payable(address(0)));
-        vm.stopPrank();
-    }
-
-    function test_updateOperatorDetailWithInvalidName(
-        string calldata _operatorName,
-        uint64 __opAddrSeed,
-        uint64 _opRewardAddrSeed,
-        uint64 _newOPRewardAddrSeed
-    ) public {
-        vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
-        vm.assume(__opAddrSeed > 0);
-        vm.assume(_opRewardAddrSeed > 0);
-        vm.assume(_newOPRewardAddrSeed > 0);
-        address operatorAddr = vm.addr(__opAddrSeed);
-        address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
-        address payable newOPRewardAddr = payable(vm.addr(_newOPRewardAddrSeed));
-        vm.startPrank(operatorAddr);
-        nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        nodeRegistry.onboardNodeOperator(false, _operatorName, payable(operatorAddr));
         string memory newOpName = string(abi.encodePacked(''));
         vm.expectRevert(PoolUtilsMockForDepositFlow.EmptyNameString.selector);
-        nodeRegistry.updateOperatorDetails(newOpName, newOPRewardAddr);
-        vm.stopPrank();
+        nodeRegistry.updateOperatorName(newOpName);
     }
 
     function test_increaseTotalActiveValidatorCount(uint256 _count) public {
