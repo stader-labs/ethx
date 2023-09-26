@@ -6,6 +6,7 @@ interface IStaderInsuranceFund {
     error InvalidAmountProvided();
     error TransferFailed();
     error InSufficientBalance();
+    error InvalidPoolToReimburse();
 
     //Events
     event ReceivedInsuranceFund(uint256 amount);

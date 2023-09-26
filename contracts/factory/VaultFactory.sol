@@ -2,7 +2,9 @@
 pragma solidity 0.8.16;
 
 import '../library/UtilLib.sol';
+
 import '../VaultProxy.sol';
+import '../DVT/SSV/SSVVaultProxy.sol';
 import '../interfaces/IVaultFactory.sol';
 import '../interfaces/IStaderConfig.sol';
 
@@ -14,6 +16,8 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
     address public vaultProxyImplementation;
 
     bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
+
+    address public ssvVaultProxyImplementation;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -45,6 +49,20 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         return withdrawVaultAddress;
     }
 
+    function deploySSVValidatorWithdrawalVault(uint8 _poolId, uint256 _validatorId)
+        external
+        override
+        onlyRole(NODE_REGISTRY_CONTRACT)
+        returns (address)
+    {
+        bytes32 salt = sha256(abi.encode(_poolId, _validatorId));
+        address withdrawVaultAddress = ClonesUpgradeable.cloneDeterministic(ssvVaultProxyImplementation, salt);
+        SSVVaultProxy(payable(withdrawVaultAddress)).initialise(_poolId, _validatorId, address(staderConfig));
+
+        emit SSVValidatorWithdrawalVaultCreated(_validatorId, withdrawVaultAddress);
+        return withdrawVaultAddress;
+    }
+
     function deployNodeELRewardVault(uint8 _poolId, uint256 _operatorId)
         external
         override
@@ -66,6 +84,16 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
     ) external view override returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId, _validatorCount));
         return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
+    }
+
+    function computeSSVValidatorWithdrawalVaultAddress(uint8 _poolId, uint256 _validatorId)
+        external
+        view
+        override
+        returns (address)
+    {
+        bytes32 salt = sha256(abi.encode(_poolId, _validatorId));
+        return ClonesUpgradeable.predictDeterministicAddress(ssvVaultProxyImplementation, salt);
     }
 
     function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId)
@@ -94,5 +122,15 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         UtilLib.checkNonZeroAddress(_vaultProxyImpl);
         vaultProxyImplementation = _vaultProxyImpl;
         emit UpdatedVaultProxyImplementation(vaultProxyImplementation);
+    }
+
+    function updateSSVVaultProxyImplementation(address _ssvVaultProxyImpl)
+        external
+        override
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        UtilLib.checkNonZeroAddress(_ssvVaultProxyImpl);
+        ssvVaultProxyImplementation = _ssvVaultProxyImpl;
+        emit UpdatedSSVVaultProxyImplementation(ssvVaultProxyImplementation);
     }
 }

@@ -77,6 +77,12 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     mapping(bytes32 => address) private contractsMap;
     mapping(bytes32 => address) private tokensMap;
 
+    //SSV Pool
+    bytes32 public constant override SSV_POOL = keccak256('SSV_POOL');
+    bytes32 public constant override SSV_NODE_REGISTRY = keccak256('SSV_NODE_REGISTRY');
+    bytes32 public constant override SSV_SOCIALIZING_POOL = keccak256('SSV_SOCIALIZING_POOL');
+    bytes32 public constant override SSV_VALIDATOR_WITHDRAWAL_VAULT = keccak256('SSV_VALIDATOR_WITHDRAWAL_VAULT');
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -292,6 +298,25 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setToken(ETHx, _ethX);
     }
 
+    function updateSSVPool(address _ssvPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(SSV_POOL, _ssvPool);
+    }
+
+    function updateSSVNodeRegistry(address _ssvNodeRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(SSV_NODE_REGISTRY, _ssvNodeRegistry);
+    }
+
+    function updateSSVSocializingPool(address _ssvSocializingPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(SSV_SOCIALIZING_POOL, _ssvSocializingPool);
+    }
+
+    function updateSSVValidatorWithdrawalVault(address _ssvValidatorWithdrawalVault)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        setContract(SSV_VALIDATOR_WITHDRAWAL_VAULT, _ssvValidatorWithdrawalVault);
+    }
+
     //Constants Getters
 
     function getStakedEthPerNode() external view override returns (uint256) {
@@ -446,6 +471,22 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function getValidatorWithdrawalVaultImplementation() external view override returns (address) {
         return contractsMap[VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION];
+    }
+
+    function getSSVPool() external view override returns (address) {
+        return contractsMap[SSV_POOL];
+    }
+
+    function getSSVNodeRegistry() external view override returns (address) {
+        return contractsMap[SSV_NODE_REGISTRY];
+    }
+
+    function getSSVSocializingPool() external view override returns (address) {
+        return contractsMap[SSV_SOCIALIZING_POOL];
+    }
+
+    function getSSVValidatorWithdrawalVault() external view override returns (address) {
+        return contractsMap[SSV_VALIDATOR_WITHDRAWAL_VAULT];
     }
 
     //POR Feed Proxy Getters

@@ -48,16 +48,18 @@ contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, 
     }
 
     /**
-     * @notice reimburse 1 ETH per key to SSPM for permissioned NOs doing front running or giving invalid signature
-     * @dev only permissioned pool can call
-     * @param _amount amount of ETH to transfer to permissioned pool
+     * @notice reimburse 1 ETH per key to SSPM for permissioned/SSV NOs doing front running or giving invalid signature
+     * @dev only permissioned/SSV pool can call
+     * @param _amount amount of ETH to transfer to permissioned/SSV pool
      */
     function reimburseUserFund(uint256 _amount) external override nonReentrant {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
+        if (msg.sender != staderConfig.getPermissionedPool() && msg.sender != staderConfig.getSSVPool()) {
+            revert InvalidPoolToReimburse();
+        }
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }
-        IPermissionedPool(staderConfig.getPermissionedPool()).receiveInsuranceFund{value: _amount}();
+        IPermissionedPool(msg.sender).receiveInsuranceFund{value: _amount}();
     }
 
     //update the address of staderConfig
