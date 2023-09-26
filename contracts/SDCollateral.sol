@@ -89,20 +89,18 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         uint256 _validatorId,
         uint256[] memory operatorIds
     ) external override nonReentrant {
-        (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(
-            IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId)
-        ).validatorRegistry(_validatorId);
+        address nodeRegistry = IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_poolId);
+        (, , , , address withdrawVaultAddress, , , ) = INodeRegistry(nodeRegistry).validatorRegistry(_validatorId);
         if (msg.sender != withdrawVaultAddress) {
             revert CallerNotWithdrawVault();
         }
         isPoolThresholdValid(_poolId);
         uint256 sdToSlash = convertETHToSD(poolThresholdbyPoolId[_poolId].minThreshold);
         for (uint8 i; i < operatorIds.length; i++) {
-            (bool operatorType, , , address operatorAddress, , , ) = ISSVNodeRegistry(msg.sender).operatorStructById(
-                operatorIds[i]
-            );
-            if (!operatorType) {
-                slashSD(operatorAddress, convertETHToSD(sdToSlash));
+            (bool isPermissionedOperator, , , address operatorAddress, , , ) = ISSVNodeRegistry(nodeRegistry)
+                .operatorStructById(operatorIds[i]);
+            if (!isPermissionedOperator) {
+                slashSD(operatorAddress, sdToSlash);
             }
         }
     }

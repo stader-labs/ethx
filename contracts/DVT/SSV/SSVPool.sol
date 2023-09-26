@@ -100,15 +100,17 @@ contract SSVPool is ISSVPool, AccessControlUpgradeable, ReentrancyGuardUpgradeab
     }
 
     // deposit `FULL_DEPOSIT_SIZE` for the verified preDeposited Validator
-    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external nonReentrant {
+    function fullDepositOnBeaconChain(bytes[] calldata _pubkey) external payable nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SSV_NODE_REGISTRY());
         address nodeRegistryAddress = msg.sender;
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
         uint256 pubkeyCount = _pubkey.length;
+
         //decrease the preDeposit validator count
         _decreasePreDepositValidatorCount(pubkeyCount);
         for (uint256 i; i < pubkeyCount; ) {
+            //checks if validator is registered with SSV Network and status is PRE_DEPOSIT
             ISSVNodeRegistry(nodeRegistryAddress).onlySSVRegisteredAndPreDepositValidator(_pubkey[i]);
             uint256 validatorId = INodeRegistry(nodeRegistryAddress).validatorIdByPubkey(_pubkey[i]);
             (, , , bytes memory depositSignature, address withdrawVaultAddress, , , ) = INodeRegistry(
@@ -132,7 +134,7 @@ contract SSVPool is ISSVPool, AccessControlUpgradeable, ReentrancyGuardUpgradeab
                 depositSignature,
                 depositDataRoot
             );
-            // ISSVNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
+            ISSVNodeRegistry(nodeRegistryAddress).updateDepositStatusAndBlock(validatorId);
             emit ValidatorDepositedOnBeaconChain(validatorId, _pubkey[i]);
             unchecked {
                 ++i;

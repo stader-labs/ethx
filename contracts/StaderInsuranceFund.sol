@@ -53,7 +53,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, 
      * @param _amount amount of ETH to transfer to permissioned/SSV pool
      */
     function reimburseUserFund(uint256 _amount) external override nonReentrant {
-        if (msg.sender != staderConfig.getPermissionedPool() || msg.sender != staderConfig.getSSVPool()) {
+        if (msg.sender != staderConfig.getPermissionedPool() && msg.sender != staderConfig.getSSVPool()) {
             revert InvalidPoolToReimburse();
         }
         if (address(this).balance < _amount) {

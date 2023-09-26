@@ -49,9 +49,11 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
         uint256[] memory operatorIds = nodeRegistry.getOperatorsIdsForValidatorId(validatorId);
         uint256 totalOperators = operatorIds.length;
         for (uint8 i; i < totalOperators; ) {
-            (bool operatorType, , , address operatorAddress, , , ) = nodeRegistry.operatorStructById(operatorIds[i]);
+            (bool isPermissionedOperator, , , address operatorAddress, , , ) = nodeRegistry.operatorStructById(
+                operatorIds[i]
+            );
             uint256 operatorKeyLevelShare;
-            if (operatorType) {
+            if (isPermissionedOperator) {
                 operatorKeyLevelShare = getPermissionedOperatorShare(
                     operatorShare,
                     totalRewards,
@@ -142,10 +144,9 @@ contract SSVValidatorWithdrawalVault is ISSVValidatorWithdrawalVault {
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         for (uint8 i; i < totalOperators; i++) {
-            (bool operatorType, , , address operatorAddress, , , ) = ISSVNodeRegistry(msg.sender).operatorStructById(
-                operatorIds[i]
-            );
-            if (operatorType) {
+            (bool isPermissionedOperator, , , address operatorAddress, , , ) = ISSVNodeRegistry(msg.sender)
+                .operatorStructById(operatorIds[i]);
+            if (isPermissionedOperator) {
                 IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{
                     value: permissionedOperatorShare
                 }(operatorAddress);

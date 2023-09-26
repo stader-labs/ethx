@@ -1,7 +1,7 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-  const insuranceFund = process.env.STADER_INSURANCE_FUND ?? ''
+  const insuranceFund = process.env.INSURANCE_FUND ?? ''
   const insuranceFundFactory = await ethers.getContractFactory('StaderInsuranceFund')
   const insuranceFundInstance = await insuranceFundFactory.attach(insuranceFund)
 

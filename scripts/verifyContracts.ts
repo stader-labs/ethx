@@ -25,6 +25,13 @@ const userWithdrawManager = process.env.USER_WITHDRAW_MANAGER ?? ''
 const nodeELRewardVault = process.env.NODE_EL_REWARD_VAULT_IMPL ?? ''
 const withdrawVaultImpl = process.env.WITHDRAW_VAULT_IMPL ?? ''
 
+//SSV Contracts
+const ssvNodeRegistry = process.env.SSV_NODE_REGISTRY ?? ''
+const ssvPool = process.env.SSV_POOL ?? ''
+const ssvSocializingPool = process.env.SSV_SOCIALIZING_POOL ?? ''
+const ssvWithdrawVault = process.env.SSV_WITHDRAWAL_VAULT ?? ''
+const ssvVaultProxy = process.env.SSV_VAULT_PROXY ?? ''
+
 const contractAddresses = [
   vaultFactory,
   auction,
@@ -47,6 +54,11 @@ const contractAddresses = [
   userWithdrawManager,
   nodeELRewardVault,
   withdrawVaultImpl,
+  ssvNodeRegistry,
+  ssvPool,
+  ssvSocializingPool,
+  ssvWithdrawVault,
+  ssvVaultProxy
 ]
 
 async function main() {

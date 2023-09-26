@@ -93,7 +93,7 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         returns (address)
     {
         bytes32 salt = sha256(abi.encode(_poolId, _validatorId));
-        return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
+        return ClonesUpgradeable.predictDeterministicAddress(ssvVaultProxyImplementation, salt);
     }
 
     function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId)

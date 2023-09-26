@@ -36,9 +36,11 @@
     "@openzeppelin/contracts-upgradeable": "^4.8.0-rc.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.3",
+    "bignumber.js": "^9.1.2",
     "bytes32": "^0.0.3",
     "dotenv": "^16.0.3",
     "get-random-values": "^2.0.0",
-    "ssv-keys": "github:bloxapp/ssv-keys"
+    "ssv-keys": "github:bloxapp/ssv-keys",
+    "ssv-scanner": "github:bloxapp/ssv-scanner"
   }
 }

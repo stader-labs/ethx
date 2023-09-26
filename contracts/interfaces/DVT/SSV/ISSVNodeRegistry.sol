@@ -6,7 +6,7 @@ import '../../INodeRegistry.sol';
 import '../../../library/ValidatorStatus.sol';
 
 struct SSVOperator {
-    bool operatorType; // 0 for permissionless and 1 for permissioned
+    bool isPermissionedOperator; // false for permissionless and true for permissioned
     string operatorName; // name of the operator
     address payable operatorRewardAddress; //Eth1 address of node for reward
     address operatorAddress; // address of operator to interact with stader
@@ -20,6 +20,7 @@ interface ISSVNodeRegistry {
     error PageNumberIsZero();
     error UNEXPECTED_STATUS();
     error InvalidBondAmount();
+    error OperatorNotOnBoarded();
     error DifferentClusterSize();
     error ValidatorNotWithdrawn();
     error InvalidCollateralAmount();
@@ -30,6 +31,8 @@ interface ISSVNodeRegistry {
     error CallerFailingSSVOperatorChecks();
     error DuplicatePoolIDOrPoolNotAdded();
     error ValidatorNotRegisteredWithSSV();
+    error CallerNotExistingRewardAddress();
+    error OnlyNewRewardAddressCanConfirm();
     error OperatorNotOnboardOrPermissioned();
     error OperatorAlreadyOnBoardedInProtocol();
     error NotSufficientCollateralPerKeyShare();
@@ -37,22 +40,30 @@ interface ISSVNodeRegistry {
 
     event OperatorWhitelisted(address operator);
     event UpdatedStaderConfig(address staderConfig);
+    event UpdatedSSVTokenAddress(address ssvToken);
     event MarkedValidatorStatusAsPreDeposit(bytes pubkey);
+    event UpdatedSSVNetworkContractAddress(address ssvNetwork);
     event UpdatedInputKeyCountLimit(uint256 inputKeyCountLimit);
     event ValidatorWithdrawn(bytes pubkey, uint256 validatorId);
     event SSVOperatorOnboard(address operator, uint256 operatorId);
     event UpdatedVerifiedKeyBatchSize(uint256 verifiedKeysBatchSize);
     event BondDeposited(address operator, uint256 depositBondAmount);
+    event UpdatedSSVNetworkViewsContractAddress(address ssvNetworkViews);
     event ValidatorMarkedAsFrontRunned(bytes pubkey, uint256 validatorId);
     event UpdatedNextQueuedValidatorIndex(uint256 nextQueuedValidatorIndex);
     event IncreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
     event DecreasedTotalActiveValidatorCount(uint256 totalActiveValidatorCount);
+    event UpdatedOperatorName(address indexed nodeOperator, string operatorName);
+    event UpdatedValidatorDepositBlock(uint256 validatorId, uint256 depositBlock);
     event ValidatorStatusMarkedAsInvalidSignature(bytes pubkey, uint256 validatorId);
+
     event AddedValidatorKey(address indexed nodeOperator, bytes pubkey, uint256 validatorId);
     event UpdatedBatchSizeToRemoveValidatorFromSSV(uint64 batchSizeToRemoveValidatorFromSSV);
     event UpdatedBatchSizeToRegisterValidatorWithSSV(uint64 batchSizeToRegisterValidatorFromSSV);
+    event InitiatedRewardAddressChange(address indexed nodeOperator, address indexed rewardAddress);
+    event UpdatedOperatorRewardAddress(address indexed nodeOperator, address indexed rewardAddress);
 
-    // function withdrawnValidators(bytes[] calldata _pubkeys) external;
+    function withdrawnValidators(bytes[] calldata _pubkeys) external;
 
     function markValidatorReadyToDeposit(
         bytes[] calldata _readyToDepositPubkey,
@@ -75,22 +86,6 @@ interface ISSVNodeRegistry {
             uint256 withdrawnTime
         );
 
-    // returns the operator struct given operator Id
-    function operatorStructById(uint256)
-        external
-        view
-        returns (
-            bool operatorType,
-            string calldata operatorName,
-            address payable operatorRewardAddress,
-            address operatorAddress,
-            uint64 operatorSSVID,
-            uint64 keyShareCount,
-            uint256 bondAmount
-        );
-
-    function onlySSVRegisteredAndPreDepositValidator(bytes calldata _pubkey) external view;
-
     function increaseTotalActiveValidatorCount(uint256 _count) external;
 
     function nextQueuedValidatorIndex() external view returns (uint256);
@@ -103,14 +98,37 @@ interface ISSVNodeRegistry {
 
     function updateBatchSizeToRegisterValidatorFromSSV(uint64 _batchSizeToRegisterValidatorFromSSV) external;
 
+    function updateOperatorName(string calldata _operatorName) external;
+
+    function confirmRewardAddressChange(address _operatorAddress) external;
+
     function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external;
+
+    function updateDepositStatusAndBlock(uint256 _validatorId) external;
+
+    function initiateRewardAddressChange(address _operatorAddress, address _rewardAddress) external;
+
+    //Getter
+
+    function operatorStructById(uint256)
+        external
+        view
+        returns (
+            bool isPermissionedOperator,
+            string calldata operatorName,
+            address payable operatorRewardAddress,
+            address operatorAddress,
+            uint64 operatorSSVID,
+            uint64 keyShareCount,
+            uint256 bondAmount
+        );
+
+    function onlySSVRegisteredAndPreDepositValidator(bytes calldata _pubkey) external view;
 
     function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize) external view returns (Validator[] memory);
 
-    // returns the total number of queued validators
     function getTotalQueuedValidatorCount() external view returns (uint256);
 
-    // returns the total number of active validators
     function getTotalActiveValidatorCount() external view returns (uint256);
 
     function getCollateralETH() external view returns (uint256);

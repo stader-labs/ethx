@@ -18,6 +18,7 @@ import '../../interfaces/SDCollateral/ISDCollateral.sol';
 import '../../interfaces/SSVNetwork/ISSVNetworkViews.sol';
 import '../../interfaces/DVT/SSV/ISSVValidatorWithdrawalVault.sol';
 
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
@@ -35,6 +36,7 @@ contract SSVNodeRegistry is
     uint64 public batchSizeToRegisterValidatorFromSSV;
 
     IStaderConfig public staderConfig;
+    address public ssvToken;
     ISSVNetwork public ssvNetwork;
     ISSVNetworkViews public ssvNetworkViews;
 
@@ -58,6 +60,8 @@ contract SSVNodeRegistry is
     mapping(address => uint256) public operatorIDByAddress;
     // mapping of whitelisted permissioned node operator
     mapping(address => bool) public permissionList;
+    // mapping of proposed reward address corresponding to operator Id
+    mapping(uint256 => address) public proposedRewardAddressByOperatorId;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -67,25 +71,30 @@ contract SSVNodeRegistry is
     function initialize(
         address _admin,
         address _staderConfig,
+        address _ssvToken,
         address _ssvNetwork,
         address _ssvNetworkViews
     ) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_ssvToken);
         UtilLib.checkNonZeroAddress(_ssvNetwork);
         UtilLib.checkNonZeroAddress(_ssvNetworkViews);
         __AccessControl_init_unchained();
         __Pausable_init();
         __ReentrancyGuard_init();
         staderConfig = IStaderConfig(_staderConfig);
+        ssvToken = _ssvToken;
         ssvNetwork = ISSVNetwork(_ssvNetwork);
         ssvNetworkViews = ISSVNetworkViews(_ssvNetworkViews);
         nextOperatorId = 1;
         nextValidatorId = 1;
         inputKeyCountLimit = 30;
         verifiedKeyBatchSize = 50;
+        nextQueuedValidatorIndex = 1;
         batchSizeToRemoveValidatorFromSSV = 10;
         batchSizeToRegisterValidatorFromSSV = 10;
+        IERC20(ssvToken).approve(address(ssvNetwork), type(uint256).max);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
@@ -136,12 +145,16 @@ contract SSVNodeRegistry is
         operatorStructById[nextOperatorId] = SSVOperator(
             permissionList[msg.sender],
             _operatorName,
-            _operatorRewardAddress,
+            payable(msg.sender),
             msg.sender,
             _ssvOperatorID,
             0,
             0
         );
+        if (_operatorRewardAddress != msg.sender) {
+            proposedRewardAddressByOperatorId[nextOperatorId] = _operatorRewardAddress;
+            emit InitiatedRewardAddressChange(msg.sender, _operatorRewardAddress);
+        }
         operatorIDByAddress[msg.sender] = nextOperatorId;
         nextOperatorId++;
         emit SSVOperatorOnboard(msg.sender, nextOperatorId - 1);
@@ -259,7 +272,9 @@ contract SSVNodeRegistry is
             _decreaseTotalActiveValidatorCount(totalDefectedKeys);
             ISSVPool(ssvPool).transferETHOfDefectiveKeysToSSPM(totalDefectedKeys);
         }
-        ISSVPool(ssvPool).fullDepositOnBeaconChain(_readyToDepositPubkey);
+        ISSVPool(ssvPool).fullDepositOnBeaconChain{value: readyToDepositValidatorsLength * COLLATERAL_ETH}(
+            _readyToDepositPubkey
+        );
     }
 
     /**
@@ -270,6 +285,7 @@ contract SSVNodeRegistry is
      * @param cluster cluster array
      */
     function registerValidatorsWithSSV(
+        uint256 _tokenAmount,
         bytes[] calldata publicKey,
         uint256[][] memory staderOperatorIds,
         bytes[] calldata sharesData,
@@ -283,10 +299,11 @@ contract SSVNodeRegistry is
         if (keyCount != staderOperatorIds.length || keyCount != sharesData.length || keyCount != cluster.length) {
             revert MisMatchingInputKeysSize();
         }
+        uint256 tokenPerValidator = _tokenAmount / keyCount;
         for (uint256 i; i < keyCount; ) {
             operatorIdssByPubkey[publicKey[i]] = staderOperatorIds[i];
             uint64[] memory ssvOperatorIds = _validateStaderOperators(staderOperatorIds[i]);
-            ssvNetwork.registerValidator(publicKey[i], ssvOperatorIds, sharesData[i], 0, cluster[i]);
+            ssvNetwork.registerValidator(publicKey[i], ssvOperatorIds, sharesData[i], tokenPerValidator, cluster[i]);
             unchecked {
                 ++i;
             }
@@ -298,7 +315,7 @@ contract SSVNodeRegistry is
      * @dev list of pubkeys reported by oracle
      * @param  _pubkeys array of withdrawn validators pubkey
      */
-    function withdrawnValidators(bytes[] calldata _pubkeys) external {
+    function withdrawnValidators(bytes[] calldata _pubkeys) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STADER_ORACLE());
         uint256 withdrawnValidatorCount = _pubkeys.length;
         if (withdrawnValidatorCount > staderConfig.getWithdrawnKeyBatchSize()) {
@@ -339,6 +356,18 @@ contract SSVNodeRegistry is
                 cluster[i]
             );
         }
+    }
+
+    /**
+     * @notice sets the deposit block for a validator and update status to DEPOSITED
+     * @dev only ssv pool can call
+     * @param _validatorId Id of the validator
+     */
+    function updateDepositStatusAndBlock(uint256 _validatorId) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SSV_POOL());
+        validatorRegistry[_validatorId].depositBlock = block.number;
+        validatorRegistry[_validatorId].status = ValidatorStatus.DEPOSITED;
+        emit UpdatedValidatorDepositBlock(_validatorId, block.number);
     }
 
     /**
@@ -432,6 +461,87 @@ contract SSVNodeRegistry is
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    /**
+     * @notice propose the new reward address of an operator
+     * @dev only the existing reward address (msg.sender) can propose
+     * @param _operatorAddress operator address
+     * @param _rewardAddress new reward address
+     */
+    function initiateRewardAddressChange(address _operatorAddress, address _rewardAddress) external override {
+        UtilLib.checkNonZeroAddress(_rewardAddress);
+        uint256 operatorId = operatorIDByAddress[_operatorAddress];
+        address operatorRewardAddress = operatorStructById[operatorId].operatorRewardAddress;
+        if (msg.sender != operatorRewardAddress) {
+            revert CallerNotExistingRewardAddress();
+        }
+        proposedRewardAddressByOperatorId[operatorId] = _rewardAddress;
+        emit InitiatedRewardAddressChange(_operatorAddress, _rewardAddress);
+    }
+
+    /**
+     * @notice confirms and sets the new reward address of an operator
+     * @dev only the new reward address (msg.sender) can confirm
+     * @param _operatorAddress operator address
+     */
+    function confirmRewardAddressChange(address _operatorAddress) external override {
+        uint256 _operatorId = operatorIDByAddress[_operatorAddress];
+        if (msg.sender != proposedRewardAddressByOperatorId[_operatorId]) {
+            revert OnlyNewRewardAddressCanConfirm();
+        }
+        delete proposedRewardAddressByOperatorId[_operatorId];
+
+        operatorStructById[_operatorId].operatorRewardAddress = payable(msg.sender);
+        emit UpdatedOperatorRewardAddress(_operatorAddress, msg.sender);
+    }
+
+    /**
+     * @notice update the name of an operator
+     * @dev only operator msg.sender can update
+     * @param _operatorName new name of the operator
+     */
+    function updateOperatorName(string calldata _operatorName) external override {
+        IPoolUtils(staderConfig.getPoolUtils()).onlyValidName(_operatorName);
+        uint256 operatorId = operatorIDByAddress[msg.sender];
+        if (operatorId == 0) {
+            revert OperatorNotOnBoarded();
+        }
+        operatorStructById[operatorId].operatorName = _operatorName;
+        emit UpdatedOperatorName(msg.sender, _operatorName);
+    }
+
+    /**
+     * @notice update the address of SSV Token
+     * @dev only ADMIN role can update
+     * @param _ssvToken new address of SSV Token
+     */
+    function updateSSVTokenAddress(address _ssvToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_ssvToken);
+        ssvToken = _ssvToken;
+        emit UpdatedSSVTokenAddress(_ssvToken);
+    }
+
+    /**
+     * @notice update the address of SSV Network Contract
+     * @dev only ADMIN role can update
+     * @param _ssvNetwork new address of SSV Network Contract
+     */
+    function updateSSVNetworkAddress(address _ssvNetwork) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_ssvNetwork);
+        ssvNetwork = ISSVNetwork(_ssvNetwork);
+        emit UpdatedSSVNetworkContractAddress(_ssvNetwork);
+    }
+
+    /**
+     * @notice update the address of SSV Network Views Contract
+     * @dev only ADMIN role can update
+     * @param _ssvNetworkViews new address of SSV Network Views Contract
+     */
+    function updateSSVNetworkViewsAddress(address _ssvNetworkViews) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_ssvNetworkViews);
+        ssvNetworkViews = ISSVNetworkViews(_ssvNetworkViews);
+        emit UpdatedSSVNetworkViewsContractAddress(_ssvNetworkViews);
     }
 
     // check for the validator being registered with SSV along with the PRE_DEPOSIT status
@@ -552,7 +662,7 @@ contract SSVNodeRegistry is
     }
 
     function _verifyOperatorAndDepositAmount(uint256 _operatorId, uint256 _depositAmount) internal view {
-        if (_operatorId == 0 || operatorStructById[_operatorId].operatorType) {
+        if (_operatorId == 0 || operatorStructById[_operatorId].isPermissionedOperator) {
             revert OperatorNotOnboardOrPermissioned();
         }
         if (_depositAmount % COLLATERAL_ETH_PER_KEY_SHARE != 0) {
@@ -585,26 +695,33 @@ contract SSVNodeRegistry is
         for (uint64 j = 0; j < CLUSTER_SIZE; j++) {
             SSVOperator storage operator = operatorStructById[staderOperatorIds[j]];
             bool enoughSDCollateral = ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
-                msg.sender,
+                operator.operatorAddress,
                 POOL_ID,
                 operator.keyShareCount + 1
             );
-            if (!operator.operatorType && (operator.bondAmount < COLLATERAL_ETH_PER_KEY_SHARE || !enoughSDCollateral)) {
+            if (
+                !operator.isPermissionedOperator &&
+                (operator.bondAmount < COLLATERAL_ETH_PER_KEY_SHARE || !enoughSDCollateral)
+            ) {
                 revert NotSufficientCollateralPerKeyShare();
             }
-            if (!operator.operatorType) {
+            if (!operator.isPermissionedOperator) {
                 totalCollateral += COLLATERAL_ETH_PER_KEY_SHARE;
+                operator.bondAmount -= COLLATERAL_ETH_PER_KEY_SHARE;
             }
-            operator.bondAmount -= COLLATERAL_ETH_PER_KEY_SHARE;
             operator.keyShareCount += 1;
-            ssvOperatorIds[j] = operatorStructById[staderOperatorIds[j]].operatorSSVID;
+            ssvOperatorIds[j] = operator.operatorSSVID;
         }
         if (totalCollateral != COLLATERAL_ETH) {
             revert NotSufficientCollateralPerValidator();
         }
     }
 
-    function _getSSVOperatorIds(uint256[] memory staderOperatorIds) internal returns (uint64[] memory ssvOperatorIds) {
+    function _getSSVOperatorIds(uint256[] memory staderOperatorIds)
+        internal
+        view
+        returns (uint64[] memory ssvOperatorIds)
+    {
         ssvOperatorIds = new uint64[](CLUSTER_SIZE);
         for (uint64 i = 0; i < CLUSTER_SIZE; i++) {
             ssvOperatorIds[i] = operatorStructById[staderOperatorIds[i]].operatorSSVID;
