@@ -51,6 +51,21 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         emit SDDeposited(operator, _sdAmount);
     }
 
+    /**
+     * @dev sender should approve this contract for spending SD
+     * @dev allows sender to deposit SD collateral on behalf of a operator
+     * @param _sdAmount SD Token Amount to Deposit
+     * @param _operator operator address
+     */
+    function depositSDAsCollateralFor(address _operator, uint256 _sdAmount) external override {
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
+            revert SDTransferFailed();
+        }
+        operatorSDBalance[_operator] += _sdAmount;
+
+        emit SDDeposited(_operator, _sdAmount);
+    }
+
     /// @notice for operator to withdraw their sd collateral, which is over and above withdraw threshold
     function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;

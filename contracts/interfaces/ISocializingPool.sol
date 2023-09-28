@@ -37,6 +37,7 @@ interface ISocializingPool {
     error InvalidProof(uint256 cycle, address operator);
     error InvalidCycleIndex();
     error FutureCycleIndex();
+    error InvalidSDDepositAmount();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -57,7 +58,17 @@ interface ISocializingPool {
     // methods
     function handleRewards(RewardsData calldata _rewardsData) external;
 
+    function maxApproveSDToSDCollateral() external;
+
     function claim(
+        uint256[] calldata _index,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof
+    ) external;
+
+    function claimAndDepositSDAsCollateral(
+        uint256 _amountOfSDToDeposit,
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,

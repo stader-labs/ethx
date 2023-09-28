@@ -5,6 +5,7 @@ pragma solidity 0.8.16;
 import './library/UtilLib.sol';
 
 import './interfaces/ISocializingPool.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
 
@@ -108,11 +109,27 @@ contract SocializingPool is
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
-    ) external override nonReentrant whenNotPaused {
-        address operator = msg.sender;
-        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, operator, _amountSD, _amountETH, _merkleProof);
+    ) external override whenNotPaused {
+        claimAndDepositSDAsCollateral(0, _index, _amountSD, _amountETH, _merkleProof);
+    }
 
-        address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
+    ///@notice claim rewards along with depositing a given amount of SD Token as collateral
+    function claimAndDepositSDAsCollateral(
+        uint256 _amountOfSDToDeposit,
+        uint256[] calldata _index,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof
+    ) public override nonReentrant whenNotPaused {
+        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
+            _index,
+            msg.sender,
+            _amountSD,
+            _amountETH,
+            _merkleProof
+        );
+
+        address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(msg.sender, staderConfig);
 
         bool success;
         if (totalAmountETH > 0) {
@@ -123,11 +140,23 @@ contract SocializingPool is
             }
         }
 
-        if (totalAmountSD > 0) {
-            totalOperatorSDRewardsRemaining -= totalAmountSD;
-            if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardsAddr, totalAmountSD)) {
+        if (_amountOfSDToDeposit > totalAmountSD) {
+            revert InvalidSDDepositAmount();
+        }
+        totalOperatorSDRewardsRemaining -= totalAmountSD;
+        if ((totalAmountSD - _amountOfSDToDeposit) > 0) {
+            if (
+                !IERC20(staderConfig.getStaderToken()).transfer(
+                    operatorRewardsAddr,
+                    (totalAmountSD - _amountOfSDToDeposit)
+                )
+            ) {
                 revert SDTransferFailed();
             }
+        }
+
+        if (_amountOfSDToDeposit > 0) {
+            ISDCollateral(staderConfig.getSDCollateral()).depositSDAsCollateralFor(msg.sender, _amountOfSDToDeposit);
         }
 
         emit OperatorRewardsClaimed(operatorRewardsAddr, totalAmountETH, totalAmountSD);
@@ -157,6 +186,14 @@ contract SocializingPool is
                 revert InvalidProof(_index[i], _operator);
             }
         }
+    }
+
+    /// @notice for max approval to SDCollateral contract for spending SD tokens
+    function maxApproveSDToSDCollateral() external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        address sdCollateral = staderConfig.getSDCollateral();
+        UtilLib.checkNonZeroAddress(sdCollateral);
+        IERC20(staderConfig.getStaderToken()).approve(sdCollateral, type(uint256).max);
     }
 
     function verifyProof(

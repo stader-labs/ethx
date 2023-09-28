@@ -29,6 +29,8 @@ interface ISDCollateral {
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
 
+    function depositSDAsCollateralFor(address _operator, uint256 _sdAmount) external;
+
     function withdraw(uint256 _requestedSD) external;
 
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external;

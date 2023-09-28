@@ -6,6 +6,7 @@ import '../../contracts/library/UtilLib.sol';
 import '../../contracts/StaderOracle.sol';
 import '../../contracts/SocializingPool.sol';
 import '../../contracts/StaderConfig.sol';
+import '../../contracts/SDCollateral.sol';
 
 import '../mocks/StaderTokenMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
@@ -18,6 +19,7 @@ import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 contract StaderOracleTest is Test {
     address staderAdmin;
     address staderManager;
+    SDCollateral sdCollateral;
 
     StaderOracle staderOracle;
     SocializingPool permissionedSP;
@@ -25,11 +27,13 @@ contract StaderOracleTest is Test {
     PoolUtilsMock poolUtils;
     StaderConfig staderConfig;
     StaderTokenMock staderToken;
+    
 
     function setUp() public {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
+
 
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
@@ -71,8 +75,18 @@ contract StaderOracleTest is Test {
 
         poolUtils = new PoolUtilsMock(address(staderConfig));
 
+        SDCollateral sdCollateralImpl = new SDCollateral();
+        TransparentUpgradeableProxy sdCollateralProxy = new TransparentUpgradeableProxy(
+            address(sdCollateralImpl),
+            address(admin),
+            ''
+        );
+        sdCollateral = SDCollateral(address(sdCollateralProxy));
+        sdCollateral.initialize(staderAdmin, address(staderConfig));
+
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderOracle(address(staderOracle));
+        staderConfig.updateSDCollateral(address(sdCollateral));
         staderConfig.updatePermissionedSocializingPool(address(permissionedSP));
         staderConfig.updatePermissionlessSocializingPool(address(permissionlessSP));
         staderConfig.updateStaderToken(address(staderToken));
@@ -755,9 +769,21 @@ contract StaderOracleTest is Test {
         assertEq(opRewardAddr2.balance, 0);
 
         vm.prank(operator2);
-        permissionlessSP.claim(indexArray, sdAmountArray, ethAmountArray, proofArray);
+        vm.expectRevert('ERC20: insufficient allowance');
+        permissionlessSP.claimAndDepositSDAsCollateral(100,indexArray, sdAmountArray, ethAmountArray, proofArray);
 
-        assertEq(staderToken.balanceOf(opRewardAddr2), 444);
+        vm.prank(staderManager);
+        permissionlessSP.maxApproveSDToSDCollateral();
+
+        vm.startPrank(operator2);
+        vm.expectRevert(abi.encodeWithSelector(ISocializingPool.InvalidSDDepositAmount.selector));
+        permissionlessSP.claimAndDepositSDAsCollateral(450,indexArray, sdAmountArray, ethAmountArray, proofArray);
+
+        permissionlessSP.claimAndDepositSDAsCollateral(100,indexArray, sdAmountArray, ethAmountArray, proofArray);
+
+        assertEq(staderToken.balanceOf(opRewardAddr2), 344);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), 100);
+        assertEq(sdCollateral.operatorSDBalance(operator2),100);
         assertEq(opRewardAddr2.balance, 111);
     }
 
