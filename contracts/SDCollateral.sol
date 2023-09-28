@@ -53,7 +53,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
 
     /**
      * @dev sender should approve this contract for spending SD
-     * @dev allows sender to deposit SD collateral on behalf of a operator
+     * @dev allows sender to deposit SD collateral on behalf of an operator
      * @param _sdAmount SD Token Amount to Deposit
      * @param _operator operator address
      */
