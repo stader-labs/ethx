@@ -1,16 +1,11 @@
 import { ethers, upgrades } from 'hardhat'
 
 async function main() {
-  const permissionedNodeRegistry = process.env.PERMISSIONED_NODE_REGISTRY ?? ''
-  const permissionedNodeRegistryFactory = await ethers.getContractFactory('PermissionedNodeRegistry')
-  const permissionedNodeRegistryInstance = await permissionedNodeRegistryFactory.attach(permissionedNodeRegistry)
+  const permissionedNodeRegistryFactory = await ethers.getContractFactory('PermissionlessNodeRegistry')
 
-  const permissionedNodeRegistryUpgraded = await upgrades.upgradeProxy(
-    permissionedNodeRegistryInstance,
-    permissionedNodeRegistryFactory
-  )
+  const permissionedNodeRegistryUpgraded = await upgrades.deployImplementation(permissionedNodeRegistryFactory)
 
-  console.log('permissioned node registry proxy address ', permissionedNodeRegistryUpgraded.address)
+  console.log('permissioned node registry proxy address ', permissionedNodeRegistryUpgraded)
 
   console.log('upgraded permissioned node registry')
 }
