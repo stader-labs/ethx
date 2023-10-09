@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
 import '../library/ValidatorStatus.sol';
@@ -68,7 +68,11 @@ interface IPermissionedNodeRegistry {
 
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external;
 
-    function updateOperatorDetails(string calldata _operatorName, address payable _rewardAddress) external;
+    function proposeRewardAddress(address _operatorAddress, address _newRewardAddress) external;
+
+    function confirmRewardAddressChange(address _operatorAddress) external;
+
+    function updateOperatorName(string calldata _operatorName) external;
 
     function pause() external;
 

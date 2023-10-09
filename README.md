@@ -1,70 +1,58 @@
-# ethx
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+# Overview
+
+ETHx is a multi pool architecture for node operations, designed for decentralization, scalability, and resilience. This design is integral to our ability to democratize node operations and adapt to increasing demand.
+Our structure includes a permissionless pool, where anyone can participate and operate nodes, thereby fostering widespread participation. Alongside this, we also feature a permissioned pool. This is a select group of validators known for their consistent high performance.
+
+# Resources
+
+- [ETHx Architecture](https://miro.com/app/board/uXjVMDv5XKo=/)
+- [Contract Addresses](https://staderlabs.gitbook.io/ethereum/smart-contracts#ethx-mainnet-smart-contracts)
+- [Onboarding Documentation](https://staderlabs.gitbook.io/ethereum/)
+
+# Deploy
+
+`NOTE`: Default Branch for repo is [mainnet_V0](https://github.com/stader-labs/ethx/tree/mainnet_V0)
 
 ```shell
-npx hardhat help
-npx hardhat test
-GAS_REPORT=true
-npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
+npx hardhat compile
+npx hardhat run scripts/deployContracts.ts
 ```
 
-Setting up Foundry
+# Verify
 
-- install foundry `curl -L https://foundry.paradigm.xyz | bash `
-- extra step for macOS `brew install libusb`
-- run `foundryup`
-- npm install // to install hardhat-foundry plugin
-- forge install // to install submodule dependencies
-- forge build // to build all contracts
-- forge test
-- forge coverage
-
-# Repository Conventions
-
-### Types
-
-- fix: Commits that fixes a bug
-- feat: Commits that adds a new feature
-- refactor: Commits that rewrite/restructure your code, however does not change any behaviour
-- docs: Commits that affect documentation only
-- chore: Miscellaneous commits e.g. modifying .gitignore
-
-### Branches
-
-#### Naming
-
-```
-{type}/{description-separated-by-dashes}
-e.g. 'fix/add-natspec-comments'
+```shell
+npx hardhat compile
+npx hardhat run scripts/verifyContracts.ts
 ```
 
-- Branch names must be descriptive of what is being worked on
-- Branch names must include the type of work being done
-- The description portion must be in present tense
-- Once the branch has been merged via PR it must be closed
+# Tests
 
-#### Commits
+Installing foundry:
 
-```
-{type}: {description}
-e.g. 'docs: add conventions to Readme.md'
-```
+```bash
+# install foundry
+curl -L https://foundry.paradigm.xyz | bash
 
-- Commit names must include a general description of the change
-- The description portion must be in present tense
-- Commits must have a type associated
+# extra step for macOS
+brew install libusb
 
-#### Pull Requests
-
-```
-{linked jira issue} {description of the change}
-e.g. 'ES-68 Add repository conventions to documentation'
+# run
+foundryup
+npm install
+forge install
 ```
 
-- Pull Requests names should indicate a linked Jira Issue when possible
-- PR names must include a description
-- PR name description must be in present tense
-- A brief description of what's being changed should be added to the PR
-- A PR must include two reviewers
-- A PR must only be merged after it has been approved by reviewers
+Using the test suite:
+
+```bash
+forge build
+forge test
+forge test --gas-report
+forge coverage
+```
+
+# Integration
+
+Check the Integration guide [here](https://github.com/stader-labs/ethx/blob/mainnet_V0/INTEGRATION.md)
