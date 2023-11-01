@@ -59,6 +59,7 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         keccak256('NODE_EL_REWARD_VAULT_IMPLEMENTATION');
     bytes32 public constant override VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION =
         keccak256('VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION');
+    bytes32 public constant override LENDING_POOL_CONTRACT = keccak256('LENDING_POOL_CONTRACT');
 
     //POR Feed Proxy
     bytes32 public constant override ETH_BALANCE_POR_FEED = keccak256('ETH_BALANCE_POR_FEED');
@@ -284,6 +285,10 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setContract(ETHX_SUPPLY_POR_FEED, _ethXSupplyProxy);
     }
 
+    function updateLendingPoolProxy(address _lendingPoolProxy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(LENDING_POOL_CONTRACT, _lendingPoolProxy);
+    }
+
     function updateStaderToken(address _staderToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setToken(SD, _staderToken);
     }
@@ -446,6 +451,10 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function getValidatorWithdrawalVaultImplementation() external view override returns (address) {
         return contractsMap[VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION];
+    }
+
+    function getLendingPool() external view override returns (address) {
+        return contractsMap[LENDING_POOL_CONTRACT];
     }
 
     //POR Feed Proxy Getters
