@@ -6,10 +6,11 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import '../library/UtilLib.sol';
 import '../interfaces/IStaderConfig.sol';
+import '../interfaces/IIncentiveController.sol';
 
 /// @title IncentiveController
 /// @notice This contract handles the distribution of reward tokens for a lending pool.
-contract IncentiveController is AccessControlUpgradeable {
+contract IncentiveController is IIncentiveController, AccessControlUpgradeable {
     // The emission rate of the reward tokens per second.
     uint256 public emissionPerSecond;
 
