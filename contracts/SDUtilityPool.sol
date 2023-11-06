@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import './library/UtilLib.sol';
 import './SDx.sol';
 import './interfaces/IStaderConfig.sol';
+import './interfaces/IIncentiveController.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -75,6 +76,7 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
      */
     function deposit(uint256 sdAmount) external {
         accrueInterest();
+        IIncentiveController(staderConfig.getIncentiveController()).onDeposit(msg.sender);
         _deposit(sdAmount);
     }
 
