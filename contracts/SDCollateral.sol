@@ -7,6 +7,7 @@ import '../contracts/interfaces/IPoolUtils.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
+import './interfaces/ISDUtilityPool.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -17,6 +18,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     IStaderConfig public override staderConfig;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;
+    mapping(address => uint256) public override operatorBorrowedSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -54,13 +56,17 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     /// @notice for operator to withdraw their sd collateral, which is over and above withdraw threshold
     function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
-        uint256 opSDBalance = operatorSDBalance[operator];
+        uint256 operatorBorrowedSD = operatorBorrowedSDBalance[operator];
+        uint256 opSDBalance = operatorSDBalance[operator] + operatorBorrowedSD;
 
         if (opSDBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
             revert InsufficientSDToWithdraw(opSDBalance);
         }
-        operatorSDBalance[operator] -= _requestedSD;
+        uint256 borrowPositionChange = operatorBorrowedSD >= _requestedSD ? _requestedSD : operatorBorrowedSD;
+        operatorBorrowedSDBalance[operator] -= borrowPositionChange;
+        operatorSDBalance[operator] -= (_requestedSD - borrowPositionChange);
 
+        ISDUtilityPool(staderConfig.getSDUtilityPool()).repay(borrowPositionChange);
         // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
         if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
             revert SDTransferFailed();
@@ -85,12 +91,15 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     /// @param _operator which operator SD collateral to slash
     /// @param _sdToSlash amount of SD to slash
     function slashSD(address _operator, uint256 _sdToSlash) internal {
-        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 operatorSelfBondedSD = operatorSDBalance[_operator];
+        uint256 sdBalance = operatorSelfBondedSD + operatorBorrowedSDBalance[_operator];
         uint256 sdSlashed = Math.min(_sdToSlash, sdBalance);
         if (sdSlashed == 0) {
             return;
         }
-        operatorSDBalance[_operator] -= sdSlashed;
+        uint256 sdSlashFromBorrow = operatorSelfBondedSD >= sdSlashed ? 0 : sdSlashed - operatorSelfBondedSD;
+        operatorSDBalance[_operator] -= (sdSlashed - sdSlashFromBorrow);
+        operatorBorrowedSDBalance[_operator] -= sdSlashFromBorrow;
         IAuction(staderConfig.getAuctionContract()).createLot(sdSlashed);
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
@@ -182,7 +191,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         uint8 _poolId,
         uint256 _numValidator
     ) public view override returns (uint256) {
-        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 sdBalance = operatorSDBalance[_operator] + operatorBorrowedSDBalance[_operator];
         uint256 minSDToBond = getMinimumSDToBond(_poolId, _numValidator);
         return (sdBalance >= minSDToBond ? 0 : minSDToBond - sdBalance);
     }
@@ -195,7 +204,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
 
         uint256 totalMinThreshold = validatorCount * convertETHToSD(poolThreshold.minThreshold);
         uint256 totalMaxThreshold = validatorCount * convertETHToSD(poolThreshold.maxThreshold);
-        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 sdBalance = operatorSDBalance[_operator] + operatorBorrowedSDBalance[_operator];
         return (sdBalance < totalMinThreshold ? 0 : Math.min(sdBalance, totalMaxThreshold));
     }
 

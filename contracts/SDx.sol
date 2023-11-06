@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
-import './library/UtilLib.sol';
 
 import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+
+import './interfaces/IStaderConfig.sol';
+import './library/UtilLib.sol';
 
 /**
  * @title SDx token Contract
@@ -12,22 +14,28 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
  * @notice The ERC20 contract for the SDx token
  */
 
-contract SDx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
-    bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
-    bytes32 public constant BURNER_ROLE = keccak256('BURNER_ROLE');
-    bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
+contract SDX is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
+    event UpdatedStaderConfig(address indexed _staderConfig);
+
+    IStaderConfig public staderConfig;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address _admin) external initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
-        __ERC20_init('SDx', 'SDx');
+        UtilLib.checkNonZeroAddress(_staderConfig);
+
+        __ERC20_init('Interest bearing SD token', 'SDx');
         __Pausable_init();
         __AccessControl_init();
+
+        staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /**
@@ -35,7 +43,9 @@ contract SDx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCont
      * @param to the account to mint to
      * @param amount the amount of SDx to mint
      */
-    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) whenNotPaused {
+    function mint(address to, uint256 amount) external whenNotPaused {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
+
         _mint(to, amount);
     }
 
@@ -44,7 +54,9 @@ contract SDx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCont
      * @param account the account to burn from
      * @param amount the amount of SDx to burn
      */
-    function burnFrom(address account, uint256 amount) external onlyRole(BURNER_ROLE) whenNotPaused {
+    function burnFrom(address account, uint256 amount) external whenNotPaused {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
+
         _burn(account, amount);
     }
 
@@ -52,7 +64,9 @@ contract SDx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCont
      * @dev Triggers stopped state.
      * Contract must not be paused.
      */
-    function pause() external onlyRole(PAUSER_ROLE) {
+    function pause() external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+
         _pause();
     }
 
@@ -62,5 +76,11 @@ contract SDx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCont
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
+    }
+
+    function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 }

@@ -2,15 +2,15 @@
 pragma solidity 0.8.16;
 
 import './library/UtilLib.sol';
-import './SDx.sol';
+import './SDX.sol';
 import './interfaces/IStaderConfig.sol';
+import './interfaces/ISDUtilityPool.sol';
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
-contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
+contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgradeable {
     uint256 constant DECIMAL = 1e18;
 
     /**
@@ -42,11 +42,6 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
 
     IStaderConfig public staderConfig;
 
-    //TODO sanjay read below two params from config
-    address public sdX;
-
-    address public sdToken;
-
     struct BorrowerStruct {
         uint256 principal;
         uint256 interestIndex;
@@ -59,6 +54,7 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
         _disableInitializers();
     }
 
+    //TODO sanjay define initial params like borrow rate, borrowIndex
     function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
@@ -188,7 +184,7 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
     }
 
     /// @notice Calculates the current supply rate per block
-    function getSupplyRate() public view returns (uint256) {
+    function getSupplyRate() external view returns (uint256) {
         uint256 oneMinusReserveFactor = DECIMAL - feeFactor;
         uint256 rateToPool = (borrowRate * oneMinusReserveFactor) / DECIMAL;
         return (utilizationRate() * rateToPool) / DECIMAL;
@@ -225,10 +221,10 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
         uint256 exchangeRate = _exchangeRateStoredInternal();
 
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), sdAmount)) {
-            // revert SDTransferFailed();
+            revert SDTransferFailed();
         }
         uint256 mintTokens = (sdAmount * DECIMAL) / exchangeRate;
-        SDx(sdX).mint(msg.sender, mintTokens);
+        SDX(staderConfig.getSDxToken()).mint(msg.sender, mintTokens);
 
         //TODO @sanjay emit events
     }
@@ -250,9 +246,9 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
         if (getPoolSDBalance() < redeemAmount) {
             //TODO @sanjay revert
         }
-        SDx(sdX).burnFrom(msg.sender, sdXAmount);
+        SDX(staderConfig.getSDxToken()).burnFrom(msg.sender, sdXAmount);
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(address(this), msg.sender, redeemAmount)) {
-            // revert SDTransferFailed();
+            revert SDTransferFailed();
         }
         //TODO @sanjay emit events
     }
@@ -334,7 +330,7 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
      * @return calculated exchange rate scaled by 1e18
      */
     function _exchangeRateStoredInternal() internal view virtual returns (uint256) {
-        uint256 _totalSupply = SDx(sdX).totalSupply();
+        uint256 _totalSupply = SDX(staderConfig.getSDxToken()).totalSupply();
         if (_totalSupply == 0) {
             /*
              * If there are no tokens minted:
@@ -354,6 +350,6 @@ contract SDUtilityPool is AccessControlUpgradeable, PausableUpgradeable {
     }
 
     function getPoolSDBalance() public view returns (uint256) {
-        return SDx(sdX).balanceOf(address(this));
+        return SDX(staderConfig.getSDxToken()).balanceOf(address(this));
     }
 }

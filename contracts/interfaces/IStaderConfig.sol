@@ -58,6 +58,11 @@ interface IStaderConfig {
 
     function VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION() external view returns (bytes32);
 
+    //SD Utility Pool
+    function SDx() external view returns (bytes32);
+
+    function SD_UTILITY_POOL() external view returns (bytes32);
+
     //POR Feed Proxy
     function ETH_BALANCE_POR_FEED() external view returns (bytes32);
 
@@ -150,10 +155,14 @@ interface IStaderConfig {
 
     function getETHXSupplyPORFeedProxy() external view returns (address);
 
+    function getSDUtilityPool() external view returns (address);
+
     // Tokens
     function getStaderToken() external view returns (address);
 
     function getETHxToken() external view returns (address);
+
+    function getSDxToken() external view returns (address);
 
     //checks roles and stader contracts
     function onlyStaderContract(address _addr, bytes32 _contractName) external view returns (bool);
