@@ -11,20 +11,14 @@ import './interfaces/ISDIncentiveController.sol';
 /// @title SDIncentiveController
 /// @notice This contract handles the distribution of reward tokens for a lending pool.
 contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeable {
-    // The emission rate of the reward tokens per second.
-    uint256 public emissionPerSecond;
+    // The emission rate of the reward tokens per block.
+    uint256 public emissionPerBlock;
 
-    // The timestamp of the last reward calculation.
-    uint256 public lastUpdateTimestamp;
+    // The block number of the last reward calculation.
+    uint256 public lastUpdateBlockNumber;
 
     // The stored value of the reward per token, used to calculate rewards.
     uint256 public rewardPerTokenStored;
-
-    // Reference to the lending pool token contract.
-    IERC20 public lendingPoolToken;
-
-    // Reference to the reward token contract.
-    IERC20 public rewardToken;
 
     // Reference to the Stader configuration contract.
     IStaderConfig public staderConfig;
@@ -41,21 +35,11 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     }
 
     /// @notice Initializes the contract with necessary addresses.
-    /// @param _lendingPoolToken The address of the lending pool token contract.
     /// @param _staderConfig The address of the Stader configuration contract.
-    /// @param _rewardToken The address of the reward token contract.
-    function initialize(
-        address _lendingPoolToken,
-        address _staderConfig,
-        address _rewardToken
-    ) external initializer {
-        UtilLib.checkNonZeroAddress(_lendingPoolToken);
+    function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
-        UtilLib.checkNonZeroAddress(_rewardToken);
 
-        lendingPoolToken = IERC20(_lendingPoolToken);
         staderConfig = IStaderConfig(_staderConfig);
-        rewardToken = IERC20(_rewardToken);
 
         __AccessControl_init();
     }
@@ -70,7 +54,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         uint256 reward = rewards[account];
         require(reward > 0, 'No rewards to claim.');
         rewards[account] = 0;
-        rewardToken.transfer(account, reward);
+        IERC20(staderConfig.getStaderToken()).transfer(account, reward);
 
         emit RewardClaimed(account, reward);
     }
@@ -86,19 +70,20 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     /// @notice Calculates the current reward per token.
     /// @return The calculated reward per token.
     function rewardPerToken() public view returns (uint256) {
-        if (lendingPoolToken.totalSupply() == 0) {
+        if (IERC20(staderConfig.getSDxToken()).totalSupply() == 0) {
             return rewardPerTokenStored;
         }
         return
             rewardPerTokenStored +
-            (((block.timestamp - lastUpdateTimestamp) * emissionPerSecond * 1e18) / lendingPoolToken.totalSupply());
+            (((block.number - lastUpdateBlockNumber) * emissionPerBlock * 1e18) /
+                IERC20(staderConfig.getSDxToken()).totalSupply());
     }
 
     /// @notice Calculates the total accrued reward for an account.
     /// @param account The account to calculate rewards for.
     /// @return The total accrued reward for the account.
     function earned(address account) public view returns (uint256) {
-        uint256 currentBalance = lendingPoolToken.balanceOf(account);
+        uint256 currentBalance = IERC20(staderConfig.getSDxToken()).balanceOf(account);
         uint256 currentRewardPerToken = rewardPerToken();
 
         return ((currentBalance * (currentRewardPerToken - userRewardPerTokenPaid[account])) / 1e18) + rewards[account];
@@ -108,7 +93,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     /// @param account The account to update the reward for.
     function updateReward(address account) internal {
         rewardPerTokenStored = rewardPerToken();
-        lastUpdateTimestamp = block.timestamp;
+        lastUpdateBlockNumber = block.number;
 
         if (account != address(0)) {
             rewards[account] = earned(account);
