@@ -15,47 +15,47 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     uint256 constant DECIMAL = 1e18;
 
     /**
-     * @notice Fraction of interest currently set aside for protocol fee
+     * @notice Fraction of fee currently set aside for protocol
      */
-    uint256 public feeFactor;
+    uint256 public protocolFeeFactor;
 
     /**
-     * @notice Block number that interest was last accrued at
+     * @notice Block number that fee was last accrued at
      */
     uint256 public accrualBlockNumber;
 
     /**
-     * @notice Accumulator of the total earned interest rate since start of pool
+     * @notice Accumulator of the total earned fee rate since start of pool
      */
-    uint256 public borrowIndex;
+    uint256 public utilizeIndex;
 
     /**
-     * @notice Total amount of outstanding SD borrows
+     * @notice Total amount of outstanding SD utilized
      */
-    uint256 public totalBorrows;
+    uint256 public totalUtilizedSD;
 
     /**
      * @notice Total amount of protocol fee
      */
-    uint256 public totalFee;
+    uint256 public totalProtocolFee;
 
-    uint256 public borrowRate;
+    uint256 public utilizationRate;
 
     IStaderConfig public staderConfig;
 
-    struct BorrowerStruct {
+    struct UtilizerStruct {
         uint256 principal;
-        uint256 interestIndex;
+        uint256 utilizeIndex;
     }
 
-    mapping(address => BorrowerStruct) public accountBorrows;
+    mapping(address => UtilizerStruct) public utilizerData;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    //TODO sanjay define initial params like borrow rate, borrowIndex
+    //TODO sanjay define initial params like utilize rate, utilizeIndex
     function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
@@ -66,144 +66,141 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Sender supplies SD and receive SDx in return
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
-     * @param sdAmount The amount of SD token to supply
+     * @notice Sender delegate SD and receive SDx in return
+     * @dev Accrues fee whether or not the operation succeeds, unless reverted
+     * @param sdAmount The amount of SD token to delegate
      */
-    function delegate(uint256 sdAmount) external override {
-        accrueInterest();
+    function delegate(uint256 sdAmount) external {
+        accrueFee();
         IIncentiveController(staderConfig.getIncentiveController()).onDeposit(msg.sender);
-        _deposit(sdAmount);
+        _delegate(sdAmount);
     }
 
     /**
      * @notice Sender redeems SDx in exchange for the SD token
-     * @dev Accrues interest whether or not the operation succeeds, unless reverted
+     * @dev Accrues fee whether or not the operation succeeds, unless reverted
      * @param sdXAmount The number of SDx to redeem
      */
     function redeem(uint256 sdXAmount) external {
-        accrueInterest();
+        accrueFee();
         _redeem(sdXAmount);
     }
 
     /**
-     * @notice Sender borrows SD from the protocol to add it as collateral to run validators
-     * @param borrowAmount The amount of the SD token to borrow
+     * @notice Sender utilize SD from the protocol to add it as collateral to run validators
+     * @param utilizeAmount The amount of the SD token to utilize
      */
-    function utilize(uint256 borrowAmount) external override {
-        //TODO @sanjay put check to allow only ETHx NOs to borrow and max 1ETH worth of SD per validator
-        accrueInterest();
-        _borrow(payable(msg.sender), borrowAmount);
+    function utilize(uint256 utilizeAmount) external {
+        //TODO @sanjay put check to allow only ETHx NOs to utilize and max 1ETH worth of SD per validator
+        accrueFee();
+        _utilize(payable(msg.sender), utilizeAmount);
     }
 
     /**
-     * @notice Sender repays their own borrow
+     * @notice Sender repays their own utilize
      * @param repayAmount The amount to repay
      */
     function repay(uint256 repayAmount) external {
-        accrueInterest();
+        accrueFee();
         _repay(msg.sender, repayAmount);
     }
 
     /**
-     * @notice Applies accrued interest to total borrows and fees
-     * @dev This calculates interest accrued from the last checkpointed block
+     * @notice Sender repays their own utilize
+     * @param repayAmount The amount to repay
+     */
+    function repayOnBehalf(address utilizer, uint256 repayAmount) external {
+        accrueFee();
+        _repay(utilizer, repayAmount);
+    }
+
+    /**
+     * @notice Applies accrued fee to total utilize and fees
+     * @dev This calculates fee accrued from the last checkpointed block
      *   up to the current block and writes new checkpoint to storage.
      */
-    function accrueInterest() public {
+    function accrueFee() public {
         /* Remember the initial block number */
         uint256 currentBlockNumber = block.number;
         uint256 accrualBlockNumberPrior = accrualBlockNumber;
 
-        /* Short-circuit accumulating 0 interest */
+        /* Short-circuit accumulating 0 fee */
         if (accrualBlockNumberPrior == currentBlockNumber) {
             return;
         }
-
-        /* Read the previous values out of storage */
-        uint256 borrowsPrior = totalBorrows;
-        uint256 reservesPrior = totalFee;
-        uint256 borrowIndexPrior = borrowIndex;
 
         /* Calculate the number of blocks elapsed since the last accrual */
         uint256 blockDelta = currentBlockNumber - accrualBlockNumberPrior;
 
         /*
-         * Calculate the interest accumulated into borrows and reserves and the new index:
-         *  simpleInterestFactor = borrowRate * blockDelta
-         *  interestAccumulated = simpleInterestFactor * totalBorrows
-         *  totalBorrowsNew = interestAccumulated + totalBorrows
-         *  totalReservesNew = interestAccumulated * reserveFactor + totalReserves
-         *  borrowIndexNew = simpleInterestFactor * borrowIndex + borrowIndex
+         * Calculate the fee accumulated into utilize and totalProtocolFee and the new index:
+         *  simpleFeeFactor = utilizationRate * blockDelta
+         *  feeAccumulated = simpleFeeFactor * utilizePrior
+         *  totalUtilizeNew = feeAccumulated + utilizePrior
+         *  totalProtocolFeeNew = feeAccumulated * protocolFeeFactor + totalProtocolFee
+         *  utilizeIndexNew = simpleFeeFactor * utilizeIndex + utilizeIndex
          */
 
-        uint256 simpleInterestFactor = borrowRate * blockDelta;
-        uint256 interestAccumulated = (simpleInterestFactor * borrowsPrior) / DECIMAL;
-        uint256 totalBorrowsNew = interestAccumulated + borrowsPrior;
-        uint256 totalReservesNew = (feeFactor * interestAccumulated) / DECIMAL + reservesPrior;
-        uint256 borrowIndexNew = (simpleInterestFactor * borrowIndexPrior) / DECIMAL + borrowIndexPrior;
-
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
+        uint256 simpleFeeFactor = utilizationRate * blockDelta;
+        uint256 feeAccumulated = (simpleFeeFactor * totalUtilizedSD) / DECIMAL;
+        totalUtilizedSD = feeAccumulated + totalUtilizedSD;
+        totalProtocolFee = (protocolFeeFactor * feeAccumulated) / DECIMAL + totalProtocolFee;
+        utilizeIndex = (simpleFeeFactor * utilizeIndex) / DECIMAL + utilizeIndex;
 
         /* We write the previously calculated values into storage */
         accrualBlockNumber = currentBlockNumber;
-        borrowIndex = borrowIndexNew;
-        totalBorrows = totalBorrowsNew;
-        totalFee = totalReservesNew;
 
         //TODO sanjay emit events
     }
 
     /**
-     * @notice Accrue interest to updated borrowIndex and then calculate account's borrow balance using the updated borrowIndex
-     * @param account The address whose balance should be calculated after updating borrowIndex
+     * @notice Accrue fee to updated utilizeIndex and then calculate account's utilize balance using the updated utilizeIndex
+     * @param account The address whose balance should be calculated after updating utilizeIndex
      * @return The calculated balance
      */
-    function borrowBalanceCurrent(address account) external returns (uint256) {
-        accrueInterest();
-        return _borrowBalanceStoredInternal(account);
+    function utilizeBalanceCurrent(address account) external returns (uint256) {
+        accrueFee();
+        return _utilizeBalanceStoredInternal(account);
     }
 
     /**
-     * @notice Return the borrow balance of account based on stored data
+     * @notice Return the utilize balance of account based on stored data
      * @param account The address whose balance should be calculated
      * @return The calculated balance
      */
-    function borrowBalanceStored(address account) external view returns (uint256) {
-        return _borrowBalanceStoredInternal(account);
+    function utilizeBalanceStored(address account) external view returns (uint256) {
+        return _utilizeBalanceStoredInternal(account);
     }
 
     /// @notice Calculates the utilization rate of the utility pool
-    function utilizationRate() public view returns (uint256) {
-        // Utilization rate is 0 when there are no borrows
-        if (totalBorrows == 0) {
+    function poolUtilization() public view returns (uint256) {
+        // Utilization rate is 0 when there are no utilize
+        if (totalUtilizedSD == 0) {
             return 0;
         }
 
-        return (totalBorrows * DECIMAL) / (getPoolSDBalance() + totalBorrows - totalFee);
+        return (totalUtilizedSD * DECIMAL) / (getPoolSDBalance() + totalUtilizedSD - totalProtocolFee);
     }
 
-    /// @notice Calculates the current supply rate per block
-    function getSupplyRate() external view returns (uint256) {
-        uint256 oneMinusReserveFactor = DECIMAL - feeFactor;
-        uint256 rateToPool = (borrowRate * oneMinusReserveFactor) / DECIMAL;
-        return (utilizationRate() * rateToPool) / DECIMAL;
+    /// @notice Calculates the current delegation rate per block
+    function getDelegationRate() external view returns (uint256) {
+        uint256 oneMinusProtocolFeeFactor = DECIMAL - protocolFeeFactor;
+        uint256 rateToPool = (utilizationRate * oneMinusProtocolFeeFactor) / DECIMAL;
+        return (poolUtilization() * rateToPool) / DECIMAL;
     }
 
     /**
-     * @notice Accrue interest then return the up-to-date exchange rate
+     * @notice Accrue fee then return the up-to-date exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
     function exchangeRateCurrent() external returns (uint256) {
-        accrueInterest();
+        accrueFee();
         return _exchangeRateStoredInternal();
     }
 
     /**
      * @notice Calculates the exchange rate from the SD to the SDx
-     * @dev This function does not accrue interest before calculating the exchange rate
+     * @dev This function does not accrue fee before calculating the exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
     function exchangeRateStored() external view returns (uint256) {
@@ -211,10 +208,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @dev Assumes interest has already been accrued up to the current block
+     * @dev Assumes fee has already been accrued up to the current block
      * @param sdAmount The amount of the SD token to supply
      */
-    function _deposit(uint256 sdAmount) internal {
+    function _delegate(uint256 sdAmount) internal {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
             //TODO @sanjay revert
@@ -232,7 +229,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @dev Assumes interest has already been accrued up to the current block
+     * @dev Assumes fee has already been accrued up to the current block
      * @param sdXAmount The amount of the SDx token to to withdraw
      */
     function _redeem(uint256 sdXAmount) internal {
@@ -255,80 +252,76 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         //TODO @sanjay emit events
     }
 
-    function _borrow(address payable borrower, uint256 borrowAmount) internal {
+    function _utilize(address payable utilizer, uint256 utilizeAmount) internal {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
             //TODO @sanjay revert
         }
 
         /* Fail gracefully if protocol has insufficient SD balance in pool */
-        if (getPoolSDBalance() < borrowAmount) {
+        if (getPoolSDBalance() < utilizeAmount) {
             //TODO @sanjay revert
         }
 
-        uint256 accountBorrowsPrev = _borrowBalanceStoredInternal(borrower);
-        uint256 accountBorrowsNew = accountBorrowsPrev + borrowAmount;
-        uint256 totalBorrowsNew = totalBorrows + borrowAmount;
+        uint256 accountUtilizePrev = _utilizeBalanceStoredInternal(utilizer);
 
-        accountBorrows[borrower].principal = accountBorrowsNew;
-        accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows = totalBorrowsNew;
-        //TODO sanjay bond this borrow amount as SD collateral in SDCollateral contract
+        utilizerData[utilizer].principal = accountUtilizePrev + utilizeAmount;
+        utilizerData[utilizer].utilizeIndex = utilizeIndex;
+        totalUtilizedSD = totalUtilizedSD + utilizeAmount;
+        //TODO sanjay bond this utilize amount as SD collateral in SDCollateral contract
 
         //TODO @sanjay emit events
     }
 
-    function _repay(address borrower, uint256 repayAmount) internal {
+    function _repay(address utilizer, uint256 repayAmount) internal {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
             //TODO @sanjay revert
         }
 
-        /* We fetch the amount the borrower owes, with accumulated interest */
-        uint256 accountBorrowsPrev = _borrowBalanceStoredInternal(borrower);
+        /* We fetch the amount the utilizer owes, with accumulated fee */
+        uint256 accountUtilizePrev = _utilizeBalanceStoredInternal(utilizer);
 
-        /* If repayAmount == -1, repayAmount = accountBorrows */
-        uint256 repayAmountFinal = repayAmount == type(uint256).max ? accountBorrowsPrev : repayAmount;
+        /* If repayAmount == -1, repayAmount = accountUtilizeBalance */
+        uint256 repayAmountFinal = repayAmount == type(uint256).max ? accountUtilizePrev : repayAmount;
 
         //TODO @sanjay
-        //transfer interest to this pool and reduce bonded SD position in SDCollateral contract
-        uint256 accountBorrowsNew = accountBorrowsPrev - repayAmountFinal;
-        uint256 totalBorrowsNew = totalBorrows - repayAmountFinal;
+        //transfer fee to this pool and reduce bonded SD position in SDCollateral contract
 
         /* We write the previously calculated values into storage */
-        accountBorrows[borrower].principal = accountBorrowsNew;
-        accountBorrows[borrower].interestIndex = borrowIndex;
-        totalBorrows = totalBorrowsNew;
+        utilizerData[utilizer].principal = accountUtilizePrev - repayAmountFinal;
+        utilizerData[utilizer].utilizeIndex = utilizeIndex;
+        totalUtilizedSD = totalUtilizedSD - repayAmountFinal;
 
         //TODO @sanjay emit events
     }
 
     /**
-     * @notice Return the borrow balance of account based on stored data
+     * @notice Return the utilize balance of account based on stored data
      * @param account The address whose balance should be calculated
      * @return (calculated balance)
      */
-    function _borrowBalanceStoredInternal(address account) internal view returns (uint256) {
-        /* Get borrowBalance and borrowIndex */
-        BorrowerStruct storage borrowSnapshot = accountBorrows[account];
+    function _utilizeBalanceStoredInternal(address account) internal view returns (uint256) {
+        /* Get utilizeBalance and utilizeIndex */
+        UtilizerStruct storage utilizeSnapshot = utilizerData[account];
 
-        /* If borrowBalance = 0 then borrowIndex is likely also 0.
+        /* If utilizeBalance = 0 then utilizeIndex is likely also 0.
          * Rather than failing the calculation with a division by 0, we immediately return 0 in this case.
          */
-        if (borrowSnapshot.principal == 0) {
+        if (utilizeSnapshot.principal == 0) {
             return 0;
         }
 
-        /* Calculate new borrow balance using the interest index:
-         *  recentBorrowBalance = borrower.borrowBalance * market.borrowIndex / borrower.borrowIndex
+        /* Calculate new utilize balance using the utilize index:
+         *  recentUtilizeBalance = utilizer.principal * utilizeIndex / utilizer.utilizeIndex
          */
-        uint256 principalTimesIndex = borrowSnapshot.principal * borrowIndex;
-        return principalTimesIndex / borrowSnapshot.interestIndex;
+        uint256 principalTimesIndex = utilizeSnapshot.principal * utilizeIndex;
+        return principalTimesIndex / utilizeSnapshot.utilizeIndex;
     }
 
     /**
      * @notice Calculates the exchange rate from the SD to the SDx token
-     * @dev This function does not accrue interest before calculating the exchange rate
+     * @dev This function does not accrue fee before calculating the exchange rate
      * @return calculated exchange rate scaled by 1e18
      */
     function _exchangeRateStoredInternal() internal view virtual returns (uint256) {
@@ -342,10 +335,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         } else {
             /*
              * Otherwise:
-             *  exchangeRate = (totalCash + totalBorrows - totalReserves) / totalSupply
+             *  exchangeRate = (totalCash + totalUtilizedSD - totalFee) / totalSupply
              */
-            uint256 poolBalancePlusBorrowsMinusReserves = getPoolSDBalance() + totalBorrows - totalFee;
-            uint256 exchangeRate = (poolBalancePlusBorrowsMinusReserves * DECIMAL) / _totalSupply;
+            uint256 poolBalancePlusUtilizedSDMinusReserves = getPoolSDBalance() + totalUtilizedSD - totalProtocolFee;
+            uint256 exchangeRate = (poolBalancePlusUtilizedSDMinusReserves * DECIMAL) / _totalSupply;
 
             return exchangeRate;
         }

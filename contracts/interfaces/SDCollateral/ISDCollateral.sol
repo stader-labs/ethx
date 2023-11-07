@@ -17,10 +17,12 @@ interface ISDCollateral {
     error InvalidPoolLimit();
     error SDTransferFailed();
     error NoStateChange();
+    error CallerNotUtilityPool();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
     event SDDeposited(address indexed operator, uint256 sdAmount);
+    event BorrowedSDDeposited(address indexed operator, uint256 sdAmount);
     event SDWithdrawn(address indexed operator, uint256 sdAmount);
     event SDSlashed(address indexed operator, address indexed auction, uint256 sdSlashed);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
@@ -28,6 +30,8 @@ interface ISDCollateral {
 
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
+
+    function depositBorrowedSD(address _operator, uint256 _sdAmount) external;
 
     function withdraw(uint256 _requestedSD) external;
 

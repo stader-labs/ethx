@@ -53,6 +53,18 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         emit SDDeposited(operator, _sdAmount);
     }
 
+    function depositBorrowedSD(address _operator, uint256 _sdAmount) external override {
+        if (msg.sender != staderConfig.getSDUtilityPool()) {
+            revert CallerNotUtilityPool();
+        }
+        operatorBorrowedSDBalance[_operator] += _sdAmount;
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
+            revert SDTransferFailed();
+        }
+
+        emit BorrowedSDDeposited(_operator, _sdAmount);
+    }
+
     /// @notice for operator to withdraw their sd collateral, which is over and above withdraw threshold
     function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
@@ -67,8 +79,9 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         operatorSDBalance[operator] -= (_requestedSD - borrowPositionChange);
 
         ISDUtilityPool(staderConfig.getSDUtilityPool()).repay(borrowPositionChange);
+        address operatorRewardAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
         // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
-        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
+        if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardAddr, _requestedSD)) {
             revert SDTransferFailed();
         }
 
