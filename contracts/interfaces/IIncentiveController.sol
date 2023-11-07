@@ -11,7 +11,7 @@ interface IIncentiveController {
     // functions
     function claim(address account) external;
 
-    function onDeposit(address account) external;
+    function onDelegate(address account) external;
 
     function rewardPerToken() external view returns (uint256);
 

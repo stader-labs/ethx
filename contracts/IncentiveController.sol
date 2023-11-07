@@ -73,7 +73,7 @@ contract IncentiveController is IIncentiveController, AccessControlUpgradeable {
 
     /// @notice Updates the reward on deposit in the lending pool.
     /// @param account The account that made a deposit.
-    function onDeposit(address account) external {
+    function onDelegate(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.LENDING_POOL_CONTRACT());
 
         updateReward(account);

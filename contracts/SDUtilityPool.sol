@@ -70,7 +70,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev Accrues interest whether or not the operation succeeds, unless reverted
      * @param sdAmount The amount of SD token to supply
      */
-    function deposit(uint256 sdAmount) external {
+    function delegate(uint256 sdAmount) external override {
         accrueInterest();
         IIncentiveController(staderConfig.getIncentiveController()).onDeposit(msg.sender);
         _deposit(sdAmount);
@@ -90,7 +90,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @notice Sender borrows SD from the protocol to add it as collateral to run validators
      * @param borrowAmount The amount of the SD token to borrow
      */
-    function borrow(uint256 borrowAmount) external {
+    function utilize(uint256 borrowAmount) external override {
         //TODO @sanjay put check to allow only ETHx NOs to borrow and max 1ETH worth of SD per validator
         accrueInterest();
         _borrow(payable(msg.sender), borrowAmount);
