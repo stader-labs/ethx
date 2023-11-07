@@ -6,11 +6,11 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import './library/UtilLib.sol';
 import './interfaces/IStaderConfig.sol';
-import './interfaces/IIncentiveController.sol';
+import './interfaces/ISDIncentiveController.sol';
 
-/// @title IncentiveController
+/// @title SDIncentiveController
 /// @notice This contract handles the distribution of reward tokens for a lending pool.
-contract IncentiveController is IIncentiveController, AccessControlUpgradeable {
+contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeable {
     // The emission rate of the reward tokens per second.
     uint256 public emissionPerSecond;
 
@@ -59,7 +59,7 @@ contract IncentiveController is IIncentiveController, AccessControlUpgradeable {
     /// @notice Claims the accrued rewards for an account.
     /// @param account The address of the account claiming rewards.
     function claim(address account) external {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.LENDING_POOL_CONTRACT());
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
 
         updateReward(account);
 
@@ -74,7 +74,7 @@ contract IncentiveController is IIncentiveController, AccessControlUpgradeable {
     /// @notice Updates the reward on deposit in the lending pool.
     /// @param account The account that made a deposit.
     function onDelegate(address account) external override {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.LENDING_POOL_CONTRACT());
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
 
         updateReward(account);
     }

@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import './IStaderConfig.sol';
 
-interface IIncentiveController {
+interface ISDIncentiveController {
 
     // events
     event UpdatedStaderConfig(address staderConfig);
