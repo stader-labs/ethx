@@ -51,6 +51,8 @@ interface ISDCollateral {
 
     function operatorSDBalance(address) external view returns (uint256);
 
+    function operatorBorrowedSDBalance(address) external view returns (uint256);
+
     function getOperatorWithdrawThreshold(address _operator) external view returns (uint256 operatorWithdrawThreshold);
 
     function hasEnoughSDCollateral(
