@@ -4,23 +4,25 @@ pragma solidity 0.8.16;
 interface ISDUtilityPool {
     error SDTransferFailed();
 
-    function deposit(uint256 sdAmount) external;
+    function delegate(uint256 sdAmount) external;
 
     function redeem(uint256 sdXAmount) external;
 
-    function borrow(uint256 borrowAmount) external;
+    function utilize(uint256 utilizeAmount) external;
 
     function repay(uint256 repayAmount) external;
 
-    function accrueInterest() external;
+    function repayOnBehalf(address utilizer, uint256 repayAmount) external;
 
-    function borrowBalanceCurrent(address account) external returns (uint256);
+    function accrueFee() external;
 
-    function borrowBalanceStored(address account) external view returns (uint256);
+    function utilizeBalanceCurrent(address account) external returns (uint256);
 
-    function utilizationRate() external view returns (uint256);
+    function utilizeBalanceStored(address account) external view returns (uint256);
 
-    function getSupplyRate() external view returns (uint256);
+    function poolUtilization() external view returns (uint256);
+
+    function getDelegationRate() external view returns (uint256);
 
     function exchangeRateCurrent() external returns (uint256);
 
