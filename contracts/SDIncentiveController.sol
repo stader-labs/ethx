@@ -44,7 +44,11 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     /// @param _lendingPoolToken The address of the lending pool token contract.
     /// @param _staderConfig The address of the Stader configuration contract.
     /// @param _rewardToken The address of the reward token contract.
-    function initialize(address _lendingPoolToken, address _staderConfig, address _rewardToken) external initializer {
+    function initialize(
+        address _lendingPoolToken,
+        address _staderConfig,
+        address _rewardToken
+    ) external initializer {
         UtilLib.checkNonZeroAddress(_lendingPoolToken);
         UtilLib.checkNonZeroAddress(_staderConfig);
         UtilLib.checkNonZeroAddress(_rewardToken);
@@ -64,7 +68,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         updateReward(account);
 
         uint256 reward = rewards[account];
-        require(reward > 0, "No rewards to claim.");
+        require(reward > 0, 'No rewards to claim.');
         rewards[account] = 0;
         rewardToken.transfer(account, reward);
 
@@ -85,9 +89,9 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         if (lendingPoolToken.totalSupply() == 0) {
             return rewardPerTokenStored;
         }
-        return rewardPerTokenStored + (
-            (block.timestamp - lastUpdateTimestamp) * emissionPerSecond * 1e18 / lendingPoolToken.totalSupply()
-        );
+        return
+            rewardPerTokenStored +
+            (((block.timestamp - lastUpdateTimestamp) * emissionPerSecond * 1e18) / lendingPoolToken.totalSupply());
     }
 
     /// @notice Calculates the total accrued reward for an account.
@@ -97,7 +101,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         uint256 currentBalance = lendingPoolToken.balanceOf(account);
         uint256 currentRewardPerToken = rewardPerToken();
 
-        return (currentBalance * (currentRewardPerToken - userRewardPerTokenPaid[account]) / 1e18) + rewards[account];
+        return ((currentBalance * (currentRewardPerToken - userRewardPerTokenPaid[account])) / 1e18) + rewards[account];
     }
 
     /// @dev Internal function to update the reward state for an account.
@@ -106,7 +110,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTimestamp = block.timestamp;
 
-        if(account != address(0)) {
+        if (account != address(0)) {
             rewards[account] = earned(account);
             userRewardPerTokenPaid[account] = rewardPerTokenStored;
         }
