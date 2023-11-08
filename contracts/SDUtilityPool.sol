@@ -49,6 +49,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     mapping(address => UtilizerStruct) public utilizerData;
+    mapping(address => UserData) public userData;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -346,5 +347,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     function getPoolSDBalance() public view returns (uint256) {
         return SDX(staderConfig.getSDxToken()).balanceOf(address(this));
+    }
+
+    function getUserData(address account) public view returns (UserData memory) {
+        return userData[account];
     }
 }
