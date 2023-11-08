@@ -6,6 +6,13 @@ struct UserData {
     uint256 totalCollateralInSD;
     uint256 ltv;
     uint256 healthFactor;
+    uint256 lockedEth;
+}
+
+struct Config {
+    uint256 liquidationThreshold;
+    uint256 liquidationBonus;
+    uint256 ltv;
 }
 
 interface ISDUtilityPool {

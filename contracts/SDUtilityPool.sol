@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import './library/UtilLib.sol';
 import './SDX.sol';
 import './interfaces/IStaderConfig.sol';
+import './interfaces/IStaderOracle.sol';
 import './interfaces/ISDIncentiveController.sol';
 import './interfaces/ISDUtilityPool.sol';
 
@@ -43,13 +44,14 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     IStaderConfig public staderConfig;
 
+    Config public config;
+
     struct UtilizerStruct {
         uint256 principal;
         uint256 utilizeIndex;
     }
 
     mapping(address => UtilizerStruct) public utilizerData;
-    mapping(address => UserData) public userData;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -350,6 +352,28 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     function getUserData(address account) public view returns (UserData memory) {
-        return userData[account];
+        address staderOracle = staderConfig.getStaderOracle();
+        uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
+        uint256 accountUtilizePrev = _utilizeBalanceStoredInternal(account);
+        uint256 totalFeeSD = accountUtilizePrev - utilizerData[account].principal;
+
+        // Multiplying other values by sdPriceInEth to avoid division
+        uint256 totalCollateralInEth = getOperatorTotalEth(account);
+        uint256 collateralTimesPrice = totalCollateralInEth * sdPriceInEth;
+
+        // Ensuring that we do not divide by zero
+        require(totalFeeSD > 0, 'Total Fee cannot be zero');
+        uint256 healthFactor = (collateralTimesPrice * config.liquidationThreshold) / (totalFeeSD * sdPriceInEth);
+
+        return UserData(totalFeeSD, totalCollateralInEth, 0, healthFactor, 0);
+    }
+
+    function getOperatorTotalEth(address operator) public view returns (uint256) {
+        address nodeRegistry = staderConfig.getPermissionlessNodeRegistry();
+        uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(operator);
+        uint256 totalValidators = INodeRegistry(nodeRegistry).getOperatorTotalKeys(operatorId);
+
+        uint256 totalEth = totalValidators * 2 ether;
+        return totalEth;
     }
 }
