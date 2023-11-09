@@ -30,6 +30,8 @@ interface ISDUtilityPool {
 
     function accrueFee() external;
 
+    function liquidationCall(address account) external;
+
     function utilizeBalanceCurrent(address account) external returns (uint256);
 
     function utilizeBalanceStored(address account) external view returns (uint256);

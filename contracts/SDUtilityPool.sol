@@ -156,6 +156,16 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         //TODO sanjay emit events
     }
 
+    function liquidationCall(address account) external override {
+        UserData memory userData = getUserData(account);
+
+        IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalFeeSD);
+
+        uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+
+        utilizerData[account].utilizeIndex = 0;
+    }
+
     /**
      * @notice Accrue fee to updated utilizeIndex and then calculate account's utilize balance using the updated utilizeIndex
      * @param account The address whose balance should be calculated after updating utilizeIndex
