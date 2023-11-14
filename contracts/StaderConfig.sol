@@ -79,6 +79,7 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     bytes32 public constant override SDx = keccak256('SDx');
     bytes32 public constant override SD_UTILITY_POOL = keccak256('SD_UTILITY_POOL');
+    bytes32 public constant override SD_INCENTIVE_CONTROLLER = keccak256('SD_INCENTIVE_CONTROLLER');
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -303,6 +304,10 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setContract(SD_UTILITY_POOL, _utilityPool);
     }
 
+    function updateSDIncentiveController(address _sdIncentiveController) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(SD_INCENTIVE_CONTROLLER, _sdIncentiveController);
+    }
+
     //Constants Getters
 
     function getStakedEthPerNode() external view override returns (uint256) {
@@ -470,6 +475,10 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function getSDUtilityPool() external view override returns (address) {
         return contractsMap[SD_UTILITY_POOL];
+    }
+
+    function getSDIncentiveController() external view override returns (address) {
+        return contractsMap[SD_INCENTIVE_CONTROLLER];
     }
 
     //Token Getters
