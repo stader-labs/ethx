@@ -47,6 +47,7 @@ interface IPermissionlessNodeRegistry {
     ) external returns (address mevFeeRecipientAddress);
 
     function addValidatorKeys(
+        uint256 _amountOfSDToUtilize,
         bytes[] calldata _pubkey,
         bytes[] calldata _preDepositSignature,
         bytes[] calldata _depositSignature

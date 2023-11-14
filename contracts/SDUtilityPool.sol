@@ -5,6 +5,7 @@ import './library/UtilLib.sol';
 import './SDX.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/ISDUtilityPool.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
@@ -33,12 +34,17 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      */
     uint256 public totalUtilizedSD;
 
+    //TODO sanjay Getter, Setter for below params
     /**
      * @notice Total amount of protocol fee
      */
     uint256 public totalProtocolFee;
 
     uint256 public utilizationRate;
+
+    uint256 public maxETHWorthOfSDPerValidator;
+
+    bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
 
     IStaderConfig public staderConfig;
 
@@ -61,7 +67,13 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         __AccessControl_init_unchained();
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
+        utilizeIndex = DECIMAL;
+        utilizationRate = 0;
+        protocolFeeFactor = 0;
+        accrualBlockNumber = block.number;
+        maxETHWorthOfSDPerValidator = 1 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /**
@@ -88,10 +100,20 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @notice Sender utilize SD from the protocol to add it as collateral to run validators
      * @param utilizeAmount The amount of the SD token to utilize
      */
-    function utilize(uint256 utilizeAmount) external {
-        //TODO @sanjay put check to allow only ETHx NOs to utilize and max 1ETH worth of SD per validator
+    //TODO can we remove this ROLE and use something else?
+    function utilizeWhileAddingKeys(
+        address operator,
+        uint256 utilizeAmount,
+        uint256 nonTerminalKeyCount
+    ) external onlyRole(NODE_REGISTRY_CONTRACT) {
+        ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
+        uint256 currentUtilizeSDCollateral = sdCollateral.operatorUtilizedSDBalance(operator);
+        uint256 maxSDUtilizeValue = nonTerminalKeyCount * sdCollateral.convertETHToSD(maxETHWorthOfSDPerValidator);
+        if (currentUtilizeSDCollateral + utilizeAmount > maxSDUtilizeValue) {
+            revert SDUtilizeLimitReached();
+        }
         accrueFee();
-        _utilize(payable(msg.sender), utilizeAmount);
+        _utilize(operator, utilizeAmount);
     }
 
     /**
@@ -104,7 +126,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Sender repays their own utilize
+     * @notice Sender repays on behalf of utilizer
      * @param repayAmount The amount to repay
      */
     function repayOnBehalf(address utilizer, uint256 repayAmount) external {
@@ -113,7 +135,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Applies accrued fee to total utilize and fees
+     * @notice Applies accrued fee to total utilize and protocolFee
      * @dev This calculates fee accrued from the last checkpointed block
      *   up to the current block and writes new checkpoint to storage.
      */
@@ -145,10 +167,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         totalProtocolFee = (protocolFeeFactor * feeAccumulated) / DECIMAL + totalProtocolFee;
         utilizeIndex = (simpleFeeFactor * utilizeIndex) / DECIMAL + utilizeIndex;
 
-        /* We write the previously calculated values into storage */
         accrualBlockNumber = currentBlockNumber;
 
-        //TODO sanjay emit events
+        emit AccruedFees(feeAccumulated, totalProtocolFee, totalUtilizedSD);
     }
 
     /**
@@ -170,9 +191,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         return _utilizeBalanceStoredInternal(account);
     }
 
-    /// @notice Calculates the utilization rate of the utility pool
+    /// @notice Calculates the utilization of the utility pool
     function poolUtilization() public view returns (uint256) {
-        // Utilization rate is 0 when there are no utilize
+        // Utilization is 0 when there are no utilize
         if (totalUtilizedSD == 0) {
             return 0;
         }
@@ -212,7 +233,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function _delegate(uint256 sdAmount) internal {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
-            //TODO @sanjay revert
+            revert AccrualBlockNumberNotLatest();
         }
 
         uint256 exchangeRate = _exchangeRateStoredInternal();
@@ -220,10 +241,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), sdAmount)) {
             revert SDTransferFailed();
         }
-        uint256 mintTokens = (sdAmount * DECIMAL) / exchangeRate;
-        SDX(staderConfig.getSDxToken()).mint(msg.sender, mintTokens);
+        uint256 sdXToMint = (sdAmount * DECIMAL) / exchangeRate;
+        SDX(staderConfig.getSDxToken()).mint(msg.sender, sdXToMint);
 
-        //TODO @sanjay emit events
+        emit Delegated(msg.sender, sdAmount, sdXToMint);
     }
 
     /**
@@ -236,62 +257,68 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
-            // revert RedeemFreshnessCheck();
+            revert AccrualBlockNumberNotLatest();
         }
-
-        /* Fail gracefully if protocol has insufficient cash */
         if (getPoolSDBalance() < redeemAmount) {
-            //TODO @sanjay revert
+            revert InsufficientPoolBalance();
         }
         SDX(staderConfig.getSDxToken()).burnFrom(msg.sender, sdXAmount);
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(address(this), msg.sender, redeemAmount)) {
             revert SDTransferFailed();
         }
-        //TODO @sanjay emit events
+        emit Redeemed(msg.sender, redeemAmount, sdXAmount);
     }
 
-    function _utilize(address payable utilizer, uint256 utilizeAmount) internal {
+    function _utilize(address utilizer, uint256 utilizeAmount) internal {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
-            //TODO @sanjay revert
+            revert AccrualBlockNumberNotLatest();
         }
-
-        /* Fail gracefully if protocol has insufficient SD balance in pool */
         if (getPoolSDBalance() < utilizeAmount) {
-            //TODO @sanjay revert
+            revert InsufficientPoolBalance();
         }
-
         uint256 accountUtilizePrev = _utilizeBalanceStoredInternal(utilizer);
 
         utilizerData[utilizer].principal = accountUtilizePrev + utilizeAmount;
         utilizerData[utilizer].utilizeIndex = utilizeIndex;
         totalUtilizedSD = totalUtilizedSD + utilizeAmount;
-        //TODO sanjay bond this utilize amount as SD collateral in SDCollateral contract
-
+        ISDCollateral(staderConfig.getSDCollateral()).depositUtilizedSD(utilizer, utilizeAmount);
         //TODO @sanjay emit events
     }
 
     function _repay(address utilizer, uint256 repayAmount) internal {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
-            //TODO @sanjay revert
+            revert AccrualBlockNumberNotLatest();
         }
 
         /* We fetch the amount the utilizer owes, with accumulated fee */
         uint256 accountUtilizePrev = _utilizeBalanceStoredInternal(utilizer);
 
-        /* If repayAmount == -1, repayAmount = accountUtilizeBalance */
-        uint256 repayAmountFinal = repayAmount == type(uint256).max ? accountUtilizePrev : repayAmount;
+        uint256 repayAmountFinal = (repayAmount == type(uint256).max || repayAmount > accountUtilizePrev)
+            ? accountUtilizePrev
+            : repayAmount;
 
-        //TODO @sanjay
-        //transfer fee to this pool and reduce bonded SD position in SDCollateral contract
+        if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.SD_COLLATERAL())) {
+            if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), repayAmountFinal)) {
+                revert SDTransferFailed();
+            }
+            uint256 feeAccrued = accountUtilizePrev -
+                ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(utilizer);
+            if (repayAmountFinal > feeAccrued) {
+                ISDCollateral(staderConfig.getSDCollateral()).reduceUtilizedSDPosition(
+                    utilizer,
+                    repayAmountFinal - feeAccrued
+                );
+            }
+        }
 
         /* We write the previously calculated values into storage */
         utilizerData[utilizer].principal = accountUtilizePrev - repayAmountFinal;
         utilizerData[utilizer].utilizeIndex = utilizeIndex;
         totalUtilizedSD = totalUtilizedSD - repayAmountFinal;
 
-        //TODO @sanjay emit events
+        emit Repaid(utilizer, repayAmountFinal);
     }
 
     /**
