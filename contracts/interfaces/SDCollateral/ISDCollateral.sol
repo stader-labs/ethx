@@ -80,4 +80,13 @@ interface ISDCollateral {
     function convertSDToETH(uint256 _sdAmount) external view returns (uint256);
 
     function convertETHToSD(uint256 _ethAmount) external view returns (uint256);
+
+    function getOperatorInfo(address _operator)
+        external
+        view
+        returns (
+            uint8 _poolId,
+            uint256 _operatorId,
+            uint256 _validatorCount
+        );
 }

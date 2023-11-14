@@ -3,24 +3,40 @@ pragma solidity 0.8.16;
 
 interface ISDUtilityPool {
     error SDTransferFailed();
+    error CannotFindRequestId();
     error SDUtilizeLimitReached();
+    error InvalidAmountOfWithdraw();
     error InsufficientPoolBalance();
     error AccrualBlockNumberNotLatest();
+    error CallerNotAuthorizedToRedeem();
+    error MaxLimitOnWithdrawRequestCountReached();
+    error requestIdNotFinalized(uint256 requestId);
 
     event UpdatedStaderConfig(address indexed _staderConfig);
+    event RequestRedeemed(address caller, uint256 sdToTransfer);
     event Delegated(address indexed delegator, uint256 sdAmount, uint256 sdXToMint);
     event Redeemed(address indexed delegator, uint256 sdAmount, uint256 sdXAmount);
     event Repaid(address indexed utilizer, uint256 repayAmount);
 
     event AccruedFees(uint256 feeAccumulated, uint256 totalProtocolFee, uint256 totalUtilizedSD);
 
+    event WithdrawRequestReceived(address caller, uint256 nextRequestId, uint256 sdAmountToWithdraw);
+
+    function cTokenTotalSupply() external view returns (uint256);
+
+    function delegatorCTokenBalance(address) external view returns (uint256);
+
     function delegate(uint256 sdAmount) external;
 
-    // function requestWithdraw(uint256 sdAmount) external return (uint);
+    function requestWithdraw(uint256 cTokenAmount) external returns (uint256);
 
-    // function claim(uint256 requestId) external;
+    function requestWithdrawWithSDAmount(uint256 sdAmount) external returns (uint256);
 
-    function redeem(uint256 sdXAmount) external;
+    function finalizeDelegatorWithdrawalRequest() external;
+
+    function claim(uint256 requestId) external;
+
+    function utilize(uint256 utilizeAmount) external;
 
     function utilizeWhileAddingKeys(
         address operator,
@@ -34,9 +50,9 @@ interface ISDUtilityPool {
 
     function accrueFee() external;
 
-    function utilizeBalanceCurrent(address account) external returns (uint256);
+    function utilizerBalanceCurrent(address account) external returns (uint256);
 
-    function utilizeBalanceStored(address account) external view returns (uint256);
+    function utilizerBalanceStored(address account) external view returns (uint256);
 
     function poolUtilization() external view returns (uint256);
 
@@ -46,5 +62,5 @@ interface ISDUtilityPool {
 
     function exchangeRateStored() external view returns (uint256);
 
-    function getPoolSDBalance() external view returns (uint256);
+    function getPoolAvailableSDBalance() external view returns (uint256);
 }

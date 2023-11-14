@@ -255,7 +255,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     // HELPER
 
     function getOperatorInfo(address _operator)
-        internal
+        public
         view
         returns (
             uint8 _poolId,
