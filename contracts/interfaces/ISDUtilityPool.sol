@@ -9,8 +9,9 @@ interface ISDUtilityPool {
     error InsufficientPoolBalance();
     error AccrualBlockNumberNotLatest();
     error CallerNotAuthorizedToRedeem();
+    error UndelegationPeriodNotPassed();
     error MaxLimitOnWithdrawRequestCountReached();
-    error requestIdNotFinalized(uint256 requestId);
+    error RequestIdNotFinalized(uint256 requestId);
 
     event UpdatedStaderConfig(address indexed _staderConfig);
     event RequestRedeemed(address caller, uint256 sdToTransfer);

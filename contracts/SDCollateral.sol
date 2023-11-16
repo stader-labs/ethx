@@ -90,12 +90,6 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         operatorSDBalance[operator] -= selfBondedPositionChange;
 
         if (utilizePositionChange > 0) {
-            // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
-            if (
-                !IERC20(staderConfig.getStaderToken()).transfer(staderConfig.getSDUtilityPool(), utilizePositionChange)
-            ) {
-                revert SDTransferFailed();
-            }
             ISDUtilityPool(staderConfig.getSDUtilityPool()).repayOnBehalf(operator, utilizePositionChange);
         }
         if (selfBondedPositionChange > 0) {
@@ -133,17 +127,22 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         }
         uint256 sdSlashFromUtilized = operatorSelfBondedSD >= sdSlashed ? 0 : sdSlashed - operatorSelfBondedSD;
         operatorSDBalance[_operator] -= (sdSlashed - sdSlashFromUtilized);
-        operatorUtilizedSDBalance[_operator] -= sdSlashFromUtilized;
+        if (sdSlashFromUtilized > 0) {
+            operatorUtilizedSDBalance[_operator] -= sdSlashFromUtilized;
+        }
         IAuction(staderConfig.getAuctionContract()).createLot(sdSlashed);
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
 
-    /// @notice for max approval to auction contract for spending SD tokens
+    /// @notice for max approval to auction/SD utility pool contract for spending SD tokens
     function maxApproveSD() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         address auctionContract = staderConfig.getAuctionContract();
+        address sdUtilityPool = staderConfig.getSDUtilityPool();
         UtilLib.checkNonZeroAddress(auctionContract);
+        UtilLib.checkNonZeroAddress(sdUtilityPool);
         IERC20(staderConfig.getStaderToken()).approve(auctionContract, type(uint256).max);
+        IERC20(staderConfig.getStaderToken()).approve(sdUtilityPool, type(uint256).max);
     }
 
     // SETTERS

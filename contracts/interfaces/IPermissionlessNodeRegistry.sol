@@ -40,13 +40,19 @@ interface IPermissionlessNodeRegistry {
 
     //Setters
 
+    function addValidatorKeys(
+        bytes[] calldata _pubkey,
+        bytes[] calldata _preDepositSignature,
+        bytes[] calldata _depositSignature
+    ) external payable;
+
     function onboardNodeOperator(
         bool _optInForMevSocialize,
         string calldata _operatorName,
         address payable _operatorRewardAddress
     ) external returns (address mevFeeRecipientAddress);
 
-    function addValidatorKeys(
+    function addValidatorKeysWithUtilizeSD(
         uint256 _amountOfSDToUtilize,
         bytes[] calldata _pubkey,
         bytes[] calldata _preDepositSignature,
