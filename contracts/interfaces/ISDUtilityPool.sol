@@ -51,6 +51,13 @@ interface ISDUtilityPool {
         uint256 requestBlock; // block number of withdraw request
     }
 
+    struct RiskConfig {
+        uint256 liquidationThreshold;
+        uint256 liquidationBonus;
+        uint256 liquidationFee;
+        uint256 ltv;
+    }
+
     function delegate(uint256 sdAmount) external;
 
     function requestWithdraw(uint256 cTokenAmount) external returns (uint256);
@@ -76,7 +83,7 @@ interface ISDUtilityPool {
     function accrueFee() external;
 
     function liquidationCall(address account) external;
-    
+
     function utilizerBalanceCurrent(address account) external returns (uint256);
 
     function exchangeRateCurrent() external returns (uint256);
