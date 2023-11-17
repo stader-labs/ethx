@@ -46,6 +46,10 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         emit Claimed(operatorRewardsAddr, amount);
     }
 
+    function claimFor(address operator) external {
+        
+    }
+
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
