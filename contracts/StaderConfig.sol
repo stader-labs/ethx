@@ -77,7 +77,6 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     mapping(bytes32 => address) private contractsMap;
     mapping(bytes32 => address) private tokensMap;
 
-    bytes32 public constant override SDx = keccak256('SDx');
     bytes32 public constant override SD_UTILITY_POOL = keccak256('SD_UTILITY_POOL');
     bytes32 public constant override SD_INCENTIVE_CONTROLLER = keccak256('SD_INCENTIVE_CONTROLLER');
 
@@ -296,10 +295,6 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setToken(ETHx, _ethX);
     }
 
-    function updateSDxToken(address _sdX) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        setToken(SDx, _sdX);
-    }
-
     function updateSDUtilityPool(address _utilityPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setContract(SD_UTILITY_POOL, _utilityPool);
     }
@@ -489,10 +484,6 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function getETHxToken() external view returns (address) {
         return tokensMap[ETHx];
-    }
-
-    function getSDxToken() external view override returns (address) {
-        return tokensMap[SDx];
     }
 
     // SETTER HELPERS

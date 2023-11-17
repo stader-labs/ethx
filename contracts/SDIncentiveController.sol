@@ -6,6 +6,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 import './library/UtilLib.sol';
 import './interfaces/IStaderConfig.sol';
+import './interfaces/ISDUtilityPool.sol';
 import './interfaces/ISDIncentiveController.sol';
 
 /// @title SDIncentiveController
@@ -70,20 +71,19 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     /// @notice Calculates the current reward per token.
     /// @return The calculated reward per token.
     function rewardPerToken() public view returns (uint256) {
-        if (IERC20(staderConfig.getSDxToken()).totalSupply() == 0) {
+        uint256 totalSupply = ISDUtilityPool(staderConfig.getSDUtilityPool()).cTokenTotalSupply();
+        if (totalSupply == 0) {
             return rewardPerTokenStored;
         }
         return
-            rewardPerTokenStored +
-            (((block.number - lastUpdateBlockNumber) * emissionPerBlock * 1e18) /
-                IERC20(staderConfig.getSDxToken()).totalSupply());
+            rewardPerTokenStored + (((block.number - lastUpdateBlockNumber) * emissionPerBlock * 1e18) / totalSupply);
     }
 
     /// @notice Calculates the total accrued reward for an account.
     /// @param account The account to calculate rewards for.
     /// @return The total accrued reward for the account.
     function earned(address account) public view returns (uint256) {
-        uint256 currentBalance = IERC20(staderConfig.getSDxToken()).balanceOf(account);
+        uint256 currentBalance = ISDUtilityPool(staderConfig.getSDUtilityPool()).delegatorCTokenBalance(account);
         uint256 currentRewardPerToken = rewardPerToken();
 
         return ((currentBalance * (currentRewardPerToken - userRewardPerTokenPaid[account])) / 1e18) + rewards[account];

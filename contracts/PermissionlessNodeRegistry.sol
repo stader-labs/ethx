@@ -8,6 +8,7 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/IVaultFactory.sol';
 import './interfaces/IPoolUtils.sol';
 import './interfaces/INodeRegistry.sol';
+import './interfaces/ISDUtilityPool.sol';
 import './interfaces/IPermissionlessPool.sol';
 import './interfaces/INodeELRewardVault.sol';
 import './interfaces/IStaderInsuranceFund.sol';
@@ -128,13 +129,29 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _preDepositSignature,
         bytes[] calldata _depositSignature
     ) external payable override nonReentrant whenNotPaused {
+        addValidatorKeysWithUtilizeSD(0, _pubkey, _preDepositSignature, _depositSignature);
+    }
+
+    /**
+     * @notice add validator keys
+     * @dev only accepts if bond of 4 ETH per key is provided along with sufficient SD lockup after utilize
+     * @param _amountOfSDToUtilize amount of SD to utilize from Utility Pool
+     * @param _pubkey pubkey of validators
+     * @param _preDepositSignature signature of a validators for 1ETH deposit
+     * @param _depositSignature signature of a validator for 31ETH deposit
+     */
+    function addValidatorKeysWithUtilizeSD(
+        uint256 _amountOfSDToUtilize,
+        bytes[] calldata _pubkey,
+        bytes[] calldata _preDepositSignature,
+        bytes[] calldata _depositSignature
+    ) public payable override nonReentrant whenNotPaused {
         uint256 operatorId = onlyActiveOperator(msg.sender);
-        (uint256 keyCount, uint256 operatorTotalKeys) = checkInputKeysCountAndCollateral(
-            _pubkey.length,
-            _preDepositSignature.length,
-            _depositSignature.length,
-            operatorId
-        );
+        uint256 keyCount = _pubkey.length;
+        if (keyCount != _preDepositSignature.length || keyCount != _depositSignature.length) {
+            revert MisMatchingInputKeysSize();
+        }
+        uint256 operatorTotalKeys = checkInputKeysCountAndCollateral(keyCount, operatorId, _amountOfSDToUtilize);
 
         address vaultFactory = staderConfig.getVaultFactory();
         address poolUtils = staderConfig.getPoolUtils();
@@ -662,15 +679,10 @@ contract PermissionlessNodeRegistry is
 
     // validate the input of `addValidatorKeys` function
     function checkInputKeysCountAndCollateral(
-        uint256 _pubkeyLength,
-        uint256 _preDepositSignatureLength,
-        uint256 _depositSignatureLength,
-        uint256 _operatorId
-    ) internal view returns (uint256 keyCount, uint256 totalKeys) {
-        if (_pubkeyLength != _preDepositSignatureLength || _pubkeyLength != _depositSignatureLength) {
-            revert MisMatchingInputKeysSize();
-        }
-        keyCount = _pubkeyLength;
+        uint256 keyCount,
+        uint256 _operatorId,
+        uint256 _amountOfSDToUtilize
+    ) internal returns (uint256 totalKeys) {
         if (keyCount == 0 || keyCount > inputKeyCountLimit) {
             revert InvalidKeyCount();
         }
@@ -684,6 +696,13 @@ contract PermissionlessNodeRegistry is
         // check for collateral ETH for adding keys
         if (msg.value != keyCount * COLLATERAL_ETH) {
             revert InvalidBondEthValue();
+        }
+        if (_amountOfSDToUtilize > 0) {
+            ISDUtilityPool(staderConfig.getSDUtilityPool()).utilizeWhileAddingKeys(
+                msg.sender,
+                _amountOfSDToUtilize,
+                totalNonTerminalKeys + keyCount
+            );
         }
         //checks if operator has enough SD collateral for adding `keyCount` keys
         if (
