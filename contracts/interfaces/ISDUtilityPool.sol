@@ -13,11 +13,21 @@ interface ISDUtilityPool {
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
 
+    event ProtocolFeeFactorUpdated(uint256 protocolFeeFactor);
     event UpdatedStaderConfig(address indexed _staderConfig);
+    event SDUtilized(address utilizer, uint256 utilizeAmount);
+    event FinalizedWithdrawRequest(uint256 nextRequestIdToFinalize);
     event RequestRedeemed(address caller, uint256 sdToTransfer);
+    event Repaid(address indexed utilizer, uint256 repayAmount);
+    event UpdatedMaxNonRedeemedDelegatorRequestCount(uint256 count);
+    event UpdatedFinalizationBatchLimit(uint256 finalizationBatchLimit);
+    event UtilizationRatePerBlockUpdated(uint256 utilizationRatePerBlock);
+    event UtilizerSDSlashingHandled(address utilizer, uint256 slashSDAmount);
+    event UpdatedUndelegationPeriodInBlocks(uint256 undelegationPeriodInBlocks);
+    event UpdatedMaxETHWorthOfSDPerValidator(uint256 maxETHWorthOfSDPerValidator);
     event Delegated(address indexed delegator, uint256 sdAmount, uint256 sdXToMint);
     event Redeemed(address indexed delegator, uint256 sdAmount, uint256 sdXAmount);
-    event Repaid(address indexed utilizer, uint256 repayAmount);
+    event UpdatedMinBlockDelayToFinalizeRequest(uint256 minBlockDelayToFinalizeRequest);
 
     event AccruedFees(uint256 feeAccumulated, uint256 totalProtocolFee, uint256 totalUtilizedSD);
 
