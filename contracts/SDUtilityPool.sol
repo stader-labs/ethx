@@ -16,13 +16,34 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgradeable {
     using Math for uint256;
 
+    //TODO include WhenNotPaused modifier in the contract
     uint256 public constant DECIMAL = 1e18;
 
     // State variables
+
+    /**
+     * @notice Fraction of fee currently set aside for protocol
+     */
     uint256 public protocolFeeFactor;
+
+    /**
+     * @notice Block number that fee was last accrued at
+     */
     uint256 public accrualBlockNumber;
+
+    /**
+     * @notice Accumulator of the total earned fee rate since start of pool
+     */
     uint256 public utilizeIndex;
+
+    /**
+     * @notice Total amount of outstanding SD utilized
+     */
     uint256 public totalUtilizedSD;
+
+    /**
+     * @notice Total amount of protocol fee
+     */
     uint256 public totalProtocolFee;
 
     // Additional state variables
@@ -36,6 +57,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     uint256 public sdReservedForClaim;
     uint256 public undelegationPeriodInBlocks;
     uint256 public minBlockDelayToFinalizeRequest;
+
+    //upper cap on user non redeemed withdraw request count
     uint256 public maxNonRedeemedDelegatorRequestCount;
 
     bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
