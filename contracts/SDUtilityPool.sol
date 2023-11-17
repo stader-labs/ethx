@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import './library/UtilLib.sol';
 import './interfaces/IStaderConfig.sol';
+import './interfaces/IStaderOracle.sol';
 import './interfaces/ISDIncentiveController.sol';
 import './interfaces/ISDUtilityPool.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
@@ -14,7 +15,10 @@ import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol'
 
 contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgradeable {
     using Math for uint256;
-    uint256 constant DECIMAL = 1e18;
+
+    uint256 public constant DECIMAL = 1e18;
+
+    // State variables
 
     /**
      * @notice Fraction of fee currently set aside for protocol
@@ -41,12 +45,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      */
     uint256 public totalProtocolFee;
 
+    // Additional state variables
     uint256 public utilizationRatePerBlock;
-
     uint256 public cTokenTotalSupply;
-
     uint256 public maxETHWorthOfSDPerValidator;
-
     uint256 public nextRequestIdToFinalize;
     uint256 public nextRequestId;
     uint256 public sdRequestedForWithdraw;
@@ -59,15 +61,13 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     uint256 public maxNonRedeemedDelegatorRequestCount;
 
     bytes32 public constant NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
-
     IStaderConfig public staderConfig;
+    RiskConfig public riskConfig;
 
+    // Mappings
     mapping(address => UtilizerStruct) public override utilizerData;
-
     mapping(address => uint256) public override delegatorCTokenBalance;
-
     mapping(uint256 => DelegatorWithdrawInfo) public override delegatorWithdrawRequests;
-
     mapping(address => uint256[]) public override requestIdsByDelegatorAddress;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -314,6 +314,16 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         accrualBlockNumber = currentBlockNumber;
 
         emit AccruedFees(feeAccumulated, totalProtocolFee, totalUtilizedSD);
+    }
+
+    function liquidationCall(address account) external override {
+        UserData memory userData = getUserData(account);
+
+        IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalFeeSD);
+
+        uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+
+        utilizerData[account].utilizeIndex = 0;
     }
 
     /**
@@ -681,5 +691,31 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             }
         }
         revert CannotFindRequestId();
+    }
+
+    function getUserData(address account) public view returns (UserData memory) {
+        address staderOracle = staderConfig.getStaderOracle();
+        uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
+        uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(account);
+        uint256 totalFeeSD = accountUtilizePrev - utilizerData[account].principal;
+
+        // Multiplying other values by sdPriceInEth to avoid division
+        uint256 totalCollateralInEth = getOperatorTotalEth(account);
+        uint256 collateralTimesPrice = totalCollateralInEth * sdPriceInEth;
+
+        // Ensuring that we do not divide by zero
+        require(totalFeeSD > 0, 'Total Fee cannot be zero');
+        uint256 healthFactor = (collateralTimesPrice * riskConfig.liquidationThreshold) / (totalFeeSD * sdPriceInEth);
+
+        return UserData(totalFeeSD, totalCollateralInEth, 0, healthFactor, 0);
+    }
+
+    function getOperatorTotalEth(address operator) public view returns (uint256) {
+        address nodeRegistry = staderConfig.getPermissionlessNodeRegistry();
+        uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(operator);
+        uint256 totalValidators = INodeRegistry(nodeRegistry).getOperatorTotalKeys(operatorId);
+
+        uint256 totalEth = totalValidators * 2 ether;
+        return totalEth;
     }
 }
