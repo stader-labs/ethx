@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
+struct UserData {
+    uint256 totalFeeSD;
+    uint256 totalCollateralInSD;
+    uint256 ltv;
+    uint256 healthFactor;
+    uint256 lockedEth;
+}
+
+struct Config {
+    uint256 liquidationThreshold;
+    uint256 liquidationBonus;
+    uint256 ltv;
+}
+
 interface ISDUtilityPool {
     error SDTransferFailed();
     error CannotFindRequestId();
@@ -37,6 +51,13 @@ interface ISDUtilityPool {
         uint256 requestBlock; // block number of withdraw request
     }
 
+    struct RiskConfig {
+        uint256 liquidationThreshold;
+        uint256 liquidationBonus;
+        uint256 liquidationFee;
+        uint256 ltv;
+    }
+
     function delegate(uint256 sdAmount) external;
 
     function requestWithdraw(uint256 cTokenAmount) external returns (uint256);
@@ -60,6 +81,8 @@ interface ISDUtilityPool {
     function repayOnBehalf(address utilizer, uint256 repayAmount) external;
 
     function accrueFee() external;
+
+    function liquidationCall(address account) external;
 
     function utilizerBalanceCurrent(address account) external returns (uint256);
 
