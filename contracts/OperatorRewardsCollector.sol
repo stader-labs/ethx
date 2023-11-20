@@ -13,7 +13,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
     mapping(address => uint256) public balances;
 
-    mapping(address => uint256)[] public owedAmounts; 
+    mapping(address => uint256)[] public owedAmounts;
+    mapping(address => uint256)[] public claimableAmounts;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -51,16 +52,24 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     function claimFor(address operator) external {
         uint256 toSendAmount;
         for (uint256 i = 0; i < owedAmounts[operator].length; i++) {
-            if (balancer[operator] >= owedAmounts[operator][i]) {
+            if (balances[operator] >= owedAmounts[operator][i]) {
                 toSendAmount = owedAmounts[operator][i];
+                balances[operator] -= owedAmounts[operator][i];
+                claimableAmounts[operator][i] = owedAmounts[operator][i];
                 owedAmounts[operator][i] = 0;
             } else {
-                toSendAmount = balancer[operator];
-                owedAmounts[operator][i] -= balancer[operator];
+                toSendAmount = balances[operator];
+                owedAmounts[operator][i] -= balances[operator];
+                claimableAmounts[operator][i] = balances[operator];
+                balances[operator] = 0;
+                break;
             }
+        }
+
+        if (balances[operator] > 0) {
             address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
-            UtilLib.sendValue(operatorRewardsAddr, owedAmounts[operator][i]);
-            emit Claimed(operatorRewardsAddr, owedAmounts[operator][i]);
+            UtilLib.sendValue(operatorRewardsAddr, balances[operator]);
+            emit Claimed(operatorRewardsAddr, balances[operator]);
         }
     }
 
