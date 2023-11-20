@@ -74,7 +74,6 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         emit ReducedUtilizedPosition(operator, sdAmount);
     }
 
-    //TODO repay whenever a exit automatically 3rd flow of repay
     /// @notice for operator to withdraw their sd collateral, which is over and above withdraw threshold
     function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
@@ -84,22 +83,38 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         if (opSDBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
             revert InsufficientSDToWithdraw(opSDBalance);
         }
+        uint256 operatorCurrentUtilizeSD = ISDUtilityPool(staderConfig.getSDUtilityPool()).utilizerBalanceCurrent(
+            operator
+        );
+
         uint256 utilizePositionChange = operatorUtilizedSD >= _requestedSD ? _requestedSD : operatorUtilizedSD;
         operatorUtilizedSDBalance[operator] -= utilizePositionChange;
+        uint256 remainingUtilizePosition = operatorCurrentUtilizeSD - utilizePositionChange;
         uint256 selfBondedPositionChange = _requestedSD - utilizePositionChange;
+        uint256 repayFromSelfBond = remainingUtilizePosition >= selfBondedPositionChange
+            ? selfBondedPositionChange
+            : remainingUtilizePosition;
         operatorSDBalance[operator] -= selfBondedPositionChange;
 
-        if (utilizePositionChange > 0) {
-            ISDUtilityPool(staderConfig.getSDUtilityPool()).repayOnBehalf(operator, utilizePositionChange);
+        if (utilizePositionChange + repayFromSelfBond > 0) {
+            ISDUtilityPool(staderConfig.getSDUtilityPool()).repayViaSDCollateral(
+                operator,
+                utilizePositionChange + repayFromSelfBond
+            );
         }
-        if (selfBondedPositionChange > 0) {
+        if (selfBondedPositionChange - repayFromSelfBond > 0) {
             address operatorRewardAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
             // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
-            if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardAddr, selfBondedPositionChange)) {
+            if (
+                !IERC20(staderConfig.getStaderToken()).transfer(
+                    operatorRewardAddr,
+                    selfBondedPositionChange - repayFromSelfBond
+                )
+            ) {
                 revert SDTransferFailed();
             }
         }
-        //TODO emit another events, need to change below param
+        emit SDRepaid(operator, utilizePositionChange + repayFromSelfBond);
         emit SDWithdrawn(operator, _requestedSD);
     }
 
@@ -131,6 +146,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
             operatorUtilizedSDBalance[_operator] -= sdSlashFromUtilized;
         }
         IAuction(staderConfig.getAuctionContract()).createLot(sdSlashed);
+        emit SDSLashedFromUtilize(_operator, sdSlashFromUtilized);
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
 

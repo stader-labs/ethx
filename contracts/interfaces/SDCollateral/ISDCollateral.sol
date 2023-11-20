@@ -19,11 +19,13 @@ interface ISDCollateral {
     error NoStateChange();
 
     // events
+    event SDRepaid(address operator, uint256 repayAmount);
     event UpdatedStaderConfig(address indexed staderConfig);
     event SDDeposited(address indexed operator, uint256 sdAmount);
     event UtilizedSDDeposited(address indexed operator, uint256 sdAmount);
     event SDWithdrawn(address indexed operator, uint256 sdAmount);
     event ReducedUtilizedPosition(address indexed operator, uint256 sdAmount);
+    event SDSLashedFromUtilize(address operator, uint256 sdSlashFromUtilized);
     event SDSlashed(address indexed operator, address indexed auction, uint256 sdSlashed);
     event UpdatedPoolThreshold(uint8 poolId, uint256 minThreshold, uint256 withdrawThreshold);
     event UpdatedPoolIdForOperator(uint8 poolId, address operator);

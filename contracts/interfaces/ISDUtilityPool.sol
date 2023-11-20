@@ -19,6 +19,7 @@ interface ISDUtilityPool {
     error SDTransferFailed();
     error CannotFindRequestId();
     error SDUtilizeLimitReached();
+    error InvalidWithdrawAmount();
     error InvalidAmountOfWithdraw();
     error InsufficientPoolBalance();
     error AccrualBlockNumberNotLatest();
@@ -27,6 +28,7 @@ interface ISDUtilityPool {
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
 
+    event WithdrawnProtocolFee(uint256 amount);
     event ProtocolFeeFactorUpdated(uint256 protocolFeeFactor);
     event UpdatedStaderConfig(address indexed _staderConfig);
     event SDUtilized(address utilizer, uint256 utilizeAmount);
@@ -36,7 +38,6 @@ interface ISDUtilityPool {
     event UpdatedMaxNonRedeemedDelegatorRequestCount(uint256 count);
     event UpdatedFinalizationBatchLimit(uint256 finalizationBatchLimit);
     event UtilizationRatePerBlockUpdated(uint256 utilizationRatePerBlock);
-    event UtilizerSDSlashingHandled(address utilizer, uint256 slashSDAmount);
     event UpdatedUndelegationPeriodInBlocks(uint256 undelegationPeriodInBlocks);
     event UpdatedMaxETHWorthOfSDPerValidator(uint256 maxETHWorthOfSDPerValidator);
     event Delegated(address indexed delegator, uint256 sdAmount, uint256 sdXToMint);
@@ -90,6 +91,10 @@ interface ISDUtilityPool {
 
     function repayOnBehalf(address utilizer, uint256 repayAmount) external;
 
+    function repayViaSDCollateral(address utilizer, uint256 repayAmount) external;
+
+    function withdrawProtocolFee(uint256 _amount) external;
+
     function accrueFee() external;
 
     function liquidationCall(address account) external;
@@ -100,7 +105,23 @@ interface ISDUtilityPool {
 
     function maxApproveSD() external;
 
-    function handleUtilizerSDSlashing(address _utilizer, uint256 _slashSDAmount) external;
+    //Setters
+
+    function updateProtocolFeeFactor(uint256 _protocolFeeFactor) external;
+
+    function updateUtilizationRatePerBlock(uint256 _utilizationRatePerBlock) external;
+
+    function updateMaxETHWorthOfSDPerValidator(uint256 _maxETHWorthOfSDPerValidator) external;
+
+    function UpdateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external;
+
+    function updateUndelegationPeriodInBlocks(uint256 _undelegationPeriodInBlocks) external;
+
+    function updateMinBlockDelayToFinalizeRequest(uint256 _minBlockDelayToFinalizeRequest) external;
+
+    function updateMaxNonRedeemedDelegatorRequestCount(uint256 _count) external;
+
+    function updateStaderConfig(address _staderConfig) external;
 
     //Getters
 
