@@ -7,6 +7,7 @@ import '../contracts/interfaces/IPoolUtils.sol';
 import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
 import '../contracts/interfaces/SDCollateral/IAuction.sol';
 import '../contracts/interfaces/IStaderOracle.sol';
+import './interfaces/ISDUtilityPool.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
@@ -17,6 +18,8 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     IStaderConfig public override staderConfig;
     mapping(uint8 => PoolThresholdInfo) public poolThresholdbyPoolId;
     mapping(address => uint256) public override operatorSDBalance;
+    //amount of SD added as collateral via utility pool
+    mapping(address => uint256) public override operatorUtilizedSDBalance;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -66,21 +69,67 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         emit SDDeposited(_operator, _sdAmount);
     }
 
+    function depositUtilizedSD(address _operator, uint256 _sdAmount) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
+
+        operatorUtilizedSDBalance[_operator] += _sdAmount;
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
+            revert SDTransferFailed();
+        }
+
+        emit UtilizedSDDeposited(_operator, _sdAmount);
+    }
+
+    function reduceUtilizedSDPosition(address operator, uint256 sdAmount) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
+
+        operatorUtilizedSDBalance[operator] -= sdAmount;
+        operatorSDBalance[operator] += sdAmount;
+
+        emit ReducedUtilizedPosition(operator, sdAmount);
+    }
+
     /// @notice for operator to withdraw their sd collateral, which is over and above withdraw threshold
     function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
-        uint256 opSDBalance = operatorSDBalance[operator];
+        uint256 operatorUtilizedSD = operatorUtilizedSDBalance[operator];
+        uint256 opSDBalance = operatorSDBalance[operator] + operatorUtilizedSD;
 
         if (opSDBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
             revert InsufficientSDToWithdraw(opSDBalance);
         }
-        operatorSDBalance[operator] -= _requestedSD;
+        uint256 operatorCurrentUtilizeSD = ISDUtilityPool(staderConfig.getSDUtilityPool()).utilizerBalanceCurrent(
+            operator
+        );
 
-        // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
-        if (!IERC20(staderConfig.getStaderToken()).transfer(payable(operator), _requestedSD)) {
-            revert SDTransferFailed();
+        uint256 utilizePositionChange = operatorUtilizedSD >= _requestedSD ? _requestedSD : operatorUtilizedSD;
+        operatorUtilizedSDBalance[operator] -= utilizePositionChange;
+        uint256 remainingUtilizePosition = operatorCurrentUtilizeSD - utilizePositionChange;
+        uint256 selfBondedPositionChange = _requestedSD - utilizePositionChange;
+        uint256 repayFromSelfBond = remainingUtilizePosition >= selfBondedPositionChange
+            ? selfBondedPositionChange
+            : remainingUtilizePosition;
+        operatorSDBalance[operator] -= selfBondedPositionChange;
+
+        if (utilizePositionChange + repayFromSelfBond > 0) {
+            ISDUtilityPool(staderConfig.getSDUtilityPool()).repayViaSDCollateral(
+                operator,
+                utilizePositionChange + repayFromSelfBond
+            );
         }
-
+        if (selfBondedPositionChange - repayFromSelfBond > 0) {
+            address operatorRewardAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
+            // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
+            if (
+                !IERC20(staderConfig.getStaderToken()).transfer(
+                    operatorRewardAddr,
+                    selfBondedPositionChange - repayFromSelfBond
+                )
+            ) {
+                revert SDTransferFailed();
+            }
+        }
+        emit SDRepaid(operator, utilizePositionChange + repayFromSelfBond);
         emit SDWithdrawn(operator, _requestedSD);
     }
 
@@ -100,22 +149,31 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     /// @param _operator which operator SD collateral to slash
     /// @param _sdToSlash amount of SD to slash
     function slashSD(address _operator, uint256 _sdToSlash) internal {
-        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 operatorSelfBondedSD = operatorSDBalance[_operator];
+        uint256 sdBalance = operatorSelfBondedSD + operatorUtilizedSDBalance[_operator];
         uint256 sdSlashed = Math.min(_sdToSlash, sdBalance);
         if (sdSlashed == 0) {
             return;
         }
-        operatorSDBalance[_operator] -= sdSlashed;
+        uint256 sdSlashFromUtilized = operatorSelfBondedSD >= sdSlashed ? 0 : sdSlashed - operatorSelfBondedSD;
+        operatorSDBalance[_operator] -= (sdSlashed - sdSlashFromUtilized);
+        if (sdSlashFromUtilized > 0) {
+            operatorUtilizedSDBalance[_operator] -= sdSlashFromUtilized;
+        }
         IAuction(staderConfig.getAuctionContract()).createLot(sdSlashed);
+        emit SDSLashedFromUtilize(_operator, sdSlashFromUtilized);
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
 
-    /// @notice for max approval to auction contract for spending SD tokens
+    /// @notice for max approval to auction/SD utility pool contract for spending SD tokens
     function maxApproveSD() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         address auctionContract = staderConfig.getAuctionContract();
+        address sdUtilityPool = staderConfig.getSDUtilityPool();
         UtilLib.checkNonZeroAddress(auctionContract);
+        UtilLib.checkNonZeroAddress(sdUtilityPool);
         IERC20(staderConfig.getStaderToken()).approve(auctionContract, type(uint256).max);
+        IERC20(staderConfig.getStaderToken()).approve(sdUtilityPool, type(uint256).max);
     }
 
     // SETTERS
@@ -197,7 +255,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         uint8 _poolId,
         uint256 _numValidator
     ) public view override returns (uint256) {
-        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 sdBalance = operatorSDBalance[_operator] + operatorUtilizedSDBalance[_operator];
         uint256 minSDToBond = getMinimumSDToBond(_poolId, _numValidator);
         return (sdBalance >= minSDToBond ? 0 : minSDToBond - sdBalance);
     }
@@ -210,7 +268,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
 
         uint256 totalMinThreshold = validatorCount * convertETHToSD(poolThreshold.minThreshold);
         uint256 totalMaxThreshold = validatorCount * convertETHToSD(poolThreshold.maxThreshold);
-        uint256 sdBalance = operatorSDBalance[_operator];
+        uint256 sdBalance = operatorSDBalance[_operator] + operatorUtilizedSDBalance[_operator];
         return (sdBalance < totalMinThreshold ? 0 : Math.min(sdBalance, totalMaxThreshold));
     }
 
@@ -227,7 +285,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     // HELPER
 
     function getOperatorInfo(address _operator)
-        internal
+        public
         view
         returns (
             uint8 _poolId,
