@@ -8,6 +8,7 @@ import './interfaces/ISDIncentiveController.sol';
 import './interfaces/ISDUtilityPool.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IPoolUtils.sol';
+import './interfaces/IOperatorRewardsCollector.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -354,6 +355,14 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         poolUtils.processValidatorExitList(new bytes[](0));
+    }
+
+    function claimLiquidation(address account, uint256 index) external override {
+        IOperatorRewardsCollector operatorRewardsCollector = IOperatorRewardsCollector(
+            staderConfig.getOperatorRewardsCollector()
+        );
+
+        operatorRewardsCollector.claimFor(account);
     }
 
     /**

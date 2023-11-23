@@ -99,6 +99,8 @@ interface ISDUtilityPool {
 
     function liquidationCall(address account) external;
 
+    function claimLiquidation(address account, uint256 index) external;
+
     function utilizerBalanceCurrent(address account) external returns (uint256);
 
     function exchangeRateCurrent() external returns (uint256);
