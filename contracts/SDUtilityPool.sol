@@ -7,6 +7,7 @@ import './interfaces/IStaderOracle.sol';
 import './interfaces/ISDIncentiveController.sol';
 import './interfaces/ISDUtilityPool.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
+import './interfaces/IPoolUtils.sol';
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
@@ -350,6 +351,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
 
         utilizerData[account].utilizeIndex = 0;
+
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        poolUtils.processValidatorExitList(new bytes[](0));
     }
 
     /**
