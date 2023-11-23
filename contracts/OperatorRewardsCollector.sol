@@ -13,6 +13,9 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
     mapping(address => uint256) public balances;
 
+    mapping(address => uint256)[] public owedAmounts;
+    mapping(address => uint256)[] public claimableAmounts;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -44,6 +47,30 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(msg.sender, staderConfig);
         UtilLib.sendValue(operatorRewardsAddr, amount);
         emit Claimed(operatorRewardsAddr, amount);
+    }
+
+    function claimFor(address operator) external {
+        uint256 toSendAmount;
+        for (uint256 i = 0; i < owedAmounts[operator].length; i++) {
+            if (balances[operator] >= owedAmounts[operator][i]) {
+                toSendAmount = owedAmounts[operator][i];
+                balances[operator] -= owedAmounts[operator][i];
+                claimableAmounts[operator][i] = owedAmounts[operator][i];
+                owedAmounts[operator][i] = 0;
+            } else {
+                toSendAmount = balances[operator];
+                owedAmounts[operator][i] -= balances[operator];
+                claimableAmounts[operator][i] = balances[operator];
+                balances[operator] = 0;
+                break;
+            }
+        }
+
+        if (balances[operator] > 0) {
+            address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
+            UtilLib.sendValue(operatorRewardsAddr, balances[operator]);
+            emit Claimed(operatorRewardsAddr, balances[operator]);
+        }
     }
 
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
