@@ -80,6 +80,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     mapping(address => uint256) public override delegatorCTokenBalance;
     mapping(uint256 => DelegatorWithdrawInfo) public override delegatorWithdrawRequests;
     mapping(address => uint256[]) public override requestIdsByDelegatorAddress;
+    mapping(address => OperatorLiquidaton) private operatorLiquidation;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -373,6 +374,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function utilizerBalanceCurrent(address account) external override returns (uint256) {
         accrueFee();
         return _utilizerBalanceStoredInternal(account);
+    }
+
+    function repayLiquidation(address account) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.OPERATOR_REWARD_COLLECTOR());
+
+        operatorLiquidation[account].isRepaid = true;
     }
 
     /**
@@ -767,5 +774,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         uint256 totalEth = totalValidators * 2 ether;
         return totalEth;
+    }
+
+    function getOperatorLiquidation(address account) external view override returns (OperatorLiquidaton memory) {
+        return operatorLiquidation[account];
     }
 }

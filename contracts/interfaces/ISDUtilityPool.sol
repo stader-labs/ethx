@@ -15,6 +15,11 @@ struct Config {
     uint256 ltv;
 }
 
+struct OperatorLiquidaton {
+    uint256 amount;
+    bool isRepaid;
+}
+
 interface ISDUtilityPool {
     error SDTransferFailed();
     error CannotFindRequestId();
@@ -93,6 +98,8 @@ interface ISDUtilityPool {
 
     function repayViaSDCollateral(address utilizer, uint256 repayAmount) external;
 
+    function repayLiquidation(address account) external;
+
     function withdrawProtocolFee(uint256 _amount) external;
 
     function accrueFee() external;
@@ -148,6 +155,8 @@ interface ISDUtilityPool {
     function getLatestExchangeRate() external view returns (uint256);
 
     function utilizerData(address) external view returns (uint256 principal, uint256 utilizeIndex);
+
+    function getOperatorLiquidation(address) external view returns (OperatorLiquidaton memory);
 
     function delegatorWithdrawRequests(uint256)
         external
