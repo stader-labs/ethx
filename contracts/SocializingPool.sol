@@ -8,7 +8,6 @@ import './interfaces/ISocializingPool.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/ISDUtilityPool.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
