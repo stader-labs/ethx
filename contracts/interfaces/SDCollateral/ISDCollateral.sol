@@ -33,7 +33,7 @@ interface ISDCollateral {
     // methods
     function depositSDAsCollateral(uint256 _sdAmount) external;
 
-    function depositSDAsCollateralFor(address _operator, uint256 _sdAmount) external;
+    function depositSDAsCollateralOnBehalf(address _operator, uint256 _sdAmount) external;
 
     function depositUtilizedSD(address _operator, uint256 _sdAmount) external;
 

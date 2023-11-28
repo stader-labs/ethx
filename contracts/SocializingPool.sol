@@ -8,6 +8,7 @@ import './interfaces/ISocializingPool.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IStaderStakePoolManager.sol';
 import './interfaces/IPermissionlessNodeRegistry.sol';
+import './interfaces/ISDUtilityPool.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
@@ -110,24 +111,18 @@ contract SocializingPool is
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
     ) external override whenNotPaused {
-        claimAndDepositSDAsCollateral(0, _index, _amountSD, _amountETH, _merkleProof);
+        claimAndDepositSD(0, _index, _amountSD, _amountETH, _merkleProof);
     }
 
     ///@notice claim rewards along with depositing a given amount of SD Token as collateral
-    function claimAndDepositSDAsCollateral(
-        uint256 _amountOfSDToDeposit,
+    function claimAndDepositSD(
+        uint256 _amountOfSDToDepositAsCollateral,
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
     ) public override nonReentrant whenNotPaused {
-        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
-            _index,
-            msg.sender,
-            _amountSD,
-            _amountETH,
-            _merkleProof
-        );
+        (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(_index, _amountSD, _amountETH, _merkleProof);
 
         address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(msg.sender, staderConfig);
 
@@ -139,32 +134,33 @@ contract SocializingPool is
                 revert ETHTransferFailed(operatorRewardsAddr, totalAmountETH);
             }
         }
-
-        if (_amountOfSDToDeposit > totalAmountSD) {
-            revert InvalidSDDepositAmount();
-        }
         totalOperatorSDRewardsRemaining -= totalAmountSD;
-        if ((totalAmountSD - _amountOfSDToDeposit) > 0) {
+
+        if (_amountOfSDToDepositAsCollateral > 0) {
+            if (_amountOfSDToDepositAsCollateral > totalAmountSD) {
+                revert InvalidAmount();
+            }
+            ISDCollateral(staderConfig.getSDCollateral()).depositSDAsCollateralOnBehalf(
+                msg.sender,
+                _amountOfSDToDepositAsCollateral
+            );
+        }
+
+        if (totalAmountSD - _amountOfSDToDepositAsCollateral > 0) {
             if (
                 !IERC20(staderConfig.getStaderToken()).transfer(
                     operatorRewardsAddr,
-                    (totalAmountSD - _amountOfSDToDeposit)
+                    (totalAmountSD - (_amountOfSDToDepositAsCollateral))
                 )
             ) {
                 revert SDTransferFailed();
             }
         }
-
-        if (_amountOfSDToDeposit > 0) {
-            ISDCollateral(staderConfig.getSDCollateral()).depositSDAsCollateralFor(msg.sender, _amountOfSDToDeposit);
-        }
-
         emit OperatorRewardsClaimed(operatorRewardsAddr, totalAmountETH, totalAmountSD);
     }
 
     function _claim(
         uint256[] calldata _index,
-        address _operator,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
@@ -174,22 +170,22 @@ contract SocializingPool is
             if (_amountSD[i] == 0 && _amountETH[i] == 0) {
                 revert InvalidAmount();
             }
-            if (claimedRewards[_operator][_index[i]]) {
-                revert RewardAlreadyClaimed(_operator, _index[i]);
+            if (claimedRewards[msg.sender][_index[i]]) {
+                revert RewardAlreadyClaimed(msg.sender, _index[i]);
             }
 
             _totalAmountSD += _amountSD[i];
             _totalAmountETH += _amountETH[i];
-            claimedRewards[_operator][_index[i]] = true;
+            claimedRewards[msg.sender][_index[i]] = true;
 
-            if (!verifyProof(_index[i], _operator, _amountSD[i], _amountETH[i], _merkleProof[i])) {
-                revert InvalidProof(_index[i], _operator);
+            if (!verifyProof(_index[i], msg.sender, _amountSD[i], _amountETH[i], _merkleProof[i])) {
+                revert InvalidProof(_index[i], msg.sender);
             }
         }
     }
 
-    /// @notice for max approval to SDCollateral contract for spending SD tokens
-    function maxApproveSDToSDCollateral() external override {
+    /// @notice for max approval to SDCollateral for spending SD tokens
+    function maxApproveSD() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         address sdCollateral = staderConfig.getSDCollateral();
         UtilLib.checkNonZeroAddress(sdCollateral);

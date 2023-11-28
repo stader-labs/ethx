@@ -118,7 +118,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice auxiliary method to put a withdrawal request, takes in cToken in input
+     * @notice auxiliary method to put a withdrawal request, takes in cToken amount in input
      * @param _cTokenAmount amount of cToken
      * @return _requestId generated request ID for withdrawal
      */
@@ -253,31 +253,28 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Sender repays their own utilize
+     * @notice Sender repays their own utilize, returns actual repayment amount
      * @param repayAmount The amount to repay
      */
-    function repay(uint256 repayAmount) external override whenNotPaused {
+    function repay(uint256 repayAmount) external whenNotPaused returns (uint256 repaidAmount) {
         accrueFee();
-        _repay(msg.sender, repayAmount);
+        repaidAmount = _repay(msg.sender, repayAmount);
+        return repaidAmount;
     }
 
     /**
-     * @notice Sender repays on behalf of utilizer
+     * @notice Sender repays on behalf of utilizer, returns actual repayment amount
      * @param repayAmount The amount to repay
      */
-    function repayOnBehalf(address utilizer, uint256 repayAmount) external override whenNotPaused {
+    function repayOnBehalf(address utilizer, uint256 repayAmount)
+        external
+        override
+        whenNotPaused
+        returns (uint256 repaidAmount)
+    {
         accrueFee();
-        _repay(utilizer, repayAmount);
-    }
-
-    /**
-     * @notice Sender repays on behalf of utilizer
-     * @dev only SD collateral contract can call
-     * @param repayAmount The amount to repay
-     */
-    function repayViaSDCollateral(address utilizer, uint256 repayAmount) external override whenNotPaused {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_COLLATERAL());
-        _repay(utilizer, repayAmount);
+        repaidAmount = _repay(utilizer, repayAmount);
+        return repaidAmount;
     }
 
     /**
@@ -325,8 +322,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         /*
          * Calculate the fee accumulated into utilize and totalProtocolFee and the new index:
          *  simpleFeeFactor = utilizationRate * blockDelta
-         *  feeAccumulated = simpleFeeFactor * utilizePrior
-         *  totalUtilizeNew = feeAccumulated + utilizePrior
+         *  feeAccumulated = simpleFeeFactor * totalUtilizedSD
+         *  totalUtilizedSDNew = feeAccumulated + totalUtilizedSD
          *  totalProtocolFeeNew = feeAccumulated * protocolFeeFactor + totalProtocolFee
          *  utilizeIndexNew = simpleFeeFactor * utilizeIndex + utilizeIndex
          */
@@ -428,7 +425,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev only `MANAGER` role can call
      * @param _finalizationBatchLimit new value of batch limit
      */
-    function UpdateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
+    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         finalizationBatchLimit = _finalizationBatchLimit;
         emit UpdatedFinalizationBatchLimit(finalizationBatchLimit);
@@ -631,7 +628,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         emit SDUtilized(utilizer, utilizeAmount);
     }
 
-    function _repay(address utilizer, uint256 repayAmount) internal {
+    function _repay(address utilizer, uint256 repayAmount) internal returns (uint256 repayAmountFinal) {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
             revert AccrualBlockNumberNotLatest();
@@ -640,7 +637,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         /* We fetch the amount the utilizer owes, with accumulated fee */
         uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(utilizer);
 
-        uint256 repayAmountFinal = (repayAmount == type(uint256).max || repayAmount > accountUtilizePrev)
+        repayAmountFinal = (repayAmount == type(uint256).max || repayAmount > accountUtilizePrev)
             ? accountUtilizePrev
             : repayAmount;
 

@@ -60,7 +60,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
      * @param _sdAmount SD Token Amount to Deposit
      * @param _operator operator address
      */
-    function depositSDAsCollateralFor(address _operator, uint256 _sdAmount) external override {
+    function depositSDAsCollateralOnBehalf(address _operator, uint256 _sdAmount) external override {
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
@@ -98,25 +98,19 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         if (opSDBalance < getOperatorWithdrawThreshold(operator) + _requestedSD) {
             revert InsufficientSDToWithdraw(opSDBalance);
         }
-        uint256 operatorCurrentUtilizeSD = ISDUtilityPool(staderConfig.getSDUtilityPool()).utilizerBalanceCurrent(
-            operator
-        );
+        uint256 sdRepaidAmount;
+        if (ISDUtilityPool(staderConfig.getSDUtilityPool()).getUtilizerLatestBalance(operator) > 0) {
+            sdRepaidAmount = ISDUtilityPool(staderConfig.getSDUtilityPool()).repayOnBehalf(operator, _requestedSD);
+        }
 
-        uint256 utilizePositionChange = operatorUtilizedSD >= _requestedSD ? _requestedSD : operatorUtilizedSD;
+        uint256 utilizePositionChange = operatorUtilizedSD >= sdRepaidAmount ? sdRepaidAmount : operatorUtilizedSD;
         operatorUtilizedSDBalance[operator] -= utilizePositionChange;
-        uint256 remainingUtilizePosition = operatorCurrentUtilizeSD - utilizePositionChange;
         uint256 selfBondedPositionChange = _requestedSD - utilizePositionChange;
-        uint256 repayFromSelfBond = remainingUtilizePosition >= selfBondedPositionChange
-            ? selfBondedPositionChange
-            : remainingUtilizePosition;
+        uint256 repayFromSelfBond = sdRepaidAmount >= utilizePositionChange
+            ? sdRepaidAmount - utilizePositionChange
+            : 0;
         operatorSDBalance[operator] -= selfBondedPositionChange;
 
-        if (utilizePositionChange + repayFromSelfBond > 0) {
-            ISDUtilityPool(staderConfig.getSDUtilityPool()).repayViaSDCollateral(
-                operator,
-                utilizePositionChange + repayFromSelfBond
-            );
-        }
         if (selfBondedPositionChange - repayFromSelfBond > 0) {
             address operatorRewardAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
             // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
@@ -129,7 +123,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
                 revert SDTransferFailed();
             }
         }
-        emit SDRepaid(operator, utilizePositionChange + repayFromSelfBond);
+        emit SDRepaid(operator, sdRepaidAmount);
         emit SDWithdrawn(operator, _requestedSD);
     }
 
@@ -165,7 +159,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
 
-    /// @notice for max approval to auction/SD utility pool contract for spending SD tokens
+    /// @notice for max approval to auction and SD utility pool contract for spending SD tokens
     function maxApproveSD() external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         address auctionContract = staderConfig.getAuctionContract();

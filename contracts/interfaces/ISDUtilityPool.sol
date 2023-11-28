@@ -87,11 +87,9 @@ interface ISDUtilityPool {
         uint256 nonTerminalKeyCount
     ) external;
 
-    function repay(uint256 repayAmount) external;
+    function repay(uint256 repayAmount) external returns (uint256);
 
-    function repayOnBehalf(address utilizer, uint256 repayAmount) external;
-
-    function repayViaSDCollateral(address utilizer, uint256 repayAmount) external;
+    function repayOnBehalf(address utilizer, uint256 repayAmount) external returns (uint256);
 
     function withdrawProtocolFee(uint256 _amount) external;
 
@@ -113,7 +111,7 @@ interface ISDUtilityPool {
 
     function updateMaxETHWorthOfSDPerValidator(uint256 _maxETHWorthOfSDPerValidator) external;
 
-    function UpdateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external;
+    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external;
 
     function updateUndelegationPeriodInBlocks(uint256 _undelegationPeriodInBlocks) external;
 
