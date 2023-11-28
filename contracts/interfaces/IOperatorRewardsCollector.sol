@@ -12,4 +12,6 @@ interface IOperatorRewardsCollector {
     function depositFor(address _receiver) external payable;
 
     function claim() external;
+
+    function claimFor(address account) external;
 }
