@@ -44,7 +44,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     function claimFor(address operator) public override {
         // Retrieve operator liquidation details
         ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
-        OperatorLiquidaton memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
+        OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
 
         // If the liquidation is not repaid, check balance and then proceed with repayment
         if (!operatorLiquidation.isRepaid) {

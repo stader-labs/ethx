@@ -15,9 +15,11 @@ struct Config {
     uint256 ltv;
 }
 
-struct OperatorLiquidaton {
+struct OperatorLiquidation {
     uint256 amount;
     bool isRepaid;
+    bool isClaimed;
+    address liquidator;
 }
 
 interface ISDUtilityPool {
@@ -106,7 +108,7 @@ interface ISDUtilityPool {
 
     function liquidationCall(address account) external;
 
-    function claimLiquidation(address account, uint256 index) external;
+    function claimLiquidation(uint256 index) external;
 
     function utilizerBalanceCurrent(address account) external returns (uint256);
 
@@ -156,7 +158,7 @@ interface ISDUtilityPool {
 
     function utilizerData(address) external view returns (uint256 principal, uint256 utilizeIndex);
 
-    function getOperatorLiquidation(address) external view returns (OperatorLiquidaton memory);
+    function getOperatorLiquidation(address) external view returns (OperatorLiquidation memory);
 
     function delegatorWithdrawRequests(uint256)
         external
