@@ -20,6 +20,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     uint256 public constant DECIMAL = 1e18;
 
+    uint256 public constant MAX_PROTOCOL_FEE = 1e17; // 10%
+
     // State variables
 
     /// @notice Fraction of fee currently set aside for protocol
@@ -35,7 +37,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     uint256 public totalUtilizedSD;
 
     /// @notice Total amount of protocol fee
-    uint256 public totalProtocolFee;
+    uint256 public accumulatedProtocolFee;
 
     /// @notice utilization rate per block
     uint256 public utilizationRatePerBlock;
@@ -43,7 +45,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     /// @notice value of cToken supply
     uint256 public cTokenTotalSupply;
 
-    /// @notice upper cap on amount ETH worth of SD utilize per validator
+    /// @notice upper cap on ETH worth of SD utilized per validator
     uint256 public maxETHWorthOfSDPerValidator;
 
     /// @notice request ID to be finalized next
@@ -78,6 +80,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     // Mappings
     mapping(address => UtilizerStruct) public override utilizerData;
     mapping(address => uint256) public override delegatorCTokenBalance;
+    mapping(address => uint256) public override delegatorWithdrawRequestedCTokenCount;
+
     mapping(uint256 => DelegatorWithdrawInfo) public override delegatorWithdrawRequests;
     mapping(address => uint256[]) public override requestIdsByDelegatorAddress;
 
@@ -120,14 +124,15 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice auxiliary method to put a withdrawal request, takes in cToken in input
+     * @notice auxiliary method to put a withdrawal request, takes in cToken amount in input
      * @param _cTokenAmount amount of cToken
      * @return _requestId generated request ID for withdrawal
      */
     function requestWithdraw(uint256 _cTokenAmount) external override whenNotPaused returns (uint256 _requestId) {
-        if (_cTokenAmount > delegatorCTokenBalance[msg.sender]) {
+        if (_cTokenAmount > delegatorCTokenBalance[msg.sender] - delegatorWithdrawRequestedCTokenCount[msg.sender]) {
             revert InvalidAmountOfWithdraw();
         }
+        delegatorWithdrawRequestedCTokenCount[msg.sender] += _cTokenAmount;
         accrueFee();
         uint256 exchangeRate = _exchangeRateStoredInternal();
         uint256 sdRequested = (exchangeRate * _cTokenAmount) / DECIMAL;
@@ -147,11 +152,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     {
         accrueFee();
         uint256 exchangeRate = _exchangeRateStoredInternal();
-        uint256 cTokenToBurn = (_sdAmount * DECIMAL) / exchangeRate;
-        if (cTokenToBurn > delegatorCTokenBalance[msg.sender]) {
+        uint256 cTokenToReduce = (_sdAmount * DECIMAL) / exchangeRate;
+        if (cTokenToReduce > delegatorCTokenBalance[msg.sender] - delegatorWithdrawRequestedCTokenCount[msg.sender]) {
             revert InvalidAmountOfWithdraw();
         }
-        _requestId = _requestWithdraw(_sdAmount, cTokenToBurn);
+        delegatorWithdrawRequestedCTokenCount[msg.sender] += cTokenToReduce;
+        _requestId = _requestWithdraw(_sdAmount, cTokenToReduce);
     }
 
     /**
@@ -162,22 +168,23 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 exchangeRate = _exchangeRateStoredInternal();
         uint256 maxRequestIdToFinalize = Math.min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit) - 1;
         uint256 requestId;
-        uint256 sdToReserveToFinalizeRequest;
+        uint256 sdToReserveToFinalizeRequests;
         for (requestId = nextRequestIdToFinalize; requestId <= maxRequestIdToFinalize; ) {
             DelegatorWithdrawInfo memory delegatorWithdrawInfo = delegatorWithdrawRequests[requestId];
             uint256 requiredSD = delegatorWithdrawInfo.sdExpected;
             uint256 amountOfcToken = delegatorWithdrawInfo.amountOfCToken;
             uint256 minSDRequiredToFinalizeRequest = Math.min(requiredSD, (amountOfcToken * exchangeRate) / DECIMAL);
             if (
-                (sdToReserveToFinalizeRequest + minSDRequiredToFinalizeRequest > getPoolAvailableSDBalance()) ||
+                (sdToReserveToFinalizeRequests + minSDRequiredToFinalizeRequest > getPoolAvailableSDBalance()) ||
                 (delegatorWithdrawInfo.requestBlock + minBlockDelayToFinalizeRequest > block.number)
             ) {
                 break;
             }
             delegatorWithdrawRequests[requestId].sdFinalized = minSDRequiredToFinalizeRequest;
             sdRequestedForWithdraw -= requiredSD;
-            sdToReserveToFinalizeRequest += minSDRequiredToFinalizeRequest;
+            sdToReserveToFinalizeRequests += minSDRequiredToFinalizeRequest;
             delegatorCTokenBalance[delegatorWithdrawInfo.owner] -= amountOfcToken;
+            delegatorWithdrawRequestedCTokenCount[delegatorWithdrawInfo.owner] -= amountOfcToken;
             cTokenTotalSupply -= amountOfcToken;
             unchecked {
                 ++requestId;
@@ -186,7 +193,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         // at here, upto (requestId-1) is finalized
         if (requestId > nextRequestIdToFinalize) {
             nextRequestIdToFinalize = requestId;
-            sdReservedForClaim += sdToReserveToFinalizeRequest;
+            sdReservedForClaim += sdToReserveToFinalizeRequests;
         }
         emit FinalizedWithdrawRequest(nextRequestIdToFinalize);
     }
@@ -207,6 +214,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             revert UndelegationPeriodNotPassed();
         }
         uint256 sdToTransfer = delegatorRequest.sdFinalized;
+        sdReservedForClaim -= sdToTransfer;
         _deleteRequestId(_requestId);
         if (!IERC20(staderConfig.getStaderToken()).transfer(msg.sender, sdToTransfer)) {
             revert SDTransferFailed();
@@ -215,15 +223,15 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Sender utilize SD from the pool to add it as collateral to run validators
+     * @notice Sender utilizes SD from the pool to add it as collateral to run validators
      * @param utilizeAmount The amount of the SD token to utilize
      */
     function utilize(uint256 utilizeAmount) external override whenNotPaused {
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
         (, , uint256 nonTerminalKeyCount) = sdCollateral.getOperatorInfo(msg.sender);
-        uint256 currentUtilizeSDCollateral = sdCollateral.operatorUtilizedSDBalance(msg.sender);
+        uint256 currentUtilizedSDCollateral = sdCollateral.operatorUtilizedSDBalance(msg.sender);
         uint256 maxSDUtilizeValue = nonTerminalKeyCount * sdCollateral.convertETHToSD(maxETHWorthOfSDPerValidator);
-        if (currentUtilizeSDCollateral + utilizeAmount > maxSDUtilizeValue) {
+        if (currentUtilizedSDCollateral + utilizeAmount > maxSDUtilizeValue) {
             revert SDUtilizeLimitReached();
         }
         accrueFee();
@@ -245,9 +253,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     ) external override whenNotPaused {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
-        uint256 currentUtilizeSDCollateral = sdCollateral.operatorUtilizedSDBalance(operator);
+        uint256 currentUtilizedSDCollateral = sdCollateral.operatorUtilizedSDBalance(operator);
         uint256 maxSDUtilizeValue = nonTerminalKeyCount * sdCollateral.convertETHToSD(maxETHWorthOfSDPerValidator);
-        if (currentUtilizeSDCollateral + utilizeAmount > maxSDUtilizeValue) {
+        if (currentUtilizedSDCollateral + utilizeAmount > maxSDUtilizeValue) {
             revert SDUtilizeLimitReached();
         }
         accrueFee();
@@ -255,31 +263,28 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Sender repays their own utilize
+     * @notice Sender repays their utilized SD, returns actual repayment amount
      * @param repayAmount The amount to repay
      */
-    function repay(uint256 repayAmount) external override whenNotPaused {
+    function repay(uint256 repayAmount) external whenNotPaused returns (uint256 repaidAmount) {
         accrueFee();
-        _repay(msg.sender, repayAmount);
+        repaidAmount = _repay(msg.sender, repayAmount);
+        return repaidAmount;
     }
 
     /**
-     * @notice Sender repays on behalf of utilizer
+     * @notice Sender repays on behalf of utilizer, returns actual repayment amount
      * @param repayAmount The amount to repay
      */
-    function repayOnBehalf(address utilizer, uint256 repayAmount) external override whenNotPaused {
+    function repayOnBehalf(address utilizer, uint256 repayAmount)
+        external
+        override
+        whenNotPaused
+        returns (uint256 repaidAmount)
+    {
         accrueFee();
-        _repay(utilizer, repayAmount);
-    }
-
-    /**
-     * @notice Sender repays on behalf of utilizer
-     * @dev only SD collateral contract can call
-     * @param repayAmount The amount to repay
-     */
-    function repayViaSDCollateral(address utilizer, uint256 repayAmount) external override whenNotPaused {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_COLLATERAL());
-        _repay(utilizer, repayAmount);
+        repaidAmount = _repay(utilizer, repayAmount);
+        return repaidAmount;
     }
 
     /**
@@ -290,9 +295,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function withdrawProtocolFee(uint256 _amount) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         accrueFee();
-        if (_amount > totalProtocolFee) {
+        if (_amount > accumulatedProtocolFee) {
             revert InvalidWithdrawAmount();
         }
+        accumulatedProtocolFee -= _amount;
         if (!IERC20(staderConfig.getStaderToken()).transfer(staderConfig.getStaderTreasury(), _amount)) {
             revert SDTransferFailed();
         }
@@ -308,7 +314,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Applies accrued fee to total utilize and protocolFee
+     * @notice Applies accrued fee to total utilized and protocolFee
      * @dev This calculates fee accrued from the last check pointed block
      *   up to the current block and writes new checkpoint to storage.
      */
@@ -325,23 +331,23 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 blockDelta = currentBlockNumber - accrualBlockNumber;
 
         /*
-         * Calculate the fee accumulated into utilize and totalProtocolFee and the new index:
+         * Calculate the fee accumulated into utilized and totalProtocolFee and the new index:
          *  simpleFeeFactor = utilizationRate * blockDelta
-         *  feeAccumulated = simpleFeeFactor * utilizePrior
-         *  totalUtilizeNew = feeAccumulated + utilizePrior
+         *  feeAccumulated = simpleFeeFactor * totalUtilizedSD
+         *  totalUtilizedSDNew = feeAccumulated + totalUtilizedSD
          *  totalProtocolFeeNew = feeAccumulated * protocolFeeFactor + totalProtocolFee
          *  utilizeIndexNew = simpleFeeFactor * utilizeIndex + utilizeIndex
          */
 
         uint256 simpleFeeFactor = utilizationRatePerBlock * blockDelta;
         uint256 feeAccumulated = (simpleFeeFactor * totalUtilizedSD) / DECIMAL;
-        totalUtilizedSD = feeAccumulated + totalUtilizedSD;
-        totalProtocolFee = (protocolFeeFactor * feeAccumulated) / DECIMAL + totalProtocolFee;
-        utilizeIndex = (simpleFeeFactor * utilizeIndex) / DECIMAL + utilizeIndex;
+        totalUtilizedSD += feeAccumulated;
+        accumulatedProtocolFee += (protocolFeeFactor * feeAccumulated) / DECIMAL;
+        utilizeIndex += (simpleFeeFactor * utilizeIndex) / DECIMAL;
 
         accrualBlockNumber = currentBlockNumber;
 
-        emit AccruedFees(feeAccumulated, totalProtocolFee, totalUtilizedSD);
+        emit AccruedFees(feeAccumulated, accumulatedProtocolFee, totalUtilizedSD);
     }
 
     function liquidationCall(address account) external override {
@@ -366,7 +372,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Accrue fee to updated utilizeIndex and then calculate account's utilize balance using the updated utilizeIndex
+     * @notice Accrue fee to updated utilizeIndex and then calculate account's utilized balance using the updated utilizeIndex
      * @param account The address whose balance should be calculated after updating utilizeIndex
      * @return The calculated balance
      */
@@ -410,6 +416,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      */
     function updateProtocolFeeFactor(uint256 _protocolFeeFactor) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (_protocolFeeFactor > MAX_PROTOCOL_FEE) {
+            revert InvalidInput();
+        }
         protocolFeeFactor = _protocolFeeFactor;
         emit ProtocolFeeFactorUpdated(protocolFeeFactor);
     }
@@ -426,9 +435,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice updates the maximum amount ETH worth of SD utilize per validator
+     * @notice updates the maximum ETH worth of SD utilized per validator
      * @dev only `MANAGER` role can call
-     * @param _maxETHWorthOfSDPerValidator new value of maximum amount ETH worth of SD utilize per validator
+     * @param _maxETHWorthOfSDPerValidator new value of maximum ETH worth of SD utilized per validator
      */
     function updateMaxETHWorthOfSDPerValidator(uint256 _maxETHWorthOfSDPerValidator) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
@@ -441,8 +450,11 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev only `MANAGER` role can call
      * @param _finalizationBatchLimit new value of batch limit
      */
-    function UpdateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
+    function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (_finalizationBatchLimit >= undelegationPeriodInBlocks) {
+            revert InvalidInput();
+        }
         finalizationBatchLimit = _finalizationBatchLimit;
         emit UpdatedFinalizationBatchLimit(finalizationBatchLimit);
     }
@@ -457,6 +469,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        if (_undelegationPeriodInBlocks <= finalizationBatchLimit) {
+            revert InvalidInput();
+        }
         undelegationPeriodInBlocks = _undelegationPeriodInBlocks;
         emit UpdatedUndelegationPeriodInBlocks(undelegationPeriodInBlocks);
     }
@@ -501,7 +516,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Return the utilize balance of account based on stored data
+     * @notice Return the utilized balance of account based on stored data
      * @param account The address whose balance should be calculated
      * @return The calculated balance
      */
@@ -526,7 +541,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice view function to get utilizer latest utilize balance
+     * @notice view function to get utilizer latest utilized balance
      * @param _utilizer address of the utilizer
      */
     function getUtilizerLatestBalance(address _utilizer) external view override returns (uint256) {
@@ -561,7 +576,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 simpleFeeFactor = utilizationRatePerBlock * blockDelta;
         uint256 feeAccumulated = (simpleFeeFactor * totalUtilizedSD) / DECIMAL;
         uint256 totalUtilizedSDNew = feeAccumulated + totalUtilizedSD;
-        uint256 totalProtocolFeeNew = (protocolFeeFactor * feeAccumulated) / DECIMAL + totalProtocolFee;
+        uint256 totalProtocolFeeNew = (protocolFeeFactor * feeAccumulated) / DECIMAL + accumulatedProtocolFee;
         if (cTokenTotalSupply == 0) {
             return DECIMAL;
         } else {
@@ -579,12 +594,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     /// @notice Calculates the utilization of the utility pool
     function poolUtilization() public view override returns (uint256) {
-        // Utilization is 0 when there are no utilize
+        // Utilization is 0 when there are no utilized SD
         if (totalUtilizedSD == 0) {
             return 0;
         }
 
-        return (totalUtilizedSD * DECIMAL) / (getPoolAvailableSDBalance() + totalUtilizedSD - totalProtocolFee);
+        return (totalUtilizedSD * DECIMAL) / (getPoolAvailableSDBalance() + totalUtilizedSD - accumulatedProtocolFee);
     }
 
     /**
@@ -602,11 +617,11 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), sdAmount)) {
             revert SDTransferFailed();
         }
-        uint256 cTokenToMint = (sdAmount * DECIMAL) / exchangeRate;
-        delegatorCTokenBalance[msg.sender] += cTokenToMint;
-        cTokenTotalSupply += cTokenToMint;
+        uint256 cTokenShares = (sdAmount * DECIMAL) / exchangeRate;
+        delegatorCTokenBalance[msg.sender] += cTokenShares;
+        cTokenTotalSupply += cTokenShares;
 
-        emit Delegated(msg.sender, sdAmount, cTokenToMint);
+        emit Delegated(msg.sender, sdAmount, cTokenShares);
     }
 
     function _requestWithdraw(uint256 _sdAmountToWithdraw, uint256 cTokenToBurn) internal returns (uint256) {
@@ -644,7 +659,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         emit SDUtilized(utilizer, utilizeAmount);
     }
 
-    function _repay(address utilizer, uint256 repayAmount) internal {
+    function _repay(address utilizer, uint256 repayAmount) internal returns (uint256 repayAmountFinal) {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
             revert AccrualBlockNumberNotLatest();
@@ -653,7 +668,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         /* We fetch the amount the utilizer owes, with accumulated fee */
         uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(utilizer);
 
-        uint256 repayAmountFinal = (repayAmount == type(uint256).max || repayAmount > accountUtilizePrev)
+        repayAmountFinal = (repayAmount == type(uint256).max || repayAmount > accountUtilizePrev)
             ? accountUtilizePrev
             : repayAmount;
 
@@ -677,7 +692,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Return the utilize balance of account based on stored data
+     * @notice Return the utilized balance of account based on stored data
      * @param account The address whose balance should be calculated
      * @return (calculated balance)
      */
@@ -692,7 +707,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             return 0;
         }
 
-        /* Calculate new utilize balance using the utilize index:
+        /* Calculate new utilized balance using the utilize index:
          *  recentUtilizeBalance = utilizer.principal * utilizeIndex / utilizer.utilizeIndex
          */
         uint256 principalTimesIndex = utilizeSnapshot.principal * utilizeIndex;
@@ -718,7 +733,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
              */
             uint256 poolBalancePlusUtilizedSDMinusReserves = getPoolAvailableSDBalance() +
                 totalUtilizedSD -
-                totalProtocolFee;
+                accumulatedProtocolFee;
             uint256 exchangeRate = (poolBalancePlusUtilizedSDMinusReserves * DECIMAL) / cTokenTotalSupply;
 
             return exchangeRate;

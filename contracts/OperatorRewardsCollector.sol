@@ -13,8 +13,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
     mapping(address => uint256) public balances;
 
-    mapping(address => uint256)[] public owedAmounts;
-    mapping(address => uint256)[] public claimableAmounts;
+    mapping(address => uint256[]) public owedAmounts;
+    mapping(address => uint256[]) public claimableAmounts;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
