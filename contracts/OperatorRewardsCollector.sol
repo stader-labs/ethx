@@ -5,6 +5,7 @@ import './library/UtilLib.sol';
 
 import './interfaces/IOperatorRewardsCollector.sol';
 import './interfaces/IStaderConfig.sol';
+import './interfaces/ISDUtilityPool.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
@@ -12,9 +13,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     IStaderConfig public staderConfig;
 
     mapping(address => uint256) public balances;
-
-    mapping(address => uint256[]) public owedAmounts;
-    mapping(address => uint256[]) public claimableAmounts;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -40,36 +38,33 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     }
 
     function claim() external {
-        address operator = msg.sender;
-        uint256 amount = balances[operator];
-        balances[operator] -= amount;
-
-        address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(msg.sender, staderConfig);
-        UtilLib.sendValue(operatorRewardsAddr, amount);
-        emit Claimed(operatorRewardsAddr, amount);
+        return claimFor(msg.sender);
     }
 
-    function claimFor(address operator) external {
-        uint256 toSendAmount;
-        for (uint256 i = 0; i < owedAmounts[operator].length; i++) {
-            if (balances[operator] >= owedAmounts[operator][i]) {
-                toSendAmount = owedAmounts[operator][i];
-                balances[operator] -= owedAmounts[operator][i];
-                claimableAmounts[operator][i] = owedAmounts[operator][i];
-                owedAmounts[operator][i] = 0;
-            } else {
-                toSendAmount = balances[operator];
-                owedAmounts[operator][i] -= balances[operator];
-                claimableAmounts[operator][i] = balances[operator];
-                balances[operator] = 0;
-                break;
-            }
+    function claimFor(address operator) public override {
+        // Retrieve operator liquidation details
+        ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
+        OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
+
+        // If the liquidation is not repaid, check balance and then proceed with repayment
+        if (!operatorLiquidation.isRepaid) {
+            // Ensure that the balance is sufficient
+            require(balances[operator] >= operatorLiquidation.amount, 'Insufficient balance');
+
+            // Repay the liquidation and update the operator's balance
+            sdUtilityPool.repayLiquidation(operator);
+            balances[operator] -= operatorLiquidation.amount;
         }
 
-        if (balances[operator] > 0) {
-            address operatorRewardsAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
-            UtilLib.sendValue(operatorRewardsAddr, balances[operator]);
-            emit Claimed(operatorRewardsAddr, balances[operator]);
+        // Calculate payout amount
+        uint256 payoutAmount = balances[operator];
+        balances[operator] = 0;
+
+        // If there's an amount to send, transfer it to the operator's rewards address
+        if (payoutAmount > 0) {
+            address rewardsAddress = UtilLib.getOperatorRewardAddress(operator, staderConfig);
+            UtilLib.sendValue(rewardsAddress, payoutAmount);
+            emit Claimed(rewardsAddress, payoutAmount);
         }
     }
 

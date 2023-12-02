@@ -15,6 +15,13 @@ struct Config {
     uint256 ltv;
 }
 
+struct OperatorLiquidation {
+    uint256 amount;
+    bool isRepaid;
+    bool isClaimed;
+    address liquidator;
+}
+
 interface ISDUtilityPool {
     error InvalidInput();
     error SDTransferFailed();
@@ -92,13 +99,15 @@ interface ISDUtilityPool {
 
     function repayOnBehalf(address utilizer, uint256 repayAmount) external returns (uint256);
 
+    function repayLiquidation(address account) external;
+
     function withdrawProtocolFee(uint256 _amount) external;
 
     function accrueFee() external;
 
     function liquidationCall(address account) external;
 
-    function claimLiquidation(address account, uint256 index) external;
+    function claimLiquidation(uint256 index) external;
 
     function utilizerBalanceCurrent(address account) external returns (uint256);
 
@@ -149,6 +158,8 @@ interface ISDUtilityPool {
     function getLatestExchangeRate() external view returns (uint256);
 
     function utilizerData(address) external view returns (uint256 principal, uint256 utilizeIndex);
+
+    function getOperatorLiquidation(address) external view returns (OperatorLiquidation memory);
 
     function delegatorWithdrawRequests(uint256)
         external

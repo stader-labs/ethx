@@ -77,6 +77,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     RiskConfig public riskConfig;
 
+    OperatorLiquidation[] public liquidations;
+
     // Mappings
     mapping(address => UtilizerStruct) public override utilizerData;
     mapping(address => uint256) public override delegatorCTokenBalance;
@@ -84,6 +86,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     mapping(uint256 => DelegatorWithdrawInfo) public override delegatorWithdrawRequests;
     mapping(address => uint256[]) public override requestIdsByDelegatorAddress;
+    mapping(address => uint256) private liquidationIndexByOperator;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -358,17 +361,28 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
 
         utilizerData[account].utilizeIndex = 0;
+        OperatorLiquidation memory liquidation = new OperatorLiquidation(
+            userData.totalFeeSD * sdPriceInEth,
+            false,
+            false,
+            msg.sender
+        );
+        liquidations.push(liquidation);
 
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         poolUtils.processValidatorExitList(new bytes[](0));
     }
 
-    function claimLiquidation(address account, uint256 index) external override {
-        IOperatorRewardsCollector operatorRewardsCollector = IOperatorRewardsCollector(
-            staderConfig.getOperatorRewardsCollector()
-        );
+    function claimLiquidation(uint256 index) external override {
+        OperatorLiquidaton storage liquidation = liquidations[index];
 
-        operatorRewardsCollector.claimFor(account);
+        require(liquidation.isRepaid == true, 'Not claimable');
+        require(liquidation.isClaimed == false, 'Already claimed');
+        require(liquidation.liquidator == msg.sender, 'Not liquidator');
+
+        liquidation.isClaimed = true;
+
+        // TODO: transfer funds from operatorRewardsCollector to liquidator
     }
 
     /**
@@ -379,6 +393,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function utilizerBalanceCurrent(address account) external override returns (uint256) {
         accrueFee();
         return _utilizerBalanceStoredInternal(account);
+    }
+
+    function repayLiquidation(address account) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.OPERATOR_REWARD_COLLECTOR());
+
+        liquidations[liquidationIndexByOperator[account]].isRepaid = true;
     }
 
     /**
@@ -782,5 +802,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         uint256 totalEth = totalValidators * 2 ether;
         return totalEth;
+    }
+
+    function getOperatorLiquidation(address account) external view override returns (OperatorLiquidation memory) {
+        return liquidations[liquidationIndexByOperator[account]];
     }
 }
