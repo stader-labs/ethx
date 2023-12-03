@@ -361,7 +361,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
 
         utilizerData[account].utilizeIndex = 0;
-        OperatorLiquidation memory liquidation = new OperatorLiquidation(
+        OperatorLiquidation memory liquidation = OperatorLiquidation(
             userData.totalFeeSD * sdPriceInEth,
             false,
             false,
@@ -374,7 +374,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     function claimLiquidation(uint256 index) external override {
-        OperatorLiquidaton storage liquidation = liquidations[index];
+        OperatorLiquidation storage liquidation = liquidations[index];
 
         require(liquidation.isRepaid == true, 'Not claimable');
         require(liquidation.isClaimed == false, 'Already claimed');
