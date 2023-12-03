@@ -622,6 +622,36 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         return (totalUtilizedSD * DECIMAL) / (getPoolAvailableSDBalance() + totalUtilizedSD - accumulatedProtocolFee);
     }
 
+    function getUserData(address account) public view returns (UserData memory) {
+        address staderOracle = staderConfig.getStaderOracle();
+        uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
+        uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(account);
+        uint256 totalFeeSD = accountUtilizePrev - utilizerData[account].principal;
+
+        // Multiplying other values by sdPriceInEth to avoid division
+        uint256 totalCollateralInEth = getOperatorTotalEth(account);
+        uint256 collateralTimesPrice = totalCollateralInEth * sdPriceInEth;
+
+        // Ensuring that we do not divide by zero
+        require(totalFeeSD > 0, 'Total Fee cannot be zero');
+        uint256 healthFactor = (collateralTimesPrice * riskConfig.liquidationThreshold) / (totalFeeSD * sdPriceInEth);
+
+        return UserData(totalFeeSD, totalCollateralInEth, 0, healthFactor, 0);
+    }
+
+    function getOperatorTotalEth(address operator) public view returns (uint256) {
+        address nodeRegistry = staderConfig.getPermissionlessNodeRegistry();
+        uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(operator);
+        uint256 totalValidators = INodeRegistry(nodeRegistry).getOperatorTotalKeys(operatorId);
+
+        uint256 totalEth = totalValidators * 2 ether;
+        return totalEth;
+    }
+
+    function getOperatorLiquidation(address account) external view override returns (OperatorLiquidation memory) {
+        return liquidations[liquidationIndexByOperator[account]];
+    }
+
     /**
      * @dev Assumes fee has already been accrued up to the current block
      * @param sdAmount The amount of the SD token to delegate
@@ -776,35 +806,5 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             }
         }
         revert CannotFindRequestId();
-    }
-
-    function getUserData(address account) public view returns (UserData memory) {
-        address staderOracle = staderConfig.getStaderOracle();
-        uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
-        uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(account);
-        uint256 totalFeeSD = accountUtilizePrev - utilizerData[account].principal;
-
-        // Multiplying other values by sdPriceInEth to avoid division
-        uint256 totalCollateralInEth = getOperatorTotalEth(account);
-        uint256 collateralTimesPrice = totalCollateralInEth * sdPriceInEth;
-
-        // Ensuring that we do not divide by zero
-        require(totalFeeSD > 0, 'Total Fee cannot be zero');
-        uint256 healthFactor = (collateralTimesPrice * riskConfig.liquidationThreshold) / (totalFeeSD * sdPriceInEth);
-
-        return UserData(totalFeeSD, totalCollateralInEth, 0, healthFactor, 0);
-    }
-
-    function getOperatorTotalEth(address operator) public view returns (uint256) {
-        address nodeRegistry = staderConfig.getPermissionlessNodeRegistry();
-        uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(operator);
-        uint256 totalValidators = INodeRegistry(nodeRegistry).getOperatorTotalKeys(operatorId);
-
-        uint256 totalEth = totalValidators * 2 ether;
-        return totalEth;
-    }
-
-    function getOperatorLiquidation(address account) external view override returns (OperatorLiquidation memory) {
-        return liquidations[liquidationIndexByOperator[account]];
     }
 }
