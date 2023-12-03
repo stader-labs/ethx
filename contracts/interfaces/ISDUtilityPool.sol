@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 struct UserData {
-    uint256 totalFeeSD;
+    uint256 totalInterestSD;
     uint256 totalCollateralInSD;
     uint256 healthFactor;
     uint256 lockedEth;
@@ -15,7 +15,9 @@ struct Config {
 }
 
 struct OperatorLiquidation {
-    uint256 amount;
+    uint256 totalAmountInEth;
+    uint256 totalBonusInEth;
+    uint256 totalFeeInEth;
     bool isRepaid;
     bool isClaimed;
     address liquidator;
@@ -50,6 +52,14 @@ interface ISDUtilityPool {
     event Delegated(address indexed delegator, uint256 sdAmount, uint256 sdXToMint);
     event Redeemed(address indexed delegator, uint256 sdAmount, uint256 sdXAmount);
     event UpdatedMinBlockDelayToFinalizeRequest(uint256 minBlockDelayToFinalizeRequest);
+    event LiquidationCall(
+        address indexed account,
+        uint256 totalLiquidationAmountInEth,
+        uint256 liquidationBonusInEth,
+        uint256 liquidationFeeInEth,
+        address indexed liquidator
+    );
+    event ClaimedLiquidation(address indexed liquidator, uint256 liquidationBonusInEth, uint256 liquidationFeeInEth);
 
     event AccruedFees(uint256 feeAccumulated, uint256 totalProtocolFee, uint256 totalUtilizedSD);
 
@@ -71,8 +81,8 @@ interface ISDUtilityPool {
 
     struct RiskConfig {
         uint256 liquidationThreshold;
-        uint256 liquidationBonus;
-        uint256 liquidationFee;
+        uint256 liquidationBonusPercent;
+        uint256 liquidationFeePercent;
         uint256 ltv;
     }
 

@@ -82,6 +82,11 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
         }
     }
 
+    function processOperatorExit(address _operator, uint256 count) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
+        emit ExitOperator(_operator, count);
+    }
+
     //update the address of staderConfig
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_staderConfig);

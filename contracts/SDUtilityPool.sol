@@ -356,21 +356,40 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function liquidationCall(address account) external override {
         UserData memory userData = getUserData(account);
 
-        IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalFeeSD);
+        require(userData.healthFactor <= 1, 'Not liquidatable');
+
+        accrueFee();
+        utilizerData[account].utilizeIndex = utilizeIndex;
+        totalUtilizedSD = totalUtilizedSD - userData.totalInterestSD;
+
+        IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalInterestSD);
 
         uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+        uint256 totalInterestInEth = userData.totalInterestSD * sdPriceInEth;
+        uint256 liquidationBonusInEth = (totalInterestInEth * riskConfig.liquidationBonusPercent) / 100;
+        uint256 liquidationFeeInEth = (totalInterestInEth * riskConfig.liquidationFeePercent) / 100;
+        uint256 totalLiquidationAmountInEth = totalInterestInEth + liquidationBonusInEth + liquidationFeeInEth;
 
-        utilizerData[account].utilizeIndex = 0;
         OperatorLiquidation memory liquidation = OperatorLiquidation(
-            userData.totalFeeSD * sdPriceInEth,
+            totalLiquidationAmountInEth,
+            liquidationBonusInEth,
+            liquidationFeeInEth,
             false,
             false,
             msg.sender
         );
         liquidations.push(liquidation);
+        liquidationIndexByOperator[account] = liquidations.length - 1;
 
-        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
-        poolUtils.processValidatorExitList(new bytes[](0));
+        IPoolUtils(staderConfig.getPoolUtils()).processOperatorExit(account, totalLiquidationAmountInEth / 4 + 1);
+
+        emit LiquidationCall(
+            account,
+            totalLiquidationAmountInEth,
+            liquidationBonusInEth,
+            liquidationFeeInEth,
+            msg.sender
+        );
     }
 
     function claimLiquidation(uint256 index) external override {
@@ -382,7 +401,14 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         liquidation.isClaimed = true;
 
-        // TODO: transfer funds from operatorRewardsCollector to liquidator
+        UtilLib.sendValue(msg.sender, liquidation.totalAmountInEth - liquidation.totalFeeInEth);
+        UtilLib.sendValue(staderConfig.getStaderTreasury(), liquidation.totalFeeInEth);
+
+        emit ClaimedLiquidation(
+            msg.sender,
+            liquidation.totalAmountInEth - liquidation.totalFeeInEth,
+            liquidation.totalFeeInEth
+        );
     }
 
     /**
@@ -641,7 +667,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
                 totalInterestSD,
                 totalCollateralInSD,
                 healthFactor,
-                liquidations[liquidationIndexByOperator[account]].amount
+                liquidations[liquidationIndexByOperator[account]].totalAmountInEth
             );
     }
 
