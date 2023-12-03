@@ -564,7 +564,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @notice view function to get utilizer latest utilized balance
      * @param _utilizer address of the utilizer
      */
-    function getUtilizerLatestBalance(address _utilizer) external view override returns (uint256) {
+    function getUtilizerLatestBalance(address _utilizer) public view override returns (uint256) {
         uint256 currentBlockNumber = block.number;
         uint256 blockDelta = currentBlockNumber - accrualBlockNumber;
         uint256 simpleFeeFactor = utilizationRatePerBlock * blockDelta;
@@ -625,25 +625,30 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function getUserData(address account) public view returns (UserData memory) {
         address staderOracle = staderConfig.getStaderOracle();
         uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
-        uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(account);
-        uint256 totalFeeSD = accountUtilizePrev - utilizerData[account].principal;
+        uint256 latestBalance = getUtilizerLatestBalance(account);
+        uint256 totalInterestSD = latestBalance - utilizerData[account].principal;
 
         // Multiplying other values by sdPriceInEth to avoid division
         uint256 totalCollateralInEth = getOperatorTotalEth(account);
-        uint256 collateralTimesPrice = totalCollateralInEth * sdPriceInEth;
+        uint256 totalCollateralInSD = totalCollateralInEth / sdPriceInEth;
 
-        // Ensuring that we do not divide by zero
-        require(totalFeeSD > 0, 'Total Fee cannot be zero');
-        uint256 healthFactor = (collateralTimesPrice * riskConfig.liquidationThreshold) / (totalFeeSD * sdPriceInEth);
+        uint256 healthFactor = (totalInterestSD == 0)
+            ? type(uint256).max
+            : (totalCollateralInSD * riskConfig.liquidationThreshold) / totalInterestSD;
 
-        return UserData(totalFeeSD, totalCollateralInEth, 0, healthFactor, 0);
+        return
+            UserData(
+                totalInterestSD,
+                totalCollateralInSD,
+                healthFactor,
+                liquidations[liquidationIndexByOperator[account]].amount
+            );
     }
 
     function getOperatorTotalEth(address operator) public view returns (uint256) {
-        address nodeRegistry = staderConfig.getPermissionlessNodeRegistry();
-        uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(operator);
-        uint256 totalValidators = INodeRegistry(nodeRegistry).getOperatorTotalKeys(operatorId);
+        (, , uint256 totalValidators) = ISDCollateral(staderConfig.getSDCollateral()).getOperatorInfo(operator);
 
+        // Real bonded ETH is 4, but we use 2 to be conservative
         uint256 totalEth = totalValidators * 2 ether;
         return totalEth;
     }

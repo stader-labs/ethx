@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 struct UserData {
     uint256 totalFeeSD;
     uint256 totalCollateralInSD;
-    uint256 ltv;
     uint256 healthFactor;
     uint256 lockedEth;
 }
