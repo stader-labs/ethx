@@ -651,8 +651,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function getUserData(address account) public view returns (UserData memory) {
         address staderOracle = staderConfig.getStaderOracle();
         uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
-        uint256 latestBalance = getUtilizerLatestBalance(account);
-        uint256 totalInterestSD = latestBalance - utilizerData[account].principal;
+        uint256 totalInterestSD = getUtilizerLatestBalance(account) -
+            ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(account);
 
         // Multiplying other values by sdPriceInEth to avoid division
         uint256 totalCollateralInEth = getOperatorTotalEth(account);
