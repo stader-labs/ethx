@@ -67,7 +67,6 @@ interface ISocializingPool {
     ) external;
 
     function claimAndDepositSD(
-        uint256 _amountOfSDToDeposit,
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,

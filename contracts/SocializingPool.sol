@@ -109,18 +109,27 @@ contract SocializingPool is
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
-    ) external override whenNotPaused {
-        claimAndDepositSD(0, _index, _amountSD, _amountETH, _merkleProof);
+    ) external override nonReentrant whenNotPaused {
+        _claimAndDepositSD(false, _index, _amountSD, _amountETH, _merkleProof);
     }
 
-    ///@notice claim rewards along with depositing a given amount of SD Token as collateral
+    ///@notice claim ETH rewards along with depositing SD Token rewards as collateral
     function claimAndDepositSD(
-        uint256 _amountOfSDToDepositAsCollateral,
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
-    ) public override nonReentrant whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
+        _claimAndDepositSD(true, _index, _amountSD, _amountETH, _merkleProof);
+    }
+
+    function _claimAndDepositSD(
+        bool _depositSDAsCollateral,
+        uint256[] calldata _index,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof
+    ) internal {
         (uint256 totalAmountSD, uint256 totalAmountETH) = _claim(
             _index,
             msg.sender,
@@ -141,23 +150,10 @@ contract SocializingPool is
         }
         totalOperatorSDRewardsRemaining -= totalAmountSD;
 
-        if (_amountOfSDToDepositAsCollateral > 0) {
-            if (_amountOfSDToDepositAsCollateral > totalAmountSD) {
-                revert InvalidAmount();
-            }
-            ISDCollateral(staderConfig.getSDCollateral()).depositSDAsCollateralOnBehalf(
-                msg.sender,
-                _amountOfSDToDepositAsCollateral
-            );
-        }
-
-        if (totalAmountSD - _amountOfSDToDepositAsCollateral > 0) {
-            if (
-                !IERC20(staderConfig.getStaderToken()).transfer(
-                    operatorRewardsAddr,
-                    (totalAmountSD - (_amountOfSDToDepositAsCollateral))
-                )
-            ) {
+        if (_depositSDAsCollateral) {
+            ISDCollateral(staderConfig.getSDCollateral()).depositSDAsCollateralOnBehalf(msg.sender, totalAmountSD);
+        } else {
+            if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardsAddr, totalAmountSD)) {
                 revert SDTransferFailed();
             }
         }
