@@ -10,7 +10,7 @@ import './interfaces/ISDUtilityPool.sol';
 import './interfaces/ISDIncentiveController.sol';
 
 /// @title SDIncentiveController
-/// @notice This contract handles the distribution of reward tokens for a lending pool.
+/// @notice This contract handles the distribution of reward tokens for a utility pool.
 contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeable {
     // The emission rate of the reward tokens per block.
     uint256 public emissionPerBlock;
@@ -37,12 +37,14 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
 
     /// @notice Initializes the contract with necessary addresses.
     /// @param _staderConfig The address of the Stader configuration contract.
-    function initialize(address _staderConfig) external initializer {
+    function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
 
         staderConfig = IStaderConfig(_staderConfig);
 
         __AccessControl_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /// @notice Claims the accrued rewards for an account.
@@ -60,7 +62,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         emit RewardClaimed(account, reward);
     }
 
-    /// @notice Updates the reward on deposit in the lending pool.
+    /// @notice Updates the reward on deposit in the utility pool.
     /// @param account The account that made a deposit.
     function onDelegate(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
