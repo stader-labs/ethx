@@ -25,6 +25,10 @@ struct OperatorLiquidation {
 
 interface ISDUtilityPool {
     error InvalidInput();
+    error NotClaimable();
+    error AlreadyClaimed();
+    error NotLiquidator();
+    error NotLiquidatable();
     error SDTransferFailed();
     error CannotFindRequestId();
     error SDUtilizeLimitReached();

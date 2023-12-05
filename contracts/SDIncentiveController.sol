@@ -39,6 +39,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     /// @param _staderConfig The address of the Stader configuration contract.
     function initialize(address _admin, address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
+        UtilLib.checkNonZeroAddress(_admin);
 
         staderConfig = IStaderConfig(_staderConfig);
 
@@ -55,7 +56,9 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         updateReward(account);
 
         uint256 reward = rewards[account];
-        require(reward > 0, 'No rewards to claim.');
+        if (reward == 0) {
+            revert NoRewardsToClaim();
+        }
         rewards[account] = 0;
         IERC20(staderConfig.getStaderToken()).transfer(account, reward);
 

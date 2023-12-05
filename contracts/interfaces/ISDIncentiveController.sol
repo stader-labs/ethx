@@ -4,6 +4,8 @@ pragma solidity 0.8.16;
 import './IStaderConfig.sol';
 
 interface ISDIncentiveController {
+    //errors
+    error NoRewardsToClaim();
     // events
     event UpdatedStaderConfig(address staderConfig);
 

@@ -49,7 +49,9 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         // If the liquidation is not repaid, check balance and then proceed with repayment
         if (!operatorLiquidation.isRepaid) {
             // Ensure that the balance is sufficient
-            require(balances[operator] >= operatorLiquidation.totalAmountInEth, 'Insufficient balance');
+            if (balances[operator] < operatorLiquidation.totalAmountInEth) {
+                revert InsufficientBalance();
+            }
 
             // Repay the liquidation and update the operator's balance
             sdUtilityPool.repayLiquidation(operator);

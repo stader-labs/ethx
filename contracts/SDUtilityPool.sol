@@ -356,7 +356,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function liquidationCall(address account) external override {
         UserData memory userData = getUserData(account);
 
-        require(userData.healthFactor <= 1, 'Not liquidatable');
+        if (userData.healthFactor > 1) {
+            revert NotLiquidatable();
+        }
 
         accrueFee();
         utilizerData[account].utilizeIndex = utilizeIndex;
@@ -395,9 +397,15 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function claimLiquidation(uint256 index) external override {
         OperatorLiquidation storage liquidation = liquidations[index];
 
-        require(liquidation.isRepaid == true, 'Not claimable');
-        require(liquidation.isClaimed == false, 'Already claimed');
-        require(liquidation.liquidator == msg.sender, 'Not liquidator');
+        if (!liquidation.isRepaid) {
+            revert NotClaimable();
+        }
+        if (liquidation.isClaimed) {
+            revert AlreadyClaimed();
+        }
+        if (liquidation.liquidator != msg.sender) {
+            revert NotLiquidator();
+        }
 
         liquidation.isClaimed = true;
 
