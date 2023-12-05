@@ -101,14 +101,14 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         __Pausable_init();
         staderConfig = IStaderConfig(_staderConfig);
         utilizeIndex = DECIMAL;
-        utilizationRatePerBlock = 0;
+        utilizationRatePerBlock = 38051750380; // 10%
         protocolFeeFactor = 0;
         nextRequestId = 1;
         nextRequestIdToFinalize = 1;
         finalizationBatchLimit = 50;
-        undelegationPeriodInBlocks = 0;
+        undelegationPeriodInBlocks = 50400; //7 days
         accrualBlockNumber = block.number;
-        minBlockDelayToFinalizeRequest = 0;
+        minBlockDelayToFinalizeRequest = 14400; //2 days
         maxNonRedeemedDelegatorRequestCount = 0;
         maxETHWorthOfSDPerValidator = 1 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
