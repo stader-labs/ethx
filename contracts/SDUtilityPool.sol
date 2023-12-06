@@ -353,7 +353,14 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         emit AccruedFees(feeAccumulated, accumulatedProtocolFee, totalUtilizedSD);
     }
 
+    /**
+     * @notice Initiates the liquidation process for an account if its health factor is below the required threshold.
+     * @dev The function checks the health factor, accrues fees, updates utilized indices, and calculates liquidation amounts.
+     * @param account The address of the account to be liquidated
+     */
     function liquidationCall(address account) external override {
+        if (liquidationIndexByOperator[account] != 0) revert AlreadyLiquidated();
+
         UserData memory userData = getUserData(account);
 
         if (userData.healthFactor > 1) {
@@ -362,7 +369,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         accrueFee();
         utilizerData[account].utilizeIndex = utilizeIndex;
-        totalUtilizedSD = totalUtilizedSD - userData.totalInterestSD;
+        totalUtilizedSD -= userData.totalInterestSD;
 
         IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalInterestSD);
 
@@ -372,16 +379,16 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 liquidationFeeInEth = (totalInterestInEth * riskConfig.liquidationFeePercent) / 100;
         uint256 totalLiquidationAmountInEth = totalInterestInEth + liquidationBonusInEth + liquidationFeeInEth;
 
-        OperatorLiquidation memory liquidation = OperatorLiquidation(
-            totalLiquidationAmountInEth,
-            liquidationBonusInEth,
-            liquidationFeeInEth,
-            false,
-            false,
-            msg.sender
-        );
+        OperatorLiquidation memory liquidation = OperatorLiquidation({
+            totalAmountInEth: totalLiquidationAmountInEth,
+            totalBonusInEth: liquidationBonusInEth,
+            totalFeeInEth: liquidationFeeInEth,
+            isRepaid: false,
+            isClaimed: false,
+            liquidator: msg.sender
+        });
         liquidations.push(liquidation);
-        liquidationIndexByOperator[account] = liquidations.length - 1;
+        liquidationIndexByOperator[account] = liquidations.length;
 
         IPoolUtils(staderConfig.getPoolUtils()).processOperatorExit(account, totalLiquidationAmountInEth / 4 + 1);
 
@@ -394,23 +401,26 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         );
     }
 
+    /**
+     * @notice Allows a liquidator to claim the ETH amount and fees from a completed liquidation.
+     * @dev This function requires that the liquidation is marked as repaid, not already claimed, and that the caller is the liquidator.
+     * @param index The index of the liquidation in the liquidations array
+     */
     function claimLiquidation(uint256 index) external override {
+        if (index >= liquidations.length) revert InvalidInput();
+
         OperatorLiquidation storage liquidation = liquidations[index];
 
-        if (!liquidation.isRepaid) {
-            revert NotClaimable();
-        }
-        if (liquidation.isClaimed) {
-            revert AlreadyClaimed();
-        }
-        if (liquidation.liquidator != msg.sender) {
-            revert NotLiquidator();
-        }
+        if (!liquidation.isRepaid) revert NotClaimable();
+        if (liquidation.isClaimed) revert AlreadyClaimed();
+        if (liquidation.liquidator != msg.sender) revert NotLiquidator();
 
         liquidation.isClaimed = true;
-
-        UtilLib.sendValue(msg.sender, liquidation.totalAmountInEth - liquidation.totalFeeInEth);
-        UtilLib.sendValue(staderConfig.getStaderTreasury(), liquidation.totalFeeInEth);
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).claimLiquidation(
+            liquidation.totalAmountInEth - liquidation.totalFeeInEth,
+            liquidation.totalFeeInEth,
+            liquidation.liquidator
+        );
 
         emit ClaimedLiquidation(
             msg.sender,
@@ -432,7 +442,35 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function repayLiquidation(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.OPERATOR_REWARD_COLLECTOR());
 
-        liquidations[liquidationIndexByOperator[account]].isRepaid = true;
+        liquidations[liquidationIndexByOperator[account] - 1].isRepaid = true;
+        liquidationIndexByOperator[account] = 0;
+    }
+
+    /**
+     * @notice Updates the risk configuration
+     * @param liquidationThreshold The new liquidation threshold percent (1 - 100)
+     * @param liquidationBonusPercent The new liquidation bonus percent (0 - 100)
+     * @param liquidationFeePercent The new liquidation fee percent (0 - 100)
+     * @param ltv The new loan-to-value ratio (1 - 100)
+     */
+    function updateRiskConfig(
+        uint256 liquidationThreshold,
+        uint256 liquidationBonusPercent,
+        uint256 liquidationFeePercent,
+        uint256 ltv
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (liquidationThreshold > 100 || liquidationThreshold == 0) revert InvalidInput();
+        if (liquidationBonusPercent > 100) revert InvalidInput();
+        if (liquidationFeePercent > 100) revert InvalidInput();
+        if (ltv > 100 || ltv == 0) revert InvalidInput();
+
+        riskConfig = RiskConfig({
+            liquidationThreshold: liquidationThreshold,
+            liquidationBonusPercent: liquidationBonusPercent,
+            liquidationFeePercent: liquidationFeePercent,
+            ltv: ltv
+        });
+        emit RiskConfigUpdated(liquidationThreshold, liquidationBonusPercent, liquidationFeePercent, ltv);
     }
 
     /**
@@ -656,13 +694,17 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         return (totalUtilizedSD * DECIMAL) / (getPoolAvailableSDBalance() + totalUtilizedSD - accumulatedProtocolFee);
     }
 
+    /**
+     * @notice Calculates and returns the user data for a given account
+     * @param account The address whose utilisation should be calculated
+     * @return UserData struct containing the user data
+     */
     function getUserData(address account) public view returns (UserData memory) {
         address staderOracle = staderConfig.getStaderOracle();
         uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
         uint256 totalInterestSD = getUtilizerLatestBalance(account) -
             ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(account);
 
-        // Multiplying other values by sdPriceInEth to avoid division
         uint256 totalCollateralInEth = getOperatorTotalEth(account);
         uint256 totalCollateralInSD = totalCollateralInEth / sdPriceInEth;
 
@@ -675,10 +717,15 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
                 totalInterestSD,
                 totalCollateralInSD,
                 healthFactor,
-                liquidations[liquidationIndexByOperator[account]].totalAmountInEth
+                liquidations[liquidationIndexByOperator[account] - 1].totalAmountInEth
             );
     }
 
+    /**
+     * @notice
+     * @param operator Calculates and returns the conservative estimate of the total Ether (ETH) bonded by a given operator.
+     * @return totalEth The total ETH bonded by the operator
+     */
     function getOperatorTotalEth(address operator) public view returns (uint256) {
         (, , uint256 totalValidators) = ISDCollateral(staderConfig.getSDCollateral()).getOperatorInfo(operator);
 
@@ -688,7 +735,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     function getOperatorLiquidation(address account) external view override returns (OperatorLiquidation memory) {
-        return liquidations[liquidationIndexByOperator[account]];
+        return liquidations[liquidationIndexByOperator[account] - 1];
     }
 
     /**

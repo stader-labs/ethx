@@ -16,4 +16,10 @@ interface IOperatorRewardsCollector {
     function claim() external;
 
     function claimFor(address account) external;
+
+    function claimLiquidation(
+        uint256 liquidatorAmount,
+        uint256 feeAmount,
+        address liquidator
+    ) external;
 }

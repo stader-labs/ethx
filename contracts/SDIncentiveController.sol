@@ -12,6 +12,8 @@ import './interfaces/ISDIncentiveController.sol';
 /// @title SDIncentiveController
 /// @notice This contract handles the distribution of reward tokens for the utility pool.
 contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeable {
+    uint256 public constant DECIMAL = 1e18;
+
     // The emission rate of the reward tokens per block.
     uint256 public emissionPerBlock;
 
@@ -112,7 +114,8 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
             return rewardPerTokenStored;
         }
         return
-            rewardPerTokenStored + (((block.number - lastUpdateBlockNumber) * emissionPerBlock * 1e18) / totalSupply);
+            rewardPerTokenStored +
+            (((block.number - lastUpdateBlockNumber) * emissionPerBlock * DECIMAL) / totalSupply);
     }
 
     /// @notice Calculates the total accrued reward for an account.
@@ -122,7 +125,8 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         uint256 currentBalance = ISDUtilityPool(staderConfig.getSDUtilityPool()).delegatorCTokenBalance(account);
         uint256 currentRewardPerToken = rewardPerToken();
 
-        return ((currentBalance * (currentRewardPerToken - userRewardPerTokenPaid[account])) / 1e18) + rewards[account];
+        return
+            ((currentBalance * (currentRewardPerToken - userRewardPerTokenPaid[account])) / DECIMAL) + rewards[account];
     }
 
     /// @dev Internal function to update the reward state for an account.
