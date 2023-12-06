@@ -10,10 +10,13 @@ import './interfaces/ISDUtilityPool.sol';
 import './interfaces/ISDIncentiveController.sol';
 
 /// @title SDIncentiveController
-/// @notice This contract handles the distribution of reward tokens for a utility pool.
+/// @notice This contract handles the distribution of reward tokens for the utility pool.
 contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeable {
     // The emission rate of the reward tokens per block.
     uint256 public emissionPerBlock;
+
+    // The block number of the end of the reward period.
+    uint256 public rewardEndBlock;
 
     // The block number of the last reward calculation.
     uint256 public lastUpdateBlockNumber;
@@ -50,7 +53,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
 
     /// @notice Claims the accrued rewards for an account.
     /// @param account The address of the account claiming rewards.
-    function claim(address account) external {
+    function claim(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
 
         updateReward(account);
@@ -73,9 +76,37 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         updateReward(account);
     }
 
+    /// @notice Updates the address of staderConfig
+    /// @param _staderConfig The new address of staderConfig
+    function updateStaderConfig(address _staderConfig) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_staderConfig);
+        staderConfig = IStaderConfig(_staderConfig);
+        emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    /// @notice Updates the emission rate of the reward tokens per block.
+    /// @param newEmissionRate The new emission rate per block.
+    function updateEmissionRate(uint256 newEmissionRate) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newEmissionRate == 0) revert InvalidEmissionRate();
+        emissionPerBlock = newEmissionRate;
+        emit EmissionRateUpdated(newEmissionRate);
+    }
+
+    /// @notice Updates the end block of the reward period.
+    /// @param _newEndBlock The new end block.
+    function updateEndBlock(uint256 _newEndBlock) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_newEndBlock <= block.number) revert InvalidEndBlock();
+        rewardEndBlock = _newEndBlock;
+        emit RewardEndBlockUpdated(_newEndBlock);
+    }
+
     /// @notice Calculates the current reward per token.
     /// @return The calculated reward per token.
-    function rewardPerToken() public view returns (uint256) {
+    function rewardPerToken() public view override returns (uint256) {
+        if (block.number >= rewardEndBlock) {
+            return rewardPerTokenStored;
+        }
+
         uint256 totalSupply = ISDUtilityPool(staderConfig.getSDUtilityPool()).cTokenTotalSupply();
         if (totalSupply == 0) {
             return rewardPerTokenStored;
@@ -87,7 +118,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     /// @notice Calculates the total accrued reward for an account.
     /// @param account The account to calculate rewards for.
     /// @return The total accrued reward for the account.
-    function earned(address account) public view returns (uint256) {
+    function earned(address account) public view override returns (uint256) {
         uint256 currentBalance = ISDUtilityPool(staderConfig.getSDUtilityPool()).delegatorCTokenBalance(account);
         uint256 currentRewardPerToken = rewardPerToken();
 
@@ -100,14 +131,12 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         rewardPerTokenStored = rewardPerToken();
         lastUpdateBlockNumber = block.number;
 
+        // If the account is not zero, update the reward for the account.
         if (account != address(0)) {
             rewards[account] = earned(account);
             userRewardPerTokenPaid[account] = rewardPerTokenStored;
         }
-    }
 
-    /// @dev Emitted when a reward is claimed.
-    /// @param user The user who claimed the reward.
-    /// @param reward The amount of reward claimed.
-    event RewardClaimed(address indexed user, uint256 reward);
+        emit RewardUpdated(account, rewards[account]);
+    }
 }
