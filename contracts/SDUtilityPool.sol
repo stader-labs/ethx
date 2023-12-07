@@ -109,7 +109,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         undelegationPeriodInBlocks = 50400; //7 days
         accrualBlockNumber = block.number;
         minBlockDelayToFinalizeRequest = 14400; //2 days
-        maxNonRedeemedDelegatorRequestCount = 0;
+        maxNonRedeemedDelegatorRequestCount = 1000;
         maxETHWorthOfSDPerValidator = 1 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
@@ -213,7 +213,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (msg.sender != delegatorRequest.owner) {
             revert CallerNotAuthorizedToRedeem();
         }
-        if (block.number > delegatorRequest.requestBlock + undelegationPeriodInBlocks) {
+        if (block.number < delegatorRequest.requestBlock + undelegationPeriodInBlocks) {
             revert UndelegationPeriodNotPassed();
         }
         uint256 sdToTransfer = delegatorRequest.sdFinalized;
