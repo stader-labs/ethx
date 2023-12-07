@@ -699,7 +699,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param account The address whose utilisation should be calculated
      * @return UserData struct containing the user data
      */
-    function getUserData(address account) public view returns (UserData memory) {
+    function getUserData(address account) public view override returns (UserData memory) {
         address staderOracle = staderConfig.getStaderOracle();
         uint256 sdPriceInEth = IStaderOracle(staderOracle).getSDPriceInETH();
         uint256 totalInterestSD = getUtilizerLatestBalance(account) -
@@ -736,6 +736,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     function getOperatorLiquidation(address account) external view override returns (OperatorLiquidation memory) {
         return liquidations[liquidationIndexByOperator[account] - 1];
+    }
+
+    function getLiquidationThreshold() external view returns (uint256) {
+        return (riskConfig.liquidationThreshold);
     }
 
     /**

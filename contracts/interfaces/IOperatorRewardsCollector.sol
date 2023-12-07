@@ -15,11 +15,13 @@ interface IOperatorRewardsCollector {
 
     function claim() external;
 
-    function claimFor(address account) external;
+    function claimFor(address account, uint256 amount) external;
 
     function claimLiquidation(
         uint256 liquidatorAmount,
         uint256 feeAmount,
         address liquidator
     ) external;
+
+    function withdrawableInEth(address operator) external view returns (uint256);
 }

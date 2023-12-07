@@ -195,4 +195,8 @@ interface ISDUtilityPool {
     function requestIdsByDelegatorAddress(address, uint256) external view returns (uint256);
 
     function getRequestIdsByDelegator(address _owner) external view returns (uint256[] memory);
+
+    function getLiquidationThreshold() external view returns (uint256);
+
+    function getUserData(address account) external view returns (UserData memory);
 }
