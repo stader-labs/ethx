@@ -269,10 +269,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @notice Sender repays their utilized SD, returns actual repayment amount
      * @param repayAmount The amount to repay
      */
-    function repay(uint256 repayAmount) external whenNotPaused returns (uint256 repaidAmount) {
+    function repay(uint256 repayAmount) external whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
         accrueFee();
-        repaidAmount = _repay(msg.sender, repayAmount);
-        return repaidAmount;
+        (repaidAmount, feePaid) = _repay(msg.sender, repayAmount);
     }
 
     /**
@@ -283,11 +282,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         external
         override
         whenNotPaused
-        returns (uint256 repaidAmount)
+        returns (uint256 repaidAmount, uint256 feePaid)
     {
         accrueFee();
-        repaidAmount = _repay(utilizer, repayAmount);
-        return repaidAmount;
+        (repaidAmount, feePaid) = _repay(utilizer, repayAmount);
     }
 
     /**
@@ -799,7 +797,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         emit SDUtilized(utilizer, utilizeAmount);
     }
 
-    function _repay(address utilizer, uint256 repayAmount) internal returns (uint256 repayAmountFinal) {
+    function _repay(address utilizer, uint256 repayAmount)
+        internal
+        returns (uint256 repayAmountFinal, uint256 feePaid)
+    {
         /* Verify `accrualBlockNumber` block number equals current block number */
         if (accrualBlockNumber != block.number) {
             revert AccrualBlockNumberNotLatest();
@@ -815,9 +816,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), repayAmountFinal)) {
             revert SDTransferFailed();
         }
+        uint256 feeAccrued = accountUtilizedPrev -
+            ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(utilizer);
         if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.SD_COLLATERAL())) {
-            uint256 feeAccrued = accountUtilizedPrev -
-                ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(utilizer);
             if (repayAmountFinal > feeAccrued) {
                 ISDCollateral(staderConfig.getSDCollateral()).reduceUtilizedSDPosition(
                     utilizer,
@@ -825,6 +826,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
                 );
             }
         }
+        feePaid = Math.min(repayAmountFinal, feeAccrued);
         utilizerData[utilizer].principal = accountUtilizedPrev - repayAmountFinal;
         utilizerData[utilizer].utilizeIndex = utilizeIndex;
         totalUtilizedSD = totalUtilizedSD - repayAmountFinal;

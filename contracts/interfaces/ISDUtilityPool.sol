@@ -115,9 +115,9 @@ interface ISDUtilityPool {
         uint256 nonTerminalKeyCount
     ) external;
 
-    function repay(uint256 repayAmount) external returns (uint256);
+    function repay(uint256 repayAmount) external returns (uint256, uint256);
 
-    function repayOnBehalf(address utilizer, uint256 repayAmount) external returns (uint256);
+    function repayOnBehalf(address utilizer, uint256 repayAmount) external returns (uint256, uint256);
 
     function repayLiquidation(address account) external;
 

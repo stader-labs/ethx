@@ -112,27 +112,23 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
             revert InsufficientSDToWithdraw(opSDBalance);
         }
         uint256 sdRepaidAmount;
+        uint256 feePaid;
         if (ISDUtilityPool(staderConfig.getSDUtilityPool()).getUtilizerLatestBalance(operator) > 0) {
-            sdRepaidAmount = ISDUtilityPool(staderConfig.getSDUtilityPool()).repayOnBehalf(operator, _requestedSD);
+            (sdRepaidAmount, feePaid) = ISDUtilityPool(staderConfig.getSDUtilityPool()).repayOnBehalf(
+                operator,
+                _requestedSD
+            );
         }
 
-        uint256 utilizedPositionChange = Math.min(sdRepaidAmount, operatorUtilizedSD);
+        uint256 utilizedPositionChange = sdRepaidAmount - feePaid;
         operatorUtilizedSDBalance[operator] -= utilizedPositionChange;
         uint256 selfBondedPositionChange = _requestedSD - utilizedPositionChange;
-        uint256 repayFromSelfBond = sdRepaidAmount >= utilizedPositionChange
-            ? sdRepaidAmount - utilizedPositionChange
-            : 0;
         operatorSDBalance[operator] -= selfBondedPositionChange;
 
-        if (selfBondedPositionChange - repayFromSelfBond > 0) {
+        if (_requestedSD - sdRepaidAmount > 0) {
             address operatorRewardAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
             // cannot use safeERC20 as this contract is an upgradeable contract, and using safeERC20 is not upgrade-safe
-            if (
-                !IERC20(staderConfig.getStaderToken()).transfer(
-                    operatorRewardAddr,
-                    selfBondedPositionChange - repayFromSelfBond
-                )
-            ) {
+            if (!IERC20(staderConfig.getStaderToken()).transfer(operatorRewardAddr, _requestedSD - sdRepaidAmount)) {
                 revert SDTransferFailed();
             }
         }
