@@ -790,12 +790,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (getPoolAvailableSDBalance() - sdRequestedForWithdraw < utilizeAmount) {
             revert InsufficientPoolBalance();
         }
-        uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(utilizer);
+        uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(utilizer);
 
-        utilizerData[utilizer].principal = accountUtilizePrev + utilizeAmount;
+        utilizerData[utilizer].principal = accountUtilizedPrev + utilizeAmount;
         utilizerData[utilizer].utilizeIndex = utilizeIndex;
         totalUtilizedSD = totalUtilizedSD + utilizeAmount;
-        ISDCollateral(staderConfig.getSDCollateral()).depositUtilizedSD(utilizer, utilizeAmount);
+        ISDCollateral(staderConfig.getSDCollateral()).depositSDFromUtilityPool(utilizer, utilizeAmount);
         emit SDUtilized(utilizer, utilizeAmount);
     }
 
@@ -806,17 +806,17 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         }
 
         /* We fetch the amount the utilizer owes, with accumulated fee */
-        uint256 accountUtilizePrev = _utilizerBalanceStoredInternal(utilizer);
+        uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(utilizer);
 
-        repayAmountFinal = (repayAmount == type(uint256).max || repayAmount > accountUtilizePrev)
-            ? accountUtilizePrev
+        repayAmountFinal = (repayAmount == type(uint256).max || repayAmount > accountUtilizedPrev)
+            ? accountUtilizedPrev
             : repayAmount;
 
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), repayAmountFinal)) {
             revert SDTransferFailed();
         }
         if (!staderConfig.onlyStaderContract(msg.sender, staderConfig.SD_COLLATERAL())) {
-            uint256 feeAccrued = accountUtilizePrev -
+            uint256 feeAccrued = accountUtilizedPrev -
                 ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(utilizer);
             if (repayAmountFinal > feeAccrued) {
                 ISDCollateral(staderConfig.getSDCollateral()).reduceUtilizedSDPosition(
@@ -825,7 +825,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
                 );
             }
         }
-        utilizerData[utilizer].principal = accountUtilizePrev - repayAmountFinal;
+        utilizerData[utilizer].principal = accountUtilizedPrev - repayAmountFinal;
         utilizerData[utilizer].utilizeIndex = utilizeIndex;
         totalUtilizedSD = totalUtilizedSD - repayAmountFinal;
         emit Repaid(utilizer, repayAmountFinal);

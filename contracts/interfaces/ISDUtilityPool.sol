@@ -154,6 +154,7 @@ interface ISDUtilityPool {
     function updateStaderConfig(address _staderConfig) external;
 
     //Getters
+    function maxETHWorthOfSDPerValidator() external view returns (uint256);
 
     function cTokenTotalSupply() external view returns (uint256);
 

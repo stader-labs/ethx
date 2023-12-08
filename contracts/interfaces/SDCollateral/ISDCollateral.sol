@@ -35,7 +35,7 @@ interface ISDCollateral {
 
     function depositSDAsCollateralOnBehalf(address _operator, uint256 _sdAmount) external;
 
-    function depositUtilizedSD(address _operator, uint256 _sdAmount) external;
+    function depositSDFromUtilityPool(address _operator, uint256 _sdAmount) external;
 
     function reduceUtilizedSDPosition(address operator, uint256 amount) external;
 

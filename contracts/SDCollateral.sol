@@ -75,19 +75,19 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
      * @param _operator address of node operator
      * @param _sdAmount amount of SD to deposit
      */
-    function depositUtilizedSD(address _operator, uint256 _sdAmount) external override {
+    function depositSDFromUtilityPool(address _operator, uint256 _sdAmount) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
 
-        operatorUtilizedSDBalance[_operator] += _sdAmount;
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
+        operatorUtilizedSDBalance[_operator] += _sdAmount;
 
         emit UtilizedSDDeposited(_operator, _sdAmount);
     }
 
     /**
-     * @notice reduce the utilize SD balance of an operator
+     * @notice reduce the utilized SD balance of an operator
      * @dev only utility pool can call
      * @param _operator address of node operator
      * @param _sdAmount amount of SD
@@ -102,7 +102,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     }
 
     /// @notice for operator to withdraw their sd collateral, which is over and above withdraw threshold
-    /// @dev first SD is used to clear utilize position and remaining goes to operator reward collector
+    /// @dev first, SD is used to clear utilized position and remaining goes to operator reward collector
     function withdraw(uint256 _requestedSD) external override {
         address operator = msg.sender;
         uint256 operatorUtilizedSD = operatorUtilizedSDBalance[operator];
@@ -116,11 +116,11 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
             sdRepaidAmount = ISDUtilityPool(staderConfig.getSDUtilityPool()).repayOnBehalf(operator, _requestedSD);
         }
 
-        uint256 utilizePositionChange = Math.min(sdRepaidAmount, operatorUtilizedSD);
-        operatorUtilizedSDBalance[operator] -= utilizePositionChange;
-        uint256 selfBondedPositionChange = _requestedSD - utilizePositionChange;
-        uint256 repayFromSelfBond = sdRepaidAmount >= utilizePositionChange
-            ? sdRepaidAmount - utilizePositionChange
+        uint256 utilizedPositionChange = Math.min(sdRepaidAmount, operatorUtilizedSD);
+        operatorUtilizedSDBalance[operator] -= utilizedPositionChange;
+        uint256 selfBondedPositionChange = _requestedSD - utilizedPositionChange;
+        uint256 repayFromSelfBond = sdRepaidAmount >= utilizedPositionChange
+            ? sdRepaidAmount - utilizedPositionChange
             : 0;
         operatorSDBalance[operator] -= selfBondedPositionChange;
 
