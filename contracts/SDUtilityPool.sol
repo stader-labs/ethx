@@ -439,6 +439,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     function repayLiquidation(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.OPERATOR_REWARD_COLLECTOR());
+        if (liquidationIndexByOperator[account] == 0) revert InvalidInput();
 
         liquidations[liquidationIndexByOperator[account] - 1].isRepaid = true;
         liquidationIndexByOperator[account] = 0;
@@ -715,7 +716,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
                 totalInterestSD,
                 totalCollateralInSD,
                 healthFactor,
-                liquidations[liquidationIndexByOperator[account] - 1].totalAmountInEth
+                liquidationIndexByOperator[account] == 0
+                    ? 0
+                    : liquidations[liquidationIndexByOperator[account] - 1].totalAmountInEth
             );
     }
 
@@ -733,6 +736,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     function getOperatorLiquidation(address account) external view override returns (OperatorLiquidation memory) {
+        if (liquidationIndexByOperator[account] == 0) return OperatorLiquidation(0, 0, 0, false, false, address(0));
         return liquidations[liquidationIndexByOperator[account] - 1];
     }
 
