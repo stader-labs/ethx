@@ -293,7 +293,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev only `MANAGER` role can call
      * @param _amount amount of protocol fee in SD to withdraw
      */
-    function withdrawProtocolFee(uint256 _amount) external override {
+    function withdrawProtocolFee(uint256 _amount) external override whenNotPaused {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         accrueFee();
         if (_amount > accumulatedProtocolFee) {
@@ -356,7 +356,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev The function checks the health factor, accrues fees, updates utilized indices, and calculates liquidation amounts.
      * @param account The address of the account to be liquidated
      */
-    function liquidationCall(address account) external override {
+    function liquidationCall(address account) external override whenNotPaused {
         if (liquidationIndexByOperator[account] != 0) revert AlreadyLiquidated();
 
         UserData memory userData = getUserData(account);
@@ -404,7 +404,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev This function requires that the liquidation is marked as repaid, not already claimed, and that the caller is the liquidator.
      * @param index The index of the liquidation in the liquidations array
      */
-    function claimLiquidation(uint256 index) external override {
+    function claimLiquidation(uint256 index) external override whenNotPaused {
         if (index >= liquidations.length) revert InvalidInput();
 
         OperatorLiquidation storage liquidation = liquidations[index];
@@ -437,7 +437,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         return _utilizerBalanceStoredInternal(account);
     }
 
-    function repayLiquidation(address account) external override {
+    function repayLiquidation(address account) external override whenNotPaused {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.OPERATOR_REWARD_COLLECTOR());
         if (liquidationIndexByOperator[account] == 0) revert InvalidInput();
 
@@ -543,9 +543,6 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      */
     function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (_finalizationBatchLimit >= undelegationPeriodInBlocks) {
-            revert InvalidInput();
-        }
         finalizationBatchLimit = _finalizationBatchLimit;
         emit UpdatedFinalizationBatchLimit(finalizationBatchLimit);
     }
@@ -577,6 +574,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        if (_minBlockDelayToFinalizeRequest >= undelegationPeriodInBlocks) {
+            revert InvalidInput();
+        }
         minBlockDelayToFinalizeRequest = _minBlockDelayToFinalizeRequest;
         emit UpdatedMinBlockDelayToFinalizeRequest(minBlockDelayToFinalizeRequest);
     }
