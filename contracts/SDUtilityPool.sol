@@ -770,6 +770,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (requestIdsByDelegatorAddress[msg.sender].length + 1 > maxNonRedeemedDelegatorRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
         }
+        ISDIncentiveController(staderConfig.getSDIncentiveController()).claim(msg.sender);
         sdRequestedForWithdraw += _sdAmountToWithdraw;
         delegatorWithdrawRequests[nextRequestId] = DelegatorWithdrawInfo(
             msg.sender,
