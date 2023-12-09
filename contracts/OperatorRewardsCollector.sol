@@ -66,7 +66,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
         uint256 maxWithdrawableInEth = withdrawableInEth(operator);
 
-        if (amount <= maxWithdrawableInEth || amount > balances[operator]) revert InsufficientBalance();
+        if (amount > maxWithdrawableInEth || amount > balances[operator]) revert InsufficientBalance();
 
         balances[operator] -= amount;
 
