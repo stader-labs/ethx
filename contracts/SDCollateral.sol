@@ -122,8 +122,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
 
         uint256 utilizedPositionChange = sdRepaidAmount - feePaid;
         operatorUtilizedSDBalance[operator] -= utilizedPositionChange;
-        uint256 selfBondedPositionChange = _requestedSD - utilizedPositionChange;
-        operatorSDBalance[operator] -= selfBondedPositionChange;
+        operatorSDBalance[operator] -= (_requestedSD - utilizedPositionChange);
 
         if (_requestedSD - sdRepaidAmount > 0) {
             address operatorRewardAddr = UtilLib.getOperatorRewardAddress(operator, staderConfig);
@@ -158,13 +157,12 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         if (sdSlashed == 0) {
             return;
         }
-        uint256 sdSlashFromUtilized = operatorSelfBondedSD >= sdSlashed ? 0 : sdSlashed - operatorSelfBondedSD;
-        operatorSDBalance[_operator] -= (sdSlashed - sdSlashFromUtilized);
-        if (sdSlashFromUtilized > 0) {
-            operatorUtilizedSDBalance[_operator] -= sdSlashFromUtilized;
-        }
+        uint256 sdToSlashFromSelfBonded = Math.min(operatorSelfBondedSD, sdSlashed);
+        operatorSDBalance[_operator] -= sdToSlashFromSelfBonded;
+        operatorUtilizedSDBalance[_operator] -= (sdSlashed - sdToSlashFromSelfBonded);
+
         IAuction(staderConfig.getAuctionContract()).createLot(sdSlashed);
-        emit SDSlashedFromUtilize(_operator, sdSlashFromUtilized);
+        emit UtilizedSDSlashed(_operator, sdSlashed - sdToSlashFromSelfBonded);
         emit SDSlashed(_operator, staderConfig.getAuctionContract(), sdSlashed);
     }
 
