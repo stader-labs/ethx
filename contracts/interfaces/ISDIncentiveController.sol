@@ -31,7 +31,7 @@ interface ISDIncentiveController {
     // functions
     function claim(address account) external;
 
-    function beforeDelegate(address account) external;
+    function updateRewardForAccount(address account) external;
 
     function updateStaderConfig(address _staderConfig) external;
 

@@ -62,7 +62,7 @@ interface ISDUtilityPool {
         uint256 liquidationFeeInEth,
         address indexed liquidator
     );
-    event ClaimedLiquidation(address indexed liquidator, uint256 liquidationBonusInEth, uint256 liquidationFeeInEth);
+    event CompleteLiquidation(uint256 indexed index);
     event RiskConfigUpdated(
         uint256 liquidationThreshold,
         uint256 liquidationBonusPercent,
@@ -119,15 +119,13 @@ interface ISDUtilityPool {
 
     function repayOnBehalf(address utilizer, uint256 repayAmount) external returns (uint256, uint256);
 
-    function repayLiquidation(address account) external;
+    function completeLiquidation(address account) external;
 
     function withdrawProtocolFee(uint256 _amount) external;
 
     function accrueFee() external;
 
     function liquidationCall(address account) external;
-
-    function claimLiquidation(uint256 index) external;
 
     function utilizerBalanceCurrent(address account) external returns (uint256);
 
