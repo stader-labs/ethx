@@ -24,4 +24,6 @@ interface IOperatorRewardsCollector {
     ) external;
 
     function withdrawableInEth(address operator) external view returns (uint256);
+
+    function getBalance(address operator) external view returns (uint256);
 }

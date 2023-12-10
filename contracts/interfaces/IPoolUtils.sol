@@ -39,7 +39,7 @@ interface IPoolUtils {
 
     function processValidatorExitList(bytes[] calldata _pubkeys) external;
 
-    function processOperatorExit(address _operator, uint256 count) external;
+    function processOperatorExit(address _operator, uint256 totalAmount) external;
 
     function getOperatorTotalNonTerminalKeys(
         uint8 _poolId,

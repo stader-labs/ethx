@@ -87,6 +87,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     mapping(address => uint256[]) public override requestIdsByDelegatorAddress;
     mapping(address => uint256) private liquidationIndexByOperator;
 
+    uint256 public conservativeEthPerKey;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -108,6 +110,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         minBlockDelayToFinalizeRequest = 50400; //7 days
         maxNonRedeemedDelegatorRequestCount = 1000;
         maxETHWorthOfSDPerValidator = 1 ether;
+        conservativeEthPerKey = 2 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         emit UpdatedStaderConfig(_staderConfig);
     }
@@ -119,7 +122,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      */
     function delegate(uint256 sdAmount) external override whenNotPaused {
         accrueFee();
-        ISDIncentiveController(staderConfig.getSDIncentiveController()).onDelegate(msg.sender);
+        ISDIncentiveController(staderConfig.getSDIncentiveController()).beforeDelegate(msg.sender);
         _delegate(sdAmount);
     }
 
@@ -350,18 +353,20 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     /**
      * @notice Initiates the liquidation process for an account if its health factor is below the required threshold.
      * @dev The function checks the health factor, accrues fees, updates utilized indices, and calculates liquidation amounts.
+     *      It's important to note that this liquidation process does not touch the operator's self-bonded SD tokens,
+     *      even if they could potentially be used for repayment.
      * @param account The address of the account to be liquidated
      */
     function liquidationCall(address account) external override whenNotPaused {
         if (liquidationIndexByOperator[account] != 0) revert AlreadyLiquidated();
 
+        accrueFee();
         UserData memory userData = getUserData(account);
 
-        if (userData.healthFactor > 1) {
+        if (userData.healthFactor > DECIMAL) {
             revert NotLiquidatable();
         }
 
-        accrueFee();
         utilizerData[account].utilizeIndex = utilizeIndex;
         totalUtilizedSD -= userData.totalInterestSD;
 
@@ -384,7 +389,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         liquidations.push(liquidation);
         liquidationIndexByOperator[account] = liquidations.length;
 
-        IPoolUtils(staderConfig.getPoolUtils()).processOperatorExit(account, totalLiquidationAmountInEth / 4 + 1);
+        IPoolUtils(staderConfig.getPoolUtils()).processOperatorExit(account, totalLiquidationAmountInEth);
 
         emit LiquidationCall(
             account,
@@ -577,6 +582,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         emit UpdatedStaderConfig(_staderConfig);
     }
 
+    function updateConservativeEthPerKey(uint256 _newEthPerKey) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_newEthPerKey == 0) revert InvalidInput();
+        conservativeEthPerKey = _newEthPerKey;
+        emit UpdatedConservativeEthPerKey(_newEthPerKey);
+    }
+
     //Getters
 
     /// @notice return the list of ongoing withdraw requestIds for a user
@@ -687,7 +698,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         uint256 healthFactor = (totalInterestSD == 0)
             ? type(uint256).max
-            : (totalCollateralInSD * riskConfig.liquidationThreshold) / totalInterestSD;
+            : (totalCollateralInSD * riskConfig.liquidationThreshold) / (totalInterestSD * 100);
 
         return
             UserData(
@@ -702,14 +713,21 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     /**
      * @notice
-     * @param operator Calculates and returns the conservative estimate of the total Ether (ETH) bonded by a given operator.
+     * @param operator Calculates and returns the conservative estimate of the total Ether (ETH) bonded by a given operator
+     *                 plus non claimed ETH from rewards collector.
      * @return totalEth The total ETH bonded by the operator
      */
     function getOperatorTotalEth(address operator) public view returns (uint256) {
-        (, , uint256 totalValidators) = ISDCollateral(staderConfig.getSDCollateral()).getOperatorInfo(operator);
+        (, , uint256 nonTerminalKeys) = ISDCollateral(staderConfig.getSDCollateral()).getOperatorInfo(operator);
+        uint256 nonClaimedEth = IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).getBalance(
+            operator
+        );
 
-        // Real bonded ETH is 4, but we use 2 to be conservative
-        uint256 totalEth = totalValidators * 2 ether;
+        // The actual bonded ETH per non-terminal key is 4 ETH on the beacon chain.
+        // However, for a conservative estimate in our calculations, we use conservativeEthPerKey (2 ETH).
+        // This conservative approach accounts for potential slashing risks and withdrawal delays
+        // associated with ETH staking on the beacon chain.
+        uint256 totalEth = nonTerminalKeys * conservativeEthPerKey + nonClaimedEth;
         return totalEth;
     }
 

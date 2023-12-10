@@ -111,4 +111,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
         return withdrawableInSd * IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
     }
+
+    function getBalance(address operator) external view override returns (uint256) {
+        return balances[operator];
+    }
 }
