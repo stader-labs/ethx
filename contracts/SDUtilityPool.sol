@@ -134,6 +134,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         }
         accrueFee();
         uint256 exchangeRate = _exchangeRateStoredInternal();
+        ISDIncentiveController(staderConfig.getSDIncentiveController()).claim(msg.sender);
         delegatorCTokenBalance[msg.sender] -= _cTokenAmount;
         delegatorWithdrawRequestedCTokenCount[msg.sender] += _cTokenAmount;
         uint256 sdRequested = (exchangeRate * _cTokenAmount) / DECIMAL;
@@ -157,6 +158,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (cTokenToReduce > delegatorCTokenBalance[msg.sender]) {
             revert InvalidAmountOfWithdraw();
         }
+        ISDIncentiveController(staderConfig.getSDIncentiveController()).claim(msg.sender);
         delegatorCTokenBalance[msg.sender] -= cTokenToReduce;
         delegatorWithdrawRequestedCTokenCount[msg.sender] += cTokenToReduce;
         _requestId = _requestWithdraw(_sdAmount, cTokenToReduce);
@@ -746,7 +748,6 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (requestIdsByDelegatorAddress[msg.sender].length + 1 > maxNonRedeemedDelegatorRequestCount) {
             revert MaxLimitOnWithdrawRequestCountReached();
         }
-        ISDIncentiveController(staderConfig.getSDIncentiveController()).claim(msg.sender);
         sdRequestedForWithdraw += _sdAmountToWithdraw;
         delegatorWithdrawRequests[nextRequestId] = DelegatorWithdrawInfo(
             msg.sender,
