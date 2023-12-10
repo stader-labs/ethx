@@ -37,7 +37,6 @@ interface ISDUtilityPool {
     error InsufficientPoolBalance();
     error AccrualBlockNumberNotLatest();
     error CallerNotAuthorizedToRedeem();
-    error UndelegationPeriodNotPassed();
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
     error AlreadyLiquidated();
@@ -52,7 +51,6 @@ interface ISDUtilityPool {
     event UpdatedMaxNonRedeemedDelegatorRequestCount(uint256 count);
     event UpdatedFinalizationBatchLimit(uint256 finalizationBatchLimit);
     event UtilizationRatePerBlockUpdated(uint256 utilizationRatePerBlock);
-    event UpdatedUndelegationPeriodInBlocks(uint256 undelegationPeriodInBlocks);
     event UpdatedMaxETHWorthOfSDPerValidator(uint256 maxETHWorthOfSDPerValidator);
     event Delegated(address indexed delegator, uint256 sdAmount, uint256 sdXToMint);
     event Redeemed(address indexed delegator, uint256 sdAmount, uint256 sdXAmount);
@@ -137,15 +135,13 @@ interface ISDUtilityPool {
 
     //Setters
 
-    function updateProtocolFeeFactor(uint256 _protocolFeeFactor) external;
+    function updateProtocolFee(uint256 _protocolFee) external;
 
     function updateUtilizationRatePerBlock(uint256 _utilizationRatePerBlock) external;
 
     function updateMaxETHWorthOfSDPerValidator(uint256 _maxETHWorthOfSDPerValidator) external;
 
     function updateFinalizationBatchLimit(uint256 _finalizationBatchLimit) external;
-
-    function updateUndelegationPeriodInBlocks(uint256 _undelegationPeriodInBlocks) external;
 
     function updateMinBlockDelayToFinalizeRequest(uint256 _minBlockDelayToFinalizeRequest) external;
 
@@ -166,7 +162,7 @@ interface ISDUtilityPool {
 
     function utilizerBalanceStored(address account) external view returns (uint256);
 
-    function getDelegationRate() external view returns (uint256);
+    function getDelegationRatePerBlock() external view returns (uint256);
 
     function exchangeRateStored() external view returns (uint256);
 
