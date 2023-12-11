@@ -54,6 +54,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         if (amount == 0) amount = balances[operator]; // If no amount is specified, claim the full balance
 
         _completeLiquidationIfExists(operator);
+        _transferBackUtilizedSD(operator);
         _claim(operator, amount);
     }
 
@@ -134,5 +135,20 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
             UtilLib.sendValue(rewardsAddress, amount);
             emit Claimed(rewardsAddress, amount);
         }
+    }
+
+    /**
+     * When the operator has no remaining active keys, transfer back the utilized SD to the operator.
+     * @param operator The address of the operator whose utilized SD needs to be transferred back.
+     */
+    function _transferBackUtilizedSD(address operator) internal {
+        ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
+        (, , uint256 nonTerminalKeys) = sdCollateral.getOperatorInfo(operator);
+
+        // Only proceed if the operator has no non-terminal (active) keys left
+        if (nonTerminalKeys > 0) return;
+
+        // Withdraw the operator's utilized SD balance and transfer it back to SD Utility Pool
+        sdCollateral.withdrawOnBehalf(sdCollateral.operatorUtilizedSDBalance(operator), operator);
     }
 }
