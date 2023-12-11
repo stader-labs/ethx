@@ -6,7 +6,8 @@ import './library/UtilLib.sol';
 import './interfaces/IOperatorRewardsCollector.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/ISDUtilityPool.sol';
-import './interfaces/IStaderOracle.sol';
+import './interfaces/SDCollateral/ISDCollateral.sol';
+import './interfaces/IWETH.sol';
 
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
@@ -14,6 +15,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     IStaderConfig public staderConfig;
 
     mapping(address => uint256) public balances;
+
+    IWETH public weth;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -50,51 +53,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     function claimFor(address operator, uint256 amount) public override {
         if (amount == 0) amount = balances[operator]; // If no amount is specified, claim the full balance
 
-        // Retrieve operator liquidation details
-        ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
-        OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
-
-        // If the liquidation is not repaid, check balance and then proceed with repayment
-        if (!operatorLiquidation.isRepaid && operatorLiquidation.totalAmountInEth > 0) {
-            // Ensure that the balance is sufficient
-            if (balances[operator] < operatorLiquidation.totalAmountInEth) revert InsufficientBalance();
-
-            // Repay the liquidation and update the operator's balance
-            sdUtilityPool.repayLiquidation(operator);
-            balances[operator] -= operatorLiquidation.totalAmountInEth;
-        }
-
-        uint256 maxWithdrawableInEth = withdrawableInEth(operator);
-
-        if (amount > maxWithdrawableInEth || amount > balances[operator]) revert InsufficientBalance();
-
-        balances[operator] -= amount;
-
-        // If there's an amount to send, transfer it to the operator's rewards address
-        if (amount > 0) {
-            address rewardsAddress = UtilLib.getOperatorRewardAddress(operator, staderConfig);
-            UtilLib.sendValue(rewardsAddress, amount);
-            emit Claimed(rewardsAddress, amount);
-        }
-    }
-
-    /**
-     * @notice Distributes the liquidation payout and fee. It sends a specified amount to the liquidator and a fee to the Stader treasury.
-     * @dev This function should only be called by the SD Utility Pool contract as part of the liquidation process. It uses UtilLib to safely send ETH.
-     * @param liquidatorAmount The amount of ETH to be sent to the liquidator.
-     * @param feeAmount The amount of ETH to be sent to the Stader treasury as a fee.
-     * @param liquidator The address of the liquidator.
-     */
-    function claimLiquidation(
-        uint256 liquidatorAmount,
-        uint256 feeAmount,
-        address liquidator
-    ) external override {
-        // Ensure only the SD Utility Pool contract can call this function
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
-
-        UtilLib.sendValue(liquidator, liquidatorAmount);
-        UtilLib.sendValue(staderConfig.getStaderTreasury(), feeAmount);
+        _completeLiquidationIfExists(operator);
+        _claim(operator, amount);
     }
 
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -107,8 +67,72 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
         uint256 liquidationThreshold = sdUtilityPool.getLiquidationThreshold();
         UserData memory userData = sdUtilityPool.getUserData(operator);
-        uint256 withdrawableInSd = userData.totalCollateralInSD - (userData.totalInterestSD / liquidationThreshold);
+        uint256 withdrawableInSd = userData.totalCollateralInSD -
+            ((userData.totalInterestSD * 100) / liquidationThreshold);
 
-        return withdrawableInSd * IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+        return ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(withdrawableInSd);
+    }
+
+    function updateWethAddress(address _weth) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_weth);
+        weth = IWETH(_weth);
+        emit UpdatedWethAddress(_weth);
+    }
+
+    function getBalance(address operator) external view override returns (uint256) {
+        return balances[operator];
+    }
+
+    /**
+     * @notice Completes any pending liquidation for an operator if exists.
+     * @dev Internal function to handle liquidation completion.
+     * @param operator The operator whose liquidation needs to be checked.
+     */
+    function _completeLiquidationIfExists(address operator) internal {
+        // Retrieve operator liquidation details
+        ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
+        OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
+
+        // If the liquidation is not repaid, check balance and then proceed with repayment
+        if (!operatorLiquidation.isRepaid && operatorLiquidation.totalAmountInEth > 0) {
+            // Ensure that the balance is sufficient
+            if (balances[operator] < operatorLiquidation.totalAmountInEth) revert InsufficientBalance();
+
+            // Transfer WETH to liquidator and ETH to treasury
+            weth.deposit{value: operatorLiquidation.totalAmountInEth}();
+            if (
+                weth.transferFrom(
+                    address(this),
+                    operatorLiquidation.liquidator,
+                    operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth
+                ) == false
+            ) revert WethTransferFailed();
+            UtilLib.sendValue(staderConfig.getStaderTreasury(), operatorLiquidation.totalFeeInEth);
+
+            sdUtilityPool.completeLiquidation(operator);
+            balances[operator] -= operatorLiquidation.totalAmountInEth;
+        }
+    }
+
+    /**
+     * @notice Internal function to claim a specified amount for an operator.
+     * @dev Deducts the amount from the operator's balance and transfers it to their rewards address.
+     *      It also checks if the claiming amount does not exceed the withdrawable limit or the operator's balance.
+     * @param operator The address of the operator claiming the amount.
+     * @param amount The amount to be claimed.
+     */
+    function _claim(address operator, uint256 amount) internal {
+        uint256 maxWithdrawableInEth = withdrawableInEth(operator);
+
+        if (amount > maxWithdrawableInEth || amount > balances[operator]) revert InsufficientBalance();
+
+        balances[operator] -= amount;
+
+        // If there's an amount to send, transfer it to the operator's rewards address
+        if (amount > 0) {
+            address rewardsAddress = UtilLib.getOperatorRewardAddress(operator, staderConfig);
+            UtilLib.sendValue(rewardsAddress, amount);
+            emit Claimed(rewardsAddress, amount);
+        }
     }
 }

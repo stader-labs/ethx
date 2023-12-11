@@ -67,9 +67,9 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         emit RewardClaimed(account, reward);
     }
 
-    /// @notice Updates the reward on deposit in the utility pool.
-    /// @param account The account that made a deposit.
-    function onDelegate(address account) external override {
+    /// @notice Updates the reward for the account, expected to be called before delegate or after withdraw.
+    /// @param account The account that delegated or withdrew.
+    function updateRewardForAccount(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
 
         updateReward(account);

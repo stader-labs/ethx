@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
+/**
+ * @dev Represents user's financial state in the system.
+ */
 struct UserData {
-    uint256 totalInterestSD;
-    uint256 totalCollateralInSD;
-    uint256 healthFactor;
-    uint256 lockedEth;
+    uint256 totalInterestSD; // Total accrued SD interest for the user.
+    uint256 totalCollateralInSD; // Total collateral in SD for the user.
+    uint256 healthFactor; // Numerical health factor for liquidation risk.
+    uint256 lockedEth; // Amount of ETH locked for liquidation.
 }
 
-struct Config {
-    uint256 liquidationThreshold;
-    uint256 liquidationBonus;
-    uint256 ltv;
-}
-
+/**
+ * @dev Details of a liquidation event for an operator.
+ */
 struct OperatorLiquidation {
-    uint256 totalAmountInEth;
-    uint256 totalBonusInEth;
-    uint256 totalFeeInEth;
-    bool isRepaid;
-    bool isClaimed;
-    address liquidator;
+    uint256 totalAmountInEth; // Total ETH involved in liquidation.
+    uint256 totalBonusInEth; // Bonus ETH in liquidation.
+    uint256 totalFeeInEth; // Fee ETH collected from liquidation.
+    bool isRepaid; // Indicates if liquidation is repaid.
+    bool isClaimed; // Indicates if liquidation is claimed.
+    address liquidator; // Address of the liquidator.
 }
 
 interface ISDUtilityPool {
@@ -62,17 +62,16 @@ interface ISDUtilityPool {
         uint256 liquidationFeeInEth,
         address indexed liquidator
     );
-    event ClaimedLiquidation(address indexed liquidator, uint256 liquidationBonusInEth, uint256 liquidationFeeInEth);
+    event CompleteLiquidation(uint256 indexed index);
     event RiskConfigUpdated(
         uint256 liquidationThreshold,
         uint256 liquidationBonusPercent,
         uint256 liquidationFeePercent,
         uint256 ltv
     );
-
     event AccruedFees(uint256 feeAccumulated, uint256 totalProtocolFee, uint256 totalUtilizedSD);
-
     event WithdrawRequestReceived(address caller, uint256 nextRequestId, uint256 sdAmountToWithdraw);
+    event UpdatedConservativeEthPerKey(uint256 conservativeEthPerKey);
 
     struct UtilizerStruct {
         uint256 principal;
@@ -88,11 +87,14 @@ interface ISDUtilityPool {
         uint256 requestBlock; // block number of withdraw request
     }
 
+    /**
+     * @dev Defines risk parameters for liquidations and loans.
+     */
     struct RiskConfig {
-        uint256 liquidationThreshold;
-        uint256 liquidationBonusPercent;
-        uint256 liquidationFeePercent;
-        uint256 ltv;
+        uint256 liquidationThreshold; // Threshold for liquidation (%).
+        uint256 liquidationBonusPercent; // Bonus for liquidators (%).
+        uint256 liquidationFeePercent; // Liquidation fee (%).
+        uint256 ltv; // Loan-to-Value ratio (%).
     }
 
     function delegate(uint256 sdAmount) external;
@@ -117,15 +119,13 @@ interface ISDUtilityPool {
 
     function repayOnBehalf(address utilizer, uint256 repayAmount) external returns (uint256, uint256);
 
-    function repayLiquidation(address account) external;
+    function completeLiquidation(address account) external;
 
     function withdrawProtocolFee(uint256 _amount) external;
 
     function accrueFee() external;
 
     function liquidationCall(address account) external;
-
-    function claimLiquidation(uint256 index) external;
 
     function utilizerBalanceCurrent(address account) external returns (uint256);
 
@@ -148,6 +148,8 @@ interface ISDUtilityPool {
     function updateMaxNonRedeemedDelegatorRequestCount(uint256 _count) external;
 
     function updateStaderConfig(address _staderConfig) external;
+
+    function updateConservativeEthPerKey(uint256 _newEthPerKey) external;
 
     //Getters
     function maxETHWorthOfSDPerValidator() external view returns (uint256);
