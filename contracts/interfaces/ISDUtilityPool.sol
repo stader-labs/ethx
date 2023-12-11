@@ -166,6 +166,8 @@ interface ISDUtilityPool {
 
     function getDelegationRatePerBlock() external view returns (uint256);
 
+    function utilizationRatePerBlock() external view returns (uint256);
+
     function exchangeRateStored() external view returns (uint256);
 
     function poolUtilization() external view returns (uint256);
