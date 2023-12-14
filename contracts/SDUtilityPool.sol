@@ -138,13 +138,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         }
         accrueFee();
         uint256 exchangeRate = _exchangeRateStoredInternal();
-        ISDIncentiveController(staderConfig.getSDIncentiveController()).claim(msg.sender);
         delegatorCTokenBalance[msg.sender] -= _cTokenAmount;
         delegatorWithdrawRequestedCTokenCount[msg.sender] += _cTokenAmount;
         uint256 sdRequested = (exchangeRate * _cTokenAmount) / DECIMAL;
         _requestId = _requestWithdraw(sdRequested, _cTokenAmount);
-
-        ISDIncentiveController(staderConfig.getSDIncentiveController()).updateRewardForAccount(msg.sender);
     }
 
     /**
@@ -164,12 +161,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (cTokenToReduce > delegatorCTokenBalance[msg.sender]) {
             revert InvalidAmountOfWithdraw();
         }
-        ISDIncentiveController(staderConfig.getSDIncentiveController()).claim(msg.sender);
         delegatorCTokenBalance[msg.sender] -= cTokenToReduce;
         delegatorWithdrawRequestedCTokenCount[msg.sender] += cTokenToReduce;
         _requestId = _requestWithdraw(_sdAmount, cTokenToReduce);
-
-        ISDIncentiveController(staderConfig.getSDIncentiveController()).updateRewardForAccount(msg.sender);
     }
 
     /**
@@ -193,6 +187,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             ) {
                 break;
             }
+            ISDIncentiveController(staderConfig.getSDIncentiveController()).updateRewardForAccount(
+                delegatorWithdrawInfo.owner
+            );
             delegatorWithdrawRequests[requestId].sdFinalized = minSDRequiredToFinalizeRequest;
             sdRequestedForWithdraw -= requiredSD;
             sdToReserveToFinalizeRequests += minSDRequiredToFinalizeRequest;
@@ -223,6 +220,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 sdToTransfer = delegatorRequest.sdFinalized;
         sdReservedForClaim -= sdToTransfer;
         _deleteRequestId(_requestId);
+        ISDIncentiveController(staderConfig.getSDIncentiveController()).claim(msg.sender);
         if (!IERC20(staderConfig.getStaderToken()).transfer(msg.sender, sdToTransfer)) {
             revert SDTransferFailed();
         }

@@ -119,7 +119,9 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     /// @param account The account to calculate rewards for.
     /// @return The total accrued reward for the account.
     function earned(address account) public view override returns (uint256) {
-        uint256 currentBalance = ISDUtilityPool(staderConfig.getSDUtilityPool()).delegatorCTokenBalance(account);
+        ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
+        uint256 currentBalance = sdUtilityPool.delegatorCTokenBalance(account) +
+            sdUtilityPool.delegatorWithdrawRequestedCTokenCount(account);
         uint256 currentRewardPerToken = rewardPerToken();
 
         return

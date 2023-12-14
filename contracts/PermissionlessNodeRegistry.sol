@@ -128,7 +128,7 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _pubkey,
         bytes[] calldata _preDepositSignature,
         bytes[] calldata _depositSignature
-    ) external payable override nonReentrant whenNotPaused {
+    ) external payable override whenNotPaused {
         addValidatorKeysWithUtilizeSD(0, _pubkey, _preDepositSignature, _depositSignature);
     }
 

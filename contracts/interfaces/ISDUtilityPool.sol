@@ -162,6 +162,10 @@ interface ISDUtilityPool {
 
     function getPoolAvailableSDBalance() external view returns (uint256);
 
+    function sdRequestedForWithdraw() external view returns (uint256);
+
+    function accumulatedProtocolFee() external view returns (uint256);
+
     function utilizerBalanceStored(address account) external view returns (uint256);
 
     function getDelegationRatePerBlock() external view returns (uint256);
