@@ -11,4 +11,32 @@ contract SDCollateralMock {
     }
 
     function slashValidatorSD(uint256, uint8) external {}
+
+    function getOperatorInfo(address)
+        external
+        pure
+        returns (
+            uint8,
+            uint256,
+            uint256
+        )
+    {
+        return (1, 1, 1);
+    }
+
+    function convertSDToETH(uint256 _sdAmount) external pure returns (uint256) {
+        return _sdAmount;
+    }
+
+    function convertETHToSD(uint256 _ethAmount) external pure returns (uint256) {
+        return _ethAmount;
+    }
+
+    function operatorUtilizedSDBalance(address) external pure returns (uint256) {
+        return 0;
+    }
+
+    function depositSDFromUtilityPool(address, uint256) external {}
+
+    function reduceUtilizedSDPosition(address, uint256) external {}
 }

@@ -194,7 +194,6 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             sdRequestedForWithdraw -= requiredSD;
             sdToReserveToFinalizeRequests += minSDRequiredToFinalizeRequest;
             delegatorWithdrawRequestedCTokenCount[delegatorWithdrawInfo.owner] -= amountOfcToken;
-            //TODO call Incentive controller
             cTokenTotalSupply -= amountOfcToken;
             unchecked {
                 ++requestId;
@@ -622,8 +621,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (utilizeSnapshot.principal == 0) {
             return 0;
         }
-        uint256 principalTimesIndex = utilizeSnapshot.principal * utilizeIndexNew;
-        return principalTimesIndex / utilizeSnapshot.utilizeIndex;
+        return (utilizeSnapshot.principal * utilizeIndexNew) / utilizeSnapshot.utilizeIndex;
     }
 
     /**

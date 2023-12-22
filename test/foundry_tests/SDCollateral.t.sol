@@ -10,6 +10,7 @@ import '../../contracts/SDCollateral.sol';
 import '../mocks/StaderTokenMock.sol';
 import '../mocks/PoolUtilsMock.sol';
 import '../mocks/StaderOracleMock.sol';
+import '../mocks/SDUtilityPoolMock.sol';
 
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -29,6 +30,8 @@ contract SDCollateralTest is Test {
         address ethDepositAddr = vm.addr(102);
 
         StaderOracleMock staderOracle = new StaderOracleMock();
+
+        SDUtilityPoolMock sdUtilityPool = new SDUtilityPoolMock();
 
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
@@ -52,6 +55,7 @@ contract SDCollateralTest is Test {
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
         staderConfig.updatePoolUtils(address(poolUtils));
+        staderConfig.updateSDUtilityPool(address(sdUtilityPool));
         staderConfig.updateStaderOracle(address(staderOracle));
         staderConfig.updateAuctionContract(address(auction));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
