@@ -23,6 +23,7 @@ interface IPermissionlessNodeRegistry {
     event UpdatedNextQueuedValidatorIndex(uint256 nextQueuedValidatorIndex);
     event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);
     event TransferredCollateralToPool(uint256 amount);
+    event ValidatorAddedViaReferral(uint256 amount, string referralId);
 
     //Getters
 
@@ -53,6 +54,7 @@ interface IPermissionlessNodeRegistry {
     ) external returns (address mevFeeRecipientAddress);
 
     function addValidatorKeysWithUtilizeSD(
+        string calldata _referralId,
         uint256 _amountOfSDToUtilize,
         bytes[] calldata _pubkey,
         bytes[] calldata _preDepositSignature,

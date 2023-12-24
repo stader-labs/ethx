@@ -129,18 +129,20 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _preDepositSignature,
         bytes[] calldata _depositSignature
     ) external payable override whenNotPaused {
-        addValidatorKeysWithUtilizeSD(0, _pubkey, _preDepositSignature, _depositSignature);
+        addValidatorKeysWithUtilizeSD('', 0, _pubkey, _preDepositSignature, _depositSignature);
     }
 
     /**
      * @notice add validator keys
      * @dev only accepts if bond of 4 ETH per key is provided along with sufficient SD lockup after utilize
+     * @param _referralId referral Id
      * @param _amountOfSDToUtilize amount of SD to utilize from Utility Pool
      * @param _pubkey pubkey of validators
      * @param _preDepositSignature signature of a validators for 1ETH deposit
      * @param _depositSignature signature of a validator for 31ETH deposit
      */
     function addValidatorKeysWithUtilizeSD(
+        string memory _referralId,
         uint256 _amountOfSDToUtilize,
         bytes[] calldata _pubkey,
         bytes[] calldata _preDepositSignature,
@@ -187,6 +189,7 @@ contract PermissionlessNodeRegistry is
         IPermissionlessPool(staderConfig.getPermissionlessPool()).preDepositOnBeaconChain{
             value: staderConfig.getPreDepositSize() * keyCount
         }(_pubkey, _preDepositSignature, operatorId, operatorTotalKeys);
+        emit ValidatorAddedViaReferral(msg.value, _referralId);
     }
 
     /**
