@@ -23,6 +23,7 @@ contract SDCollateralTest is Test {
     SDCollateral sdCollateral;
     StaderConfig staderConfig;
     StaderTokenMock staderToken;
+    SDUtilityPoolMock sdUtilityPool;
 
     function setUp() public {
         staderAdmin = vm.addr(100);
@@ -31,7 +32,7 @@ contract SDCollateralTest is Test {
 
         StaderOracleMock staderOracle = new StaderOracleMock();
 
-        SDUtilityPoolMock sdUtilityPool = new SDUtilityPoolMock();
+        sdUtilityPool = new SDUtilityPoolMock();
 
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
@@ -121,6 +122,74 @@ contract SDCollateralTest is Test {
         assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
         assertEq(sdCollateral.operatorSDBalance(user), sdAmount);
         assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
+    }
+
+    function test_depositSDAsCollateralOnBehalf(
+        uint128 approveAmount,
+        uint128 sdAmount,
+        uint16 randomSeed,
+        uint16 randomSeed2
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+
+        vm.assume(randomSeed > 0 && randomSeed2 > 0);
+        address user = vm.addr(randomSeed);
+        address user2 = vm.addr(randomSeed2);
+
+        staderToken.transfer(user, sdAmount);
+
+        vm.startPrank(user); // makes user as the caller untill stopPrank();
+        vm.assume(approveAmount >= sdAmount);
+        staderToken.approve(address(sdCollateral), approveAmount);
+        sdCollateral.depositSDAsCollateralOnBehalf(user2, sdAmount);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
+        assertEq(sdCollateral.operatorSDBalance(user2), sdAmount);
+        assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
+    }
+
+    function test_depositSDFromUtilityPool(
+        uint128 approveAmount,
+        uint128 sdAmount,
+        uint16 randomSeed
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+
+        vm.assume(randomSeed > 0);
+        vm.assume(approveAmount >= sdAmount);
+        address operator = vm.addr(randomSeed);
+        vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
+        sdCollateral.depositSDFromUtilityPool(operator, sdAmount);
+        staderToken.transfer(address(sdUtilityPool), sdAmount);
+        vm.startPrank(address(sdUtilityPool));
+        staderToken.approve(address(sdCollateral), approveAmount);
+        sdCollateral.depositSDFromUtilityPool(operator, sdAmount);
+        assertEq(sdCollateral.operatorUtilizedSDBalance(operator), sdAmount);
+        vm.stopPrank();
+        vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
+        sdCollateral.reduceUtilizedSDPosition(operator, sdAmount);
+        vm.startPrank(address(sdUtilityPool));
+        sdCollateral.reduceUtilizedSDPosition(operator, sdAmount);
+        assertEq(sdCollateral.operatorUtilizedSDBalance(operator), 0);
+    }
+
+    function testFail_depositSDFromUtilityPoolWithInsufficientAllowance(
+        uint128 approveAmount,
+        uint128 sdAmount,
+        uint16 randomSeed
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance);
+
+        vm.assume(randomSeed > 0);
+        vm.assume(approveAmount < sdAmount);
+        address operator = vm.addr(randomSeed);
+        staderToken.transfer(address(sdUtilityPool), sdAmount);
+        vm.startPrank(address(sdUtilityPool));
+        staderToken.approve(address(sdCollateral), approveAmount);
+        sdCollateral.depositSDFromUtilityPool(operator, sdAmount);
+        assertEq(sdCollateral.operatorUtilizedSDBalance(operator), sdAmount);
     }
 
     function test_updatePoolThreshold_revertIfNotCalledByManager(
