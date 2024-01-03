@@ -683,7 +683,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
         uint256 healthFactor = (totalInterestSD == 0)
             ? type(uint256).max
-            : (totalCollateralInSD * riskConfig.liquidationThreshold) / (totalInterestSD * 100);
+            : (totalCollateralInSD * riskConfig.liquidationThreshold) / (totalInterestSD * 100 / DECIMAL);
 
         return
             UserData(
