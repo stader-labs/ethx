@@ -23,7 +23,7 @@ interface IPoolUtils {
     event DeactivatedPool(uint8 indexed poolId, address poolAddress);
     event UpdatedStaderConfig(address staderConfig);
     event ExitValidator(bytes pubkey);
-    event ExitOperator(address indexed operator, uint256 count);
+    event ExitOperator(address indexed operator, uint256 totalAmount);
 
     // returns the details of a specific pool
     function poolAddressById(uint8) external view returns (address poolAddress);

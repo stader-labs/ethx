@@ -9,6 +9,8 @@ import '../../contracts/SDUtilityPool.sol';
 import '../mocks/SDCollateralMock.sol';
 import '../mocks/StaderTokenMock.sol';
 import '../mocks/SDIncentiveControllerMock.sol';
+import '../mocks/OperatorRewardsCollectorMock.sol';
+import '../mocks/PoolUtilsMock.sol';
 
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -23,6 +25,8 @@ contract SDUtilityPoolTest is Test {
     SDUtilityPool sdUtilityPool;
     StaderTokenMock staderToken;
     SDCollateralMock sdCollateral;
+    OperatorRewardsCollectorMock operatorRewardsCollector;
+    PoolUtilsMock poolUtils;
 
     function setUp() public {
         staderAdmin = vm.addr(100);
@@ -44,11 +48,15 @@ contract SDUtilityPoolTest is Test {
 
         sdCollateral = new SDCollateralMock();
         SDIncentiveControllerMock sdIncentiveController = new SDIncentiveControllerMock();
+        operatorRewardsCollector = new OperatorRewardsCollectorMock();
+        poolUtils = new PoolUtilsMock(address(staderConfig));
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
         staderConfig.updateSDCollateral(address(sdCollateral));
+        staderConfig.updateOperatorRewardsCollector(address(operatorRewardsCollector));
         staderConfig.updateSDIncentiveController(address(sdIncentiveController));
+        staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
@@ -63,6 +71,9 @@ contract SDUtilityPoolTest is Test {
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
+        
+        vm.prank(staderAdmin);
+        sdUtilityPool.updateRiskConfig(70, 30, 5, 50);
     }
 
     function test_Initialize() public {
@@ -626,5 +637,52 @@ contract SDUtilityPoolTest is Test {
         vm.prank(staderAdmin);
         sdUtilityPool.updateStaderConfig(inputAddr);
         assertEq(address(sdUtilityPool.staderConfig()), inputAddr);
+    }
+
+    function test_UpdateRiskConfig(uint256 randomSeed) public {
+        vm.assume(randomSeed > 0);
+        vm.assume(randomSeed < 100);
+        vm.expectRevert();
+        sdUtilityPool.updateRiskConfig(randomSeed, randomSeed, randomSeed, randomSeed);
+        vm.prank(staderAdmin);
+        sdUtilityPool.updateRiskConfig(randomSeed, randomSeed, randomSeed, randomSeed);
+    }
+
+    function test_LiquidationCall(
+        uint16 randomSeed
+    ) public {
+        vm.assume(randomSeed > 1);
+        uint256 utilizeAmount = 1e22;
+        
+        address operator = vm.addr(randomSeed);
+        address liquidator = vm.addr(randomSeed - 1);
+
+        staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
+        staderToken.transfer(liquidator, utilizeAmount * 10);
+        sdUtilityPool.delegate(utilizeAmount * 10);
+
+        vm.startPrank(operator);
+        sdUtilityPool.utilize(utilizeAmount);
+        vm.stopPrank();
+
+        vm.roll(200000000);
+        vm.mockCall(
+            address(sdCollateral),
+            abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
+            abi.encode(utilizeAmount)
+        );
+
+        vm.startPrank(liquidator);
+        staderToken.approve(address(sdUtilityPool), utilizeAmount*10);
+        uint256 beforeBalance = staderToken.balanceOf(liquidator);
+        UserData memory userData = sdUtilityPool.getUserData(operator);
+        sdUtilityPool.liquidationCall(operator);
+        vm.stopPrank();
+
+        uint256 afterBalance = staderToken.balanceOf(liquidator);
+        assertEq(beforeBalance - afterBalance, userData.totalInterestSD);
+
+        userData = sdUtilityPool.getUserData(operator);
+        assertEq(0, userData.totalInterestSD);
     }
 }
