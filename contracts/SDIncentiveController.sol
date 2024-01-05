@@ -84,16 +84,22 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     }
 
     /// @notice Updates the emission rate of the reward tokens per block.
+    /// @dev only `MANAGER` role can call
     /// @param newEmissionRate The new emission rate per block.
-    function updateEmissionRate(uint256 newEmissionRate) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateEmissionRate(uint256 newEmissionRate) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+
         if (newEmissionRate == 0) revert InvalidEmissionRate();
         emissionPerBlock = newEmissionRate;
         emit EmissionRateUpdated(newEmissionRate);
     }
 
     /// @notice Updates the end block of the reward period.
+    /// @dev only `MANAGER` role can call
     /// @param _newEndBlock The new end block.
-    function updateEndBlock(uint256 _newEndBlock) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateEndBlock(uint256 _newEndBlock) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+
         if (_newEndBlock <= block.number) revert InvalidEndBlock();
         rewardEndBlock = _newEndBlock;
         emit RewardEndBlockUpdated(_newEndBlock);
