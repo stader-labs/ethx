@@ -71,7 +71,7 @@ contract SDUtilityPoolTest is Test {
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
-        
+
         vm.prank(staderAdmin);
         sdUtilityPool.updateRiskConfig(70, 30, 5, 50);
     }
@@ -381,6 +381,11 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.utilize(utilizeAmount);
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
+        vm.mockCall(
+            address(sdCollateral),
+            abi.encodeWithSelector(ISDCollateral.convertETHToSD.selector),
+            abi.encode(sdUtilityPool.maxETHWorthOfSDPerValidator())
+        );
         vm.expectRevert(ISDUtilityPool.SDUtilizeLimitReached.selector);
         sdUtilityPool.utilize(2 * 1 ether);
         vm.expectRevert(ISDUtilityPool.InsufficientPoolBalance.selector);
@@ -459,6 +464,11 @@ contract SDUtilityPoolTest is Test {
         vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
         sdUtilityPool.utilizeWhileAddingKeys(user, utilizeAmount, nonTerminalKeyCount);
         vm.startPrank(permissionlessNodeRegistry);
+        vm.mockCall(
+            address(sdCollateral),
+            abi.encodeWithSelector(ISDCollateral.convertETHToSD.selector),
+            abi.encode(sdUtilityPool.maxETHWorthOfSDPerValidator())
+        );
         vm.expectRevert(ISDUtilityPool.SDUtilizeLimitReached.selector);
         sdUtilityPool.utilizeWhileAddingKeys(user, maxUtilize + 1, nonTerminalKeyCount);
         vm.startPrank(user);
@@ -648,12 +658,10 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.updateRiskConfig(randomSeed, randomSeed, randomSeed, randomSeed);
     }
 
-    function test_LiquidationCall(
-        uint16 randomSeed
-    ) public {
+    function test_LiquidationCall(uint16 randomSeed) public {
         vm.assume(randomSeed > 1);
         uint256 utilizeAmount = 1e22;
-        
+
         address operator = vm.addr(randomSeed);
         address liquidator = vm.addr(randomSeed - 1);
 
@@ -673,7 +681,7 @@ contract SDUtilityPoolTest is Test {
         );
 
         vm.startPrank(liquidator);
-        staderToken.approve(address(sdUtilityPool), utilizeAmount*10);
+        staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
         uint256 beforeBalance = staderToken.balanceOf(liquidator);
         UserData memory userData = sdUtilityPool.getUserData(operator);
         sdUtilityPool.liquidationCall(operator);

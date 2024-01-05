@@ -25,7 +25,7 @@ contract SDCollateralMock {
     }
 
     function convertSDToETH(uint256 _sdAmount) external pure returns (uint256) {
-        return _sdAmount / 10000 ;
+        return _sdAmount / 10000;
     }
 
     function convertETHToSD(uint256 _ethAmount) external pure returns (uint256) {
