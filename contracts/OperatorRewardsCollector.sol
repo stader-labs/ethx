@@ -100,7 +100,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
             if (balances[operator] < operatorLiquidation.totalAmountInEth) revert InsufficientBalance();
 
             // Transfer WETH to liquidator and ETH to treasury
-            weth.deposit{value: operatorLiquidation.totalAmountInEth}();
+            weth.deposit{value: operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth}();
             if (
                 weth.transferFrom(
                     address(this),
@@ -132,7 +132,14 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         // If there's an amount to send, transfer it to the operator's rewards address
         if (amount > 0) {
             address rewardsAddress = UtilLib.getOperatorRewardAddress(operator, staderConfig);
-            UtilLib.sendValue(rewardsAddress, amount);
+            weth.deposit{value: amount}();
+            if (
+                weth.transferFrom(
+                    address(this),
+                    rewardsAddress,
+                    amount
+                ) == false
+            ) revert WethTransferFailed();
             emit Claimed(rewardsAddress, amount);
         }
     }
