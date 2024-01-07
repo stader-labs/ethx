@@ -8,6 +8,9 @@ interface ISDIncentiveController {
     error NoRewardsToClaim();
     error InvalidEmissionRate();
     error InvalidEndBlock();
+    error InvalidRewardAmount();
+    error ExistingRewardPeriod();
+    error SDTransferFailed();
 
     // events
     /// @dev Emitted when the Stader configuration contract is updated.
@@ -29,15 +32,13 @@ interface ISDIncentiveController {
     event RewardEndBlockUpdated(uint256 newRewardEndBlock);
 
     // functions
+    function start(uint256 rewardAmount, uint256 duration) external;
+
     function claim(address account) external;
 
     function updateRewardForAccount(address account) external;
 
     function updateStaderConfig(address _staderConfig) external;
-
-    function updateEmissionRate(uint256 newEmissionRate) external;
-
-    function updateEndBlock(uint256 _newEndBlock) external;
 
     function rewardPerToken() external view returns (uint256);
 

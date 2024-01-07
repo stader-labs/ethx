@@ -53,6 +53,30 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
+    /// @notice Starts the reward period.
+    /// @dev only `MANAGER` role can call
+    /// @param rewardAmount The amount of reward tokens to distribute.
+    /// @param duration The duration of the reward period in blocks.
+    function start(uint256 rewardAmount, uint256 duration) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+
+        if (rewardEndBlock > block.number) revert ExistingRewardPeriod();
+        if (rewardAmount == 0) revert InvalidRewardAmount();
+        if (duration == 0) revert InvalidEndBlock();
+        if (rewardAmount % duration != 0) revert InvalidEndBlock();
+
+        updateReward(address(0));
+
+        emissionPerBlock = rewardAmount / duration;
+        rewardEndBlock = block.number + duration;
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), rewardAmount)) {
+            revert SDTransferFailed();
+        }
+
+        emit EmissionRateUpdated(emissionPerBlock);
+        emit RewardEndBlockUpdated(rewardEndBlock);
+    }
+
     /// @notice Claims the accrued rewards for an account.
     /// @param account The address of the account claiming rewards.
     function claim(address account) external override {
@@ -83,42 +107,17 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         emit UpdatedStaderConfig(_staderConfig);
     }
 
-    /// @notice Updates the emission rate of the reward tokens per block.
-    /// @dev only `MANAGER` role can call
-    /// @param newEmissionRate The new emission rate per block.
-    function updateEmissionRate(uint256 newEmissionRate) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-
-        if (newEmissionRate == 0) revert InvalidEmissionRate();
-        emissionPerBlock = newEmissionRate;
-        emit EmissionRateUpdated(newEmissionRate);
-    }
-
-    /// @notice Updates the end block of the reward period.
-    /// @dev only `MANAGER` role can call
-    /// @param _newEndBlock The new end block.
-    function updateEndBlock(uint256 _newEndBlock) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-
-        if (_newEndBlock <= block.number) revert InvalidEndBlock();
-        rewardEndBlock = _newEndBlock;
-        emit RewardEndBlockUpdated(_newEndBlock);
-    }
-
     /// @notice Calculates the current reward per token.
     /// @return The calculated reward per token.
     function rewardPerToken() public view override returns (uint256) {
-        if (block.number >= rewardEndBlock) {
-            return rewardPerTokenStored;
-        }
-
         uint256 totalSupply = ISDUtilityPool(staderConfig.getSDUtilityPool()).cTokenTotalSupply();
         if (totalSupply == 0) {
             return rewardPerTokenStored;
         }
+
         return
             rewardPerTokenStored +
-            (((block.number - lastUpdateBlockNumber) * emissionPerBlock * DECIMAL) / totalSupply);
+            (((lastRewardTime() - lastUpdateBlockNumber) * emissionPerBlock * DECIMAL) / totalSupply);
     }
 
     /// @notice Calculates the total accrued reward for an account.
@@ -128,17 +127,15 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
         uint256 currentBalance = sdUtilityPool.delegatorCTokenBalance(account) +
             sdUtilityPool.delegatorWithdrawRequestedCTokenCount(account);
-        uint256 currentRewardPerToken = rewardPerToken();
 
-        return
-            ((currentBalance * (currentRewardPerToken - userRewardPerTokenPaid[account])) / DECIMAL) + rewards[account];
+        return ((currentBalance * (rewardPerToken() - userRewardPerTokenPaid[account])) / DECIMAL) + rewards[account];
     }
 
     /// @dev Internal function to update the reward state for an account.
     /// @param account The account to update the reward for.
     function updateReward(address account) internal {
         rewardPerTokenStored = rewardPerToken();
-        lastUpdateBlockNumber = block.number;
+        lastUpdateBlockNumber = lastRewardTime();
 
         // If the account is not zero, update the reward for the account.
         if (account != address(0)) {
@@ -147,5 +144,10 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         }
 
         emit RewardUpdated(account, rewards[account]);
+    }
+
+    /// @dev Internal function to get the last possible reward block number.
+    function lastRewardTime() public view returns (uint256) {
+        return block.number >= rewardEndBlock ? rewardEndBlock : block.number;
     }
 }

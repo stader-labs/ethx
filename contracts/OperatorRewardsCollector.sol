@@ -133,13 +133,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         if (amount > 0) {
             address rewardsAddress = UtilLib.getOperatorRewardAddress(operator, staderConfig);
             weth.deposit{value: amount}();
-            if (
-                weth.transferFrom(
-                    address(this),
-                    rewardsAddress,
-                    amount
-                ) == false
-            ) revert WethTransferFailed();
+            if (weth.transferFrom(address(this), rewardsAddress, amount) == false) revert WethTransferFailed();
             emit Claimed(rewardsAddress, amount);
         }
     }
