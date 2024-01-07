@@ -129,15 +129,13 @@ contract SDIncentiveControllerTest is Test {
         assertTrue(sdIncentiveController.hasRole(sdIncentiveController.DEFAULT_ADMIN_ROLE(), staderAdmin));
     }
 
-    function test_Simple(
+    function test_SimpleIncentive(
         uint128 sdAmount,
         uint16 randomSeed,
         uint256 incentiveAmount,
         uint256 duration
     ) public {
         vm.assume(randomSeed > 1);
-
-        (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
 
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance / 4 && sdAmount > 1000e18);
@@ -158,6 +156,15 @@ contract SDIncentiveControllerTest is Test {
 
         vm.roll(block.number + 10);
 
+        assertEq(sdIncentiveController.earned(user2), 0);
+        
+        (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
+        console.log(sdIncentiveController.rewards(user2));
+        console.log(sdIncentiveController.rewardPerToken());
+        assertEq(sdIncentiveController.earned(user2), 0);
+
+        vm.roll(block.number + 10);
+
         assertApproxEqAbs(sdIncentiveController.earned(user2), (incentiveAmount / duration) * 10, 1e9);
 
         vm.startPrank(user);
@@ -165,7 +172,7 @@ contract SDIncentiveControllerTest is Test {
         sdUtilityPool.delegate(sdAmount);
         vm.stopPrank();
 
-        vm.roll(block.number + 20);
+        vm.roll(block.number + 30);
 
         vm.startPrank(user2);
         sdUtilityPool.requestWithdrawWithSDAmount(sdAmount / 2);
@@ -187,6 +194,60 @@ contract SDIncentiveControllerTest is Test {
         assertApproxEqAbs(preEarned, incentiveAmount, 1e9);
 
         vm.roll(block.number + duration * 10);
+        assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), preEarned);
+    }
+
+    function test_NoIncentive(uint128 sdAmount, uint16 randomSeed) public {
+        vm.assume(randomSeed > 1);
+
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount <= deployerSDBalance / 4 && sdAmount > 1000e18);
+
+        address user = vm.addr(randomSeed);
+        address user2 = vm.addr(randomSeed - 1);
+
+        staderToken.transfer(user, sdAmount);
+        staderToken.transfer(user2, sdAmount);
+
+        assertEq(sdIncentiveController.earned(user), 0);
+        assertEq(sdIncentiveController.earned(user2), 0);
+
+        vm.startPrank(user2);
+        staderToken.approve(address(sdUtilityPool), sdAmount);
+        sdUtilityPool.delegate(sdAmount);
+        vm.stopPrank();
+
+        vm.roll(block.number + 10);
+
+        assertEq(sdIncentiveController.earned(user2), 0);
+
+        vm.startPrank(user);
+        staderToken.approve(address(sdUtilityPool), sdAmount);
+        sdUtilityPool.delegate(sdAmount);
+        vm.stopPrank();
+
+        vm.roll(block.number + 20);
+
+        vm.startPrank(user2);
+        sdUtilityPool.requestWithdrawWithSDAmount(sdAmount / 2);
+        vm.stopPrank();
+
+        vm.startPrank(staderAdmin);
+        sdUtilityPool.updateMinBlockDelayToFinalizeRequest(0);
+        sdUtilityPool.finalizeDelegatorWithdrawalRequest();
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        uint256 earned = sdIncentiveController.earned(user2);
+        sdUtilityPool.claim(1);
+        assertEq(staderToken.balanceOf(user2), sdAmount / 2);
+        vm.stopPrank();
+
+        vm.roll(block.number + 1000);
+        uint256 preEarned = earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user);
+        assertEq(preEarned, 0);
+
+        vm.roll(block.number + 10000);
         assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), preEarned);
     }
 }

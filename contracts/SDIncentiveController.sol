@@ -66,6 +66,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         if (rewardAmount % duration != 0) revert InvalidEndBlock();
 
         updateReward(address(0));
+        lastUpdateBlockNumber = block.number;
 
         emissionPerBlock = rewardAmount / duration;
         rewardEndBlock = block.number + duration;
