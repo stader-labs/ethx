@@ -61,7 +61,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
 
         if (rewardEndBlock > block.number) revert ExistingRewardPeriod();
-        if (rewardAmount == 0) revert InvalidRewardAmount();
+        if (rewardAmount < DECIMAL) revert InvalidRewardAmount();
         if (duration == 0) revert InvalidEndBlock();
         if (rewardAmount % duration != 0) revert InvalidEndBlock();
 

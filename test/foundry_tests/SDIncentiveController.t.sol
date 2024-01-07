@@ -94,7 +94,7 @@ contract SDIncentiveControllerTest is Test {
         vm.assume(incentiveAmount > 0);
         vm.assume(duration > 0);
         
-        incentiveAmount = ((incentiveAmount % 10000) + 1) * 1e18;
+        incentiveAmount = ((incentiveAmount % 10000) + 2) * 1e18;
         duration = ((duration%10) + 1) * 100;
         incentiveAmount = (incentiveAmount / duration) * duration;
         staderToken.transfer(staderManager, incentiveAmount);
