@@ -90,12 +90,12 @@ contract SDIncentiveControllerTest is Test {
         vm.stopPrank();
     }
 
-    function setupIncentive(uint256 incentiveAmount, uint256 duration) public returns(uint256, uint256) {
+    function setupIncentive(uint256 incentiveAmount, uint256 duration) public returns (uint256, uint256) {
         vm.assume(incentiveAmount > 0);
         vm.assume(duration > 0);
-        
+
         incentiveAmount = ((incentiveAmount % 10000) + 2) * 1e18;
-        duration = ((duration%10) + 1) * 100;
+        duration = ((duration % 10) + 1) * 100;
         incentiveAmount = (incentiveAmount / duration) * duration;
         staderToken.transfer(staderManager, incentiveAmount);
 
@@ -129,7 +129,12 @@ contract SDIncentiveControllerTest is Test {
         assertTrue(sdIncentiveController.hasRole(sdIncentiveController.DEFAULT_ADMIN_ROLE(), staderAdmin));
     }
 
-    function test_Simple(uint128 sdAmount, uint16 randomSeed, uint256 incentiveAmount, uint256 duration) public {
+    function test_Simple(
+        uint128 sdAmount,
+        uint16 randomSeed,
+        uint256 incentiveAmount,
+        uint256 duration
+    ) public {
         vm.assume(randomSeed > 1);
 
         (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
@@ -153,7 +158,7 @@ contract SDIncentiveControllerTest is Test {
 
         vm.roll(block.number + 10);
 
-        assertApproxEqAbs(sdIncentiveController.earned(user2), incentiveAmount/duration*10, 1e9);
+        assertApproxEqAbs(sdIncentiveController.earned(user2), (incentiveAmount / duration) * 10, 1e9);
 
         vm.startPrank(user);
         staderToken.approve(address(sdUtilityPool), sdAmount);
@@ -161,9 +166,9 @@ contract SDIncentiveControllerTest is Test {
         vm.stopPrank();
 
         vm.roll(block.number + 20);
-        
+
         vm.startPrank(user2);
-        sdUtilityPool.requestWithdrawWithSDAmount(sdAmount/2);
+        sdUtilityPool.requestWithdrawWithSDAmount(sdAmount / 2);
         vm.stopPrank();
 
         vm.startPrank(staderAdmin);
@@ -174,14 +179,14 @@ contract SDIncentiveControllerTest is Test {
         vm.startPrank(user2);
         uint256 earned = sdIncentiveController.earned(user2);
         sdUtilityPool.claim(1);
-        assertEq(staderToken.balanceOf(user2), earned + sdAmount/2);
+        assertEq(staderToken.balanceOf(user2), earned + sdAmount / 2);
         vm.stopPrank();
 
         vm.roll(block.number + duration);
         uint256 preEarned = earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user);
         assertApproxEqAbs(preEarned, incentiveAmount, 1e9);
 
-        vm.roll(block.number + duration*10);
+        vm.roll(block.number + duration * 10);
         assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), preEarned);
     }
 }
