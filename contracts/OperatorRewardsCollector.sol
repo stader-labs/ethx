@@ -51,7 +51,10 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @param operator The address of the operator for whom the claim is being made.
      */
     function claimFor(address operator, uint256 amount) public override {
-        if (amount == 0) amount = balances[operator]; // If no amount is specified, claim the full balance
+        if (amount == 0)
+            amount = balances[operator] > withdrawableInEth(operator)
+                ? withdrawableInEth(operator)
+                : balances[operator]; // If no amount is specified, claim the available full balance
 
         _completeLiquidationIfExists(operator);
         _transferBackUtilizedSD(operator);

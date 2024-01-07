@@ -178,6 +178,10 @@ contract SDIncentiveControllerTest is Test {
         vm.stopPrank();
 
         vm.roll(block.number + duration);
-        assertApproxEqAbs(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), incentiveAmount, 1e9);
+        uint256 preEarned = earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user);
+        assertApproxEqAbs(preEarned, incentiveAmount, 1e9);
+
+        vm.roll(block.number + duration*10);
+        assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), preEarned);
     }
 }
