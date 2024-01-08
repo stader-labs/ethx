@@ -497,6 +497,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (_protocolFee > MAX_PROTOCOL_FEE) {
             revert InvalidInput();
         }
+        accrueFee();
         protocolFee = _protocolFee;
         emit ProtocolFeeFactorUpdated(protocolFee);
     }
@@ -511,6 +512,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (_utilizationRatePerBlock > MAX_UTILIZATION_RATE_PER_BLOCK) {
             revert InvalidInput();
         }
+        accrueFee();
         utilizationRatePerBlock = _utilizationRatePerBlock;
         emit UtilizationRatePerBlockUpdated(utilizationRatePerBlock);
     }
