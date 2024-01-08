@@ -13,6 +13,7 @@ import '../mocks/OperatorRewardsCollectorMock.sol';
 import '../mocks/PoolUtilsMock.sol';
 
 import 'forge-std/Test.sol';
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
 import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
@@ -406,8 +407,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(principal, utilizeAmount);
         vm.roll(11000);
         uint256 utilizerIndex = sdUtilityPool.utilizeIndex() +
-            (sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 10000) /
-            1e18;
+            Math.ceilDiv((sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 10000), 1e18);
         uint256 feeAccumulated = (sdUtilityPool.totalUtilizedSD() * sdUtilityPool.utilizationRatePerBlock() * 10000) /
             1e18;
         uint256 totalUtilizedSDNew = sdUtilityPool.totalUtilizedSD() + feeAccumulated;
@@ -478,8 +478,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(principal1, sdUtilityPool.maxETHWorthOfSDPerValidator());
         vm.roll(2000);
         uint256 utilizerIndexLatest = sdUtilityPool.utilizeIndex() +
-            (sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 1000) /
-            1e18;
+            Math.ceilDiv((sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 1000), 1e18);
         assertEq(sdUtilityPool.getUtilizerLatestBalance(user), (principal1 * utilizerIndexLatest) / utilizeIndex1);
         vm.startPrank(permissionlessNodeRegistry);
         sdUtilityPool.utilizeWhileAddingKeys(user, utilizeAmount, nonTerminalKeyCount);
@@ -490,8 +489,7 @@ contract SDUtilityPoolTest is Test {
 
         vm.roll(3000);
         uint256 utilizerIndexLatest2 = sdUtilityPool.utilizeIndex() +
-            (sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 1000) /
-            1e18;
+            Math.ceilDiv((sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 1000), 1e18);
         sdUtilityPool.utilizeWhileAddingKeys(user, utilizeAmount, nonTerminalKeyCount);
         (uint256 principal3, uint256 utilizeIndex3) = sdUtilityPool.utilizerData(user);
         assertEq(principal3, (principal2 * utilizerIndexLatest2) / utilizeIndex2 + utilizeAmount);

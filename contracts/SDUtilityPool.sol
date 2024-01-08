@@ -345,7 +345,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 feeAccumulated = (simpleFeeFactor * totalUtilizedSD) / DECIMAL;
         totalUtilizedSD += feeAccumulated;
         accumulatedProtocolFee += (protocolFee * feeAccumulated) / DECIMAL;
-        utilizeIndex += (simpleFeeFactor * utilizeIndex) / DECIMAL;
+        utilizeIndex += Math.ceilDiv((simpleFeeFactor * utilizeIndex), DECIMAL);
 
         accrualBlockNumber = currentBlockNumber;
 
@@ -615,7 +615,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 currentBlockNumber = block.number;
         uint256 blockDelta = currentBlockNumber - accrualBlockNumber;
         uint256 simpleFeeFactor = utilizationRatePerBlock * blockDelta;
-        uint256 utilizeIndexNew = (simpleFeeFactor * utilizeIndex) / DECIMAL + utilizeIndex;
+        uint256 utilizeIndexNew = Math.ceilDiv((simpleFeeFactor * utilizeIndex), DECIMAL) + utilizeIndex;
         UtilizerStruct storage utilizeSnapshot = utilizerData[_utilizer];
 
         if (utilizeSnapshot.principal == 0) {
@@ -816,7 +816,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         feePaid = Math.min(repayAmountFinal, feeAccrued);
         utilizerData[utilizer].principal = accountUtilizedPrev - repayAmountFinal;
         utilizerData[utilizer].utilizeIndex = utilizeIndex;
-        totalUtilizedSD = totalUtilizedSD - repayAmountFinal;
+        totalUtilizedSD = totalUtilizedSD > repayAmountFinal ? totalUtilizedSD - repayAmountFinal : 0;
         emit Repaid(utilizer, repayAmountFinal);
     }
 
