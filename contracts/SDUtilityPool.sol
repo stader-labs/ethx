@@ -372,7 +372,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         utilizerData[account].utilizeIndex = utilizeIndex;
         totalUtilizedSD -= userData.totalInterestSD;
 
-        IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalInterestSD);
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalInterestSD)) {
+            revert SDTransferFailed();
+        }
 
         uint256 totalInterestInEth = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(
             userData.totalInterestSD
