@@ -369,7 +369,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             revert NotLiquidatable();
         }
 
-        _repay(account, userData.totalInterestSD);
+        utilizerData[account].utilizeIndex = utilizeIndex;
+        totalUtilizedSD -= userData.totalInterestSD;
+
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), userData.totalInterestSD)) {
+            revert SDTransferFailed();
+        }
 
         uint256 totalInterestInEth = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(
             userData.totalInterestSD
@@ -731,11 +736,6 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param sdAmount The amount of the SD token to delegate
      */
     function _delegate(uint256 sdAmount) internal {
-        /* Verify `accrualBlockNumber` block number equals current block number */
-        if (accrualBlockNumber != block.number) {
-            revert AccrualBlockNumberNotLatest();
-        }
-
         uint256 exchangeRate = _exchangeRateStoredInternal();
 
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), sdAmount)) {
@@ -767,9 +767,11 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     function _utilize(address utilizer, uint256 utilizeAmount) internal {
-        /* Verify `accrualBlockNumber` block number equals current block number */
-        if (accrualBlockNumber != block.number) {
-            revert AccrualBlockNumberNotLatest();
+        if (liquidationIndexByOperator[utilizer] != 0) revert AlreadyLiquidated();
+        UserData memory userData = getUserData(utilizer);
+
+        if (userData.healthFactor <= DECIMAL) {
+            revert UnHealthyPosition();
         }
         if (getPoolAvailableSDBalance() < utilizeAmount + sdRequestedForWithdraw + accumulatedProtocolFee) {
             revert InsufficientPoolBalance();
@@ -787,11 +789,6 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         internal
         returns (uint256 repayAmountFinal, uint256 feePaid)
     {
-        /* Verify `accrualBlockNumber` block number equals current block number */
-        if (accrualBlockNumber != block.number) {
-            revert AccrualBlockNumberNotLatest();
-        }
-
         /* We fetch the amount the utilizer owes, with accumulated fee */
         uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(utilizer);
 

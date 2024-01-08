@@ -30,12 +30,12 @@ interface ISDUtilityPool {
     error NotLiquidator();
     error NotLiquidatable();
     error SDTransferFailed();
+    error UnHealthyPosition();
     error CannotFindRequestId();
     error SDUtilizeLimitReached();
     error InvalidWithdrawAmount();
     error InvalidAmountOfWithdraw();
     error InsufficientPoolBalance();
-    error AccrualBlockNumberNotLatest();
     error CallerNotAuthorizedToRedeem();
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
