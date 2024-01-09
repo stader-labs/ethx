@@ -71,6 +71,7 @@ contract SDUtilityPoolTest is Test {
             ''
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
+        staderToken.approve(address(sdUtilityPool), 1000 ether);
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
 
         vm.prank(staderAdmin);
@@ -79,14 +80,15 @@ contract SDUtilityPoolTest is Test {
 
     function test_Initialize() public {
         ProxyAdmin admin = new ProxyAdmin();
-        SDUtilityPool collateralImpl = new SDUtilityPool();
-        TransparentUpgradeableProxy collateralProxy = new TransparentUpgradeableProxy(
-            address(collateralImpl),
+        SDUtilityPool utilityPoolImpl = new SDUtilityPool();
+        TransparentUpgradeableProxy utilityPoolProxy = new TransparentUpgradeableProxy(
+            address(utilityPoolImpl),
             address(admin),
             ''
         );
-        SDUtilityPool sdCollateral2 = SDUtilityPool(address(collateralProxy));
-        sdCollateral2.initialize(staderAdmin, address(staderConfig));
+        SDUtilityPool sdUtilityPool2 = SDUtilityPool(address(utilityPoolProxy));
+        staderToken.approve(address(sdUtilityPool2), 1000 ether);
+        sdUtilityPool2.initialize(staderAdmin, address(staderConfig));
     }
 
     function test_VerifyInitialize() public {
@@ -103,6 +105,9 @@ contract SDUtilityPoolTest is Test {
         assertEq(sdUtilityPool.maxETHWorthOfSDPerValidator(), 1 ether);
         assertEq(sdUtilityPool.conservativeEthPerKey(), 2 ether);
         assertTrue(sdUtilityPool.hasRole(sdUtilityPool.DEFAULT_ADMIN_ROLE(), staderAdmin));
+        assertEq(sdUtilityPool.cTokenTotalSupply(), 1000 ether);
+        assertEq(sdUtilityPool.delegatorCTokenBalance(address(this)), 1000 ether);
+        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 1000 ether);
     }
 
     function test_Delegate(
@@ -142,7 +147,8 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.delegate(sdAmount);
         assertEq(sdUtilityPool.exchangeRateStored(), sdUtilityPool.exchangeRateCurrent());
         uint256 cTokenBalance = (1e18 * uint256(sdAmount)) / exchangeRate;
-        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 3 * sdAmount);
+        //1000 ether worth of SD was delegate in the initialize
+        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 3 * sdAmount + 1000 ether);
 
         assertEq(sdUtilityPool.delegatorCTokenBalance(user), cTokenBalance);
         assertEq(sdUtilityPool.accrualBlockNumber(), block.number);
@@ -375,8 +381,8 @@ contract SDUtilityPoolTest is Test {
     function test_Utilize(uint256 utilizeAmount) public {
         vm.assume(utilizeAmount <= sdUtilityPool.maxETHWorthOfSDPerValidator() && utilizeAmount > 0);
         vm.startPrank(staderManager);
-        sdUtilityPool.pause();
         sdUtilityPool.updateProtocolFee(1e17);
+        sdUtilityPool.pause();
         vm.stopPrank();
         vm.expectRevert('Pausable: paused');
         sdUtilityPool.utilize(utilizeAmount);
@@ -389,8 +395,16 @@ contract SDUtilityPoolTest is Test {
         );
         vm.expectRevert(ISDUtilityPool.SDUtilizeLimitReached.selector);
         sdUtilityPool.utilize(2 * 1 ether);
+        vm.prank(staderManager);
+        sdUtilityPool.updateMaxETHWorthOfSDPerValidator(2000 ether);
+        vm.mockCall(
+            address(sdCollateral),
+            abi.encodeWithSelector(ISDCollateral.convertETHToSD.selector),
+            abi.encode(sdUtilityPool.maxETHWorthOfSDPerValidator())
+        );
         vm.expectRevert(ISDUtilityPool.InsufficientPoolBalance.selector);
-        sdUtilityPool.utilize(utilizeAmount);
+        //1000 SD were delegated during initialization
+        sdUtilityPool.utilize(utilizeAmount + 1000 ether);
 
         staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
         sdUtilityPool.delegate(utilizeAmount * 10);
@@ -460,7 +474,10 @@ contract SDUtilityPoolTest is Test {
         uint256 maxUtilize = uint256(nonTerminalKeyCount) * sdUtilityPool.maxETHWorthOfSDPerValidator();
         vm.assume(uint256(nonTerminalKeyCount) * uint256(utilizeAmount) < maxUtilize);
         address user = vm.addr(randomSeed);
-        staderToken.transfer(address(sdUtilityPool), deployerSDBalance);
+        staderToken.transfer(address(sdUtilityPool), deployerSDBalance / 2);
+        staderToken.transfer(user, deployerSDBalance / 2);
+        vm.prank(user);
+        staderToken.approve(address(sdUtilityPool), type(uint256).max);
         vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
         sdUtilityPool.utilizeWhileAddingKeys(user, utilizeAmount, nonTerminalKeyCount);
         vm.startPrank(permissionlessNodeRegistry);
@@ -481,12 +498,20 @@ contract SDUtilityPoolTest is Test {
             Math.ceilDiv((sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 1000), 1e18);
         assertEq(sdUtilityPool.getUtilizerLatestBalance(user), (principal1 * utilizerIndexLatest) / utilizeIndex1);
         vm.startPrank(permissionlessNodeRegistry);
+        vm.expectRevert(ISDUtilityPool.UnHealthyPosition.selector);
         sdUtilityPool.utilizeWhileAddingKeys(user, utilizeAmount, nonTerminalKeyCount);
+        vm.stopPrank();
+        vm.prank(user);
+        sdUtilityPool.repay((principal1 * utilizerIndexLatest) / utilizeIndex1);
         (uint256 principal2, uint256 utilizeIndex2) = sdUtilityPool.utilizerData(user);
-        assertEq(principal2, (principal1 * utilizerIndexLatest) / utilizeIndex1 + utilizeAmount);
+        assertEq(
+            principal2,
+            (principal1 * utilizerIndexLatest) / utilizeIndex1 - (principal1 * utilizerIndexLatest) / utilizeIndex1
+        );
         assertEq(utilizeIndex2, utilizerIndexLatest);
         assertEq(utilizeIndex2, sdUtilityPool.utilizeIndex());
 
+        vm.startPrank(permissionlessNodeRegistry);
         vm.roll(3000);
         uint256 utilizerIndexLatest2 = sdUtilityPool.utilizeIndex() +
             Math.ceilDiv((sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 1000), 1e18);

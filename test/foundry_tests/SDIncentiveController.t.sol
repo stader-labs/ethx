@@ -70,6 +70,7 @@ contract SDIncentiveControllerTest is Test {
             ''
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
+        staderToken.approve(address(sdUtilityPool), 1000 ether);
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
 
         vm.prank(staderAdmin);
@@ -157,7 +158,7 @@ contract SDIncentiveControllerTest is Test {
         vm.roll(block.number + 10);
 
         assertEq(sdIncentiveController.earned(user2), 0);
-        
+
         (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
         console.log(sdIncentiveController.rewards(user2));
         console.log(sdIncentiveController.rewardPerToken());

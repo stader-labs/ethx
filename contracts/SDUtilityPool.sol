@@ -113,6 +113,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         maxETHWorthOfSDPerValidator = 1 ether;
         conservativeEthPerKey = 2 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        //delegate SD during initialization to avoid price inflation of cTokenShare
+        _delegate(1000 ether);
         emit UpdatedStaderConfig(_staderConfig);
     }
 
@@ -598,7 +600,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Calculates the exchange rate from the SD to the SDx
+     * @notice Calculates the exchange rate between SD token and corresponding cToken
      * @dev This function does not accrue fee before calculating the exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
@@ -834,7 +836,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Calculates the exchange rate from the SD to the SDx token
+     * @notice Calculates the exchange rate between SD token and corresponding cToken
      * @dev This function does not accrue fee before calculating the exchange rate
      * @return calculated exchange rate scaled by 1e18
      */
