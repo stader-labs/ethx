@@ -44,14 +44,7 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
      * @dev sender should approve this contract for spending SD
      */
     function depositSDAsCollateral(uint256 _sdAmount) external override {
-        address operator = msg.sender;
-        operatorSDBalance[operator] += _sdAmount;
-
-        if (!IERC20(staderConfig.getStaderToken()).transferFrom(operator, address(this), _sdAmount)) {
-            revert SDTransferFailed();
-        }
-
-        emit SDDeposited(operator, _sdAmount);
+        depositSDAsCollateralOnBehalf(msg.sender, _sdAmount);
     }
 
     /**
@@ -60,7 +53,8 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
      * @param _sdAmount SD Token Amount to Deposit
      * @param _operator operator address
      */
-    function depositSDAsCollateralOnBehalf(address _operator, uint256 _sdAmount) external override {
+    function depositSDAsCollateralOnBehalf(address _operator, uint256 _sdAmount) public override {
+        UtilLib.checkNonZeroAddress(_operator);
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), _sdAmount)) {
             revert SDTransferFailed();
         }
