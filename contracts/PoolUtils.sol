@@ -37,8 +37,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
      * @param _poolId Id of the pool.
      * @param _poolAddress The address of the new pool contract.
      */
-    function addNewPool(uint8 _poolId, address _poolAddress) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+    function addNewPool(uint8 _poolId, address _poolAddress) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_poolAddress);
         verifyNewPool(_poolId, _poolAddress);
         poolIdArray.push(_poolId);

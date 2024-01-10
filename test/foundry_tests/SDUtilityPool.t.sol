@@ -118,6 +118,7 @@ contract SDUtilityPoolTest is Test {
     ) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance / 4);
+        vm.assume(sdAmount > 0);
 
         vm.assume(randomSeed > 0);
         vm.assume(randomSeed2 > 0 && randomSeed != randomSeed2);
@@ -126,9 +127,7 @@ contract SDUtilityPoolTest is Test {
 
         staderToken.transfer(user, sdAmount);
         staderToken.transfer(user2, sdAmount);
-        vm.startPrank(user2); // makes user as the caller untill stopPrank();
         vm.assume(approveAmount >= sdAmount);
-        staderToken.approve(address(sdUtilityPool), approveAmount);
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(user2);
@@ -137,6 +136,9 @@ contract SDUtilityPoolTest is Test {
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
         vm.startPrank(user2);
+        vm.expectRevert();
+        sdUtilityPool.delegate(sdAmount);
+        staderToken.approve(address(sdUtilityPool), approveAmount);
         sdUtilityPool.delegate(sdAmount);
         vm.stopPrank();
         staderToken.transfer(address(sdUtilityPool), sdAmount);
@@ -488,6 +490,13 @@ contract SDUtilityPoolTest is Test {
         );
         vm.expectRevert(ISDUtilityPool.SDUtilizeLimitReached.selector);
         sdUtilityPool.utilizeWhileAddingKeys(user, maxUtilize + 1, nonTerminalKeyCount);
+        vm.prank(staderManager);
+        sdUtilityPool.pause();
+        vm.startPrank(permissionlessNodeRegistry);
+        vm.expectRevert('Pausable: paused');
+        sdUtilityPool.utilizeWhileAddingKeys(user, maxUtilize, nonTerminalKeyCount);
+        vm.prank(staderAdmin);
+        sdUtilityPool.unpause();
         vm.startPrank(user);
         vm.roll(1000);
         sdUtilityPool.utilize(sdUtilityPool.maxETHWorthOfSDPerValidator());
@@ -553,6 +562,14 @@ contract SDUtilityPoolTest is Test {
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
         );
+        vm.startPrank(staderManager);
+        sdUtilityPool.pause();
+        vm.prank(user);
+        vm.expectRevert('Pausable: paused');
+        sdUtilityPool.repay(repayAmount);
+        vm.prank(staderAdmin);
+        sdUtilityPool.unpause();
+        vm.startPrank(user);
         (uint256 repaidAmount, uint256 feePaid) = sdUtilityPool.repay(repayAmount);
         uint256 actualRepayAmount = Math.min(latestBalance, repayAmount);
         uint256 actualFeePaid = Math.min(fee, repayAmount);
@@ -593,6 +610,12 @@ contract SDUtilityPoolTest is Test {
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
         );
+        vm.prank(staderManager);
+        sdUtilityPool.pause();
+        vm.expectRevert('Pausable: paused');
+        sdUtilityPool.repayOnBehalf(user, repayAmount);
+        vm.prank(staderAdmin);
+        sdUtilityPool.unpause();
         (uint256 repaidAmount, uint256 feePaid) = sdUtilityPool.repayOnBehalf(user, repayAmount);
         uint256 actualRepayAmount = Math.min(latestBalance, repayAmount);
         uint256 actualFeePaid = Math.min(fee, repayAmount);
@@ -632,6 +655,7 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.updateProtocolFee(1e18);
         sdUtilityPool.updateProtocolFee(protocolFee);
         assertEq(sdUtilityPool.protocolFee(), protocolFee);
+        assertEq(sdUtilityPool.accrualBlockNumber(), block.number);
     }
 
     function test_UpdateUtilizationRatePerBlock(uint128 utilizationRate) public {
@@ -644,6 +668,7 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.updateUtilizationRatePerBlock(maxUtilizationRatePerBlock + 1);
         sdUtilityPool.updateUtilizationRatePerBlock(utilizationRate);
         assertEq(sdUtilityPool.utilizationRatePerBlock(), utilizationRate);
+        assertEq(sdUtilityPool.accrualBlockNumber(), block.number);
     }
 
     function test_UpdateMaxETHWorthOfSDPerValidator(uint128 maxETHWorthOfSD) public {
@@ -667,7 +692,9 @@ contract SDUtilityPoolTest is Test {
         address inputAddr = vm.addr(randomSeed);
         vm.expectRevert();
         sdUtilityPool.updateStaderConfig(inputAddr);
-        vm.prank(staderAdmin);
+        vm.startPrank(staderAdmin);
+        vm.expectRevert(UtilLib.ZeroAddress.selector);
+        sdUtilityPool.updateStaderConfig(address(0));
         sdUtilityPool.updateStaderConfig(inputAddr);
         assertEq(address(sdUtilityPool.staderConfig()), inputAddr);
     }

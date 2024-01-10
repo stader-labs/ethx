@@ -131,6 +131,7 @@ contract SDCollateralTest is Test {
         uint16 randomSeed2
     ) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdAmount > 0);
         vm.assume(sdAmount <= deployerSDBalance);
 
         vm.assume(randomSeed > 0 && randomSeed2 > 0);
@@ -141,6 +142,10 @@ contract SDCollateralTest is Test {
 
         vm.startPrank(user); // makes user as the caller untill stopPrank();
         vm.assume(approveAmount >= sdAmount);
+        vm.expectRevert(UtilLib.ZeroAddress.selector);
+        sdCollateral.depositSDAsCollateralOnBehalf(address(0), sdAmount);
+        vm.expectRevert('ERC20: insufficient allowance');
+        sdCollateral.depositSDAsCollateralOnBehalf(user2, sdAmount);
         staderToken.approve(address(sdCollateral), approveAmount);
         sdCollateral.depositSDAsCollateralOnBehalf(user2, sdAmount);
         assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
