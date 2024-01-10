@@ -160,13 +160,11 @@ contract SDIncentiveControllerTest is Test {
         assertEq(sdIncentiveController.earned(user2), 0);
 
         (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
-        console.log(sdIncentiveController.rewards(user2));
-        console.log(sdIncentiveController.rewardPerToken());
         assertEq(sdIncentiveController.earned(user2), 0);
 
         vm.roll(block.number + 10);
 
-        assertApproxEqAbs(sdIncentiveController.earned(user2), (incentiveAmount / duration) * 10, 1e9);
+        assertApproxEqAbs(sdIncentiveController.earned(address(this)) + sdIncentiveController.earned(user2), (incentiveAmount / duration) * 10, 1e9);
 
         vm.startPrank(user);
         staderToken.approve(address(sdUtilityPool), sdAmount);
@@ -191,11 +189,11 @@ contract SDIncentiveControllerTest is Test {
         vm.stopPrank();
 
         vm.roll(block.number + duration);
-        uint256 preEarned = earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user);
+        uint256 preEarned = earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user) + sdIncentiveController.earned(address(this));
         assertApproxEqAbs(preEarned, incentiveAmount, 1e9);
 
         vm.roll(block.number + duration * 10);
-        assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), preEarned);
+        assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user) + sdIncentiveController.earned(address(this)), preEarned);
     }
 
     function test_NoIncentive(uint128 sdAmount, uint16 randomSeed) public {
