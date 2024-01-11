@@ -843,14 +843,14 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function _exchangeRateStoredInternal() internal view virtual returns (uint256) {
         if (cTokenTotalSupply == 0) {
             /*
-             * If there are no tokens minted:
+             * if cToken supply is zero:
              *  exchangeRate = initialExchangeRate
              */
             return DECIMAL;
         } else {
             /*
              * Otherwise:
-             *  exchangeRate = (totalCash + totalUtilizedSD - totalFee) / totalSupply
+             *  exchangeRate = (poolAvailable SD + totalUtilizedSD - totalProtocolFee) / totalSupply
              */
             uint256 poolBalancePlusUtilizedSDMinusReserves = getPoolAvailableSDBalance() +
                 totalUtilizedSD -
