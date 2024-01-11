@@ -56,9 +56,13 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
                 ? withdrawableInEth(operator)
                 : balances[operator]; // If no amount is specified, claim the available full balance
 
-        _completeLiquidationIfExists(operator);
+        claimLiquidation(operator);
         _transferBackUtilizedSD(operator);
         _claim(operator, amount);
+    }
+
+    function claimLiquidation(address operator) public override {
+        _completeLiquidationIfExists(operator);
     }
 
     function updateStaderConfig(address _staderConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -74,7 +78,9 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         uint256 withdrawableInSd = userData.totalCollateralInSD -
             ((userData.totalInterestSD * 100) / liquidationThreshold);
 
-        return ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(withdrawableInSd);
+        OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
+        uint256 availableBalance = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(withdrawableInSd);
+        return availableBalance > operatorLiquidation.totalAmountInEth? availableBalance - operatorLiquidation.totalAmountInEth : 0;
     }
 
     function updateWethAddress(address _weth) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -135,8 +141,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         // If there's an amount to send, transfer it to the operator's rewards address
         if (amount > 0) {
             address rewardsAddress = UtilLib.getOperatorRewardAddress(operator, staderConfig);
-            weth.deposit{value: amount}();
-            if (weth.transferFrom(address(this), rewardsAddress, amount) == false) revert WethTransferFailed();
+            UtilLib.sendValue(rewardsAddress, amount);
             emit Claimed(rewardsAddress, amount);
         }
     }
