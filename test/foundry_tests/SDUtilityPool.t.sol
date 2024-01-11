@@ -728,6 +728,11 @@ contract SDUtilityPoolTest is Test {
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
         );
+        vm.mockCall(
+            address(sdCollateral),
+            abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector),
+            abi.encode(0, 0, 0)
+        );
 
         vm.startPrank(liquidator);
         staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);

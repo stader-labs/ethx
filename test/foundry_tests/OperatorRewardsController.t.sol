@@ -12,6 +12,7 @@ import '../mocks/SDCollateralMock.sol';
 import '../mocks/StaderTokenMock.sol';
 import '../mocks/SDIncentiveControllerMock.sol';
 import '../mocks/PoolUtilsMock.sol';
+import '../mocks/WETHMock.sol';
 
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -29,6 +30,7 @@ contract OperatorRewardsCollectorTest is Test {
     StaderTokenMock staderToken;
     SDCollateralMock sdCollateral;
     PoolUtilsMock poolUtils;
+    WETHMock weth;
 
     function setUp() public {
         staderAdmin = vm.addr(100);
@@ -38,6 +40,7 @@ contract OperatorRewardsCollectorTest is Test {
 
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
+        weth = new WETHMock();
 
         StaderConfig configImpl = new StaderConfig();
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
@@ -96,6 +99,7 @@ contract OperatorRewardsCollectorTest is Test {
         staderConfig.updateSDIncentiveController(address(sdIncentiveController));
         staderConfig.updateSDUtilityPool(address(sdUtilityPool));
         staderConfig.updateOperatorRewardsCollector(address(operatorRewardsCollector));
+        operatorRewardsCollector.updateWethAddress(address(weth));
         vm.stopPrank();
     }
 
@@ -128,29 +132,55 @@ contract OperatorRewardsCollectorTest is Test {
         operatorRewardsCollector.depositFor{value: 100 ether}(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
 
-        operatorRewardsCollector.claimFor(staderManager, 0);
-        assertEq(operatorRewardsCollector.balances(staderManager), 0 ether);
-
-        operatorRewardsCollector.depositFor{value: 100 ether}(staderManager);
-        assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
-
         vm.startPrank(staderManager);
         operatorRewardsCollector.claim();
         assertEq(operatorRewardsCollector.balances(staderManager), 0 ether);
         vm.stopPrank();
-
-        operatorRewardsCollector.depositFor{value: 100 ether}(staderManager);
-        assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
-
-        operatorRewardsCollector.claimFor(staderManager, 50 ether);
-        assertEq(operatorRewardsCollector.balances(staderManager), 50 ether);
     }
 
-    function test_claimLiquidation() public {
+    function test_claimLiquidationZeroAmount() public {
         operatorRewardsCollector.depositFor{value: 100 ether}(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
 
         operatorRewardsCollector.claimLiquidation(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
+    }
+
+    function test_claimLiquidation(uint16 randomSeed) public {
+        vm.assume(randomSeed > 1);
+        uint256 utilizeAmount = 1e22;
+
+        address operator = vm.addr(randomSeed);
+        address liquidator = vm.addr(randomSeed - 1);
+
+        operatorRewardsCollector.depositFor{value: 100 ether}(operator);
+        assertEq(operatorRewardsCollector.balances(operator), 100 ether);
+
+        staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
+        sdUtilityPool.delegate(utilizeAmount * 10);
+
+        vm.startPrank(operator);
+        sdUtilityPool.utilize(utilizeAmount);
+        vm.stopPrank();
+
+        vm.mockCall(
+            address(sdCollateral),
+            abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
+            abi.encode(utilizeAmount)
+        );
+
+        vm.roll(block.number + 1900000000);
+
+        UserData memory userData = sdUtilityPool.getUserData(operator);
+        staderToken.transfer(liquidator, userData.totalInterestSD);
+        vm.startPrank(liquidator);
+        staderToken.approve(address(sdUtilityPool), userData.totalInterestSD);
+        assertEq(operatorRewardsCollector.withdrawableInEth(operator), 0);
+        sdUtilityPool.liquidationCall(operator);
+        OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
+        vm.stopPrank();
+
+        operatorRewardsCollector.claimLiquidation(operator);
+        assertEq(operatorRewardsCollector.balances(operator), 100 ether - operatorLiquidation.totalAmountInEth);
     }
 }

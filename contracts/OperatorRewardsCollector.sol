@@ -41,24 +41,18 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         emit DepositedFor(msg.sender, _receiver, msg.value);
     }
 
-    function claim() external {
-        return claimFor(msg.sender, 0);
-    }
-
     /**
      * @notice Claims payouts for an operator, repaying any outstanding liquidations and transferring any remaining balance to the operator's rewards address.
      * @dev This function first checks for any unpaid liquidations for the operator and repays them if necessary. Then, it transfers any remaining balance to the operator's reward address.
-     * @param operator The address of the operator for whom the claim is being made.
      */
-    function claimFor(address operator, uint256 amount) public override {
-        if (amount == 0)
-            amount = balances[operator] > withdrawableInEth(operator)
-                ? withdrawableInEth(operator)
-                : balances[operator]; // If no amount is specified, claim the available full balance
+    function claim() external {
+        uint256 amount = balances[msg.sender] > withdrawableInEth(msg.sender)
+                ? withdrawableInEth(msg.sender)
+                : balances[msg.sender];
 
-        claimLiquidation(operator);
-        _transferBackUtilizedSD(operator);
-        _claim(operator, amount);
+        claimLiquidation(msg.sender);
+        _transferBackUtilizedSD(msg.sender);
+        _claim(msg.sender, amount);
     }
 
     function claimLiquidation(address operator) public override {
@@ -75,8 +69,10 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
         uint256 liquidationThreshold = sdUtilityPool.getLiquidationThreshold();
         UserData memory userData = sdUtilityPool.getUserData(operator);
-        uint256 withdrawableInSd = userData.totalCollateralInSD -
-            ((userData.totalInterestSD * 100) / liquidationThreshold);
+        uint256 totalInterestAdjusted = (userData.totalInterestSD * 100) / liquidationThreshold;
+        
+        if (totalInterestAdjusted > userData.totalCollateralInSD) return 0;
+        uint256 withdrawableInSd = userData.totalCollateralInSD - totalInterestAdjusted;
 
         OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
         uint256 availableBalance = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(withdrawableInSd);
