@@ -259,11 +259,11 @@ contract SDIncentiveControllerTest is Test {
         vm.assume(randomSeed > 0);
         address inputAddr = vm.addr(randomSeed);
         vm.expectRevert();
-        sdUtilityPool.updateStaderConfig(inputAddr);
+        sdIncentiveController.updateStaderConfig(inputAddr);
         vm.startPrank(staderAdmin);
         vm.expectRevert(UtilLib.ZeroAddress.selector);
-        sdUtilityPool.updateStaderConfig(address(0));
-        sdUtilityPool.updateStaderConfig(inputAddr);
-        assertEq(address(sdUtilityPool.staderConfig()), inputAddr);
+        sdIncentiveController.updateStaderConfig(address(0));
+        sdIncentiveController.updateStaderConfig(inputAddr);
+        assertEq(address(sdIncentiveController.staderConfig()), inputAddr);
     }
 }
