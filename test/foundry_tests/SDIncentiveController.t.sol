@@ -162,6 +162,11 @@ contract SDIncentiveControllerTest is Test {
         (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
         assertEq(sdIncentiveController.earned(user2), 0);
 
+        vm.expectRevert(ISDIncentiveController.ExistingRewardPeriod.selector);
+        vm.startPrank(staderManager);
+        sdIncentiveController.start(incentiveAmount, duration);
+        vm.stopPrank();
+
         vm.roll(block.number + 10);
 
         assertApproxEqAbs(sdIncentiveController.earned(address(this)) + sdIncentiveController.earned(user2), (incentiveAmount / duration) * 10, 1e9);
