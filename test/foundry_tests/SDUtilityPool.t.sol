@@ -723,7 +723,6 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.utilize(utilizeAmount);
         vm.stopPrank();
 
-        vm.roll(200000000);
         vm.mockCall(
             address(sdCollateral),
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
@@ -732,8 +731,40 @@ contract SDUtilityPoolTest is Test {
 
         vm.startPrank(liquidator);
         staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
-        uint256 beforeBalance = staderToken.balanceOf(liquidator);
+        vm.stopPrank();
+
+        vm.roll(block.number + 10000000);
         UserData memory userData = sdUtilityPool.getUserData(operator);
+        
+        vm.startPrank(liquidator);
+        assertGt(userData.healthFactor, 1e18);
+        vm.expectRevert(ISDUtilityPool.NotLiquidatable.selector);
+        sdUtilityPool.liquidationCall(operator);
+        vm.stopPrank();
+
+        vm.roll(block.number + 100000000);
+
+        uint256 beforeBalance = staderToken.balanceOf(liquidator);
+        userData = sdUtilityPool.getUserData(operator);
+        
+        assertLt(userData.healthFactor, 1e18);
+        vm.startPrank(staderManager);
+        sdUtilityPool.pause();
+        vm.stopPrank();
+        vm.startPrank(liquidator);
+        vm.expectRevert('Pausable: paused');
+        sdUtilityPool.liquidationCall(operator);
+        vm.stopPrank();
+
+        vm.startPrank(staderAdmin);
+        sdUtilityPool.unpause();
+        vm.stopPrank();
+        vm.startPrank(liquidator);
+        sdUtilityPool.liquidationCall(operator);
+        vm.stopPrank();
+
+        vm.startPrank(liquidator);
+        vm.expectRevert(ISDUtilityPool.AlreadyLiquidated.selector);
         sdUtilityPool.liquidationCall(operator);
         vm.stopPrank();
 
