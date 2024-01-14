@@ -735,7 +735,7 @@ contract SDUtilityPoolTest is Test {
 
         vm.roll(block.number + 10000000);
         UserData memory userData = sdUtilityPool.getUserData(operator);
-        
+
         vm.startPrank(liquidator);
         assertGt(userData.healthFactor, 1e18);
         vm.expectRevert(ISDUtilityPool.NotLiquidatable.selector);
@@ -746,7 +746,7 @@ contract SDUtilityPoolTest is Test {
 
         uint256 beforeBalance = staderToken.balanceOf(liquidator);
         userData = sdUtilityPool.getUserData(operator);
-        
+
         assertLt(userData.healthFactor, 1e18);
         vm.startPrank(staderManager);
         sdUtilityPool.pause();

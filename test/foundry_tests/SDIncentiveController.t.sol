@@ -169,7 +169,11 @@ contract SDIncentiveControllerTest is Test {
 
         vm.roll(block.number + 10);
 
-        assertApproxEqAbs(sdIncentiveController.earned(address(this)) + sdIncentiveController.earned(user2), (incentiveAmount / duration) * 10, 1e9);
+        assertApproxEqAbs(
+            sdIncentiveController.earned(address(this)) + sdIncentiveController.earned(user2),
+            (incentiveAmount / duration) * 10,
+            1e9
+        );
 
         vm.startPrank(user);
         staderToken.approve(address(sdUtilityPool), sdAmount);
@@ -194,11 +198,20 @@ contract SDIncentiveControllerTest is Test {
         vm.stopPrank();
 
         vm.roll(block.number + duration);
-        uint256 preEarned = earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user) + sdIncentiveController.earned(address(this));
+        uint256 preEarned = earned +
+            sdIncentiveController.earned(user2) +
+            sdIncentiveController.earned(user) +
+            sdIncentiveController.earned(address(this));
         assertApproxEqAbs(preEarned, incentiveAmount, 1e9);
 
         vm.roll(block.number + duration * 10);
-        assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user) + sdIncentiveController.earned(address(this)), preEarned);
+        assertEq(
+            earned +
+                sdIncentiveController.earned(user2) +
+                sdIncentiveController.earned(user) +
+                sdIncentiveController.earned(address(this)),
+            preEarned
+        );
     }
 
     function test_NoIncentive(uint128 sdAmount, uint16 randomSeed) public {
@@ -255,6 +268,68 @@ contract SDIncentiveControllerTest is Test {
         assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), preEarned);
     }
 
+    function testWithdrawMultiples(
+        uint256 utilizeAmount,
+        uint256 incentiveAmount,
+        uint256 duration
+    ) public {
+        vm.assume(utilizeAmount > 1e20 && utilizeAmount < 1e25);
+
+        address user1 = address(1);
+        address user2 = address(2);
+
+        (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
+
+        staderToken.transfer(user1, utilizeAmount);
+        staderToken.transfer(user2, utilizeAmount);
+
+        vm.startPrank(user1);
+        staderToken.approve(address(sdUtilityPool), utilizeAmount / 10);
+        sdUtilityPool.delegate(utilizeAmount / 10);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        staderToken.approve(address(sdUtilityPool), utilizeAmount);
+        sdUtilityPool.delegate(utilizeAmount);
+        vm.stopPrank();
+
+        vm.roll(block.number + duration);
+        uint256 earn1 = sdIncentiveController.earned(user1);
+        uint256 earn2 = sdIncentiveController.earned(user2);
+
+        uint256 user1PrevBalance = staderToken.balanceOf(user1);
+        uint256 user2PrevBalance = staderToken.balanceOf(user2);
+
+        vm.startPrank(user1);
+        sdUtilityPool.requestWithdrawWithSDAmount(utilizeAmount / 10);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        sdUtilityPool.requestWithdrawWithSDAmount(utilizeAmount);
+        vm.stopPrank();
+
+        vm.startPrank(staderAdmin);
+        sdUtilityPool.updateMinBlockDelayToFinalizeRequest(0);
+        sdUtilityPool.finalizeDelegatorWithdrawalRequest();
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        sdUtilityPool.claim(1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        sdUtilityPool.claim(2);
+        vm.stopPrank();
+
+        assertTrue(earn1 > 0, 'User1 did not earn any rewards');
+        assertTrue(earn2 > 0, 'User2 did not earn any rewards');
+
+        uint256 user1FinalGain = staderToken.balanceOf(user1) - user1PrevBalance;
+        uint256 user2FinalGain = staderToken.balanceOf(user2) - user2PrevBalance;
+
+        assertApproxEqAbs(user2FinalGain / 10, user1FinalGain, 10);
+    }
+
     function test_UpdateStaderConfig(uint16 randomSeed) public {
         vm.assume(randomSeed > 0);
         address inputAddr = vm.addr(randomSeed);
@@ -265,5 +340,56 @@ contract SDIncentiveControllerTest is Test {
         sdIncentiveController.updateStaderConfig(address(0));
         sdIncentiveController.updateStaderConfig(inputAddr);
         assertEq(address(sdIncentiveController.staderConfig()), inputAddr);
+    }
+
+    function test_startIncentive(uint256 incentiveAmount, uint256 duration) public {
+        vm.assume(incentiveAmount > 0);
+        vm.assume(duration > 0);
+
+        incentiveAmount = ((incentiveAmount % 10000) + 2) * 1e18;
+        duration = ((duration % 10) + 1) * 100;
+        incentiveAmount = (incentiveAmount / duration) * duration;
+        staderToken.transfer(staderManager, incentiveAmount);
+
+        staderToken.approve(address(sdIncentiveController), incentiveAmount);
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        sdIncentiveController.start(incentiveAmount, duration);
+
+        // 0 rewards
+        vm.startPrank(staderManager);
+        vm.expectRevert(ISDIncentiveController.InvalidRewardAmount.selector);
+        sdIncentiveController.start(0, duration);
+        vm.stopPrank();
+
+        // 0 duration
+        vm.startPrank(staderManager);
+        staderToken.approve(address(sdIncentiveController), incentiveAmount);
+        vm.expectRevert(ISDIncentiveController.InvalidEndBlock.selector);
+        sdIncentiveController.start(incentiveAmount, 0);
+        vm.stopPrank();
+
+        // Undivisible reward and duration
+        vm.startPrank(staderManager);
+        staderToken.approve(address(sdIncentiveController), 123456);
+        vm.expectRevert(ISDIncentiveController.InvalidRewardAmount.selector);
+        sdIncentiveController.start(123456, 10);
+        vm.stopPrank();
+
+        // No approval
+        vm.startPrank(staderManager);
+        vm.expectRevert('ERC20: insufficient allowance');
+        sdIncentiveController.start(1e22, 10);
+        vm.stopPrank();
+
+        // Less than DECIMAL
+        vm.startPrank(staderManager);
+        vm.expectRevert(ISDIncentiveController.InvalidRewardAmount.selector);
+        sdIncentiveController.start(1e17, 10);
+        vm.stopPrank();
+
+        vm.startPrank(staderManager);
+        staderToken.approve(address(sdIncentiveController), incentiveAmount);
+        sdIncentiveController.start(incentiveAmount, duration);
+        vm.stopPrank();
     }
 }

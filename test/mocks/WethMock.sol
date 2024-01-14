@@ -3,13 +3,9 @@
 pragma solidity 0.8.16;
 
 contract WETHMock {
-    function deposit() external payable {
+    function deposit() external payable {}
 
-    }
-
-    function withdraw(uint256) external {
-
-    }
+    function withdraw(uint256) external {}
 
     function transferFrom(
         address src,

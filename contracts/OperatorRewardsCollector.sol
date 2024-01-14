@@ -47,8 +47,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      */
     function claim() external {
         uint256 amount = balances[msg.sender] > withdrawableInEth(msg.sender)
-                ? withdrawableInEth(msg.sender)
-                : balances[msg.sender];
+            ? withdrawableInEth(msg.sender)
+            : balances[msg.sender];
 
         claimLiquidation(msg.sender);
         _transferBackUtilizedSD(msg.sender);
@@ -70,13 +70,16 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         uint256 liquidationThreshold = sdUtilityPool.getLiquidationThreshold();
         UserData memory userData = sdUtilityPool.getUserData(operator);
         uint256 totalInterestAdjusted = (userData.totalInterestSD * 100) / liquidationThreshold;
-        
+
         if (totalInterestAdjusted > userData.totalCollateralInSD) return 0;
         uint256 withdrawableInSd = userData.totalCollateralInSD - totalInterestAdjusted;
 
         OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
         uint256 availableBalance = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(withdrawableInSd);
-        return availableBalance > operatorLiquidation.totalAmountInEth? availableBalance - operatorLiquidation.totalAmountInEth : 0;
+        return
+            availableBalance > operatorLiquidation.totalAmountInEth
+                ? availableBalance - operatorLiquidation.totalAmountInEth
+                : 0;
     }
 
     function updateWethAddress(address _weth) external onlyRole(DEFAULT_ADMIN_ROLE) {
