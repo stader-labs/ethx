@@ -86,10 +86,15 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         updateReward(account);
 
         uint256 reward = rewards[account];
-        rewards[account] = 0;
-        if (reward > 0) IERC20(staderConfig.getStaderToken()).transfer(account, reward);
+        if (reward > 0) {
+            rewards[account] = 0;
 
-        emit RewardClaimed(account, reward);
+            if (!IERC20(staderConfig.getStaderToken()).transfer(account, reward)) {
+                revert SDTransferFailed();
+            }
+
+            emit RewardClaimed(account, reward);
+        }
     }
 
     /// @notice Updates the reward for the account, expected to be called before delegate or after withdraw.
