@@ -46,12 +46,12 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @dev This function first checks for any unpaid liquidations for the operator and repays them if necessary. Then, it transfers any remaining balance to the operator's reward address.
      */
     function claim() external {
+        claimLiquidation(msg.sender);
+        _transferBackUtilizedSD(msg.sender);
+
         uint256 amount = balances[msg.sender] > withdrawableInEth(msg.sender)
             ? withdrawableInEth(msg.sender)
             : balances[msg.sender];
-
-        claimLiquidation(msg.sender);
-        _transferBackUtilizedSD(msg.sender);
         _claim(msg.sender, amount);
     }
 
