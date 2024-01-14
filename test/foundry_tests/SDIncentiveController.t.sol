@@ -97,23 +97,6 @@ contract SDIncentiveControllerTest is Test {
         vm.stopPrank();
     }
 
-    function setupIncentive(uint256 incentiveAmount, uint256 duration) public returns (uint256, uint256) {
-        vm.assume(incentiveAmount > 0);
-        vm.assume(duration > 0);
-
-        incentiveAmount = ((incentiveAmount % 10000) + 2) * 1e18;
-        duration = ((duration % 10) + 1) * 100;
-        incentiveAmount = (incentiveAmount / duration) * duration;
-        staderToken.transfer(staderManager, incentiveAmount);
-
-        vm.startPrank(staderManager);
-        staderToken.approve(address(sdIncentiveController), incentiveAmount);
-        sdIncentiveController.start(incentiveAmount, duration);
-        vm.stopPrank();
-
-        return (incentiveAmount, duration);
-    }
-
     function test_Initialize() public {
         ProxyAdmin admin = new ProxyAdmin();
         SDIncentiveController sdIncentiveControllerImpl = new SDIncentiveController();
@@ -159,16 +142,13 @@ contract SDIncentiveControllerTest is Test {
         assertEq(sdIncentiveController.earned(user), 0);
         assertEq(sdIncentiveController.earned(user2), 0);
 
-        vm.startPrank(user2);
-        staderToken.approve(address(sdUtilityPool), sdAmount);
-        sdUtilityPool.delegate(sdAmount);
-        vm.stopPrank();
+        delegateAndValidate(user2, sdAmount);
 
         vm.roll(block.number + 10);
 
         assertEq(sdIncentiveController.earned(user2), 0);
 
-        (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
+        (incentiveAmount, duration) = setupAndStartIncentive(incentiveAmount, duration);
         assertEq(sdIncentiveController.earned(user2), 0);
 
         vm.expectRevert(ISDIncentiveController.ExistingRewardPeriod.selector);
@@ -184,10 +164,7 @@ contract SDIncentiveControllerTest is Test {
             1e9
         );
 
-        vm.startPrank(user);
-        staderToken.approve(address(sdUtilityPool), sdAmount);
-        sdUtilityPool.delegate(sdAmount);
-        vm.stopPrank();
+        delegateAndValidate(user, sdAmount);
 
         vm.roll(block.number + 30);
 
@@ -238,20 +215,13 @@ contract SDIncentiveControllerTest is Test {
         assertEq(sdIncentiveController.earned(user), 0);
         assertEq(sdIncentiveController.earned(user2), 0);
 
-        vm.startPrank(user2);
-        staderToken.approve(address(sdUtilityPool), sdAmount);
-        sdUtilityPool.delegate(sdAmount);
-        vm.stopPrank();
+        delegateAndValidate(user2, sdAmount);
 
         vm.roll(block.number + 10);
 
         assertEq(sdIncentiveController.earned(user2), 0);
 
-        vm.startPrank(user);
-        staderToken.approve(address(sdUtilityPool), sdAmount);
-        sdUtilityPool.delegate(sdAmount);
-        vm.stopPrank();
-
+        delegateAndValidate(user, sdAmount);
         vm.roll(block.number + 20);
 
         vm.startPrank(user2);
@@ -287,24 +257,13 @@ contract SDIncentiveControllerTest is Test {
         address user1 = address(1);
         address user2 = address(2);
 
-        (incentiveAmount, duration) = setupIncentive(incentiveAmount, duration);
+        (incentiveAmount, duration) = setupAndStartIncentive(incentiveAmount, duration);
 
         staderToken.transfer(user1, utilizeAmount);
         staderToken.transfer(user2, utilizeAmount);
 
-        vm.startPrank(user1);
-        staderToken.approve(address(sdUtilityPool), utilizeAmount / 10);
-        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
-        emit RewardUpdated(user1, 0);
-        sdUtilityPool.delegate(utilizeAmount / 10);
-        vm.stopPrank();
-
-        vm.startPrank(user2);
-        staderToken.approve(address(sdUtilityPool), utilizeAmount);
-        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
-        emit RewardUpdated(user2, 0);
-        sdUtilityPool.delegate(utilizeAmount);
-        vm.stopPrank();
+        delegateAndValidate(user1, utilizeAmount / 10);
+        delegateAndValidate(user2, utilizeAmount);
 
         vm.roll(block.number + duration);
         uint256 earn1 = sdIncentiveController.earned(user1);
@@ -411,5 +370,41 @@ contract SDIncentiveControllerTest is Test {
         emit RewardEndBlockUpdated(block.number + duration);
         sdIncentiveController.start(incentiveAmount, duration);
         vm.stopPrank();
+    }
+
+    function setupAndStartIncentive(uint256 incentiveAmount, uint256 duration) internal returns (uint256, uint256) {
+        vm.assume(incentiveAmount > 0 && duration > 0);
+        incentiveAmount = adjustIncentiveAmount(incentiveAmount);
+        duration = adjustDuration(duration);
+        incentiveAmount = (incentiveAmount / duration) * duration;
+        staderToken.transfer(staderManager, incentiveAmount);
+
+        console.log('Incentive amount: ', incentiveAmount);
+        console.log('Duration: ', duration);
+
+        vm.startPrank(staderManager);
+        staderToken.approve(address(sdIncentiveController), incentiveAmount);
+        sdIncentiveController.start(incentiveAmount, duration);
+        vm.stopPrank();
+
+        return (incentiveAmount, duration);
+    }
+
+    function adjustIncentiveAmount(uint256 amount) internal pure returns (uint256) {
+        return ((amount % 10000) + 2) * 1e18;
+    }
+
+    function adjustDuration(uint256 duration) internal pure returns (uint256) {
+        return ((duration % 10) + 1) * 100;
+    }
+
+    function delegateAndValidate(address user, uint256 sdAmount) internal {
+        vm.startPrank(user);
+        staderToken.approve(address(sdUtilityPool), sdAmount);
+        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
+        emit RewardUpdated(user, 0);
+        sdUtilityPool.delegate(sdAmount);
+        vm.stopPrank();
+        assertEq(sdIncentiveController.earned(user), 0);
     }
 }
