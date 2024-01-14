@@ -2,6 +2,9 @@
 pragma solidity 0.8.16;
 
 contract SDCollateralMock {
+    event SDWithdrawn(address indexed operator, uint256 sdAmount);
+    event SDRepaid(address operator, uint256 repayAmount);
+
     function hasEnoughSDCollateral(
         address,
         uint8,
@@ -39,4 +42,9 @@ contract SDCollateralMock {
     function depositSDFromUtilityPool(address, uint256) external {}
 
     function reduceUtilizedSDPosition(address, uint256) external {}
+
+    function withdrawOnBehalf(uint256 _requestedSD, address _operator) external {
+        emit SDRepaid(_operator, _requestedSD);
+        emit SDWithdrawn(_operator, _requestedSD);
+    }
 }

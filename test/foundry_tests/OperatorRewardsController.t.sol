@@ -19,6 +19,13 @@ import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
 contract OperatorRewardsCollectorTest is Test {
+    event UpdatedStaderConfig(address indexed staderConfig);
+    event Claimed(address indexed receiver, uint256 amount);
+    event DepositedFor(address indexed sender, address indexed receiver, uint256 amount);
+    event UpdatedWethAddress(address indexed weth);
+    event SDWithdrawn(address indexed operator, uint256 sdAmount);
+    event SDRepaid(address operator, uint256 repayAmount);
+
     address staderAdmin;
     address staderManager;
     address staderTreasury;
@@ -32,15 +39,24 @@ contract OperatorRewardsCollectorTest is Test {
     PoolUtilsMock poolUtils;
     WETHMock weth;
 
-    function setUp() public {
+    function setupAddresses() private {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
-        address ethDepositAddr = vm.addr(102);
         staderTreasury = vm.addr(105);
+    }
 
+    function setupMocks() private {
         staderToken = new StaderTokenMock();
-        ProxyAdmin admin = new ProxyAdmin();
         weth = new WETHMock();
+        sdCollateral = new SDCollateralMock();
+    }
+
+    function setUp() public {
+        setupAddresses();
+        setupMocks();
+
+        address ethDepositAddr = vm.addr(102);
+        ProxyAdmin admin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
@@ -112,6 +128,8 @@ contract OperatorRewardsCollectorTest is Test {
             ''
         );
         operatorRewardsCollector = OperatorRewardsCollector(address(operatorRewardsCollectorProxy));
+        vm.expectEmit();
+        emit UpdatedStaderConfig(address(staderConfig));
         operatorRewardsCollector.initialize(staderAdmin, address(staderConfig));
     }
 
@@ -120,30 +138,40 @@ contract OperatorRewardsCollectorTest is Test {
         assertTrue(operatorRewardsCollector.hasRole(sdIncentiveController.DEFAULT_ADMIN_ROLE(), staderAdmin));
     }
 
-    function test_DepositFor() public {
-        operatorRewardsCollector.depositFor{value: 100 ether}(staderManager);
-        assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
+    function test_DepositFor(uint256 amount) public {
+        vm.assume(amount < 100000 ether);
 
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit DepositedFor(address(this), staderManager, amount);
+        operatorRewardsCollector.depositFor{value: amount}(staderManager);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit DepositedFor(address(this), staderManager, 0 ether);
         operatorRewardsCollector.depositFor{value: 0 ether}(staderManager);
-        assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
     }
 
-    function test_Claim() public {
-        operatorRewardsCollector.depositFor{value: 100 ether}(staderManager);
-        assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
+    function test_Claim(uint256 amount) public {
+        vm.assume(amount < 100000 ether);
+
+        operatorRewardsCollector.depositFor{value: amount}(staderManager);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
 
         vm.startPrank(staderManager);
         operatorRewardsCollector.claim();
-        assertEq(operatorRewardsCollector.balances(staderManager), 0 ether);
+        assertEq(operatorRewardsCollector.balances(staderManager), 0);
         vm.stopPrank();
     }
 
-    function test_claimLiquidationZeroAmount() public {
-        operatorRewardsCollector.depositFor{value: 100 ether}(staderManager);
-        assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
+    function test_claimLiquidationZeroAmount(uint256 amount) public {
+        vm.assume(amount < 100000 ether);
+
+        operatorRewardsCollector.depositFor{value: amount}(staderManager);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
 
         operatorRewardsCollector.claimLiquidation(staderManager);
-        assertEq(operatorRewardsCollector.balances(staderManager), 100 ether);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
     }
 
     function test_claimLiquidation(uint16 randomSeed) public {
@@ -182,6 +210,11 @@ contract OperatorRewardsCollectorTest is Test {
 
         operatorRewardsCollector.claimLiquidation(operator);
         assertEq(operatorRewardsCollector.balances(operator), 100 ether - operatorLiquidation.totalAmountInEth);
+
+        vm.startPrank(operator);
+        operatorRewardsCollector.claim();
+        assertEq(operatorRewardsCollector.balances(operator), 0);
+        vm.stopPrank();
     }
 
     function test_claimLiquidationLastValidator(uint16 randomSeed) public {
@@ -225,5 +258,99 @@ contract OperatorRewardsCollectorTest is Test {
 
         operatorRewardsCollector.claimLiquidation(operator);
         assertEq(operatorRewardsCollector.balances(operator), 100 ether - operatorLiquidation.totalAmountInEth);
+
+        vm.startPrank(operator);
+        vm.expectEmit();
+        emit SDRepaid(operator, utilizeAmount);
+        vm.expectEmit();
+        emit SDWithdrawn(operator, utilizeAmount);
+        operatorRewardsCollector.claim();
+        assertEq(operatorRewardsCollector.balances(operator), 0);
+        vm.stopPrank();
+    }
+
+    function test_ClaimWithoutDeposit() public {
+        vm.startPrank(staderManager);
+        operatorRewardsCollector.claim();
+        assertEq(operatorRewardsCollector.balances(staderManager), 0 ether);
+        vm.stopPrank();
+    }
+
+    function test_FullDepositWithdrawalCycle() public {
+        uint256 depositAmount = 50 ether;
+        operatorRewardsCollector.depositFor{value: depositAmount}(staderManager);
+
+        // Simulate some earnings
+        vm.roll(block.number + 100);
+
+        vm.startPrank(staderManager);
+        operatorRewardsCollector.claim();
+        assertEq(operatorRewardsCollector.balances(staderManager), 0 ether, 'Balance should be zero after claim');
+        vm.stopPrank();
+    }
+
+    function test_MultipleOperatorsDepositAndClaim() public {
+        address operator1 = vm.addr(107);
+        address operator2 = vm.addr(108);
+        uint256 depositAmount1 = 30 ether;
+        uint256 depositAmount2 = 40 ether;
+
+        operatorRewardsCollector.depositFor{value: depositAmount1}(operator1);
+        operatorRewardsCollector.depositFor{value: depositAmount2}(operator2);
+
+        vm.startPrank(operator1);
+        operatorRewardsCollector.claim();
+        assertEq(operatorRewardsCollector.balances(operator1), 0 ether, 'Operator1 balance should be zero after claim');
+        vm.stopPrank();
+
+        vm.startPrank(operator2);
+        operatorRewardsCollector.claim();
+        assertEq(operatorRewardsCollector.balances(operator2), 0 ether, 'Operator2 balance should be zero after claim');
+        vm.stopPrank();
+    }
+
+    function test_UpdateWETHAddress() public {
+        address newWethAddress = vm.addr(109);
+
+        vm.startPrank(staderAdmin);
+        operatorRewardsCollector.updateWethAddress(newWethAddress);
+        assertEq(address(operatorRewardsCollector.weth()), newWethAddress, 'WETH address should be updated');
+        vm.stopPrank();
+
+        // Test for unauthorized access
+        address unauthorizedUser = vm.addr(110);
+        address newWethAddress2 = vm.addr(111);
+        vm.startPrank(unauthorizedUser);
+        vm.expectRevert(
+            'AccessControl: account 0xb961768b578514debf079017ff78c47b0a6adbf6 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000'
+        );
+        operatorRewardsCollector.updateWethAddress(newWethAddress2);
+        vm.stopPrank();
+
+        assertNotEq(address(operatorRewardsCollector.weth()), newWethAddress2, 'WETH address should not be updated');
+    }
+
+    function test_MultipleDepositsAndTotalBalance(uint256 amount1, uint256 amount2) public {
+        vm.assume(amount1 < 1000e18 && amount2 < 1000e18);
+
+        operatorRewardsCollector.depositFor{value: amount1}(staderManager);
+        operatorRewardsCollector.depositFor{value: amount2}(staderManager);
+        assertEq(
+            operatorRewardsCollector.balances(staderManager),
+            amount1 + amount2,
+            'Total balance should be the sum of all deposits'
+        );
+    }
+
+    function test_UpdateStaderConfig(uint16 randomSeed) public {
+        vm.assume(randomSeed > 0);
+        address inputAddr = vm.addr(randomSeed);
+        vm.expectRevert();
+        operatorRewardsCollector.updateStaderConfig(inputAddr);
+        vm.startPrank(staderAdmin);
+        vm.expectRevert(UtilLib.ZeroAddress.selector);
+        operatorRewardsCollector.updateStaderConfig(address(0));
+        operatorRewardsCollector.updateStaderConfig(inputAddr);
+        assertEq(address(operatorRewardsCollector.staderConfig()), inputAddr);
     }
 }
