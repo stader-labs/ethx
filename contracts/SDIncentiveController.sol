@@ -51,6 +51,8 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+
+        emit UpdatedStaderConfig(_staderConfig);
     }
 
     /// @notice Starts the reward period.

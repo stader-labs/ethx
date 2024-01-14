@@ -18,6 +18,12 @@ import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
 contract SDIncentiveControllerTest is Test {
+    event EmissionRateUpdated(uint256 newEmissionRate);
+    event RewardEndBlockUpdated(uint256 newRewardEndBlock);
+    event UpdatedStaderConfig(address staderConfig);
+    event RewardClaimed(address indexed user, uint256 reward);
+    event RewardUpdated(address indexed user, uint256 reward);
+
     address staderAdmin;
     address staderManager;
     address staderTreasury;
@@ -117,6 +123,9 @@ contract SDIncentiveControllerTest is Test {
             ''
         );
         SDIncentiveController sdIncentiveController2 = SDIncentiveController(address(sdIncentiveControllerProxy));
+
+        vm.expectEmit();
+        emit UpdatedStaderConfig(address(staderConfig));
         sdIncentiveController2.initialize(staderAdmin, address(staderConfig));
     }
 
@@ -285,11 +294,15 @@ contract SDIncentiveControllerTest is Test {
 
         vm.startPrank(user1);
         staderToken.approve(address(sdUtilityPool), utilizeAmount / 10);
+        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
+        emit RewardUpdated(user1, 0);
         sdUtilityPool.delegate(utilizeAmount / 10);
         vm.stopPrank();
 
         vm.startPrank(user2);
         staderToken.approve(address(sdUtilityPool), utilizeAmount);
+        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
+        emit RewardUpdated(user2, 0);
         sdUtilityPool.delegate(utilizeAmount);
         vm.stopPrank();
 
@@ -314,10 +327,14 @@ contract SDIncentiveControllerTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user1);
+        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
+        emit RewardClaimed(user1, earn1);
         sdUtilityPool.claim(1);
         vm.stopPrank();
 
         vm.startPrank(user2);
+        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
+        emit RewardClaimed(user2, earn2);
         sdUtilityPool.claim(2);
         vm.stopPrank();
 
@@ -389,6 +406,9 @@ contract SDIncentiveControllerTest is Test {
 
         vm.startPrank(staderManager);
         staderToken.approve(address(sdIncentiveController), incentiveAmount);
+        vm.expectEmit(true, true, true, true, address(sdIncentiveController));
+        emit EmissionRateUpdated(incentiveAmount / duration);
+        emit RewardEndBlockUpdated(block.number + duration);
         sdIncentiveController.start(incentiveAmount, duration);
         vm.stopPrank();
     }
