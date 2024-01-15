@@ -114,7 +114,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         conservativeEthPerKey = 2 ether;
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         //delegate SD during initialization to avoid price inflation of cTokenShare
-        _delegate(1000 ether);
+        _delegate(1 ether);
         emit UpdatedStaderConfig(_staderConfig);
     }
 

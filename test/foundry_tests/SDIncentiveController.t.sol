@@ -76,7 +76,7 @@ contract SDIncentiveControllerTest is Test {
             ''
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
-        staderToken.approve(address(sdUtilityPool), 1000 ether);
+        staderToken.approve(address(sdUtilityPool), 1 ether);
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
 
         vm.prank(staderAdmin);
@@ -303,6 +303,7 @@ contract SDIncentiveControllerTest is Test {
         uint256 user1FinalGain = staderToken.balanceOf(user1) - user1PrevBalance;
         uint256 user2FinalGain = staderToken.balanceOf(user2) - user2PrevBalance;
 
+        console.log(address(this));
         assertApproxEqAbs(user2FinalGain / 10, user1FinalGain, 10);
     }
 
@@ -322,7 +323,7 @@ contract SDIncentiveControllerTest is Test {
         vm.assume(incentiveAmount > 0);
         vm.assume(duration > 0);
 
-        incentiveAmount = ((incentiveAmount % 10000) + 2) * 1e18;
+        incentiveAmount = ((incentiveAmount % 10) + 2) * 1e18;
         duration = ((duration % 10) + 1) * 100;
         incentiveAmount = (incentiveAmount / duration) * duration;
         staderToken.transfer(staderManager, incentiveAmount);
@@ -391,7 +392,7 @@ contract SDIncentiveControllerTest is Test {
     }
 
     function adjustIncentiveAmount(uint256 amount) internal pure returns (uint256) {
-        return ((amount % 10000) + 2) * 1e18;
+        return ((amount % 10) + 2) * 1e18;
     }
 
     function adjustDuration(uint256 duration) internal pure returns (uint256) {

@@ -71,7 +71,7 @@ contract SDUtilityPoolTest is Test {
             ''
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
-        staderToken.approve(address(sdUtilityPool), 1000 ether);
+        staderToken.approve(address(sdUtilityPool), 1 ether);
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
 
         vm.prank(staderAdmin);
@@ -87,7 +87,7 @@ contract SDUtilityPoolTest is Test {
             ''
         );
         SDUtilityPool sdUtilityPool2 = SDUtilityPool(address(utilityPoolProxy));
-        staderToken.approve(address(sdUtilityPool2), 1000 ether);
+        staderToken.approve(address(sdUtilityPool2), 1 ether);
         sdUtilityPool2.initialize(staderAdmin, address(staderConfig));
     }
 
@@ -105,9 +105,9 @@ contract SDUtilityPoolTest is Test {
         assertEq(sdUtilityPool.maxETHWorthOfSDPerValidator(), 1 ether);
         assertEq(sdUtilityPool.conservativeEthPerKey(), 2 ether);
         assertTrue(sdUtilityPool.hasRole(sdUtilityPool.DEFAULT_ADMIN_ROLE(), staderAdmin));
-        assertEq(sdUtilityPool.cTokenTotalSupply(), 1000 ether);
-        assertEq(sdUtilityPool.delegatorCTokenBalance(address(this)), 1000 ether);
-        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 1000 ether);
+        assertEq(sdUtilityPool.cTokenTotalSupply(), 1 ether);
+        assertEq(sdUtilityPool.delegatorCTokenBalance(address(this)), 1 ether);
+        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 1 ether);
     }
 
     function test_Delegate(
@@ -149,8 +149,8 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.delegate(sdAmount);
         assertEq(sdUtilityPool.exchangeRateStored(), sdUtilityPool.exchangeRateCurrent());
         uint256 cTokenBalance = (1e18 * uint256(sdAmount)) / exchangeRate;
-        //1000 ether worth of SD was delegate in the initialize
-        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 3 * sdAmount + 1000 ether);
+        //1 ether worth of SD was delegate in the initialize
+        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 3 * sdAmount + 1 ether);
 
         assertEq(sdUtilityPool.delegatorCTokenBalance(user), cTokenBalance);
         assertEq(sdUtilityPool.accrualBlockNumber(), block.number);
@@ -278,6 +278,7 @@ contract SDUtilityPoolTest is Test {
         vm.assume(randomSeed2 > 0 && randomSeed2 != randomSeed1);
         address user1 = vm.addr(randomSeed1);
         address user2 = vm.addr(randomSeed2);
+        vm.assume(user1 != staderAdmin && user2 != staderAdmin);
 
         staderToken.transfer(user1, sdDelegateAmount);
         staderToken.transfer(user2, sdDelegateAmount);
@@ -406,7 +407,7 @@ contract SDUtilityPoolTest is Test {
         );
         vm.expectRevert(ISDUtilityPool.InsufficientPoolBalance.selector);
         //1000 SD were delegated during initialization
-        sdUtilityPool.utilize(utilizeAmount + 1000 ether);
+        sdUtilityPool.utilize(utilizeAmount + 1 ether);
 
         staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
         sdUtilityPool.delegate(utilizeAmount * 10);
