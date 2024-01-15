@@ -67,7 +67,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
         if (duration == 0) revert InvalidEndBlock();
         if (rewardAmount % duration != 0) revert InvalidEndBlock();
 
-        updateReward(address(0));
+        _updateReward(address(0));
         lastUpdateBlockNumber = block.number;
 
         emissionPerBlock = rewardAmount / duration;
@@ -85,7 +85,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     function claim(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
 
-        updateReward(account);
+        _updateReward(account);
 
         uint256 reward = rewards[account];
         if (reward > 0) {
@@ -104,7 +104,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     function updateRewardForAccount(address account) external override {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_UTILITY_POOL());
 
-        updateReward(account);
+        _updateReward(account);
     }
 
     /// @notice Updates the address of staderConfig
@@ -125,7 +125,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
 
         return
             rewardPerTokenStored +
-            (((lastRewardTime() - lastUpdateBlockNumber) * emissionPerBlock * DECIMAL) / totalSupply);
+            (((_lastRewardTime() - lastUpdateBlockNumber) * emissionPerBlock * DECIMAL) / totalSupply);
     }
 
     /// @notice Calculates the total accrued reward for an account.
@@ -141,9 +141,9 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
 
     /// @dev Internal function to update the reward state for an account.
     /// @param account The account to update the reward for.
-    function updateReward(address account) internal {
+    function _updateReward(address account) internal {
         rewardPerTokenStored = rewardPerToken();
-        lastUpdateBlockNumber = lastRewardTime();
+        lastUpdateBlockNumber = _lastRewardTime();
 
         // If the account is not zero, update the reward for the account.
         if (account != address(0)) {
@@ -155,7 +155,7 @@ contract SDIncentiveController is ISDIncentiveController, AccessControlUpgradeab
     }
 
     /// @dev Internal function to get the last possible reward block number.
-    function lastRewardTime() public view returns (uint256) {
+    function _lastRewardTime() internal view returns (uint256) {
         return block.number >= rewardEndBlock ? rewardEndBlock : block.number;
     }
 }
