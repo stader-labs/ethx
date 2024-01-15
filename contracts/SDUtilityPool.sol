@@ -140,7 +140,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             revert InvalidAmountOfWithdraw();
         }
         accrueFee();
-        uint256 exchangeRate = _exchangeRateStoredInternal();
+        uint256 exchangeRate = _exchangeRateStored();
         delegatorCTokenBalance[msg.sender] -= _cTokenAmount;
         delegatorWithdrawRequestedCTokenCount[msg.sender] += _cTokenAmount;
         uint256 sdRequested = (exchangeRate * _cTokenAmount) / DECIMAL;
@@ -159,7 +159,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         returns (uint256 _requestId)
     {
         accrueFee();
-        uint256 exchangeRate = _exchangeRateStoredInternal();
+        uint256 exchangeRate = _exchangeRateStored();
         uint256 cTokenToReduce = (_sdAmount * DECIMAL) / exchangeRate;
         if (cTokenToReduce > delegatorCTokenBalance[msg.sender]) {
             revert InvalidAmountOfWithdraw();
@@ -174,7 +174,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      */
     function finalizeDelegatorWithdrawalRequest() external override whenNotPaused {
         accrueFee();
-        uint256 exchangeRate = _exchangeRateStoredInternal();
+        uint256 exchangeRate = _exchangeRateStored();
         uint256 maxRequestIdToFinalize = Math.min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit);
         uint256 requestId;
         uint256 sdToReserveToFinalizeRequests;
@@ -436,7 +436,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      */
     function exchangeRateCurrent() external override returns (uint256) {
         accrueFee();
-        return _exchangeRateStoredInternal();
+        return _exchangeRateStored();
     }
 
     /**
@@ -595,7 +595,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @return Calculated exchange rate scaled by 1e18
      */
     function exchangeRateStored() external view override returns (uint256) {
-        return _exchangeRateStoredInternal();
+        return _exchangeRateStored();
     }
 
     /**
@@ -723,7 +723,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param sdAmount The amount of the SD token to delegate
      */
     function _delegate(uint256 sdAmount) internal {
-        uint256 exchangeRate = _exchangeRateStoredInternal();
+        uint256 exchangeRate = _exchangeRateStored();
 
         if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), sdAmount)) {
             revert SDTransferFailed();
@@ -830,7 +830,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev This function does not accrue fee before calculating the exchange rate
      * @return calculated exchange rate scaled by 1e18
      */
-    function _exchangeRateStoredInternal() internal view virtual returns (uint256) {
+    function _exchangeRateStored() internal view virtual returns (uint256) {
         if (cTokenTotalSupply == 0) {
             /*
              * if cToken supply is zero:
