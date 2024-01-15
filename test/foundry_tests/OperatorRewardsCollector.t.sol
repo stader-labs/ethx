@@ -90,9 +90,7 @@ contract OperatorRewardsCollectorTest is Test {
         staderToken.approve(address(sdUtilityPool), 1000 ether);
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
 
-        vm.prank(staderAdmin);
-        sdUtilityPool.updateRiskConfig(70, 30, 5, 50);
-
+        vm.startPrank(staderAdmin);
         SDIncentiveController sdIncentiveControllerImpl = new SDIncentiveController();
         TransparentUpgradeableProxy sdIncentiveControllerProxy = new TransparentUpgradeableProxy(
             address(sdIncentiveControllerImpl),
@@ -110,8 +108,6 @@ contract OperatorRewardsCollectorTest is Test {
         );
         operatorRewardsCollector = OperatorRewardsCollector(address(operatorRewardsCollectorProxy));
         operatorRewardsCollector.initialize(staderAdmin, address(staderConfig));
-
-        vm.startPrank(staderAdmin);
         staderConfig.updateSDIncentiveController(address(sdIncentiveController));
         staderConfig.updateSDUtilityPool(address(sdUtilityPool));
         staderConfig.updateOperatorRewardsCollector(address(operatorRewardsCollector));

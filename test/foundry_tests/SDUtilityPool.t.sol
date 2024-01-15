@@ -5,6 +5,7 @@ import '../../contracts/library/UtilLib.sol';
 
 import '../../contracts/StaderConfig.sol';
 import '../../contracts/SDUtilityPool.sol';
+import '../../contracts/interfaces/ISDUtilityPool.sol';
 
 import '../mocks/SDCollateralMock.sol';
 import '../mocks/StaderTokenMock.sol';
@@ -73,9 +74,6 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool = SDUtilityPool(address(proxy));
         staderToken.approve(address(sdUtilityPool), 1 ether);
         sdUtilityPool.initialize(staderAdmin, address(staderConfig));
-
-        vm.prank(staderAdmin);
-        sdUtilityPool.updateRiskConfig(70, 30, 5, 50);
     }
 
     function test_Initialize() public {
@@ -108,6 +106,17 @@ contract SDUtilityPoolTest is Test {
         assertEq(sdUtilityPool.cTokenTotalSupply(), 1 ether);
         assertEq(sdUtilityPool.delegatorCTokenBalance(address(this)), 1 ether);
         assertEq(staderToken.balanceOf(address(sdUtilityPool)), 1 ether);
+
+        (
+            uint256 liquidationThreshold,
+            uint256 liquidationBonusPercent,
+            uint256 liquidationFeePercent,
+            uint256 ltv
+        ) = sdUtilityPool.riskConfig();
+        assertEq(liquidationThreshold, 70);
+        assertEq(liquidationBonusPercent, 30);
+        assertEq(liquidationFeePercent, 5);
+        assertEq(ltv, 50);
     }
 
     function test_Delegate(
@@ -133,6 +142,7 @@ contract SDUtilityPoolTest is Test {
         vm.startPrank(user2);
         vm.expectRevert('Pausable: paused');
         sdUtilityPool.delegate(sdAmount);
+        vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
         vm.startPrank(user2);
@@ -185,11 +195,13 @@ contract SDUtilityPoolTest is Test {
         assertEq(userWithdrawCToken, 0);
         vm.expectRevert(ISDUtilityPool.InvalidAmountOfWithdraw.selector);
         sdUtilityPool.requestWithdraw(2 * cTokenBalance);
+        vm.stopPrank();
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(user);
         vm.expectRevert('Pausable: paused');
         sdUtilityPool.requestWithdraw(cTokenWithdrawAmount / 2);
+        vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
         vm.startPrank(user);
@@ -199,11 +211,13 @@ contract SDUtilityPoolTest is Test {
         assertEq(requestID1, 1);
         assertEq(cTokenBalancePostWithdraw1, cTokenBalance - cTokenWithdrawAmount / 2);
         assertEq(userWithdrawCTokenPostWithdraw1, cTokenWithdrawAmount / 2);
+        vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.updateMaxNonRedeemedDelegatorRequestCount(1);
         vm.startPrank(user);
         vm.expectRevert(ISDUtilityPool.MaxLimitOnWithdrawRequestCountReached.selector);
         sdUtilityPool.requestWithdraw(cTokenWithdrawAmount - cTokenWithdrawAmount / 2);
+        vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.updateMaxNonRedeemedDelegatorRequestCount(1000);
         vm.startPrank(user);
@@ -213,6 +227,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(cTokenBalancePostWithdraw2, cTokenBalance - cTokenWithdrawAmount);
         assertEq(userWithdrawCTokenPostWithdraw2, cTokenWithdrawAmount);
         assertEq(requestID2, 2);
+        vm.stopPrank();
     }
 
     function test_RequestWithdrawWithSDAmount(
@@ -247,11 +262,13 @@ contract SDUtilityPoolTest is Test {
         assertEq(sdUtilityPool.delegatorWithdrawRequestedCTokenCount(user), 0);
         vm.expectRevert(ISDUtilityPool.InvalidAmountOfWithdraw.selector);
         sdUtilityPool.requestWithdrawWithSDAmount(deployerSDBalance);
+        vm.stopPrank();
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(user);
         vm.expectRevert('Pausable: paused');
         sdUtilityPool.requestWithdrawWithSDAmount(sdWithdrawAmount / 2);
+        vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
         vm.startPrank(user);
@@ -264,6 +281,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(sdUtilityPool.delegatorCTokenBalance(user), cTokenBalance - cTokenToReduce);
         assertEq(sdUtilityPool.delegatorWithdrawRequestedCTokenCount(user), cTokenToReduce);
         assertEq(sdUtilityPool.sdRequestedForWithdraw(), sdWithdrawAmount / 2);
+        vm.stopPrank();
     }
 
     function test_FinalizeDelegatorWithdrawalRequestAndClaim(
@@ -296,6 +314,7 @@ contract SDUtilityPoolTest is Test {
         uint256 exchangeRatePreWithdraw = sdUtilityPool.getLatestExchangeRate();
         vm.roll(1000);
         sdUtilityPool.requestWithdraw(user1CToken / 2);
+        vm.stopPrank();
         vm.prank(user2);
         sdUtilityPool.requestWithdraw(user2CToken / 2);
         uint256 sdRequestedForWithdraw = ((user1CToken / 2) * exchangeRatePreWithdraw) /
@@ -491,11 +510,13 @@ contract SDUtilityPoolTest is Test {
         );
         vm.expectRevert(ISDUtilityPool.SDUtilizeLimitReached.selector);
         sdUtilityPool.utilizeWhileAddingKeys(user, maxUtilize + 1, nonTerminalKeyCount);
+        vm.stopPrank();
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(permissionlessNodeRegistry);
         vm.expectRevert('Pausable: paused');
         sdUtilityPool.utilizeWhileAddingKeys(user, maxUtilize, nonTerminalKeyCount);
+        vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
         vm.startPrank(user);
@@ -507,6 +528,7 @@ contract SDUtilityPoolTest is Test {
         uint256 utilizerIndexLatest = sdUtilityPool.utilizeIndex() +
             Math.ceilDiv((sdUtilityPool.utilizeIndex() * sdUtilityPool.utilizationRatePerBlock() * 1000), 1e18);
         assertEq(sdUtilityPool.getUtilizerLatestBalance(user), (principal1 * utilizerIndexLatest) / utilizeIndex1);
+        vm.stopPrank();
         vm.startPrank(permissionlessNodeRegistry);
         vm.expectRevert(ISDUtilityPool.UnHealthyPosition.selector);
         sdUtilityPool.utilizeWhileAddingKeys(user, utilizeAmount, nonTerminalKeyCount);
@@ -530,6 +552,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(principal3, (principal2 * utilizerIndexLatest2) / utilizeIndex2 + utilizeAmount);
         assertEq(utilizeIndex3, utilizerIndexLatest2);
         assertEq(utilizeIndex3, sdUtilityPool.utilizeIndex());
+        vm.stopPrank();
     }
 
     function test_Repay(
@@ -565,6 +588,7 @@ contract SDUtilityPoolTest is Test {
         );
         vm.startPrank(staderManager);
         sdUtilityPool.pause();
+        vm.stopPrank();
         vm.prank(user);
         vm.expectRevert('Pausable: paused');
         sdUtilityPool.repay(repayAmount);
@@ -698,6 +722,7 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.updateStaderConfig(address(0));
         sdUtilityPool.updateStaderConfig(inputAddr);
         assertEq(address(sdUtilityPool.staderConfig()), inputAddr);
+        vm.stopPrank();
     }
 
     function test_UpdateRiskConfig(uint256 randomSeed) public {

@@ -112,6 +112,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         maxNonRedeemedDelegatorRequestCount = 1000;
         maxETHWorthOfSDPerValidator = 1 ether;
         conservativeEthPerKey = 2 ether;
+        _updateRiskConfig(70, 30, 5, 50);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         //delegate SD during initialization to avoid price inflation of cTokenShare
         _delegate(1 ether);
@@ -430,33 +431,6 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Updates the risk configuration
-     * @param liquidationThreshold The new liquidation threshold percent (1 - 100)
-     * @param liquidationBonusPercent The new liquidation bonus percent (0 - 100)
-     * @param liquidationFeePercent The new liquidation fee percent (0 - 100)
-     * @param ltv The new loan-to-value ratio (1 - 100)
-     */
-    function updateRiskConfig(
-        uint256 liquidationThreshold,
-        uint256 liquidationBonusPercent,
-        uint256 liquidationFeePercent,
-        uint256 ltv
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (liquidationThreshold > 100 || liquidationThreshold == 0) revert InvalidInput();
-        if (liquidationBonusPercent > 100) revert InvalidInput();
-        if (liquidationFeePercent > 100) revert InvalidInput();
-        if (ltv > 100 || ltv == 0) revert InvalidInput();
-
-        riskConfig = RiskConfig({
-            liquidationThreshold: liquidationThreshold,
-            liquidationBonusPercent: liquidationBonusPercent,
-            liquidationFeePercent: liquidationFeePercent,
-            ltv: ltv
-        });
-        emit RiskConfigUpdated(liquidationThreshold, liquidationBonusPercent, liquidationFeePercent, ltv);
-    }
-
-    /**
      * @notice Accrue fee then return the up-to-date exchange rate
      * @return Calculated exchange rate scaled by 1e18
      */
@@ -574,6 +548,22 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         if (_newEthPerKey == 0) revert InvalidInput();
         conservativeEthPerKey = _newEthPerKey;
         emit UpdatedConservativeEthPerKey(_newEthPerKey);
+    }
+
+    /**
+     * @notice Updates the risk configuration
+     * @param liquidationThreshold The new liquidation threshold percent (1 - 100)
+     * @param liquidationBonusPercent The new liquidation bonus percent (0 - 100)
+     * @param liquidationFeePercent The new liquidation fee percent (0 - 100)
+     * @param ltv The new loan-to-value ratio (1 - 100)
+     */
+    function updateRiskConfig(
+        uint256 liquidationThreshold,
+        uint256 liquidationBonusPercent,
+        uint256 liquidationFeePercent,
+        uint256 ltv
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _updateRiskConfig(liquidationThreshold, liquidationBonusPercent, liquidationFeePercent, ltv);
     }
 
     //Getters
@@ -877,5 +867,26 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             }
         }
         revert CannotFindRequestId();
+    }
+
+    /// @notice Updates the risk configuration
+    function _updateRiskConfig(
+        uint256 liquidationThreshold,
+        uint256 liquidationBonusPercent,
+        uint256 liquidationFeePercent,
+        uint256 ltv
+    ) internal {
+        if (liquidationThreshold > 100 || liquidationThreshold == 0) revert InvalidInput();
+        if (liquidationBonusPercent > 100) revert InvalidInput();
+        if (liquidationFeePercent > 100) revert InvalidInput();
+        if (ltv > 100 || ltv == 0) revert InvalidInput();
+
+        riskConfig = RiskConfig({
+            liquidationThreshold: liquidationThreshold,
+            liquidationBonusPercent: liquidationBonusPercent,
+            liquidationFeePercent: liquidationFeePercent,
+            ltv: ltv
+        });
+        emit RiskConfigUpdated(liquidationThreshold, liquidationBonusPercent, liquidationFeePercent, ltv);
     }
 }
