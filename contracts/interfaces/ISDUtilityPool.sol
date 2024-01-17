@@ -6,7 +6,7 @@ pragma solidity 0.8.16;
  */
 struct UserData {
     uint256 totalInterestSD; // Total accrued SD interest for the user.
-    uint256 totalCollateralInSD; // Total collateral in SD for the user.
+    uint256 totalCollateralInEth; // Total collateral in Eth for the user.
     uint256 healthFactor; // Numerical health factor for liquidation risk.
     uint256 lockedEth; // Amount of ETH locked for liquidation.
 }
@@ -159,6 +159,8 @@ interface ISDUtilityPool {
     function delegatorCTokenBalance(address) external view returns (uint256);
 
     function delegatorWithdrawRequestedCTokenCount(address) external view returns (uint256);
+
+    function liquidationIndexByOperator(address) external view returns (uint256);
 
     function getPoolAvailableSDBalance() external view returns (uint256);
 

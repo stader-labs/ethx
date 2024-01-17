@@ -70,15 +70,17 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         uint256 liquidationThreshold = sdUtilityPool.getLiquidationThreshold();
         UserData memory userData = sdUtilityPool.getUserData(operator);
         uint256 totalInterestAdjusted = (userData.totalInterestSD * 100) / liquidationThreshold;
+        uint256 totalInterestAdjustedInEth = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(
+            totalInterestAdjusted
+        );
 
-        if (totalInterestAdjusted > userData.totalCollateralInSD) return 0;
-        uint256 withdrawableInSd = userData.totalCollateralInSD - totalInterestAdjusted;
+        if (totalInterestAdjustedInEth > userData.totalCollateralInEth) return 0;
+        uint256 withdrawableInEth = userData.totalCollateralInEth - totalInterestAdjustedInEth;
 
         OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
-        uint256 availableBalance = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(withdrawableInSd);
         return
-            availableBalance > operatorLiquidation.totalAmountInEth
-                ? availableBalance - operatorLiquidation.totalAmountInEth
+            withdrawableInEth > operatorLiquidation.totalAmountInEth
+                ? withdrawableInEth - operatorLiquidation.totalAmountInEth
                 : 0;
     }
 

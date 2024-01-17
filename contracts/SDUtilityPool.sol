@@ -86,7 +86,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     mapping(uint256 => DelegatorWithdrawInfo) public override delegatorWithdrawRequests;
     mapping(address => uint256[]) public override requestIdsByDelegatorAddress;
-    mapping(address => uint256) private liquidationIndexByOperator;
+    mapping(address => uint256) public override liquidationIndexByOperator;
 
     uint256 public conservativeEthPerKey;
 
@@ -679,7 +679,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         return
             UserData(
                 totalInterestSD,
-                totalCollateralInSD,
+                totalCollateralInEth,
                 healthFactor,
                 liquidationIndexByOperator[account] == 0
                     ? 0
