@@ -12,6 +12,7 @@ import '../mocks/SDCollateralMock.sol';
 import '../mocks/StaderTokenMock.sol';
 import '../mocks/SDIncentiveControllerMock.sol';
 import '../mocks/PoolUtilsMock.sol';
+import '../mocks/StaderOracleMock.sol';
 import '../mocks/WETHMock.sol';
 
 import 'forge-std/Test.sol';
@@ -36,6 +37,7 @@ contract OperatorRewardsCollectorTest is Test {
     OperatorRewardsCollector operatorRewardsCollector;
     StaderTokenMock staderToken;
     SDCollateralMock sdCollateral;
+    StaderOracleMock staderOracle;
     PoolUtilsMock poolUtils;
     WETHMock weth;
 
@@ -49,6 +51,7 @@ contract OperatorRewardsCollectorTest is Test {
         staderToken = new StaderTokenMock();
         weth = new WETHMock();
         sdCollateral = new SDCollateralMock();
+        staderOracle = new StaderOracleMock();
     }
 
     function setUp() public {
@@ -110,6 +113,7 @@ contract OperatorRewardsCollectorTest is Test {
         operatorRewardsCollector.initialize(staderAdmin, address(staderConfig));
         staderConfig.updateSDIncentiveController(address(sdIncentiveController));
         staderConfig.updateSDUtilityPool(address(sdUtilityPool));
+        staderConfig.updateStaderOracle(address(staderOracle));
         staderConfig.updateOperatorRewardsCollector(address(operatorRewardsCollector));
         operatorRewardsCollector.updateWethAddress(address(weth));
         vm.stopPrank();
@@ -153,7 +157,11 @@ contract OperatorRewardsCollectorTest is Test {
 
         operatorRewardsCollector.depositFor{value: amount}(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), amount);
-
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(1e14)
+        );
         vm.startPrank(staderManager);
         operatorRewardsCollector.claim();
         assertEq(operatorRewardsCollector.balances(staderManager), 0);
@@ -191,6 +199,12 @@ contract OperatorRewardsCollectorTest is Test {
             address(sdCollateral),
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
+        );
+
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(1e14)
         );
 
         vm.roll(block.number + 1900000000);
@@ -241,6 +255,12 @@ contract OperatorRewardsCollectorTest is Test {
             abi.encode(0, 0, 0)
         );
 
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(1e14)
+        );
+
         vm.roll(block.number + 1900000000);
 
         UserData memory userData = sdUtilityPool.getUserData(operator);
@@ -286,6 +306,12 @@ contract OperatorRewardsCollectorTest is Test {
             address(sdCollateral),
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
+        );
+
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(1e14)
         );
 
         vm.roll(block.number + 1900000000);
