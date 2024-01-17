@@ -8,7 +8,9 @@ import './interfaces/IStaderConfig.sol';
 import './interfaces/ISDUtilityPool.sol';
 import './interfaces/SDCollateral/ISDCollateral.sol';
 import './interfaces/IWETH.sol';
+import '../contracts/interfaces/IStaderOracle.sol';
 
+import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
 
 contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
@@ -70,17 +72,20 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         uint256 liquidationThreshold = sdUtilityPool.getLiquidationThreshold();
         UserData memory userData = sdUtilityPool.getUserData(operator);
         uint256 totalInterestAdjusted = (userData.totalInterestSD * 100) / liquidationThreshold;
-        uint256 totalInterestAdjustedInEth = ISDCollateral(staderConfig.getSDCollateral()).convertSDToETH(
-            totalInterestAdjusted
+        uint256 sdPriceInETH = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+
+        uint256 totalInterestAdjustedInEth = Math.ceilDiv(
+            (totalInterestAdjusted * sdPriceInETH),
+            staderConfig.getDecimals()
         );
 
         if (totalInterestAdjustedInEth > userData.totalCollateralInEth) return 0;
-        uint256 withdrawableInEth = userData.totalCollateralInEth - totalInterestAdjustedInEth;
+        uint256 withdrawableAmountInEth = userData.totalCollateralInEth - totalInterestAdjustedInEth;
 
         OperatorLiquidation memory operatorLiquidation = sdUtilityPool.getOperatorLiquidation(operator);
         return
-            withdrawableInEth > operatorLiquidation.totalAmountInEth
-                ? withdrawableInEth - operatorLiquidation.totalAmountInEth
+            withdrawableAmountInEth > operatorLiquidation.totalAmountInEth
+                ? withdrawableAmountInEth - operatorLiquidation.totalAmountInEth
                 : 0;
     }
 
