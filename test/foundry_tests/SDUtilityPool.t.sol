@@ -127,7 +127,7 @@ contract SDUtilityPoolTest is Test {
     ) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance / 4);
-        vm.assume(sdAmount > 0);
+        vm.assume(sdAmount > 1e15);
 
         vm.assume(randomSeed > 0);
         vm.assume(randomSeed2 > 0 && randomSeed != randomSeed2);
@@ -172,19 +172,49 @@ contract SDUtilityPoolTest is Test {
         );
     }
 
+    function test_RequestWithdrawWithFullAmount(uint128 sdDelegateAmount, uint16 randomSeed) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdDelegateAmount <= deployerSDBalance / 2 && sdDelegateAmount > 1e15);
+
+        vm.assume(randomSeed > 0);
+        address user = vm.addr(randomSeed);
+        vm.assume(user != address(this));
+
+        staderToken.transfer(user, sdDelegateAmount);
+        staderToken.transfer(address(sdUtilityPool), sdDelegateAmount);
+        vm.startPrank(user);
+        staderToken.approve(address(sdUtilityPool), sdDelegateAmount);
+        sdUtilityPool.delegate(sdDelegateAmount);
+        uint256 cTokenBalance = sdUtilityPool.delegatorCTokenBalance(user);
+        vm.stopPrank();
+        sdUtilityPool.utilize(1 ether);
+
+        vm.roll(1000000000);
+        uint256 delegatorLatestSDBal = sdUtilityPool.getDelegatorLatestSDBalance(user);
+        vm.prank(user);
+        sdUtilityPool.requestWithdraw(cTokenBalance);
+        (, , uint256 sdExpected, , ) = sdUtilityPool.delegatorWithdrawRequests(1);
+        assertEq(sdExpected, delegatorLatestSDBal);
+        assertEq(sdUtilityPool.delegatorCTokenBalance(user), 0);
+        assertEq(sdUtilityPool.getDelegatorLatestSDBalance(user), 0);
+    }
+
     function test_RequestWithdraw(
         uint128 sdDelegateAmount,
         uint128 cTokenWithdrawAmount,
+        uint128 cTokenWithdrawAmount2,
         uint16 randomSeed
     ) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
-        vm.assume(sdDelegateAmount <= deployerSDBalance / 2 && sdDelegateAmount > 0);
-        vm.assume(cTokenWithdrawAmount <= sdDelegateAmount && cTokenWithdrawAmount > 0);
+        vm.assume(sdDelegateAmount <= deployerSDBalance / 2 && sdDelegateAmount > 1e15);
+        // vm.assume(cTokenWithdrawAmount <= sdDelegateAmount);
 
         vm.assume(randomSeed > 0);
         address user = vm.addr(randomSeed);
 
         staderToken.transfer(user, sdDelegateAmount);
+        staderToken.transfer(address(sdUtilityPool), sdDelegateAmount);
+
         vm.startPrank(user); // makes user as the caller untill stopPrank();
         staderToken.approve(address(sdUtilityPool), sdDelegateAmount);
         uint256 exchangeRate = sdUtilityPool.getLatestExchangeRate();
@@ -200,34 +230,77 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.pause();
         vm.startPrank(user);
         vm.expectRevert('Pausable: paused');
-        sdUtilityPool.requestWithdraw(cTokenWithdrawAmount / 2);
+        sdUtilityPool.requestWithdraw(cTokenWithdrawAmount);
         vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
         vm.startPrank(user);
-        uint256 requestID1 = sdUtilityPool.requestWithdraw(cTokenWithdrawAmount / 2);
+        vm.assume(cTokenWithdrawAmount < cTokenBalance && (cTokenWithdrawAmount * exchangeRate) / 1e18 > 1e12);
+        uint256 requestID1 = sdUtilityPool.requestWithdraw(cTokenWithdrawAmount);
         uint256 cTokenBalancePostWithdraw1 = sdUtilityPool.delegatorCTokenBalance(user);
         uint256 userWithdrawCTokenPostWithdraw1 = sdUtilityPool.delegatorWithdrawRequestedCTokenCount(user);
         assertEq(requestID1, 1);
-        assertEq(cTokenBalancePostWithdraw1, cTokenBalance - cTokenWithdrawAmount / 2);
-        assertEq(userWithdrawCTokenPostWithdraw1, cTokenWithdrawAmount / 2);
+        assertEq(cTokenBalancePostWithdraw1, cTokenBalance - cTokenWithdrawAmount);
+        assertEq(userWithdrawCTokenPostWithdraw1, cTokenWithdrawAmount);
         vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.updateMaxNonRedeemedDelegatorRequestCount(1);
+        vm.roll(1000);
+        staderToken.transfer(address(sdUtilityPool), cTokenWithdrawAmount);
+        uint256 exchangeRate2 = sdUtilityPool.getLatestExchangeRate();
         vm.startPrank(user);
+        vm.assume(
+            cTokenWithdrawAmount2 < cTokenBalancePostWithdraw1 && (cTokenWithdrawAmount2 * exchangeRate2) / 1e18 > 1e12
+        );
         vm.expectRevert(ISDUtilityPool.MaxLimitOnWithdrawRequestCountReached.selector);
-        sdUtilityPool.requestWithdraw(cTokenWithdrawAmount - cTokenWithdrawAmount / 2);
+        sdUtilityPool.requestWithdraw(cTokenWithdrawAmount2);
         vm.stopPrank();
         vm.prank(staderAdmin);
         sdUtilityPool.updateMaxNonRedeemedDelegatorRequestCount(1000);
         vm.startPrank(user);
-        uint256 requestID2 = sdUtilityPool.requestWithdraw(cTokenWithdrawAmount - cTokenWithdrawAmount / 2);
-        uint256 cTokenBalancePostWithdraw2 = sdUtilityPool.delegatorCTokenBalance(user);
-        uint256 userWithdrawCTokenPostWithdraw2 = sdUtilityPool.delegatorWithdrawRequestedCTokenCount(user);
-        assertEq(cTokenBalancePostWithdraw2, cTokenBalance - cTokenWithdrawAmount);
-        assertEq(userWithdrawCTokenPostWithdraw2, cTokenWithdrawAmount);
+        uint256 requestID2 = sdUtilityPool.requestWithdraw(cTokenWithdrawAmount2);
+        assertEq(
+            sdUtilityPool.delegatorCTokenBalance(user),
+            cTokenBalance - (cTokenWithdrawAmount + cTokenWithdrawAmount2)
+        );
+        assertEq(
+            sdUtilityPool.delegatorWithdrawRequestedCTokenCount(user),
+            cTokenWithdrawAmount + cTokenWithdrawAmount2
+        );
         assertEq(requestID2, 2);
         vm.stopPrank();
+    }
+
+    function test_RequestWithdrawWithSDAndFullAmount(
+        uint128 sdDelegateAmount,
+        uint128 rewards,
+        uint16 randomSeed
+    ) public {
+        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
+        vm.assume(sdDelegateAmount <= deployerSDBalance / 2 && sdDelegateAmount > 1e15);
+        vm.assume(rewards <= deployerSDBalance / 2 && rewards > 1e18);
+
+        vm.assume(randomSeed > 0);
+        address user = vm.addr(randomSeed);
+        vm.assume(user != address(this));
+
+        staderToken.transfer(user, sdDelegateAmount);
+        staderToken.transfer(address(sdUtilityPool), rewards);
+        vm.startPrank(user);
+        staderToken.approve(address(sdUtilityPool), sdDelegateAmount);
+        sdUtilityPool.delegate(sdDelegateAmount);
+        vm.stopPrank();
+        sdUtilityPool.utilize(1 ether);
+
+        vm.roll(1000000000);
+        uint256 delegatorLatestSDBal = sdUtilityPool.getDelegatorLatestSDBalance(user);
+
+        vm.startPrank(user);
+        sdUtilityPool.requestWithdrawWithSDAmount(delegatorLatestSDBal);
+        (, , uint256 sdExpected, , ) = sdUtilityPool.delegatorWithdrawRequests(1);
+        assertEq(sdExpected, delegatorLatestSDBal);
+        assertEq(sdUtilityPool.delegatorCTokenBalance(user), 0);
+        assertEq(sdUtilityPool.getDelegatorLatestSDBalance(user), 0);
     }
 
     function test_RequestWithdrawWithSDAmount(
@@ -237,8 +310,8 @@ contract SDUtilityPoolTest is Test {
         uint16 randomSeed2
     ) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
-        vm.assume(sdDelegateAmount <= deployerSDBalance / 3 && sdDelegateAmount > 0);
-        vm.assume(sdWithdrawAmount <= sdDelegateAmount && sdWithdrawAmount > 0);
+        vm.assume(sdDelegateAmount <= deployerSDBalance / 3 && sdDelegateAmount > 1e15);
+        vm.assume(sdWithdrawAmount <= sdDelegateAmount && sdWithdrawAmount / 2 > 1e12);
 
         vm.assume(randomSeed1 > 0);
         vm.assume(randomSeed2 > 0 && randomSeed2 != randomSeed1);
@@ -275,7 +348,7 @@ contract SDUtilityPoolTest is Test {
         uint256 exchangeRatePostDelegation = sdUtilityPool.getLatestExchangeRate();
         uint256 requestID1 = sdUtilityPool.requestWithdrawWithSDAmount(sdWithdrawAmount / 2);
         uint256[] memory requestIds = sdUtilityPool.getRequestIdsByDelegator(user);
-        uint256 cTokenToReduce = (uint256(sdWithdrawAmount / 2) * 1e18) / exchangeRatePostDelegation;
+        uint256 cTokenToReduce = Math.ceilDiv((uint256(sdWithdrawAmount / 2) * 1e18), exchangeRatePostDelegation);
         assertEq(requestID1, 1);
         assertEq(requestID1, requestIds[0]);
         assertEq(sdUtilityPool.delegatorCTokenBalance(user), cTokenBalance - cTokenToReduce);
@@ -290,7 +363,7 @@ contract SDUtilityPoolTest is Test {
         uint16 randomSeed2
     ) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
-        vm.assume(sdDelegateAmount <= deployerSDBalance / 5 && sdDelegateAmount > 0);
+        vm.assume(sdDelegateAmount <= deployerSDBalance / 5 && sdDelegateAmount > 2e15);
 
         vm.assume(randomSeed1 > 0);
         vm.assume(randomSeed2 > 0 && randomSeed2 != randomSeed1);
@@ -401,7 +474,7 @@ contract SDUtilityPoolTest is Test {
     }
 
     function test_Utilize(uint256 utilizeAmount) public {
-        vm.assume(utilizeAmount <= sdUtilityPool.maxETHWorthOfSDPerValidator() && utilizeAmount > 0);
+        vm.assume(utilizeAmount <= sdUtilityPool.maxETHWorthOfSDPerValidator() && utilizeAmount > 1e15);
         vm.startPrank(staderManager);
         sdUtilityPool.updateProtocolFee(1e17);
         sdUtilityPool.pause();
