@@ -139,6 +139,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     /**
      * @notice auxiliary method to put a withdrawal request, takes in cToken amount as input
+     * @dev use this function to withdraw all SD from pool, pass delegatorCTokenBalance in the input for such cases
      * @param _cTokenAmount amount of cToken
      * @return _requestId generated request ID for withdrawal
      */
@@ -159,6 +160,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     /**
      * @notice auxiliary method to put a withdrawal request, takes SD amount as input
+     * @dev this function is not recommended to withdraw all balance as due to some elapsed block
+     * between calculating getDelegatorLatestSDBalance and then executing this function, some more SD rewards
+     * might accumulate, use 'requestWithdraw' function in such case by passing delegatorCTokenBalance in the input
      * @param _sdAmount amount of SD to withdraw
      * @return _requestId generated request ID for withdrawal
      */
@@ -173,7 +177,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         }
         accrueFee();
         uint256 exchangeRate = _exchangeRateStored();
-        uint256 cTokenToReduce = (_sdAmount * DECIMAL) / exchangeRate;
+        uint256 cTokenToReduce = Math.ceilDiv((_sdAmount * DECIMAL), exchangeRate);
         if (cTokenToReduce > delegatorCTokenBalance[msg.sender]) {
             revert InvalidAmountOfWithdraw();
         }
