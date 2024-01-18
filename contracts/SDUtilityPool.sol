@@ -19,6 +19,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     uint256 public constant DECIMAL = 1e18;
 
+    uint256 public constant MIN_SD_DELEGATE_LIMIT = 1e15;
+
+    uint256 public constant MIN_SD_WITHDRAW_LIMIT = 1e12;
+
     uint256 public constant MAX_UTILIZATION_RATE_PER_BLOCK = 95129375951; // 25 % APR
 
     uint256 public constant MAX_PROTOCOL_FEE = 1e17; // 10%
@@ -125,6 +129,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param sdAmount The amount of SD token to delegate
      */
     function delegate(uint256 sdAmount) external override whenNotPaused {
+        if (sdAmount < MIN_SD_DELEGATE_LIMIT) {
+            revert InvalidInput();
+        }
         accrueFee();
         ISDIncentiveController(staderConfig.getSDIncentiveController()).updateRewardForAccount(msg.sender);
         _delegate(sdAmount);
@@ -144,6 +151,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         delegatorCTokenBalance[msg.sender] -= _cTokenAmount;
         delegatorWithdrawRequestedCTokenCount[msg.sender] += _cTokenAmount;
         uint256 sdRequested = (exchangeRate * _cTokenAmount) / DECIMAL;
+        if (sdRequested < MIN_SD_WITHDRAW_LIMIT) {
+            revert InvalidInput();
+        }
         _requestId = _requestWithdraw(sdRequested, _cTokenAmount);
     }
 
@@ -158,6 +168,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         whenNotPaused
         returns (uint256 _requestId)
     {
+        if (_sdAmount < MIN_SD_WITHDRAW_LIMIT) {
+            revert InvalidInput();
+        }
         accrueFee();
         uint256 exchangeRate = _exchangeRateStored();
         uint256 cTokenToReduce = (_sdAmount * DECIMAL) / exchangeRate;
