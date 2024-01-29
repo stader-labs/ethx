@@ -161,9 +161,9 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         (, , uint256 nonTerminalKeys) = sdCollateral.getOperatorInfo(operator);
 
         // Only proceed if the operator has no non-terminal (active) keys left
-        if (nonTerminalKeys > 0) return;
+        if (nonTerminalKeys > 0 || (sdCollateral.operatorUtilizedSDBalance(operator) == 0)) return;
 
         // Withdraw the operator's utilized SD balance and transfer it back to SD Utility Pool
-        sdCollateral.withdrawOnBehalf(sdCollateral.operatorUtilizedSDBalance(operator), operator);
+        sdCollateral.clearUtilizedPosition(operator);
     }
 }
