@@ -156,6 +156,8 @@ interface ISDUtilityPool {
 
     function cTokenTotalSupply() external view returns (uint256);
 
+    function totalUtilizedSD() external view returns (uint256);
+
     function delegatorCTokenBalance(address) external view returns (uint256);
 
     function delegatorWithdrawRequestedCTokenCount(address) external view returns (uint256);
