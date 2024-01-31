@@ -138,21 +138,6 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         emit SDWithdrawn(_operator, _requestedSD);
     }
 
-    function clearUtilizedPosition(address _operator) external override {
-        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.OPERATOR_REWARD_COLLECTOR());
-        UserData memory userData = ISDUtilityPool(staderConfig.getSDUtilityPool()).getUserData(_operator);
-
-        if (operatorSDBalance[_operator] < (userData.totalInterestSD)) {
-            revert InsufficientSelfBondToRepay();
-        }
-        ISDUtilityPool(staderConfig.getSDUtilityPool()).repayOnBehalf(
-            _operator,
-            operatorUtilizedSDBalance[_operator] + userData.totalInterestSD
-        );
-        operatorSDBalance[_operator] -= userData.totalInterestSD;
-        operatorUtilizedSDBalance[_operator] = 0;
-    }
-
     /// @notice slashes one validator equi. SD amount
     /// @dev callable only by respective withdrawVaults
     /// @param _validatorId validator SD collateral to slash

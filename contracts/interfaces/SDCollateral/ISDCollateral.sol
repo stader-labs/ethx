@@ -44,8 +44,6 @@ interface ISDCollateral {
 
     function withdrawOnBehalf(uint256 _requestedSD, address _operator) external;
 
-    function clearUtilizedPosition(address _operator) external;
-
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external;
 
     function maxApproveSD() external;
