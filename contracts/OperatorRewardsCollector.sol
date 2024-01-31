@@ -159,14 +159,15 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     function _transferBackUtilizedSD(address operator) internal {
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
         (, , uint256 nonTerminalKeys) = sdCollateral.getOperatorInfo(operator);
-        uint256 operatorUtilizedSD = sdCollateral.operatorUtilizedSDBalance(operator);
+
+        uint256 operatorUtilizedPosition = ISDUtilityPool(staderConfig.getSDUtilityPool()).getUtilizerLatestBalance(
+            operator
+        );
 
         // Only proceed if the operator has no non-terminal (active) keys left
-        if (nonTerminalKeys > 0 || (operatorUtilizedSD == 0)) return;
-
-        UserData memory userData = ISDUtilityPool(staderConfig.getSDUtilityPool()).getUserData(operator);
+        if (nonTerminalKeys > 0 || (operatorUtilizedPosition == 0)) return;
 
         // Withdraw the operator's utilized SD balance along with interest to make utilized position as 0 and transfer it back to SD Utility Pool
-        sdCollateral.withdrawOnBehalf(operatorUtilizedSD + userData.totalInterestSD, operator);
+        sdCollateral.withdrawOnBehalf(operatorUtilizedPosition, operator);
     }
 }
