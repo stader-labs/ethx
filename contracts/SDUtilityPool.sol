@@ -313,7 +313,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @notice Sender repays their full utilized SD position, this function is introduce to help
      * utilizer not to worry about calculating exact SD repayment amount for clearing their entire position
      */
-    function repayFullAmount() external whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+    function repayFullAmount() external override whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
         accrueFee();
         uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(msg.sender);
         (repaidAmount, feePaid) = _repay(msg.sender, accountUtilizedPrev);
