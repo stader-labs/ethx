@@ -49,7 +49,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      */
     function claim() external {
         claimLiquidation(msg.sender);
-        _transferBackUtilizedSD(msg.sender);
 
         uint256 amount = balances[msg.sender] > withdrawableInEth(msg.sender)
             ? withdrawableInEth(msg.sender)
@@ -58,6 +57,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     }
 
     function claimLiquidation(address operator) public override {
+        _transferBackUtilizedSD(operator);
         _completeLiquidationIfExists(operator);
     }
 
@@ -111,22 +111,42 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
         // If the liquidation is not repaid, check balance and then proceed with repayment
         if (!operatorLiquidation.isRepaid && operatorLiquidation.totalAmountInEth > 0) {
+            (, , uint256 nonTerminalKeys) = ISDCollateral(staderConfig.getSDCollateral()).getOperatorInfo(operator);
             // Ensure that the balance is sufficient
-            if (balances[operator] < operatorLiquidation.totalAmountInEth) revert InsufficientBalance();
+            if (balances[operator] < operatorLiquidation.totalAmountInEth && nonTerminalKeys > 0)
+                revert InsufficientBalance();
 
-            // Transfer WETH to liquidator and ETH to treasury
-            weth.deposit{value: operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth}();
-            if (
-                weth.transferFrom(
-                    address(this),
-                    operatorLiquidation.liquidator,
+            if (balances[operator] < operatorLiquidation.totalAmountInEth) {
+                uint256 wETHDeposit = Math.min(
+                    balances[operator],
                     operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth
-                ) == false
-            ) revert WethTransferFailed();
-            UtilLib.sendValue(staderConfig.getStaderTreasury(), operatorLiquidation.totalFeeInEth);
+                );
 
-            sdUtilityPool.completeLiquidation(operator);
-            balances[operator] -= operatorLiquidation.totalAmountInEth;
+                weth.deposit{value: wETHDeposit}();
+                if (weth.transferFrom(address(this), operatorLiquidation.liquidator, wETHDeposit) == false)
+                    revert WethTransferFailed();
+                balances[operator] -= wETHDeposit;
+
+                uint256 protocolFee = Math.min(operatorLiquidation.totalFeeInEth, balances[operator]);
+                UtilLib.sendValue(staderConfig.getStaderTreasury(), protocolFee);
+
+                balances[operator] -= protocolFee;
+                sdUtilityPool.completeLiquidation(operator);
+            } else {
+                // Transfer WETH to liquidator and ETH to treasury
+                weth.deposit{value: operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth}();
+                if (
+                    weth.transferFrom(
+                        address(this),
+                        operatorLiquidation.liquidator,
+                        operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth
+                    ) == false
+                ) revert WethTransferFailed();
+                UtilLib.sendValue(staderConfig.getStaderTreasury(), operatorLiquidation.totalFeeInEth);
+
+                sdUtilityPool.completeLiquidation(operator);
+                balances[operator] -= operatorLiquidation.totalAmountInEth;
+            }
         }
     }
 
@@ -160,14 +180,12 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
         (, , uint256 nonTerminalKeys) = sdCollateral.getOperatorInfo(operator);
 
-        uint256 operatorUtilizedPosition = ISDUtilityPool(staderConfig.getSDUtilityPool()).getUtilizerLatestBalance(
-            operator
-        );
+        uint256 operatorUtilizedSDBal = sdCollateral.operatorUtilizedSDBalance(operator);
 
-        // Only proceed if the operator has no non-terminal (active) keys left
-        if (nonTerminalKeys > 0 || (operatorUtilizedPosition == 0)) return;
+        // Only proceed if the operator has no non-terminal (active) keys left and nonZero utilizedSD Balance
+        if (nonTerminalKeys > 0 || (operatorUtilizedSDBal == 0)) return;
 
-        // Withdraw the operator's utilized SD balance along with interest to make utilized position as 0 and transfer it back to SD Utility Pool
-        sdCollateral.withdrawOnBehalf(operatorUtilizedPosition, operator);
+        // transfer back the operator's utilized SD balance to SD Utility Pool
+        sdCollateral.transferBackUtilizedSD(operator);
     }
 }

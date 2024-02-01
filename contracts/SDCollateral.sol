@@ -138,6 +138,22 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
         emit SDWithdrawn(_operator, _requestedSD);
     }
 
+    /**
+     * @notice permissionless call to let anyone move the utilized SD back to utilityPool for an operator
+     * @dev nonTerminal key count should be 0
+     */
+    function transferBackUtilizedSD(address _operator) external override {
+        (, , uint256 nonTerminalKeys) = getOperatorInfo(_operator);
+        if (nonTerminalKeys != 0) {
+            revert NonTerminalKeysNotZero();
+        }
+        ISDUtilityPool(staderConfig.getSDUtilityPool()).repayUtilizedSDBalance(
+            _operator,
+            operatorUtilizedSDBalance[_operator]
+        );
+        operatorUtilizedSDBalance[_operator] = 0;
+    }
+
     /// @notice slashes one validator equi. SD amount
     /// @dev callable only by respective withdrawVaults
     /// @param _validatorId validator SD collateral to slash

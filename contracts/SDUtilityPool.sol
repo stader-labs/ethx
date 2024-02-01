@@ -310,6 +310,16 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
+     * @notice Sender repays their full utilized SD position, this function is introduce to help
+     * utilizer not to worry about calculating exact SD repayment amount for clearing their entire position
+     */
+    function repayFullAmount() external whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+        accrueFee();
+        uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(msg.sender);
+        (repaidAmount, feePaid) = _repay(msg.sender, accountUtilizedPrev);
+    }
+
+    /**
      * @notice call to withdraw protocol fee SD
      * @dev only `MANAGER` role can call
      * @param _amount amount of protocol fee in SD to withdraw
@@ -418,6 +428,47 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             liquidationFeeInEth,
             msg.sender
         );
+    }
+
+    /**
+     * @notice function used to clear utilizer's SD interest position in case when protocol does not have any ETH
+     * collateral left for SD interest due to all collateral ETH being used as liquidation fee, SD interest in this
+     * case will be from the moment of liquidationCall and claiming of liquidation
+     * @dev only ADMIN role can call, SD worth of interest is lost from the protocol
+     * @dev utilizer utilizedSD balance in SDCollateral contract should be 0
+     * @param _utilizer address of the utilizer
+     */
+    function clearUtilizerInterest(address _utilizer) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(_utilizer) != 0) {
+            revert OperatorUtilizedSDBalanceNonZero();
+        }
+        accrueFee();
+        uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(_utilizer);
+
+        utilizerData[_utilizer].principal = 0;
+        utilizerData[_utilizer].utilizeIndex = utilizeIndex;
+        totalUtilizedSD = totalUtilizedSD > accountUtilizedPrev ? totalUtilizedSD - accountUtilizedPrev : 0;
+        emit ClearedUtilizerInterest(_utilizer, accountUtilizedPrev);
+    }
+
+    /**
+     * @notice function used to move utilizedSD from SDCollateral to UtilityPool
+     * in such a way that utilizedSDBalance in SDCollateral contract becomes 0 and utilizer is left with only SD interest
+     * @dev only SDCollateral contract can call
+     */
+    function repayUtilizedSDBalance(address _utilizer, uint256 amount) external override {
+        UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.SD_COLLATERAL());
+        accrueFee();
+
+        if (!IERC20(staderConfig.getStaderToken()).transferFrom(msg.sender, address(this), amount)) {
+            revert SDTransferFailed();
+        }
+
+        uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(_utilizer);
+        utilizerData[_utilizer].principal = accountUtilizedPrev - amount;
+        utilizerData[_utilizer].utilizeIndex = utilizeIndex;
+        totalUtilizedSD = totalUtilizedSD > amount ? totalUtilizedSD - amount : 0;
+        emit RepaidUtilizedSDBalance(_utilizer, amount);
     }
 
     /**

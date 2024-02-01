@@ -37,6 +37,7 @@ interface ISDUtilityPool {
     error InvalidAmountOfWithdraw();
     error InsufficientPoolBalance();
     error CallerNotAuthorizedToRedeem();
+    error OperatorUtilizedSDBalanceNonZero();
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
     error AlreadyLiquidated();
@@ -51,10 +52,13 @@ interface ISDUtilityPool {
     event UpdatedMaxNonRedeemedDelegatorRequestCount(uint256 count);
     event UpdatedFinalizationBatchLimit(uint256 finalizationBatchLimit);
     event UtilizationRatePerBlockUpdated(uint256 utilizationRatePerBlock);
+    event ClearedUtilizerInterest(address indexed utilizer, uint256 sdInterest);
     event UpdatedMaxETHWorthOfSDPerValidator(uint256 maxETHWorthOfSDPerValidator);
     event Delegated(address indexed delegator, uint256 sdAmount, uint256 sdXToMint);
     event Redeemed(address indexed delegator, uint256 sdAmount, uint256 sdXAmount);
+    event RepaidUtilizedSDBalance(address indexed utilizer, uint256 utilizedSDAmount);
     event UpdatedMinBlockDelayToFinalizeRequest(uint256 minBlockDelayToFinalizeRequest);
+
     event LiquidationCall(
         address indexed account,
         uint256 totalLiquidationAmountInEth,
@@ -126,6 +130,10 @@ interface ISDUtilityPool {
     function accrueFee() external;
 
     function liquidationCall(address account) external;
+
+    function clearUtilizerInterest(address _utilizer) external;
+
+    function repayUtilizedSDBalance(address _utilizer, uint256 amount) external;
 
     function utilizerBalanceCurrent(address account) external returns (uint256);
 

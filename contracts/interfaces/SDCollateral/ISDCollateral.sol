@@ -17,6 +17,7 @@ interface ISDCollateral {
     error InvalidPoolLimit();
     error SDTransferFailed();
     error NoStateChange();
+    error NonTerminalKeysNotZero();
     error InsufficientSelfBondToRepay();
 
     // events
@@ -43,6 +44,8 @@ interface ISDCollateral {
     function withdraw(uint256 _requestedSD) external;
 
     function withdrawOnBehalf(uint256 _requestedSD, address _operator) external;
+
+    function transferBackUtilizedSD(address _operator) external;
 
     function slashValidatorSD(uint256 _validatorId, uint8 _poolId) external;
 
