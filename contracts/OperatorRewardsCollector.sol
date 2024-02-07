@@ -133,9 +133,11 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
             }
             address permissionlessNodeRegistry = staderConfig.getPermissionlessNodeRegistry();
             if (INodeRegistry(permissionlessNodeRegistry).POOL_ID() == poolId) {
-                INodeELRewardVault(
-                    IPermissionlessNodeRegistry(permissionlessNodeRegistry).nodeELRewardVaultByOperatorId(operatorId)
-                ).withdraw();
+                address nodeELVault = IPermissionlessNodeRegistry(permissionlessNodeRegistry)
+                    .nodeELRewardVaultByOperatorId(operatorId);
+                if (nodeELVault.balance > 0) {
+                    INodeELRewardVault(nodeELVault).withdraw();
+                }
             }
             if (balances[operator] < operatorLiquidation.totalAmountInEth) {
                 uint256 wETHDeposit = Math.min(
