@@ -436,19 +436,26 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * case will be from the moment of liquidationCall and claiming of liquidation
      * @dev only ADMIN role can call, SD worth of interest is lost from the protocol
      * @dev utilizer utilizedSD balance in SDCollateral contract should be 0
-     * @param _utilizer address of the utilizer
+     * @param _utilizer array of utilizer addresses
      */
-    function clearUtilizerInterest(address _utilizer) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(_utilizer) != 0) {
-            revert OperatorUtilizedSDBalanceNonZero();
-        }
+    function clearUtilizerInterest(address[] calldata _utilizer) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         accrueFee();
-        uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(_utilizer);
+        uint256 operatorCount = _utilizer.length;
+        for (uint256 i; i < operatorCount; ) {
+            address utilizer = _utilizer[i];
+            if (ISDCollateral(staderConfig.getSDCollateral()).operatorUtilizedSDBalance(utilizer) != 0) {
+                revert OperatorUtilizedSDBalanceNonZero();
+            }
+            uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(utilizer);
 
-        utilizerData[_utilizer].principal = 0;
-        utilizerData[_utilizer].utilizeIndex = utilizeIndex;
-        totalUtilizedSD = totalUtilizedSD > accountUtilizedPrev ? totalUtilizedSD - accountUtilizedPrev : 0;
-        emit ClearedUtilizerInterest(_utilizer, accountUtilizedPrev);
+            utilizerData[utilizer].principal = 0;
+            utilizerData[utilizer].utilizeIndex = utilizeIndex;
+            totalUtilizedSD = totalUtilizedSD > accountUtilizedPrev ? totalUtilizedSD - accountUtilizedPrev : 0;
+            emit ClearedUtilizerInterest(utilizer, accountUtilizedPrev);
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /**

@@ -3,6 +3,9 @@ pragma solidity 0.8.16;
 
 import './library/UtilLib.sol';
 
+import './interfaces/INodeRegistry.sol';
+import './interfaces/INodeELRewardVault.sol';
+import './interfaces/IPermissionlessNodeRegistry.sol';
 import './interfaces/IOperatorRewardsCollector.sol';
 import './interfaces/IStaderConfig.sol';
 import './interfaces/ISDUtilityPool.sol';
@@ -54,6 +57,17 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
             ? withdrawableInEth(msg.sender)
             : balances[msg.sender];
         _claim(msg.sender, amount);
+    }
+
+    /**
+     * @notice function to claim a given amount of ETH, this is done to make sure operator can claim
+     * any desired amount such that their health factor remains above 1
+     * @dev amount should not be more than the minimum of operator balance and withdrawableInEth after completing liquidation if any
+     * @param _amount amount of ETH to claim
+     */
+    function claimWithAmount(uint256 _amount) external {
+        claimLiquidation(msg.sender);
+        _claim(msg.sender, _amount);
     }
 
     function claimLiquidation(address operator) public override {
@@ -111,11 +125,18 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
         // If the liquidation is not repaid, check balance and then proceed with repayment
         if (!operatorLiquidation.isRepaid && operatorLiquidation.totalAmountInEth > 0) {
-            (, , uint256 nonTerminalKeys) = ISDCollateral(staderConfig.getSDCollateral()).getOperatorInfo(operator);
+            (uint8 poolId, uint256 operatorId, uint256 nonTerminalKeys) = ISDCollateral(staderConfig.getSDCollateral())
+                .getOperatorInfo(operator);
             // Ensure that the balance is sufficient
-            if (balances[operator] < operatorLiquidation.totalAmountInEth && nonTerminalKeys > 0)
+            if (balances[operator] < operatorLiquidation.totalAmountInEth && nonTerminalKeys > 0) {
                 revert InsufficientBalance();
-
+            }
+            address permissionlessNodeRegistry = staderConfig.getPermissionlessNodeRegistry();
+            if (INodeRegistry(permissionlessNodeRegistry).POOL_ID() == poolId) {
+                INodeELRewardVault(
+                    IPermissionlessNodeRegistry(permissionlessNodeRegistry).nodeELRewardVaultByOperatorId(operatorId)
+                ).withdraw();
+            }
             if (balances[operator] < operatorLiquidation.totalAmountInEth) {
                 uint256 wETHDeposit = Math.min(
                     balances[operator],

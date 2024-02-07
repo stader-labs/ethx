@@ -133,7 +133,7 @@ interface ISDUtilityPool {
 
     function liquidationCall(address account) external;
 
-    function clearUtilizerInterest(address _utilizer) external;
+    function clearUtilizerInterest(address[] calldata _utilizer) external;
 
     function repayUtilizedSDBalance(address _utilizer, uint256 amount) external;
 
