@@ -17,6 +17,8 @@ interface IOperatorRewardsCollector {
 
     function claim() external;
 
+    function claimWithAmount(uint256 _amount) external;
+
     function claimLiquidation(address operator) external;
 
     function withdrawableInEth(address operator) external view returns (uint256);
