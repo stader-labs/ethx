@@ -213,6 +213,29 @@ contract PermissionlessNodeRegistryTest is Test {
         nodeRegistry.unpause();
     }
 
+    function test_addValidatorKeysWithUtilizeSD() public {
+        (
+            bytes[] memory pubkeys,
+            bytes[] memory preDepositSignature,
+            bytes[] memory depositSignature
+        ) = getValidatorKeys();
+        startHoax(address(this));
+        nodeRegistry.onboardNodeOperator(true, 'testOP', payable(address(this)));
+        nodeRegistry.addValidatorKeysWithUtilizeSD{value: 12 ether}(
+            'testReferral',
+            0,
+            pubkeys,
+            preDepositSignature,
+            depositSignature
+        );
+        vm.stopPrank();
+        uint256 nextValidatorId = nodeRegistry.nextValidatorId();
+        assertEq(nextValidatorId, 4);
+        assertEq(nodeRegistry.validatorIdByPubkey(pubkeys[0]), 1);
+        assertEq(nodeRegistry.validatorIdByPubkey(pubkeys[2]), 3);
+        assertEq(nodeRegistry.isExistingPubkey(pubkeys[0]), true);
+    }
+
     function test_addValidatorKeys() public {
         (
             bytes[] memory pubkeys,

@@ -18,6 +18,7 @@ lcov.info
 # Foundry
 cache_forge/
 out/
+broadcast
 
 
 

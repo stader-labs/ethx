@@ -13,6 +13,7 @@ import '../mocks/PoolUtilsMock.sol';
 import '../mocks/PenaltyMockForVault.sol';
 import '../mocks/SDCollateralMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
+import '../mocks/SDUtilityPoolMock.sol';
 
 import 'forge-std/Test.sol';
 import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
@@ -63,6 +64,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         poolUtils = new PoolUtilsMock(address(staderConfig));
         PenaltyMockForVault penaltyContract = new PenaltyMockForVault();
         SDCollateralMock sdCollateral = new SDCollateralMock();
+        SDUtilityPoolMock sdUtilityPool = new SDUtilityPoolMock();
         ValidatorWithdrawalVault withdrawVaultImpl = new ValidatorWithdrawalVault();
 
         VaultFactory vfImpl = new VaultFactory();
@@ -76,6 +78,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updatePenaltyContract(address(penaltyContract));
         staderConfig.updateSDCollateral(address(sdCollateral));
+        staderConfig.updateSDUtilityPool(address(sdUtilityPool));
         staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.updateValidatorWithdrawalVaultImplementation(address(withdrawVaultImpl));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);

@@ -77,6 +77,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     mapping(bytes32 => address) private contractsMap;
     mapping(bytes32 => address) private tokensMap;
 
+    bytes32 public constant override SD_UTILITY_POOL = keccak256('SD_UTILITY_POOL');
+    bytes32 public constant override SD_INCENTIVE_CONTROLLER = keccak256('SD_INCENTIVE_CONTROLLER');
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -292,6 +295,14 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setToken(ETHx, _ethX);
     }
 
+    function updateSDUtilityPool(address _utilityPool) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(SD_UTILITY_POOL, _utilityPool);
+    }
+
+    function updateSDIncentiveController(address _sdIncentiveController) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        setContract(SD_INCENTIVE_CONTROLLER, _sdIncentiveController);
+    }
+
     //Constants Getters
 
     function getStakedEthPerNode() external view override returns (uint256) {
@@ -455,6 +466,14 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function getETHXSupplyPORFeedProxy() external view override returns (address) {
         return contractsMap[ETHX_SUPPLY_POR_FEED];
+    }
+
+    function getSDUtilityPool() external view override returns (address) {
+        return contractsMap[SD_UTILITY_POOL];
+    }
+
+    function getSDIncentiveController() external view override returns (address) {
+        return contractsMap[SD_INCENTIVE_CONTROLLER];
     }
 
     //Token Getters
