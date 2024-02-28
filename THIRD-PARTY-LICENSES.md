@@ -1,4 +1,4 @@
-                                    THIRD PARTY LICENSES
+                                        THIRD PARTY LICENSES
 
 Compound Code (BSD-3-Clause License)
 
