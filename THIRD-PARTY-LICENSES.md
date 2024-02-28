@@ -1,22 +1,22 @@
 Compound Code (BSD-3-Clause License)
+
 This project incorporates portions of code originally developed by Compound Labs, Inc. and 
 licensed under the BSD-3-Clause License ("BSD-3-Clause"). The full text of the BSD-3-Clause 
 License is included below for your reference:
 
 Copyright (c) 2020 Compound Labs, Inc.
-Redistribution and use in source and binary forms, with or without modification, are permitted
- provided that the following conditions are met:
 
-1. Redistributions of source code must retain the above copyright notice, this list of
+Redistribution and use in source and binary forms, with or without modification, are permitted
+provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice, this list of
  conditions and the following disclaimer.
 
-
-2. Redistributions in binary form must reproduce the above copyright notice, this list of
+- Redistributions in binary form must reproduce the above copyright notice, this list of
  conditions and the following disclaimer in the documentation and/or other materials
   provided with the distribution.
 
-
-3. Neither the name of the copyright holder nor the names of its contributors may be used
+- Neither the name of the copyright holder nor the names of its contributors may be used
  to endorse or promote products derived from this software without specific prior written
   permission.
 
@@ -36,13 +36,16 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The following sections of this project codebase are derived from the Compound code:
-1. contracts/SDUtilityPool.sol -  accrueFee(), utilizerBalanceCurrent(address account), 
+
+contracts/SDUtilityPool.sol -  accrueFee(), utilizerBalanceCurrent(address account), 
 utilizerBalanceStored(address account), _utilizerBalanceStoredInternal(address account), 
 exchangeRateCurrent(),exchangeRateStored(), _exchangeRateStored(). 
-These are mainly the logic to compute the rewards, compute utilizer balance and
-exchangeRate computation for cC-token based model.
+
+These are the logic to compute the rewards, compute utilizer balance and
+exchangeRate computation for C-token based model.
 
 Curvefi Code (MIT License)
+
 This project incorporates portions of code originally developed by Ben Hauser and licensed
 under the MIT License. The full text of the MIT License is included below for your reference:
 
@@ -68,7 +71,10 @@ OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
 OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Specific Code Attribution:
+
 The following sections of this project codebase are derived from the Curvefi code:
-1. contracts/SDIncentiveController.sol - updateRewardForAccount(address account), 
+
+contracts/SDIncentiveController.sol - updateRewardForAccount(address account), 
 rewardPerToken() and earned(address account).
+
 These are mainly the logic for storing and computing user incentivize rewards.
