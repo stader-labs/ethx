@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
+import 'forge-std/Test.sol';
+
+import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
+import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+
 import '../../contracts/library/UtilLib.sol';
 
 import '../../contracts/StaderConfig.sol';
@@ -8,13 +13,9 @@ import '../../contracts/VaultProxy.sol';
 import '../../contracts/NodeELRewardVault.sol';
 import '../../contracts/OperatorRewardsCollector.sol';
 import '../../contracts/factory/VaultFactory.sol';
-
+import {SDCollateral} from '../../contracts/SDCollateral.sol';
 import '../mocks/PoolUtilsMock.sol';
 import '../mocks/StakePoolManagerMock.sol';
-
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
 
 contract NodeELRewardVaultTest is Test {
     address staderAdmin;
@@ -25,6 +26,8 @@ contract NodeELRewardVaultTest is Test {
     uint8 poolId;
     uint256 operatorId;
 
+    address private operator;
+
     StaderConfig staderConfig;
     address payable nodeELCloneAddr;
     OperatorRewardsCollector operatorRC;
@@ -34,9 +37,14 @@ contract NodeELRewardVaultTest is Test {
         poolId = 1;
         operatorId = 1;
 
+        operator = vm.addr(500);
+        emit log_named_address('operator', operator);
+
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
+        address sdUtilityPoolMock = vm.addr(103);
+        address staderOracleMock = vm.addr(104);
 
         ProxyAdmin proxyAdmin = new ProxyAdmin();
 
@@ -48,6 +56,9 @@ contract NodeELRewardVaultTest is Test {
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
+
+        mockSdUtilityPool(sdUtilityPoolMock, staderConfig);
+        mockStaderOracle(staderOracleMock, staderConfig);
 
         OperatorRewardsCollector operatorRCImpl = new OperatorRewardsCollector();
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
@@ -66,12 +77,24 @@ contract NodeELRewardVaultTest is Test {
         vaultFactory = VaultFactory(address(vfProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
 
+        SDCollateral collateralImpl = new SDCollateral();
+        TransparentUpgradeableProxy collateralProxy = new TransparentUpgradeableProxy(
+            address(collateralImpl),
+            address(staderAdmin),
+            ''
+        );
+        SDCollateral sdCollateral = SDCollateral(address(collateralProxy));
+        sdCollateral.initialize(staderAdmin, address(staderConfig));
+
         vm.startPrank(staderAdmin);
         staderConfig.updateAdmin(staderAdmin);
         staderConfig.updateVaultFactory(address(vaultFactory));
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.updateNodeELRewardImplementation(address(nodeELRewardVaultImpl));
+        staderConfig.updateSDCollateral(address(sdCollateral));
+        staderConfig.updateSDUtilityPool(sdUtilityPoolMock);
+        staderConfig.updateStaderOracle(staderOracleMock);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(poolUtils.nodeRegistry()));
         vm.stopPrank();
@@ -126,11 +149,11 @@ contract NodeELRewardVaultTest is Test {
         INodeELRewardVault(nodeELCloneAddr).withdraw();
 
         vm.assume(rewardEth > 0);
+
         vm.deal(nodeELCloneAddr, rewardEth); // send rewardEth to nodeELRewardVault
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
-        address operator = address(500);
         address opRewardAddr = vm.addr(4);
 
         vm.prank(staderAdmin);
@@ -158,7 +181,7 @@ contract NodeELRewardVaultTest is Test {
         // claim by operator
         vm.mockCall(
             address(poolUtils.nodeRegistry()),
-            abi.encodeWithSelector(INodeRegistry.getOperatorRewardAddress.selector),
+            abi.encodeWithSelector(INodeRegistry.getOperatorRewardAddress.selector, operator),
             abi.encode(opRewardAddr)
         );
 
@@ -184,5 +207,44 @@ contract NodeELRewardVaultTest is Test {
         staderConfig.updateAdmin(vm.addr(203));
         VaultProxy(nodeELCloneAddr).updateOwner();
         assertEq(VaultProxy(nodeELCloneAddr).owner(), vm.addr(203));
+    }
+
+    function mockSdUtilityPool(address sdUtilityPoolMock, StaderConfig staderConfig) private {
+        emit log_named_address('sdUtilityPoolMock', sdUtilityPoolMock);
+        vm.mockCall(
+            sdUtilityPoolMock,
+            abi.encodeWithSelector(ISDUtilityPool.getOperatorLiquidation.selector, operator),
+            abi.encode(
+                OperatorLiquidation(
+                    staderConfig.getStakedEthPerNode(),
+                    0,
+                    staderConfig.getTotalFee(),
+                    true,
+                    false,
+                    address(0x0)
+                )
+            )
+        );
+        vm.mockCall(
+            sdUtilityPoolMock,
+            abi.encodeWithSelector(ISDUtilityPool.getLiquidationThreshold.selector),
+            abi.encode(1)
+        );
+        vm.mockCall(
+            sdUtilityPoolMock,
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, operator),
+            abi.encode(
+                abi.encode(UserData(staderConfig.getMinDepositAmount(), staderConfig.getMinDepositAmount(), 1, 0))
+            )
+        );
+    }
+
+    function mockStaderOracle(address staderOracleMock, StaderConfig staderConfig) private {
+        emit log_named_address('staderOracleMock', staderOracleMock);
+        vm.mockCall(
+            staderOracleMock,
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(staderConfig.getTotalFee())
+        );
     }
 }
