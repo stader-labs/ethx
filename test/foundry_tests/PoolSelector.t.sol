@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/PoolSelector.sol';
-import '../../contracts/StaderConfig.sol';
+import "../../contracts/PoolSelector.sol";
+import "../../contracts/StaderConfig.sol";
 
-import '../mocks/PoolUtilsMockForDepositFlow.sol';
+import "../mocks/PoolUtilsMockForDepositFlow.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract PoolSelectorTest is Test {
     address staderAdmin;
@@ -24,6 +24,7 @@ contract PoolSelectorTest is Test {
     PoolUtilsMockForDepositFlow poolUtils;
 
     function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
@@ -36,7 +37,7 @@ contract PoolSelectorTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, address(ethDepositAddr));
@@ -45,7 +46,7 @@ contract PoolSelectorTest is Test {
         TransparentUpgradeableProxy poolSelectorProxy = new TransparentUpgradeableProxy(
             address(poolSelectorImp),
             address(admin),
-            ''
+            ""
         );
 
         poolSelector = PoolSelector(address(poolSelectorProxy));
@@ -67,7 +68,7 @@ contract PoolSelectorTest is Test {
         TransparentUpgradeableProxy poolSelectorProxy = new TransparentUpgradeableProxy(
             address(poolSelectorImp),
             address(admin),
-            ''
+            ""
         );
 
         poolSelector = PoolSelector(address(poolSelectorProxy));

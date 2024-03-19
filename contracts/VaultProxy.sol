@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
-import './interfaces/IVaultProxy.sol';
+import "./library/UtilLib.sol";
+import "./interfaces/IVaultProxy.sol";
 
 //contract to delegate call to respective vault implementation based on the flag of 'isValidatorWithdrawalVault'
 contract VaultProxy is IVaultProxy {
@@ -19,12 +19,7 @@ contract VaultProxy is IVaultProxy {
     }
 
     //initialise the vault proxy with data
-    function initialise(
-        bool _isValidatorWithdrawalVault,
-        uint8 _poolId,
-        uint256 _id,
-        address _staderConfig
-    ) external {
+    function initialise(bool _isValidatorWithdrawalVault, uint8 _poolId, uint256 _id, address _staderConfig) external {
         if (isInitialized) {
             revert AlreadyInitialized();
         }

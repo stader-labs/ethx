@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/StaderConfig.sol';
+import "../../contracts/StaderConfig.sol";
 
 contract PoolUtilsMockForDepositFlow {
     address nodeRegistry;
@@ -98,15 +98,7 @@ contract PoolUtilsMockForDepositFlow {
         }
     }
 
-    function calculateRewardShare(uint8, uint256)
-        external
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function calculateRewardShare(uint8, uint256) external pure returns (uint256, uint256, uint256) {
         return (0.9 ether, 0.05 ether, 0.05 ether);
     }
 }

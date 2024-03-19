@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import '../contracts/interfaces/IPoolUtils.sol';
-import '../contracts/interfaces/SDCollateral/ISDCollateral.sol';
-import '../contracts/interfaces/SDCollateral/IAuction.sol';
-import '../contracts/interfaces/IStaderOracle.sol';
-import './interfaces/ISDUtilityPool.sol';
+import "../contracts/interfaces/IPoolUtils.sol";
+import "../contracts/interfaces/SDCollateral/ISDCollateral.sol";
+import "../contracts/interfaces/SDCollateral/IAuction.sol";
+import "../contracts/interfaces/IStaderOracle.sol";
+import "./interfaces/ISDUtilityPool.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
@@ -253,12 +253,10 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
     /// @notice returns minimum amount of SD required to onboard _numValidators in a pool
     /// @param _poolId pool id, where operator wants to onboard validators
     /// @param _numValidator number of validators to onBoard (including already onboarded, if any)
-    function getMinimumSDToBond(uint8 _poolId, uint256 _numValidator)
-        public
-        view
-        override
-        returns (uint256 _minSDToBond)
-    {
+    function getMinimumSDToBond(
+        uint8 _poolId,
+        uint256 _numValidator
+    ) public view override returns (uint256 _minSDToBond) {
         isPoolThresholdValid(_poolId);
         PoolThresholdInfo storage poolThreshold = poolThresholdbyPoolId[_poolId];
 
@@ -304,15 +302,9 @@ contract SDCollateral is ISDCollateral, AccessControlUpgradeable, ReentrancyGuar
 
     // HELPER
 
-    function getOperatorInfo(address _operator)
-        public
-        view
-        returns (
-            uint8 _poolId,
-            uint256 _operatorId,
-            uint256 _validatorCount
-        )
-    {
+    function getOperatorInfo(
+        address _operator
+    ) public view returns (uint8 _poolId, uint256 _operatorId, uint256 _validatorCount) {
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         _poolId = poolUtils.getOperatorPoolId(_operator);
         INodeRegistry nodeRegistry = INodeRegistry(poolUtils.getNodeRegistry(_poolId));

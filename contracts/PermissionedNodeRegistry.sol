@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './library/ValidatorStatus.sol';
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IVaultFactory.sol';
-import './interfaces/IPoolUtils.sol';
-import './interfaces/INodeRegistry.sol';
-import './interfaces/IPermissionedPool.sol';
-import './interfaces/IValidatorWithdrawalVault.sol';
-import './interfaces/SDCollateral/ISDCollateral.sol';
-import './interfaces/IPermissionedNodeRegistry.sol';
+import "./library/ValidatorStatus.sol";
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IVaultFactory.sol";
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/IPermissionedPool.sol";
+import "./interfaces/IValidatorWithdrawalVault.sol";
+import "./interfaces/SDCollateral/ISDCollateral.sol";
+import "./interfaces/IPermissionedNodeRegistry.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract PermissionedNodeRegistry is
     INodeRegistry,
@@ -103,12 +103,10 @@ contract PermissionedNodeRegistry is
      * @param _operatorRewardAddress eth1 address of operator to get rewards and withdrawals
      * @return feeRecipientAddress fee recipient address for all validator clients of a operator
      */
-    function onboardNodeOperator(string calldata _operatorName, address payable _operatorRewardAddress)
-        external
-        override
-        whenNotPaused
-        returns (address feeRecipientAddress)
-    {
+    function onboardNodeOperator(
+        string calldata _operatorName,
+        address payable _operatorRewardAddress
+    ) external override whenNotPaused returns (address feeRecipientAddress) {
         address poolUtils = staderConfig.getPoolUtils();
         if (IPoolUtils(poolUtils).poolAddressById(POOL_ID) != staderConfig.getPermissionedPool()) {
             revert DuplicatePoolIDOrPoolNotAdded();
@@ -189,11 +187,9 @@ contract PermissionedNodeRegistry is
      * @param _numValidators validator to deposit with permissioned pool
      * @return selectedOperatorCapacity operator wise count of validator to deposit
      */
-    function allocateValidatorsAndUpdateOperatorId(uint256 _numValidators)
-        external
-        override
-        returns (uint256[] memory selectedOperatorCapacity)
-    {
+    function allocateValidatorsAndUpdateOperatorId(
+        uint256 _numValidators
+    ) external override returns (uint256[] memory selectedOperatorCapacity) {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONED_POOL());
         // nextOperatorId is total operator count plus 1
         selectedOperatorCapacity = new uint256[](nextOperatorId);
@@ -609,12 +605,10 @@ contract PermissionedNodeRegistry is
      *
      * @return An array of `Validator` objects representing the active validators.
      */
-    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        override
-        returns (Validator[] memory)
-    {
+    function getAllActiveValidators(
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view override returns (Validator[] memory) {
         if (_pageNumber == 0) {
             revert PageNumberIsZero();
         }

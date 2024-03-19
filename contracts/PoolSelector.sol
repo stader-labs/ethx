@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IPoolSelector.sol';
-import './interfaces/IPoolUtils.sol';
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IPoolSelector.sol";
+import "./interfaces/IPoolUtils.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
     using Math for uint256;
@@ -47,12 +47,10 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
      * @param _newValidatorToRegister new validator that can be deposited for pool `_poolId` based on supply
      * @return selectedPoolCapacity validator count to deposit for pool
      */
-    function computePoolAllocationForDeposit(uint8 _poolId, uint256 _newValidatorToRegister)
-        external
-        view
-        override
-        returns (uint256 selectedPoolCapacity)
-    {
+    function computePoolAllocationForDeposit(
+        uint8 _poolId,
+        uint256 _newValidatorToRegister
+    ) external view override returns (uint256 selectedPoolCapacity) {
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         uint256 totalActiveValidatorCount = poolUtils.getTotalActiveValidatorCount();
         uint256 totalValidatorsRequired = (totalActiveValidatorCount + _newValidatorToRegister);
@@ -73,11 +71,9 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
      * @return selectedPoolCapacity array of pool wise validator count to deposit
      * @return poolIdArray array of poolIDs
      */
-    function poolAllocationForExcessETHDeposit(uint256 _excessETHAmount)
-        external
-        override
-        returns (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray)
-    {
+    function poolAllocationForExcessETHDeposit(
+        uint256 _excessETHAmount
+    ) external override returns (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
         uint256 ethToDeposit = _excessETHAmount;
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());

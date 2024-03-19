@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
-import './library/ValidatorStatus.sol';
+import "./library/UtilLib.sol";
+import "./library/ValidatorStatus.sol";
 
-import './VaultProxy.sol';
-import './interfaces/IPenalty.sol';
-import './interfaces/IPoolUtils.sol';
-import './interfaces/INodeRegistry.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IValidatorWithdrawalVault.sol';
-import './interfaces/SDCollateral/ISDCollateral.sol';
-import './interfaces/IOperatorRewardsCollector.sol';
+import "./VaultProxy.sol";
+import "./interfaces/IPenalty.sol";
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
+import "./interfaces/IValidatorWithdrawalVault.sol";
+import "./interfaces/SDCollateral/ISDCollateral.sol";
+import "./interfaces/IOperatorRewardsCollector.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     bool internal vaultSettleStatus;
@@ -43,9 +43,9 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
             .calculateRewardShare(poolId, totalRewards);
 
         // Distribute rewards
-        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{ value: userShare }();
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
-        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{ value: operatorShare }(
             getOperatorAddress(poolId, validatorId, staderConfig)
         );
         emit DistributedRewards(userShare, operatorShare, protocolShare);
@@ -74,9 +74,9 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
         // Final settlement
         vaultSettleStatus = true;
         IPenalty(staderConfig.getPenaltyContract()).markValidatorSettled(poolId, validatorId);
-        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{value: userShare}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveWithdrawVaultUserShare{ value: userShare }();
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
-        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{ value: operatorShare }(
             getOperatorAddress(poolId, validatorId, staderConfig)
         );
         emit SettledFunds(userShare, operatorShare, protocolShare);
@@ -85,11 +85,7 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     function calculateValidatorWithdrawalShare()
         public
         view
-        returns (
-            uint256 _userShare,
-            uint256 _operatorShare,
-            uint256 _protocolShare
-        )
+        returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare)
     {
         uint8 poolId = VaultProxy(payable(address(this))).poolId();
         IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();

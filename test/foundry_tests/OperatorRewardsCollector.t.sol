@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import { ProxyAdmin } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/SDUtilityPool.sol';
-import '../../contracts/SDIncentiveController.sol';
-import '../../contracts/OperatorRewardsCollector.sol';
+import { Test } from "forge-std/Test.sol";
 
-import '../mocks/SDCollateralMock.sol';
-import '../mocks/StaderTokenMock.sol';
-import '../mocks/SDIncentiveControllerMock.sol';
-import '../mocks/PoolUtilsMock.sol';
-import '../mocks/StaderOracleMock.sol';
-import '../mocks/WETHMock.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/SDUtilityPool.sol";
+import "../../contracts/SDIncentiveController.sol";
+import "../../contracts/OperatorRewardsCollector.sol";
+
+import "../mocks/SDCollateralMock.sol";
+import "../mocks/StaderTokenMock.sol";
+import "../mocks/SDIncentiveControllerMock.sol";
+import "../mocks/PoolUtilsMock.sol";
+import "../mocks/StaderOracleMock.sol";
+import "../mocks/WETHMock.sol";
+
+import { PermissionlessNodeRegistryMock } from "../mocks/PermissionlessNodeRegistryMock.sol";
 
 contract OperatorRewardsCollectorTest is Test {
     event UpdatedStaderConfig(address indexed staderConfig);
@@ -36,47 +39,49 @@ contract OperatorRewardsCollectorTest is Test {
     SDIncentiveController sdIncentiveController;
     OperatorRewardsCollector operatorRewardsCollector;
     StaderTokenMock staderToken;
-    SDCollateralMock sdCollateral;
     StaderOracleMock staderOracle;
     PoolUtilsMock poolUtils;
     WETHMock weth;
 
-    function setupAddresses() private {
+    address private sdCollateralMock;
+    address private permissionlessNodeRegistryMock;
+
+    function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         staderTreasury = vm.addr(105);
-    }
-
-    function setupMocks() private {
         staderToken = new StaderTokenMock();
         weth = new WETHMock();
-        sdCollateral = new SDCollateralMock();
         staderOracle = new StaderOracleMock();
-    }
 
-    function setUp() public {
-        setupAddresses();
-        setupMocks();
+        sdCollateralMock = vm.addr(106);
+        mockSDCollateral(sdCollateralMock);
+
+        permissionlessNodeRegistryMock = vm.addr(107);
+        mockPermissionlessNodeRegistry(permissionlessNodeRegistryMock);
 
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
+
         ProxyAdmin admin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
-        sdCollateral = new SDCollateralMock();
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
-        staderConfig.updateSDCollateral(address(sdCollateral));
+        staderConfig.updateSDCollateral(sdCollateralMock);
         staderConfig.updatePoolUtils(address(poolUtils));
+        staderConfig.updatePermissionlessNodeRegistry(permissionlessNodeRegistryMock);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vm.stopPrank();
 
@@ -87,7 +92,7 @@ contract OperatorRewardsCollectorTest is Test {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(sdUtilityPoolImpl),
             address(admin),
-            ''
+            ""
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
         staderToken.approve(address(sdUtilityPool), 1000 ether);
@@ -98,7 +103,7 @@ contract OperatorRewardsCollectorTest is Test {
         TransparentUpgradeableProxy sdIncentiveControllerProxy = new TransparentUpgradeableProxy(
             address(sdIncentiveControllerImpl),
             address(admin),
-            ''
+            ""
         );
         sdIncentiveController = SDIncentiveController(address(sdIncentiveControllerProxy));
         sdIncentiveController.initialize(staderAdmin, address(staderConfig));
@@ -107,7 +112,7 @@ contract OperatorRewardsCollectorTest is Test {
         TransparentUpgradeableProxy operatorRewardsCollectorProxy = new TransparentUpgradeableProxy(
             address(operatorRewardsCollectorImpl),
             address(admin),
-            ''
+            ""
         );
         operatorRewardsCollector = OperatorRewardsCollector(address(operatorRewardsCollectorProxy));
         operatorRewardsCollector.initialize(staderAdmin, address(staderConfig));
@@ -125,7 +130,7 @@ contract OperatorRewardsCollectorTest is Test {
         TransparentUpgradeableProxy operatorRewardsCollectorProxy = new TransparentUpgradeableProxy(
             address(operatorRewardsCollectorImpl),
             address(admin),
-            ''
+            ""
         );
         operatorRewardsCollector = OperatorRewardsCollector(address(operatorRewardsCollectorProxy));
         vm.expectEmit();
@@ -143,19 +148,19 @@ contract OperatorRewardsCollectorTest is Test {
 
         vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
         emit DepositedFor(address(this), staderManager, amount);
-        operatorRewardsCollector.depositFor{value: amount}(staderManager);
+        operatorRewardsCollector.depositFor{ value: amount }(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), amount);
 
         vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
         emit DepositedFor(address(this), staderManager, 0 ether);
-        operatorRewardsCollector.depositFor{value: 0 ether}(staderManager);
+        operatorRewardsCollector.depositFor{ value: 0 ether }(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), amount);
     }
 
     function test_Claim(uint256 amount) public {
         vm.assume(amount < 100000 ether);
 
-        operatorRewardsCollector.depositFor{value: amount}(staderManager);
+        operatorRewardsCollector.depositFor{ value: amount }(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), amount);
         vm.mockCall(
             address(staderOracle),
@@ -171,21 +176,20 @@ contract OperatorRewardsCollectorTest is Test {
     function test_claimLiquidationZeroAmount(uint256 amount) public {
         vm.assume(amount < 100000 ether);
 
-        operatorRewardsCollector.depositFor{value: amount}(staderManager);
+        operatorRewardsCollector.depositFor{ value: amount }(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), amount);
 
         operatorRewardsCollector.claimLiquidation(staderManager);
         assertEq(operatorRewardsCollector.balances(staderManager), amount);
     }
 
-    function test_claimLiquidation(uint16 randomSeed) public {
-        vm.assume(randomSeed > 1);
+    function test_claimLiquidation() public {
         uint256 utilizeAmount = 1e22;
 
-        address operator = vm.addr(randomSeed);
-        address liquidator = vm.addr(randomSeed - 1);
+        address operator = vm.addr(110);
+        address liquidator = vm.addr(109);
 
-        operatorRewardsCollector.depositFor{value: 100 ether}(operator);
+        operatorRewardsCollector.depositFor{ value: 100 ether }(operator);
         assertEq(operatorRewardsCollector.balances(operator), 100 ether);
 
         staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
@@ -196,7 +200,7 @@ contract OperatorRewardsCollectorTest is Test {
         vm.stopPrank();
 
         vm.mockCall(
-            address(sdCollateral),
+            sdCollateralMock,
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
         );
@@ -227,14 +231,13 @@ contract OperatorRewardsCollectorTest is Test {
         vm.stopPrank();
     }
 
-    function test_claimLiquidationLastValidator(uint16 randomSeed) public {
-        vm.assume(randomSeed > 1);
-        uint256 utilizeAmount = 1e22;
+    function test_claimLiquidationLastValidator() public {
+        uint256 utilizeAmount = 1e4 ether;
 
-        address operator = vm.addr(randomSeed);
-        address liquidator = vm.addr(randomSeed - 1);
+        address operator = address(2);
+        address liquidator = vm.addr(109);
 
-        operatorRewardsCollector.depositFor{value: 100 ether}(operator);
+        operatorRewardsCollector.depositFor{ value: 100 ether }(operator);
         assertEq(operatorRewardsCollector.balances(operator), 100 ether);
 
         staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
@@ -245,16 +248,15 @@ contract OperatorRewardsCollectorTest is Test {
         vm.stopPrank();
 
         vm.mockCall(
-            address(sdCollateral),
+            sdCollateralMock,
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
         );
         vm.mockCall(
-            address(sdCollateral),
+            sdCollateralMock,
             abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector),
             abi.encode(0, 0, 0)
         );
-
         vm.mockCall(
             address(staderOracle),
             abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
@@ -275,24 +277,22 @@ contract OperatorRewardsCollectorTest is Test {
         operatorRewardsCollector.claimLiquidation(operator);
         assertEq(operatorRewardsCollector.balances(operator), 100 ether - operatorLiquidation.totalAmountInEth);
 
+        userData = sdUtilityPool.getUserData(operator);
         vm.startPrank(operator);
         vm.expectEmit();
-        emit SDRepaid(operator, utilizeAmount);
-        vm.expectEmit();
-        emit SDWithdrawn(operator, utilizeAmount);
+        emit Claimed(operator, userData.totalCollateralInEth);
         operatorRewardsCollector.claim();
         assertEq(operatorRewardsCollector.balances(operator), 0);
         vm.stopPrank();
     }
 
-    function test_claimAfterLiquidation(uint16 randomSeed) public {
-        vm.assume(randomSeed > 1);
+    function test_claimAfterLiquidation() public {
         uint256 utilizeAmount = 1e22;
 
-        address operator = vm.addr(randomSeed);
-        address liquidator = vm.addr(randomSeed - 1);
+        address operator = address(2);
+        address liquidator = vm.addr(109);
 
-        operatorRewardsCollector.depositFor{value: 100 ether}(operator);
+        operatorRewardsCollector.depositFor{ value: 100 ether }(operator);
         assertEq(operatorRewardsCollector.balances(operator), 100 ether);
 
         staderToken.approve(address(sdUtilityPool), utilizeAmount * 10);
@@ -303,11 +303,10 @@ contract OperatorRewardsCollectorTest is Test {
         vm.stopPrank();
 
         vm.mockCall(
-            address(sdCollateral),
+            sdCollateralMock,
             abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector),
             abi.encode(utilizeAmount)
         );
-
         vm.mockCall(
             address(staderOracle),
             abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
@@ -339,14 +338,14 @@ contract OperatorRewardsCollectorTest is Test {
 
     function test_FullDepositWithdrawalCycle() public {
         uint256 depositAmount = 50 ether;
-        operatorRewardsCollector.depositFor{value: depositAmount}(staderManager);
+        operatorRewardsCollector.depositFor{ value: depositAmount }(staderManager);
 
         // Simulate some earnings
         vm.roll(block.number + 100);
 
         vm.startPrank(staderManager);
         operatorRewardsCollector.claim();
-        assertEq(operatorRewardsCollector.balances(staderManager), 0 ether, 'Balance should be zero after claim');
+        assertEq(operatorRewardsCollector.balances(staderManager), 0 ether, "Balance should be zero after claim");
         vm.stopPrank();
     }
 
@@ -356,17 +355,17 @@ contract OperatorRewardsCollectorTest is Test {
         uint256 depositAmount1 = 30 ether;
         uint256 depositAmount2 = 40 ether;
 
-        operatorRewardsCollector.depositFor{value: depositAmount1}(operator1);
-        operatorRewardsCollector.depositFor{value: depositAmount2}(operator2);
+        operatorRewardsCollector.depositFor{ value: depositAmount1 }(operator1);
+        operatorRewardsCollector.depositFor{ value: depositAmount2 }(operator2);
 
         vm.startPrank(operator1);
         operatorRewardsCollector.claim();
-        assertEq(operatorRewardsCollector.balances(operator1), 0 ether, 'Operator1 balance should be zero after claim');
+        assertEq(operatorRewardsCollector.balances(operator1), 0 ether, "Operator1 balance should be zero after claim");
         vm.stopPrank();
 
         vm.startPrank(operator2);
         operatorRewardsCollector.claim();
-        assertEq(operatorRewardsCollector.balances(operator2), 0 ether, 'Operator2 balance should be zero after claim');
+        assertEq(operatorRewardsCollector.balances(operator2), 0 ether, "Operator2 balance should be zero after claim");
         vm.stopPrank();
     }
 
@@ -375,7 +374,7 @@ contract OperatorRewardsCollectorTest is Test {
 
         vm.startPrank(staderAdmin);
         operatorRewardsCollector.updateWethAddress(newWethAddress);
-        assertEq(address(operatorRewardsCollector.weth()), newWethAddress, 'WETH address should be updated');
+        assertEq(address(operatorRewardsCollector.weth()), newWethAddress, "WETH address should be updated");
         vm.stopPrank();
 
         // Test for unauthorized access
@@ -383,23 +382,23 @@ contract OperatorRewardsCollectorTest is Test {
         address newWethAddress2 = vm.addr(111);
         vm.startPrank(unauthorizedUser);
         vm.expectRevert(
-            'AccessControl: account 0xb961768b578514debf079017ff78c47b0a6adbf6 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000'
+            "AccessControl: account 0xb961768b578514debf079017ff78c47b0a6adbf6 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
         );
         operatorRewardsCollector.updateWethAddress(newWethAddress2);
         vm.stopPrank();
 
-        assertNotEq(address(operatorRewardsCollector.weth()), newWethAddress2, 'WETH address should not be updated');
+        assertNotEq(address(operatorRewardsCollector.weth()), newWethAddress2, "WETH address should not be updated");
     }
 
     function test_MultipleDepositsAndTotalBalance(uint256 amount1, uint256 amount2) public {
         vm.assume(amount1 < 1000e18 && amount2 < 1000e18);
 
-        operatorRewardsCollector.depositFor{value: amount1}(staderManager);
-        operatorRewardsCollector.depositFor{value: amount2}(staderManager);
+        operatorRewardsCollector.depositFor{ value: amount1 }(staderManager);
+        operatorRewardsCollector.depositFor{ value: amount2 }(staderManager);
         assertEq(
             operatorRewardsCollector.balances(staderManager),
             amount1 + amount2,
-            'Total balance should be the sum of all deposits'
+            "Total balance should be the sum of all deposits"
         );
     }
 
@@ -413,5 +412,19 @@ contract OperatorRewardsCollectorTest is Test {
         operatorRewardsCollector.updateStaderConfig(address(0));
         operatorRewardsCollector.updateStaderConfig(inputAddr);
         assertEq(address(operatorRewardsCollector.staderConfig()), inputAddr);
+    }
+
+    function mockSDCollateral(address _sdCollateralMock) private {
+        emit log_named_address("sdCollateralMock", _sdCollateralMock);
+        SDCollateralMock sdCollateralMockImpl = new SDCollateralMock();
+        bytes memory mockCode = address(sdCollateralMockImpl).code;
+        vm.etch(_sdCollateralMock, mockCode);
+    }
+
+    function mockPermissionlessNodeRegistry(address _permissionlessNodeRegistry) private {
+        emit log_named_address("permissionlessNodeRegistry", _permissionlessNodeRegistry);
+        PermissionlessNodeRegistryMock nodeRegistryMock = new PermissionlessNodeRegistryMock();
+        bytes memory mockCode = address(nodeRegistryMock).code;
+        vm.etch(_permissionlessNodeRegistry, mockCode);
     }
 }

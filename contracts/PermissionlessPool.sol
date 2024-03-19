@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
-import './library/ValidatorStatus.sol';
+import "./library/UtilLib.sol";
+import "./library/ValidatorStatus.sol";
 
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IVaultFactory.sol';
-import './interfaces/INodeRegistry.sol';
-import './interfaces/IStaderPoolBase.sol';
-import './interfaces/IDepositContract.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPermissionlessNodeRegistry.sol';
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IVaultFactory.sol";
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/IStaderPoolBase.sol";
+import "./interfaces/IDepositContract.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
+import "./interfaces/IPermissionlessNodeRegistry.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
@@ -106,7 +106,7 @@ contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, Reentr
                 staderConfig.getPreDepositSize()
             );
             //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(staderConfig.getETHDepositContract()).deposit{value: staderConfig.getPreDepositSize()}(
+            IDepositContract(staderConfig.getETHDepositContract()).deposit{ value: staderConfig.getPreDepositSize() }(
                 _pubkey[i],
                 withdrawCredential,
                 _preDepositSignature[i],
@@ -259,7 +259,7 @@ contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, Reentr
             withdrawCredential,
             _DEPOSIT_SIZE
         );
-        IDepositContract(_ethDepositContract).deposit{value: _DEPOSIT_SIZE}(
+        IDepositContract(_ethDepositContract).deposit{ value: _DEPOSIT_SIZE }(
             pubkey,
             withdrawCredential,
             depositSignature,

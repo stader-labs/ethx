@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/ETHx.sol';
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/StaderStakePoolsManager.sol';
+import "../../contracts/ETHx.sol";
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/StaderStakePoolsManager.sol";
 
-import '../mocks/PoolMock.sol';
-import '../mocks/PoolUtilsMock.sol';
-import '../mocks/StaderOracleMock.sol';
+import "../mocks/PoolMock.sol";
+import "../mocks/PoolUtilsMock.sol";
+import "../mocks/StaderOracleMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract StaderStakePoolManagerTest is Test {
     using Math for uint256;
@@ -46,13 +46,13 @@ contract StaderStakePoolManagerTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, address(ethDepositAddr));
 
         ETHx ethXImpl = new ETHx();
-        TransparentUpgradeableProxy ethXProxy = new TransparentUpgradeableProxy(address(ethXImpl), address(admin), '');
+        TransparentUpgradeableProxy ethXProxy = new TransparentUpgradeableProxy(address(ethXImpl), address(admin), "");
         ethX = ETHx(address(ethXProxy));
         ethX.initialize(staderAdmin, address(staderConfig));
 
@@ -60,7 +60,7 @@ contract StaderStakePoolManagerTest is Test {
         TransparentUpgradeableProxy staderStakePoolManagerProxy = new TransparentUpgradeableProxy(
             address(staderStakePoolManagerImpl),
             address(admin),
-            ''
+            ""
         );
 
         stakePoolManager = StaderStakePoolsManager(payable(staderStakePoolManagerProxy));
@@ -69,7 +69,7 @@ contract StaderStakePoolManagerTest is Test {
         permissionlessPoolAddress = new PoolMock(vm.addr(120));
         permissionedPoolAddress = new PoolMock(vm.addr(130));
         staderOracle = new StaderOracleMock();
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateETHxToken(address(ethX));
@@ -91,7 +91,7 @@ contract StaderStakePoolManagerTest is Test {
         TransparentUpgradeableProxy staderStakePoolManagerProxy = new TransparentUpgradeableProxy(
             address(staderStakePoolManagerImpl),
             address(admin),
-            ''
+            ""
         );
 
         stakePoolManager = StaderStakePoolsManager(payable(staderStakePoolManagerProxy));
@@ -109,7 +109,7 @@ contract StaderStakePoolManagerTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderStakePoolManager.UnsupportedOperation.selector);
-        payable(stakePoolManager).call{value: 1 ether}('');
+        payable(stakePoolManager).call{ value: 1 ether }("");
         vm.stopPrank();
     }
 
@@ -117,7 +117,7 @@ contract StaderStakePoolManagerTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderStakePoolManager.UnsupportedOperation.selector);
-        payable(stakePoolManager).call{value: 1 ether}('abi.encodeWithSignature("nonExistentFunction()")');
+        payable(stakePoolManager).call{ value: 1 ether }('abi.encodeWithSignature("nonExistentFunction()")');
         vm.stopPrank();
     }
 
@@ -126,7 +126,7 @@ contract StaderStakePoolManagerTest is Test {
         address randomAddr = vm.addr(privateKey);
         startHoax(randomAddr, amount);
         assertEq(address(stakePoolManager).balance, 0);
-        stakePoolManager.receiveExecutionLayerRewards{value: amount}();
+        stakePoolManager.receiveExecutionLayerRewards{ value: amount }();
         assertEq(address(stakePoolManager).balance, amount);
     }
 
@@ -135,7 +135,7 @@ contract StaderStakePoolManagerTest is Test {
         address randomAddr = vm.addr(privateKey);
         startHoax(randomAddr, amount);
         assertEq(address(stakePoolManager).balance, 0);
-        stakePoolManager.receiveWithdrawVaultUserShare{value: amount}();
+        stakePoolManager.receiveWithdrawVaultUserShare{ value: amount }();
         assertEq(address(stakePoolManager).balance, amount);
     }
 
@@ -144,7 +144,7 @@ contract StaderStakePoolManagerTest is Test {
         address randomAddr = vm.addr(privateKey);
         startHoax(randomAddr, amount);
         assertEq(address(stakePoolManager).balance, 0);
-        stakePoolManager.receiveEthFromAuction{value: amount}();
+        stakePoolManager.receiveEthFromAuction{ value: amount }();
         assertEq(address(stakePoolManager).balance, amount);
     }
 
@@ -153,7 +153,7 @@ contract StaderStakePoolManagerTest is Test {
         address randomAddr = vm.addr(privateKey);
         startHoax(randomAddr, amount);
         assertEq(address(stakePoolManager).balance, 0);
-        stakePoolManager.receiveExcessEthFromPool{value: amount}(1);
+        stakePoolManager.receiveExcessEthFromPool{ value: amount }(1);
         assertEq(address(stakePoolManager).balance, amount);
     }
 
@@ -191,15 +191,15 @@ contract StaderStakePoolManagerTest is Test {
     }
 
     function test_getExchangeRate(uint256 _totalETHx, uint256 _totalETH) public {
-        vm.assume(_totalETHx > 0 && _totalETHx < 120 * 10**24);
-        vm.assume(_totalETH > 0 && _totalETH < 120 * 10**24);
-        assertEq(stakePoolManager.getExchangeRate(), 1 * 10**18);
+        vm.assume(_totalETHx > 0 && _totalETHx < 120 * 10 ** 24);
+        vm.assume(_totalETH > 0 && _totalETH < 120 * 10 ** 24);
+        assertEq(stakePoolManager.getExchangeRate(), 1 * 10 ** 18);
         vm.mockCall(
             address(staderOracle),
             abi.encodeWithSelector(IStaderOracle.getExchangeRate.selector),
             abi.encode(block.number, _totalETH, _totalETHx)
         );
-        uint256 exchangeRate = (_totalETH * 10**18) / _totalETHx;
+        uint256 exchangeRate = (_totalETH * 10 ** 18) / _totalETHx;
         assertEq(stakePoolManager.getExchangeRate(), exchangeRate);
     }
 
@@ -278,17 +278,17 @@ contract StaderStakePoolManagerTest is Test {
 
         vm.prank(staderManager);
         stakePoolManager.pause();
-        vm.expectRevert('Pausable: paused');
-        stakePoolManager.deposit{value: 1}(receiver);
+        vm.expectRevert("Pausable: paused");
+        stakePoolManager.deposit{ value: 1 }(receiver);
         vm.prank(staderAdmin);
         stakePoolManager.unpause();
 
         vm.expectRevert(IStaderStakePoolManager.InvalidDepositAmount.selector);
-        stakePoolManager.deposit{value: 1}(receiver);
+        stakePoolManager.deposit{ value: 1 }(receiver);
 
         vm.expectRevert(IStaderStakePoolManager.InvalidDepositAmount.selector);
-        stakePoolManager.deposit{value: 100000 ether}(receiver);
-        assertEq(stakePoolManager.deposit{value: 100 ether}(receiver), 100 ether);
+        stakePoolManager.deposit{ value: 100000 ether }(receiver);
+        assertEq(stakePoolManager.deposit{ value: 100 ether }(receiver), 100 ether);
         assertEq(ethX.balanceOf(receiver), 100 ether);
         assertEq(address(stakePoolManager).balance, 100 ether);
     }
@@ -321,7 +321,7 @@ contract StaderStakePoolManagerTest is Test {
         );
         vm.expectRevert(IStaderStakePoolManager.PoolIdDoesNotExit.selector);
         stakePoolManager.validatorBatchDeposit(1);
-        stakePoolManager.deposit{value: 100 ether}(address(this));
+        stakePoolManager.deposit{ value: 100 ether }(address(this));
         vm.mockCall(address(poolUtils), abi.encodeWithSelector(IPoolUtils.isExistingPoolId.selector), abi.encode(true));
         vm.mockCall(
             address(userWithdrawManager),
@@ -363,7 +363,7 @@ contract StaderStakePoolManagerTest is Test {
     }
 
     function test_depositETHOverTargetWeight() public {
-        stakePoolManager.deposit{value: 100 ether}(address(this));
+        stakePoolManager.deposit{ value: 100 ether }(address(this));
         vm.expectRevert(IStaderStakePoolManager.CooldownNotComplete.selector);
         stakePoolManager.depositETHOverTargetWeight();
 

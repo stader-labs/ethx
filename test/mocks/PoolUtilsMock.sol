@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './NodeRegistryMock.sol';
-import '../../contracts/StaderConfig.sol';
+import "./NodeRegistryMock.sol";
+import "../../contracts/StaderConfig.sol";
 
 contract PoolUtilsMock {
     NodeRegistryMock public nodeRegistry;
     uint256 operatorTotalNonTerminalKeys;
     StaderConfig staderConfig;
 
-    constructor(address _staderConfigAddr) {
-        nodeRegistry = new NodeRegistryMock();
+    constructor(address _staderConfigAddr, address _operator) {
+        nodeRegistry = new NodeRegistryMock(_operator);
         operatorTotalNonTerminalKeys = 5;
         staderConfig = StaderConfig(_staderConfigAddr);
     }
@@ -23,12 +23,7 @@ contract PoolUtilsMock {
         return address(nodeRegistry);
     }
 
-    function getOperatorTotalNonTerminalKeys(
-        uint8,
-        address,
-        uint256,
-        uint256
-    ) public view returns (uint256) {
+    function getOperatorTotalNonTerminalKeys(uint8, address, uint256, uint256) public view returns (uint256) {
         return operatorTotalNonTerminalKeys;
     }
 
@@ -40,15 +35,10 @@ contract PoolUtilsMock {
         }
     }
 
-    function calculateRewardShare(uint8 _poolId, uint256 _totalRewards)
-        external
-        view
-        returns (
-            uint256 userShare,
-            uint256 operatorShare,
-            uint256 protocolShare
-        )
-    {
+    function calculateRewardShare(
+        uint8 _poolId,
+        uint256 _totalRewards
+    ) external view returns (uint256 userShare, uint256 operatorShare, uint256 protocolShare) {
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(_poolId);
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;

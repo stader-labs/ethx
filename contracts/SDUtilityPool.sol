@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
-import './interfaces/IStaderConfig.sol';
-import './interfaces/ISDIncentiveController.sol';
-import './interfaces/ISDUtilityPool.sol';
-import './interfaces/SDCollateral/ISDCollateral.sol';
-import './interfaces/IPoolUtils.sol';
-import './interfaces/IOperatorRewardsCollector.sol';
+import "./library/UtilLib.sol";
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/ISDIncentiveController.sol";
+import "./interfaces/ISDUtilityPool.sol";
+import "./interfaces/SDCollateral/ISDCollateral.sol";
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/IOperatorRewardsCollector.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgradeable {
     using Math for uint256;
@@ -166,12 +166,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param _sdAmount amount of SD to withdraw
      * @return _requestId generated request ID for withdrawal
      */
-    function requestWithdrawWithSDAmount(uint256 _sdAmount)
-        external
-        override
-        whenNotPaused
-        returns (uint256 _requestId)
-    {
+    function requestWithdrawWithSDAmount(
+        uint256 _sdAmount
+    ) external override whenNotPaused returns (uint256 _requestId) {
         if (_sdAmount < MIN_SD_WITHDRAW_LIMIT) {
             revert InvalidInput();
         }
@@ -299,12 +296,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @notice Sender repays on behalf of utilizer, returns actual repayment amount
      * @param repayAmount The amount to repay
      */
-    function repayOnBehalf(address utilizer, uint256 repayAmount)
-        external
-        override
-        whenNotPaused
-        returns (uint256 repaidAmount, uint256 feePaid)
-    {
+    function repayOnBehalf(
+        address utilizer,
+        uint256 repayAmount
+    ) external override whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
         accrueFee();
         (repaidAmount, feePaid) = _repay(utilizer, repayAmount);
     }
@@ -590,11 +585,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @dev only `DEFAULT_ADMIN_ROLE` role can call
      * @param _minBlockDelayToFinalizeRequest new value of minBlockDelayToFinalizeRequest
      */
-    function updateMinBlockDelayToFinalizeRequest(uint256 _minBlockDelayToFinalizeRequest)
-        external
-        override
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateMinBlockDelayToFinalizeRequest(
+        uint256 _minBlockDelayToFinalizeRequest
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         minBlockDelayToFinalizeRequest = _minBlockDelayToFinalizeRequest;
         emit UpdatedMinBlockDelayToFinalizeRequest(minBlockDelayToFinalizeRequest);
     }
@@ -847,10 +840,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         emit SDUtilized(utilizer, utilizeAmount);
     }
 
-    function _repay(address utilizer, uint256 repayAmount)
-        internal
-        returns (uint256 repayAmountFinal, uint256 feePaid)
-    {
+    function _repay(
+        address utilizer,
+        uint256 repayAmount
+    ) internal returns (uint256 repayAmountFinal, uint256 feePaid) {
         /* We fetch the amount the utilizer owes, with accumulated fee */
         uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(utilizer);
 

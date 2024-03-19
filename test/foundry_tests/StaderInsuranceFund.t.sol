@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderInsuranceFund.sol';
-import '../../contracts/StaderConfig.sol';
+import "../../contracts/StaderInsuranceFund.sol";
+import "../../contracts/StaderConfig.sol";
 
-import '../mocks/PermissionedPoolMock.sol';
+import "../mocks/PermissionedPoolMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract StaderInsuranceFundTest is Test {
     address staderAdmin;
@@ -31,7 +31,7 @@ contract StaderInsuranceFundTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -40,7 +40,7 @@ contract StaderInsuranceFundTest is Test {
         TransparentUpgradeableProxy iFundProxy = new TransparentUpgradeableProxy(
             address(iFundImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         iFund = StaderInsuranceFund(address(iFundProxy));
         iFund.initialize(staderAdmin, address(staderConfig));
@@ -56,7 +56,7 @@ contract StaderInsuranceFundTest is Test {
         TransparentUpgradeableProxy iFundProxy = new TransparentUpgradeableProxy(
             address(iFundImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         StaderInsuranceFund iFund2 = StaderInsuranceFund(address(iFundProxy));
         iFund2.initialize(staderAdmin, address(staderConfig));
@@ -73,7 +73,7 @@ contract StaderInsuranceFundTest is Test {
 
         hoax(address(anyone), _ethAmount); // provides anyone _ethAmount and makes it the caller for next call
         assertEq(address(iFund).balance, 0);
-        iFund.depositFund{value: _ethAmount}();
+        iFund.depositFund{ value: _ethAmount }();
         assertEq(address(iFund).balance, _ethAmount);
     }
 
@@ -83,7 +83,7 @@ contract StaderInsuranceFundTest is Test {
         uint256 depositAmount = 5 ether;
         startHoax(anyone, depositAmount);
 
-        iFund.depositFund{value: depositAmount}();
+        iFund.depositFund{ value: depositAmount }();
         assertEq(address(iFund).balance, depositAmount);
 
         vm.expectRevert(UtilLib.CallerNotManager.selector);
@@ -113,7 +113,7 @@ contract StaderInsuranceFundTest is Test {
         uint256 depositAmount = 5 ether;
         startHoax(anyone, depositAmount);
 
-        iFund.depositFund{value: depositAmount}();
+        iFund.depositFund{ value: depositAmount }();
         assertEq(address(iFund).balance, depositAmount);
 
         vm.expectRevert(UtilLib.CallerNotStaderContract.selector);

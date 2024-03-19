@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/ETHx.sol';
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/UserWithdrawalManager.sol';
+import "../../contracts/ETHx.sol";
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/UserWithdrawalManager.sol";
 
-import '../mocks/StaderOracleMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
+import "../mocks/StaderOracleMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract UserWithdrawalManagerTest is Test {
     address staderAdmin;
@@ -27,6 +27,7 @@ contract UserWithdrawalManagerTest is Test {
     StakePoolManagerMock staderStakePoolManager;
 
     function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
@@ -38,20 +39,20 @@ contract UserWithdrawalManagerTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, address(ethDepositAddr));
 
         ETHx ethXImpl = new ETHx();
-        TransparentUpgradeableProxy ethXProxy = new TransparentUpgradeableProxy(address(ethXImpl), address(admin), '');
+        TransparentUpgradeableProxy ethXProxy = new TransparentUpgradeableProxy(address(ethXImpl), address(admin), "");
         ethX = ETHx(address(ethXProxy));
         ethX.initialize(staderAdmin, address(staderConfig));
         UserWithdrawalManager userWithdrawalManagerImp = new UserWithdrawalManager();
         TransparentUpgradeableProxy userWithdrawalManagerProxy = new TransparentUpgradeableProxy(
             address(userWithdrawalManagerImp),
             address(admin),
-            ''
+            ""
         );
 
         userWithdrawalManager = UserWithdrawalManager(payable(userWithdrawalManagerProxy));
@@ -78,7 +79,7 @@ contract UserWithdrawalManagerTest is Test {
         TransparentUpgradeableProxy userWithdrawalManagerProxy = new TransparentUpgradeableProxy(
             address(userWithdrawalManagerImp),
             address(admin),
-            ''
+            ""
         );
 
         userWithdrawalManager = UserWithdrawalManager(payable(userWithdrawalManagerProxy));
@@ -97,7 +98,7 @@ contract UserWithdrawalManagerTest is Test {
 
     function test_ReceiveFunction() public {
         vm.deal(address(this), 2 ether);
-        payable(userWithdrawalManager).call{value: 1 ether}('');
+        payable(userWithdrawalManager).call{ value: 1 ether }("");
         assertEq(address(this).balance, 1 ether);
         assertEq(address(userWithdrawalManager).balance, 1 ether);
     }

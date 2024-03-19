@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/SDUtilityPool.sol';
-import '../../contracts/SDIncentiveController.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/SDUtilityPool.sol";
+import "../../contracts/SDIncentiveController.sol";
 
-import '../mocks/SDCollateralMock.sol';
-import '../mocks/StaderTokenMock.sol';
-import '../mocks/SDIncentiveControllerMock.sol';
-import '../mocks/OperatorRewardsCollectorMock.sol';
-import '../mocks/PoolUtilsMock.sol';
+import "../mocks/SDCollateralMock.sol";
+import "../mocks/StaderTokenMock.sol";
+import "../mocks/SDIncentiveControllerMock.sol";
+import "../mocks/OperatorRewardsCollectorMock.sol";
+import "../mocks/PoolUtilsMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract SDIncentiveControllerTest is Test {
     event EmissionRateUpdated(uint256 newEmissionRate);
@@ -49,14 +49,15 @@ contract SDIncentiveControllerTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
         sdCollateral = new SDCollateralMock();
         operatorRewardsCollector = new OperatorRewardsCollectorMock();
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        address operator = address(500);
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
@@ -73,7 +74,7 @@ contract SDIncentiveControllerTest is Test {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(sdUtilityPoolImpl),
             address(admin),
-            ''
+            ""
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
         staderToken.approve(address(sdUtilityPool), 1 ether);
@@ -84,7 +85,7 @@ contract SDIncentiveControllerTest is Test {
         TransparentUpgradeableProxy sdIncentiveControllerProxy = new TransparentUpgradeableProxy(
             address(sdIncentiveControllerImpl),
             address(admin),
-            ''
+            ""
         );
         sdIncentiveController = SDIncentiveController(address(sdIncentiveControllerProxy));
         sdIncentiveController.initialize(staderAdmin, address(staderConfig));
@@ -99,7 +100,7 @@ contract SDIncentiveControllerTest is Test {
         TransparentUpgradeableProxy sdIncentiveControllerProxy = new TransparentUpgradeableProxy(
             address(sdIncentiveControllerImpl),
             address(admin),
-            ''
+            ""
         );
         SDIncentiveController sdIncentiveController2 = SDIncentiveController(address(sdIncentiveControllerProxy));
 
@@ -243,11 +244,7 @@ contract SDIncentiveControllerTest is Test {
         assertEq(earned + sdIncentiveController.earned(user2) + sdIncentiveController.earned(user), preEarned);
     }
 
-    function testWithdrawMultiples(
-        uint256 utilizeAmount,
-        uint256 incentiveAmount,
-        uint256 duration
-    ) public {
+    function testWithdrawMultiples(uint256 utilizeAmount, uint256 incentiveAmount, uint256 duration) public {
         vm.assume(utilizeAmount > 1e20 && utilizeAmount < 1e25);
 
         address user1 = address(1);
@@ -293,8 +290,8 @@ contract SDIncentiveControllerTest is Test {
         sdUtilityPool.claim(2);
         vm.stopPrank();
 
-        assertTrue(earn1 > 0, 'User1 did not earn any rewards');
-        assertTrue(earn2 > 0, 'User2 did not earn any rewards');
+        assertTrue(earn1 > 0, "User1 did not earn any rewards");
+        assertTrue(earn2 > 0, "User2 did not earn any rewards");
 
         uint256 user1FinalGain = staderToken.balanceOf(user1) - user1PrevBalance;
         uint256 user2FinalGain = staderToken.balanceOf(user2) - user2PrevBalance;
@@ -350,7 +347,7 @@ contract SDIncentiveControllerTest is Test {
 
         // No approval
         vm.startPrank(staderManager);
-        vm.expectRevert('ERC20: insufficient allowance');
+        vm.expectRevert("ERC20: insufficient allowance");
         sdIncentiveController.start(1e22, 10);
         vm.stopPrank();
 
@@ -376,8 +373,8 @@ contract SDIncentiveControllerTest is Test {
         incentiveAmount = (incentiveAmount / duration) * duration;
         staderToken.transfer(staderManager, incentiveAmount);
 
-        console.log('Incentive amount: ', incentiveAmount);
-        console.log('Duration: ', duration);
+        console.log("Incentive amount: ", incentiveAmount);
+        console.log("Duration: ", duration);
 
         vm.startPrank(staderManager);
         staderToken.approve(address(sdIncentiveController), incentiveAmount);
