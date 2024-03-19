@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/factory/VaultFactory.sol';
-import '../../contracts/PermissionedPool.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/factory/VaultFactory.sol";
+import "../../contracts/PermissionedPool.sol";
 
-import '../mocks/ETHDepositMock.sol';
-import '../mocks/StaderInsuranceFundMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
-import '../mocks/PermissionedNodeRegistryMock.sol';
+import "../mocks/ETHDepositMock.sol";
+import "../mocks/StaderInsuranceFundMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
+import "../mocks/PermissionedNodeRegistryMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract PermissionedPoolTest is Test {
     address staderAdmin;
@@ -31,6 +31,7 @@ contract PermissionedPoolTest is Test {
     PermissionedNodeRegistryMock nodeRegistry;
 
     function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
@@ -44,13 +45,13 @@ contract PermissionedPoolTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, address(ethDepositAddr));
 
         VaultFactory vaultImp = new VaultFactory();
-        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImp), address(admin), '');
+        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImp), address(admin), "");
 
         vaultFactory = VaultFactory(address(vaultProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
@@ -59,7 +60,7 @@ contract PermissionedPoolTest is Test {
         TransparentUpgradeableProxy permissionedPoolProxy = new TransparentUpgradeableProxy(
             address(permissionedPoolImpl),
             address(admin),
-            ''
+            ""
         );
         nodeRegistry = new PermissionedNodeRegistryMock();
         permissionedPool = PermissionedPool(payable(address(permissionedPoolProxy)));
@@ -82,7 +83,7 @@ contract PermissionedPoolTest is Test {
         TransparentUpgradeableProxy permissionedPoolProxy = new TransparentUpgradeableProxy(
             address(permissionedPoolImpl),
             address(admin),
-            ''
+            ""
         );
         permissionedPool = PermissionedPool(payable(address(permissionedPoolProxy)));
         permissionedPool.initialize(staderAdmin, address(staderConfig));
@@ -100,7 +101,7 @@ contract PermissionedPoolTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderPoolBase.UnsupportedOperation.selector);
-        payable(permissionedPool).call{value: 1 ether}('');
+        payable(permissionedPool).call{ value: 1 ether }("");
         vm.stopPrank();
     }
 
@@ -108,7 +109,7 @@ contract PermissionedPoolTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderPoolBase.UnsupportedOperation.selector);
-        payable(permissionedPool).call{value: 1 ether}('abi.encodeWithSignature("nonExistentFunction()")');
+        payable(permissionedPool).call{ value: 1 ether }('abi.encodeWithSignature("nonExistentFunction()")');
         vm.stopPrank();
     }
 
@@ -116,31 +117,34 @@ contract PermissionedPoolTest is Test {
         vm.assume(_amount > 0);
         vm.deal(address(this), _amount);
         vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
-        permissionedPool.receiveInsuranceFund{value: _amount}();
+        permissionedPool.receiveInsuranceFund{ value: _amount }();
         vm.deal(address(insuranceFund), _amount);
         vm.prank(address(insuranceFund));
-        permissionedPool.receiveInsuranceFund{value: _amount}();
+        permissionedPool.receiveInsuranceFund{ value: _amount }();
         assertEq(address(permissionedPool).balance, _amount);
     }
 
     function test_StakeUserETHToBeaconChain() public {
-        startHoax(address(poolManager));
+        address manager = address(poolManager);
+        vm.startPrank(manager);
+        vm.deal(manager, 200 ether);
         vm.mockCall(
             address(nodeRegistry),
             abi.encodeWithSelector(INodeRegistry.validatorRegistry.selector),
             abi.encode(
                 ValidatorStatus.INITIALIZED,
-                '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336751',
-                '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6',
-                '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6',
+                "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336751",
+                "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6",
+                "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6",
                 address(this),
                 1,
                 150,
                 150
             )
         );
-        permissionedPool.stakeUserETHToBeaconChain{value: 64 ether}();
-        permissionedPool.stakeUserETHToBeaconChain{value: 64 ether}();
+        permissionedPool.stakeUserETHToBeaconChain{ value: 64 ether }();
+        permissionedPool.stakeUserETHToBeaconChain{ value: 64 ether }();
+        vm.stopPrank();
         assertEq(address(permissionedPool).balance, 124 ether);
         assertEq(address(ethDepositAddr).balance, 4 ether);
         assertEq(permissionedPool.preDepositValidatorCount(), 4);
@@ -153,8 +157,8 @@ contract PermissionedPoolTest is Test {
         assertEq(address(insuranceFund).balance, 48 ether);
 
         bytes[] memory pubkey = new bytes[](2);
-        pubkey[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
-        pubkey[1] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        pubkey[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
+        pubkey[1] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         vm.prank(address(nodeRegistry));
         permissionedPool.fullDepositOnBeaconChain(pubkey);
         assertEq(permissionedPool.preDepositValidatorCount(), 0);
@@ -197,7 +201,7 @@ contract PermissionedPoolTest is Test {
     }
 
     function test_isExistingPubkey() public {
-        bytes memory pubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        bytes memory pubkey = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         assertEq(permissionedPool.isExistingPubkey(pubkey), true);
     }
 
@@ -217,8 +221,10 @@ contract PermissionedPoolTest is Test {
 
     function test_test_setCommissionFeesWithInvalidInput(uint64 protocolFee, uint64 operatorFee) public {
         vm.assume(protocolFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
-        vm.assume(operatorFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
-        vm.assume(protocolFee + operatorFee > permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+        vm.assume(
+            operatorFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS() &&
+                protocolFee + operatorFee > permissionedPool.MAX_COMMISSION_LIMIT_BIPS()
+        );
         vm.expectRevert(IStaderPoolBase.InvalidCommission.selector);
         vm.prank(staderManager);
         permissionedPool.setCommissionFees(protocolFee, operatorFee);

@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './library/ValidatorStatus.sol';
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IVaultFactory.sol';
-import './interfaces/IPoolUtils.sol';
-import './interfaces/INodeRegistry.sol';
-import './interfaces/ISDUtilityPool.sol';
-import './interfaces/IPermissionlessPool.sol';
-import './interfaces/INodeELRewardVault.sol';
-import './interfaces/IStaderInsuranceFund.sol';
-import './interfaces/IValidatorWithdrawalVault.sol';
-import './interfaces/SDCollateral/ISDCollateral.sol';
-import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IOperatorRewardsCollector.sol';
+import "./library/ValidatorStatus.sol";
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IVaultFactory.sol";
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/ISDUtilityPool.sol";
+import "./interfaces/IPermissionlessPool.sol";
+import "./interfaces/INodeELRewardVault.sol";
+import "./interfaces/IStaderInsuranceFund.sol";
+import "./interfaces/IValidatorWithdrawalVault.sol";
+import "./interfaces/SDCollateral/ISDCollateral.sol";
+import "./interfaces/IPermissionlessNodeRegistry.sol";
+import "./interfaces/IOperatorRewardsCollector.sol";
 
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract PermissionlessNodeRegistry is
     INodeRegistry,
@@ -129,7 +129,7 @@ contract PermissionlessNodeRegistry is
         bytes[] calldata _preDepositSignature,
         bytes[] calldata _depositSignature
     ) external payable override whenNotPaused {
-        addValidatorKeysWithUtilizeSD('', 0, _pubkey, _preDepositSignature, _depositSignature);
+        addValidatorKeysWithUtilizeSD("", 0, _pubkey, _preDepositSignature, _depositSignature);
     }
 
     /**
@@ -305,11 +305,9 @@ contract PermissionlessNodeRegistry is
     }
 
     // allow NOs to opt in/out of socialize pool after coolDownPeriod
-    function changeSocializingPoolState(bool _optInForSocializingPool)
-        external
-        override
-        returns (address feeRecipientAddress)
-    {
+    function changeSocializingPoolState(
+        bool _optInForSocializingPool
+    ) external override returns (address feeRecipientAddress) {
         uint256 operatorId = onlyActiveOperator(msg.sender);
         if (operatorStructById[operatorId].optedForSocializingPool == _optInForSocializingPool) {
             revert NoChangeInState();
@@ -442,7 +440,7 @@ contract PermissionlessNodeRegistry is
      */
     function transferCollateralToPool(uint256 _amount) external override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_POOL());
-        IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{value: _amount}();
+        IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{ value: _amount }();
         emit TransferredCollateralToPool(_amount);
     }
 
@@ -538,12 +536,10 @@ contract PermissionlessNodeRegistry is
      *
      * @return An array of `Validator` objects representing the active validators.
      */
-    function getAllActiveValidators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        override
-        returns (Validator[] memory)
-    {
+    function getAllActiveValidators(
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view override returns (Validator[] memory) {
         if (_pageNumber == 0) {
             revert PageNumberIsZero();
         }
@@ -607,12 +603,10 @@ contract PermissionlessNodeRegistry is
      *
      * @return An array of `address` objects representing the nodeELRewardVault contract address.
      */
-    function getAllNodeELVaultAddress(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        override
-        returns (address[] memory)
-    {
+    function getAllNodeELVaultAddress(
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view override returns (address[] memory) {
         if (_pageNumber == 0) {
             revert PageNumberIsZero();
         }

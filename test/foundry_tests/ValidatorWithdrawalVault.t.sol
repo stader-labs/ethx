@@ -1,25 +1,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import { Test } from "forge-std/Test.sol";
+import { console2 } from "forge-std/console2.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/VaultProxy.sol';
-import '../../contracts/ValidatorWithdrawalVault.sol';
-import '../../contracts/OperatorRewardsCollector.sol';
-import '../../contracts/factory/VaultFactory.sol';
+import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import { ProxyAdmin } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import '../mocks/PoolUtilsMock.sol';
-import '../mocks/PenaltyMockForVault.sol';
-import '../mocks/SDCollateralMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
-import '../mocks/SDUtilityPoolMock.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/VaultProxy.sol";
+import "../../contracts/ValidatorWithdrawalVault.sol";
+import "../../contracts/OperatorRewardsCollector.sol";
+import "../../contracts/factory/VaultFactory.sol";
+
+import "../mocks/PoolUtilsMock.sol";
+import "../mocks/PenaltyMockForVault.sol";
+import "../mocks/SDCollateralMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
+
+import { SDUtilityPoolMock } from "../mocks/SDUtilityPoolMock.sol";
+import { StaderOracleMock } from "../mocks/StaderOracleMock.sol";
 
 contract ValidatorWithdrawalVaultTest is Test {
+    address private constant OPERATOR_ADDRESS = address(500);
+
     address staderAdmin;
     address staderManager;
     address staderTreasury;
@@ -34,12 +40,19 @@ contract ValidatorWithdrawalVaultTest is Test {
     VaultFactory vaultFactory;
 
     function setUp() public {
+        vm.clearMockedCalls();
         poolId = 1;
         validatorId = 1;
 
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
+        address staderOracleMock = vm.addr(103);
+        address sdUtilityPoolMock = vm.addr(104);
+        address operator = OPERATOR_ADDRESS;
+
+        mockStaderOracle(staderOracleMock);
+        mockSDUtilityPool(sdUtilityPoolMock, operator);
 
         ProxyAdmin proxyAdmin = new ProxyAdmin();
 
@@ -47,7 +60,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -56,19 +69,18 @@ contract ValidatorWithdrawalVaultTest is Test {
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
             address(operatorRCImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         operatorRC = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC.initialize(staderAdmin, address(staderConfig));
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
         PenaltyMockForVault penaltyContract = new PenaltyMockForVault();
         SDCollateralMock sdCollateral = new SDCollateralMock();
-        SDUtilityPoolMock sdUtilityPool = new SDUtilityPoolMock();
         ValidatorWithdrawalVault withdrawVaultImpl = new ValidatorWithdrawalVault();
 
         VaultFactory vfImpl = new VaultFactory();
-        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), '');
+        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), "");
         vaultFactory = VaultFactory(address(vfProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
 
@@ -78,9 +90,10 @@ contract ValidatorWithdrawalVaultTest is Test {
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updatePenaltyContract(address(penaltyContract));
         staderConfig.updateSDCollateral(address(sdCollateral));
-        staderConfig.updateSDUtilityPool(address(sdUtilityPool));
+        staderConfig.updateSDUtilityPool(sdUtilityPoolMock);
         staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.updateValidatorWithdrawalVaultImplementation(address(withdrawVaultImpl));
+        staderConfig.updateStaderOracle(staderOracleMock);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(poolUtils.nodeRegistry()));
         vm.stopPrank();
@@ -95,7 +108,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
             address(operatorRCImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         OperatorRewardsCollector operatorRC2 = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC2.initialize(staderAdmin, address(staderConfig));
@@ -122,7 +135,7 @@ contract ValidatorWithdrawalVaultTest is Test {
 
         assertEq(withdrawVaultClone.balance, 0);
         hoax(randomEOA, amount); // provides amount eth to user and makes it the caller for next call
-        (bool success, ) = withdrawVaultClone.call{value: amount}('');
+        (bool success, ) = withdrawVaultClone.call{ value: amount }("");
         assertTrue(success);
         assertEq(withdrawVaultClone.balance, amount);
     }
@@ -141,8 +154,8 @@ contract ValidatorWithdrawalVaultTest is Test {
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
-        address operator = address(500);
         address opRewardAddr = vm.addr(4);
+        address operator = OPERATOR_ADDRESS;
 
         vm.prank(staderAdmin);
         staderConfig.updateStakePoolManager(address(sspm));
@@ -257,7 +270,7 @@ contract ValidatorWithdrawalVaultTest is Test {
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
-        address operator = address(500);
+        address operator = OPERATOR_ADDRESS;
         address opRewardAddr = vm.addr(4);
 
         vm.prank(staderAdmin);
@@ -287,8 +300,8 @@ contract ValidatorWithdrawalVaultTest is Test {
         vm.deal(withdrawVaultClone, rewardEth); // send rewardEth to withdrawVault
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
+        address operator = OPERATOR_ADDRESS;
         address treasury = vm.addr(3);
-        address operator = address(500);
         address opRewardAddr = vm.addr(4);
 
         vm.prank(staderAdmin);
@@ -329,7 +342,11 @@ contract ValidatorWithdrawalVaultTest is Test {
         vm.prank(operator);
         operatorRC.claim();
 
-        assertEq(address(opRewardAddr).balance, operatorShare - penaltyAmt);
+        assertEq(
+            address(opRewardAddr).balance,
+            operatorShare - penaltyAmt,
+            "expect reward balance to be operatorShare - penaltyAmt"
+        );
         assertEq(operatorRC.balances(operator), 0);
     }
 
@@ -348,5 +365,24 @@ contract ValidatorWithdrawalVaultTest is Test {
         staderConfig.updateAdmin(vm.addr(203));
         VaultProxy(withdrawVaultClone).updateOwner();
         assertEq(VaultProxy(withdrawVaultClone).owner(), vm.addr(203));
+    }
+
+    function mockStaderOracle(address staderOracleMock) private {
+        emit log_named_address("staderOracleMock", staderOracleMock);
+        StaderOracleMock implementation = new StaderOracleMock();
+        bytes memory mockCode = address(implementation).code;
+        vm.etch(staderOracleMock, mockCode);
+    }
+
+    function mockSDUtilityPool(address sdUtilityPoolMock, address _operator) private {
+        emit log_named_address("sdUtilityPool", sdUtilityPoolMock);
+        SDUtilityPoolMock implementation = new SDUtilityPoolMock();
+        bytes memory mockCode = address(implementation).code;
+        vm.etch(sdUtilityPoolMock, mockCode);
+        vm.mockCall(
+            sdUtilityPoolMock,
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, _operator),
+            abi.encode(UserData(0 ether, 4 ether, 1, 0))
+        );
     }
 }

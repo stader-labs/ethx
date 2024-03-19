@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IPermissionedPool.sol';
-import './interfaces/IStaderInsuranceFund.sol';
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IPermissionedPool.sol";
+import "./interfaces/IStaderInsuranceFund.sol";
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public staderConfig;
@@ -40,7 +40,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, 
         }
 
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(msg.sender).call{value: _amount}('');
+        (bool success, ) = payable(msg.sender).call{ value: _amount }("");
         if (!success) {
             revert TransferFailed();
         }
@@ -57,7 +57,7 @@ contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, 
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }
-        IPermissionedPool(staderConfig.getPermissionedPool()).receiveInsuranceFund{value: _amount}();
+        IPermissionedPool(staderConfig.getPermissionedPool()).receiveInsuranceFund{ value: _amount }();
     }
 
     //update the address of staderConfig

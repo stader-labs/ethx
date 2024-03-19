@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './ETHx.sol';
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IStaderOracle.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IUserWithdrawalManager.sol';
+import "./ETHx.sol";
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IStaderOracle.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
+import "./interfaces/IUserWithdrawalManager.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract UserWithdrawalManager is
     IUserWithdrawalManager,
@@ -244,7 +244,7 @@ contract UserWithdrawalManager is
         }
 
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = _recipient.call{value: _amount}('');
+        (bool success, ) = _recipient.call{ value: _amount }("");
         if (!success) {
             revert ETHTransferFailed();
         }

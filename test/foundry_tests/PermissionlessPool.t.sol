@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/factory/VaultFactory.sol';
-import '../../contracts/PermissionlessPool.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/factory/VaultFactory.sol";
+import "../../contracts/PermissionlessPool.sol";
 
-import '../mocks/ETHDepositMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
-import '../mocks/PermissionlessNodeRegistryMock.sol';
+import "../mocks/ETHDepositMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
+import "../mocks/PermissionlessNodeRegistryMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract PermissionlessPoolTest is Test {
     address staderAdmin;
@@ -29,6 +29,7 @@ contract PermissionlessPoolTest is Test {
     PermissionlessNodeRegistryMock nodeRegistry;
 
     function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
@@ -41,13 +42,13 @@ contract PermissionlessPoolTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, address(ethDepositAddr));
 
         VaultFactory vaultImp = new VaultFactory();
-        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImp), address(admin), '');
+        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImp), address(admin), "");
 
         vaultFactory = VaultFactory(address(vaultProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
@@ -56,7 +57,7 @@ contract PermissionlessPoolTest is Test {
         TransparentUpgradeableProxy permissionlessPoolProxy = new TransparentUpgradeableProxy(
             address(permissionlessPoolImpl),
             address(admin),
-            ''
+            ""
         );
         nodeRegistry = new PermissionlessNodeRegistryMock();
         permissionlessPool = PermissionlessPool(payable(address(permissionlessPoolProxy)));
@@ -78,7 +79,7 @@ contract PermissionlessPoolTest is Test {
         TransparentUpgradeableProxy permissionlessPoolProxy = new TransparentUpgradeableProxy(
             address(permissionlessPoolImpl),
             address(admin),
-            ''
+            ""
         );
         permissionlessPool = PermissionlessPool(payable(address(permissionlessPoolProxy)));
         permissionlessPool.initialize(staderAdmin, address(staderConfig));
@@ -105,7 +106,7 @@ contract PermissionlessPoolTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderPoolBase.UnsupportedOperation.selector);
-        payable(permissionlessPool).call{value: 1 ether}('abi.encodeWithSignature("nonExistentFunction()")');
+        payable(permissionlessPool).call{ value: 1 ether }('abi.encodeWithSignature("nonExistentFunction()")');
         vm.stopPrank();
     }
 
@@ -113,66 +114,66 @@ contract PermissionlessPoolTest is Test {
         vm.assume(_amount > 0);
         vm.deal(address(this), _amount);
         vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
-        permissionlessPool.receiveRemainingCollateralETH{value: _amount}();
+        permissionlessPool.receiveRemainingCollateralETH{ value: _amount }();
         vm.deal(address(nodeRegistry), _amount);
         vm.prank(address(nodeRegistry));
-        permissionlessPool.receiveRemainingCollateralETH{value: _amount}();
+        permissionlessPool.receiveRemainingCollateralETH{ value: _amount }();
         assertEq(address(permissionlessPool).balance, _amount);
     }
 
     function test_preDepositOnBeaconChain() public {
         bytes[] memory pubkey = new bytes[](2);
-        pubkey[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
-        pubkey[1] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        pubkey[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
+        pubkey[1] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
         bytes[] memory preDepositSig = new bytes[](2);
         preDepositSig[
             0
-        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
         preDepositSig[
             1
-        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
 
         startHoax(address(nodeRegistry), 2 ether);
-        permissionlessPool.preDepositOnBeaconChain{value: 2 ether}(pubkey, preDepositSig, 1, 2);
+        permissionlessPool.preDepositOnBeaconChain{ value: 2 ether }(pubkey, preDepositSig, 1, 2);
     }
 
     function testFail_preDepositOnBeaconChain() public {
         bytes[] memory pubkey = new bytes[](3);
-        pubkey[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
-        pubkey[1] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
-        pubkey[2] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        pubkey[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
+        pubkey[1] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
+        pubkey[2] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
         bytes[] memory preDepositSig = new bytes[](3);
         preDepositSig[
             0
-        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
         preDepositSig[
             1
-        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
         preDepositSig[
             2
-        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
 
         startHoax(address(nodeRegistry), 3 ether);
-        permissionlessPool.preDepositOnBeaconChain{value: 2 ether}(pubkey, preDepositSig, 1, 2);
+        permissionlessPool.preDepositOnBeaconChain{ value: 2 ether }(pubkey, preDepositSig, 1, 2);
     }
 
     function test_preDepositOnBeaconChainWithExtraETH() public {
         bytes[] memory pubkey = new bytes[](2);
-        pubkey[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
-        pubkey[1] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        pubkey[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
+        pubkey[1] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
         bytes[] memory preDepositSig = new bytes[](2);
         preDepositSig[
             0
-        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
         preDepositSig[
             1
-        ] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+        ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
 
         startHoax(address(nodeRegistry), 10 ether);
-        permissionlessPool.preDepositOnBeaconChain{value: 5 ether}(pubkey, preDepositSig, 1, 2);
+        permissionlessPool.preDepositOnBeaconChain{ value: 5 ether }(pubkey, preDepositSig, 1, 2);
         assertEq(address(permissionlessPool).balance, 3 ether);
     }
 
@@ -183,9 +184,9 @@ contract PermissionlessPoolTest is Test {
             abi.encodeWithSelector(INodeRegistry.validatorRegistry.selector),
             abi.encode(
                 ValidatorStatus.INITIALIZED,
-                '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336751',
-                '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6',
-                '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6',
+                "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336751",
+                "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6",
+                "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6",
                 address(this),
                 1,
                 150,
@@ -193,7 +194,7 @@ contract PermissionlessPoolTest is Test {
             )
         );
         vm.deal(address(nodeRegistry), 50 ether);
-        permissionlessPool.stakeUserETHToBeaconChain{value: 112 ether}();
+        permissionlessPool.stakeUserETHToBeaconChain{ value: 112 ether }();
         assertEq(address(permissionlessPool).balance, 0);
         assertEq(address(nodeRegistry).balance, 38 ether);
         assertEq(address(ethDepositAddr).balance, 124 ether);
@@ -224,7 +225,7 @@ contract PermissionlessPoolTest is Test {
     }
 
     function test_isExistingPubkey() public {
-        bytes memory pubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        bytes memory pubkey = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         assertEq(permissionlessPool.isExistingPubkey(pubkey), true);
     }
 
@@ -242,10 +243,12 @@ contract PermissionlessPoolTest is Test {
         assertEq(permissionlessPool.operatorFee(), operatorFee);
     }
 
-    function test_test_setCommissionFeesWithInvalidInput(uint64 protocolFee, uint64 operatorFee) public {
-        vm.assume(protocolFee < permissionlessPool.MAX_COMMISSION_LIMIT_BIPS());
-        vm.assume(operatorFee < permissionlessPool.MAX_COMMISSION_LIMIT_BIPS());
-        vm.assume(protocolFee + operatorFee > permissionlessPool.MAX_COMMISSION_LIMIT_BIPS());
+    function test_setCommissionFeesWithInvalidInput(uint64 protocolFee, uint64 operatorFee) public {
+        vm.assume(
+            protocolFee < permissionlessPool.MAX_COMMISSION_LIMIT_BIPS() &&
+                operatorFee < permissionlessPool.MAX_COMMISSION_LIMIT_BIPS() &&
+                protocolFee + operatorFee > permissionlessPool.MAX_COMMISSION_LIMIT_BIPS()
+        );
         vm.expectRevert(IStaderPoolBase.InvalidCommission.selector);
         vm.prank(staderManager);
         permissionlessPool.setCommissionFees(protocolFee, operatorFee);

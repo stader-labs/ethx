@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IPoolUtils.sol';
-import './interfaces/IVaultProxy.sol';
-import './interfaces/INodeRegistry.sol';
-import './interfaces/INodeELRewardVault.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IOperatorRewardsCollector.sol';
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/IVaultProxy.sol";
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/INodeELRewardVault.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
+import "./interfaces/IOperatorRewardsCollector.sol";
 
 contract NodeELRewardVault is INodeELRewardVault {
     constructor() {}
@@ -33,11 +33,11 @@ contract NodeELRewardVault is INodeELRewardVault {
             .calculateRewardShare(poolId, totalRewards);
 
         // Distribute rewards
-        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{value: userShare}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{ value: userShare }();
         // slither-disable-next-line arbitrary-send-eth
         UtilLib.sendValue(payable(staderConfig.getStaderTreasury()), protocolShare);
         address operator = UtilLib.getOperatorAddressByOperatorId(poolId, operatorId, staderConfig);
-        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{value: operatorShare}(
+        IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{ value: operatorShare }(
             operator
         );
 

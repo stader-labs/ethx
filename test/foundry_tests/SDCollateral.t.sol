@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/Auction.sol';
-import '../../contracts/SDCollateral.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/Auction.sol";
+import "../../contracts/SDCollateral.sol";
 
-import '../mocks/StaderTokenMock.sol';
-import '../mocks/PoolUtilsMock.sol';
-import '../mocks/StaderOracleMock.sol';
-import '../mocks/SDUtilityPoolMock.sol';
+import "../mocks/StaderTokenMock.sol";
+import "../mocks/PoolUtilsMock.sol";
+import "../mocks/StaderOracleMock.sol";
+import "../mocks/SDUtilityPoolMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract SDCollateralTest is Test {
     address staderAdmin;
@@ -29,6 +29,7 @@ contract SDCollateralTest is Test {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
 
         StaderOracleMock staderOracle = new StaderOracleMock();
 
@@ -41,15 +42,15 @@ contract SDCollateralTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
-        PoolUtilsMock poolUtils = new PoolUtilsMock(address(staderConfig));
+        PoolUtilsMock poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         Auction auctionImpl = new Auction();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), '');
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), "");
         Auction auction = Auction(address(proxy));
         auction.initialize(staderAdmin, address(staderConfig));
 
@@ -66,7 +67,7 @@ contract SDCollateralTest is Test {
         TransparentUpgradeableProxy collateralProxy = new TransparentUpgradeableProxy(
             address(collateralImpl),
             address(admin),
-            ''
+            ""
         );
         sdCollateral = SDCollateral(address(collateralProxy));
         sdCollateral.initialize(staderAdmin, address(staderConfig));
@@ -78,7 +79,7 @@ contract SDCollateralTest is Test {
         TransparentUpgradeableProxy collateralProxy = new TransparentUpgradeableProxy(
             address(collateralImpl),
             address(admin),
-            ''
+            ""
         );
         SDCollateral sdCollateral2 = SDCollateral(address(collateralProxy));
         sdCollateral2.initialize(staderAdmin, address(staderConfig));
@@ -102,11 +103,7 @@ contract SDCollateralTest is Test {
         sdCollateral.depositSDAsCollateral(sdAmount);
     }
 
-    function test_depositSDAsCollateral(
-        uint128 approveAmount,
-        uint128 sdAmount,
-        uint16 randomSeed
-    ) public {
+    function test_depositSDAsCollateral(uint128 approveAmount, uint128 sdAmount, uint16 randomSeed) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -144,7 +141,7 @@ contract SDCollateralTest is Test {
         vm.assume(approveAmount >= sdAmount);
         vm.expectRevert(UtilLib.ZeroAddress.selector);
         sdCollateral.depositSDAsCollateralOnBehalf(address(0), sdAmount);
-        vm.expectRevert('ERC20: insufficient allowance');
+        vm.expectRevert("ERC20: insufficient allowance");
         sdCollateral.depositSDAsCollateralOnBehalf(user2, sdAmount);
         staderToken.approve(address(sdCollateral), approveAmount);
         sdCollateral.depositSDAsCollateralOnBehalf(user2, sdAmount);
@@ -153,11 +150,7 @@ contract SDCollateralTest is Test {
         assertEq(staderToken.balanceOf(address(sdCollateral)), sdAmount);
     }
 
-    function test_depositSDFromUtilityPool(
-        uint128 approveAmount,
-        uint128 sdAmount,
-        uint16 randomSeed
-    ) public {
+    function test_depositSDFromUtilityPool(uint128 approveAmount, uint128 sdAmount, uint16 randomSeed) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -205,7 +198,7 @@ contract SDCollateralTest is Test {
     ) public {
         // not called by manager
         vm.expectRevert(UtilLib.CallerNotManager.selector);
-        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, "ETH");
     }
 
     function test_updatePoolThreshold_revertIfMinThresholdGTMaxThreshold(
@@ -217,7 +210,7 @@ contract SDCollateralTest is Test {
         vm.assume(_minThreshold > _maxThreshold);
         vm.prank(staderManager);
         vm.expectRevert(ISDCollateral.InvalidPoolLimit.selector);
-        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, "ETH");
     }
 
     function test_updatePoolThreshold_revertIfMinThresholdGTWithdrawThreshold(
@@ -229,7 +222,7 @@ contract SDCollateralTest is Test {
         vm.assume(_minThreshold > _withdrawThreshold);
         vm.prank(staderManager);
         vm.expectRevert(ISDCollateral.InvalidPoolLimit.selector);
-        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, "ETH");
     }
 
     function test_updatePoolThreshold(
@@ -240,7 +233,7 @@ contract SDCollateralTest is Test {
     ) public {
         vm.assume(_minThreshold <= _maxThreshold && _minThreshold <= _withdrawThreshold);
         vm.prank(staderManager);
-        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(_poolId, _minThreshold, _maxThreshold, _withdrawThreshold, "ETH");
 
         (uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold, string memory units) = sdCollateral
             .poolThresholdbyPoolId(_poolId);
@@ -248,7 +241,7 @@ contract SDCollateralTest is Test {
         assertEq(minThreshold, _minThreshold);
         assertEq(maxThreshold, _maxThreshold);
         assertEq(withdrawThreshold, _withdrawThreshold);
-        assertEq(units, 'ETH');
+        assertEq(units, "ETH");
     }
 
     function test_withdraw_revertIfPoolThresholdNotSet(uint256 _requestedSD) public {
@@ -260,7 +253,7 @@ contract SDCollateralTest is Test {
         // set poolThreshold
         (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
         vm.prank(staderManager);
-        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, "ETH");
 
         // assuming deployer is operator
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
@@ -279,7 +272,7 @@ contract SDCollateralTest is Test {
         // set poolThreshold
         (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
         vm.prank(staderManager);
-        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, "ETH");
 
         // assuming deployer is operator
         address operator = address(this);
@@ -320,7 +313,7 @@ contract SDCollateralTest is Test {
     function test_slashValidatorSD_auctionLotNotCreated_whenNoCollateral() public {
         // set poolThreshold
         vm.prank(staderManager);
-        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, 'ETH');
+        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, "ETH");
 
         address validatorWithdrawVault = address(1); // have set the same in NodeRegistryMock
         address operator = address(500);
@@ -339,7 +332,7 @@ contract SDCollateralTest is Test {
     function test_slashValidatorSD() public {
         // set poolThreshold
         vm.prank(staderManager);
-        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, 'ETH');
+        sdCollateral.updatePoolThreshold(1, 4e17, 2e18, 1e18, "ETH");
 
         address validatorWithdrawVault = address(1); // have set the same in NodeRegistryMock
         address operator = address(500);
@@ -359,7 +352,7 @@ contract SDCollateralTest is Test {
         assertEq(auction.nextLot(), 1);
 
         vm.prank(validatorWithdrawVault);
-        vm.expectRevert('ERC20: insufficient allowance');
+        vm.expectRevert("ERC20: insufficient allowance");
         sdCollateral.slashValidatorSD(1, 1);
 
         vm.prank(staderManager);
@@ -427,7 +420,7 @@ contract SDCollateralTest is Test {
         // set PoolThreshold
         (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
         vm.prank(staderManager);
-        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, "ETH");
 
         staderToken.approve(address(sdCollateral), depositSDAmount);
         sdCollateral.depositSDAsCollateral(depositSDAmount);
@@ -452,7 +445,7 @@ contract SDCollateralTest is Test {
         // set PoolThreshold
         (uint8 poolId, uint256 minThreshold, uint256 maxThreshold, uint256 withdrawThreshold) = (1, 4e17, 2e18, 1e18);
         vm.prank(staderManager);
-        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, 'ETH');
+        sdCollateral.updatePoolThreshold(poolId, minThreshold, maxThreshold, withdrawThreshold, "ETH");
 
         staderToken.approve(address(sdCollateral), depositSDAmount);
         sdCollateral.depositSDAsCollateral(depositSDAmount);

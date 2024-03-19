@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderOracle.sol';
-import '../../contracts/SocializingPool.sol';
-import '../../contracts/StaderConfig.sol';
+import "../../contracts/StaderOracle.sol";
+import "../../contracts/SocializingPool.sol";
+import "../../contracts/StaderConfig.sol";
 
-import '../mocks/StaderTokenMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
-import '../mocks/PoolUtilsMock.sol';
+import "../mocks/StaderTokenMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
+import "../mocks/PoolUtilsMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract StaderOracleTest is Test {
     address staderAdmin;
@@ -27,9 +27,11 @@ contract StaderOracleTest is Test {
     StaderTokenMock staderToken;
 
     function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
 
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
@@ -38,7 +40,7 @@ contract StaderOracleTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -47,7 +49,7 @@ contract StaderOracleTest is Test {
         TransparentUpgradeableProxy oracleProxy = new TransparentUpgradeableProxy(
             address(oracleImpl),
             address(admin),
-            ''
+            ""
         );
         staderOracle = StaderOracle(address(oracleProxy));
         staderOracle.initialize(staderAdmin, address(staderConfig));
@@ -56,7 +58,7 @@ contract StaderOracleTest is Test {
         TransparentUpgradeableProxy permissionedSPProxy = new TransparentUpgradeableProxy(
             address(spImpl),
             address(admin),
-            ''
+            ""
         );
         permissionedSP = SocializingPool(payable(permissionedSPProxy));
         permissionedSP.initialize(staderAdmin, address(staderConfig));
@@ -64,12 +66,12 @@ contract StaderOracleTest is Test {
         TransparentUpgradeableProxy permissionlessSPProxy = new TransparentUpgradeableProxy(
             address(spImpl),
             address(admin),
-            ''
+            ""
         );
         permissionlessSP = SocializingPool(payable(permissionlessSPProxy));
         permissionlessSP.initialize(staderAdmin, address(staderConfig));
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderOracle(address(staderOracle));
@@ -87,7 +89,7 @@ contract StaderOracleTest is Test {
         TransparentUpgradeableProxy oracleProxy = new TransparentUpgradeableProxy(
             address(oracleImpl),
             address(admin),
-            ''
+            ""
         );
         StaderOracle staderOracle2 = StaderOracle(address(oracleProxy));
         staderOracle2.initialize(staderAdmin, address(staderConfig));
@@ -96,7 +98,7 @@ contract StaderOracleTest is Test {
         TransparentUpgradeableProxy permissionedSPProxy = new TransparentUpgradeableProxy(
             address(spImpl),
             address(admin),
-            ''
+            ""
         );
         SocializingPool permissionedSP2 = SocializingPool(payable(permissionedSPProxy));
         permissionedSP2.initialize(staderAdmin, address(staderConfig));
@@ -175,7 +177,7 @@ contract StaderOracleTest is Test {
     }
 
     function test_submitSDPrice() public {
-        SDPriceData memory sdPriceData = SDPriceData({reportingBlockNumber: 1212, sdPriceInETH: 1});
+        SDPriceData memory sdPriceData = SDPriceData({ reportingBlockNumber: 1212, sdPriceInETH: 1 });
         vm.expectRevert(IStaderOracle.NotATrustedNode.selector);
         staderOracle.submitSDPrice(sdPriceData);
 
@@ -326,7 +328,7 @@ contract StaderOracleTest is Test {
     }
 
     function test_submitSDPrice_manipulation_not_possible_by_minority_malicious_oracles() public {
-        SDPriceData memory sdPriceData = SDPriceData({reportingBlockNumber: 1212, sdPriceInETH: 1});
+        SDPriceData memory sdPriceData = SDPriceData({ reportingBlockNumber: 1212, sdPriceInETH: 1 });
 
         assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
         address trustedNode1 = vm.addr(701);
@@ -484,7 +486,7 @@ contract StaderOracleTest is Test {
         staderOracle.pause();
 
         vm.prank(trustedNode1);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         staderOracle.submitSocializingRewardsMerkleRoot(rewardsData);
 
         // now lets unpause and then try
@@ -728,7 +730,7 @@ contract StaderOracleTest is Test {
         permissionlessSP.pause();
 
         vm.prank(operator2);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         permissionlessSP.claim(indexArray, sdAmountArray, ethAmountArray, proofArray);
 
         // now lets unpause and then try
@@ -786,7 +788,7 @@ contract StaderOracleTest is Test {
 
         assertEq(address(permissionlessSP).balance, 0);
         hoax(randomEOA, amount); // provides amount eth to user and makes it the caller for next call
-        (bool success, ) = payable(permissionlessSP).call{value: amount}('');
+        (bool success, ) = payable(permissionlessSP).call{ value: amount }("");
         assertTrue(success);
         assertEq(address(permissionlessSP).balance, amount);
     }
@@ -991,11 +993,11 @@ contract StaderOracleTest is Test {
 
     function test_submitValidatorVerificationDetail() public {
         bytes[] memory readyToDepositPubkeys = new bytes[](1);
-        readyToDepositPubkeys[0] = 'readyToDepositPubkey1';
+        readyToDepositPubkeys[0] = "readyToDepositPubkey1";
         bytes[] memory frontRunPubkeys = new bytes[](1);
-        frontRunPubkeys[0] = 'frontRunPubkey1';
+        frontRunPubkeys[0] = "frontRunPubkey1";
         bytes[] memory invalidSignaturePubkeys = new bytes[](1);
-        invalidSignaturePubkeys[0] = 'invalidSignaturePubkey1';
+        invalidSignaturePubkeys[0] = "invalidSignaturePubkey1";
 
         ValidatorVerificationDetail memory vvData = ValidatorVerificationDetail({
             poolId: 1,
@@ -1072,7 +1074,7 @@ contract StaderOracleTest is Test {
 
     function test_submitMissedAttestationPenalties() public {
         bytes[] memory sortedPubkeys = new bytes[](1);
-        sortedPubkeys[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        sortedPubkeys[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
         MissedAttestationPenaltyData memory mapData = MissedAttestationPenaltyData({
             reportingBlockNumber: 1,
@@ -1152,7 +1154,7 @@ contract StaderOracleTest is Test {
 
     function test_submitWithdrawnValidators() public {
         bytes[] memory sortedPubkeys = new bytes[](1);
-        sortedPubkeys[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        sortedPubkeys[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
         WithdrawnValidators memory wvData = WithdrawnValidators({
             reportingBlockNumber: 1,

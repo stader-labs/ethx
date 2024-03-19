@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IPoolUtils.sol';
-import './interfaces/IStaderPoolBase.sol';
-import './interfaces/IStaderConfig.sol';
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/IStaderPoolBase.sol";
+import "./interfaces/IStaderConfig.sol";
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
     uint64 private constant PUBKEY_LENGTH = 48;
@@ -51,12 +51,10 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
      * @param _poolId The Id of the pool to update.
      * @param _newPoolAddress The updated address of the pool.
      */
-    function updatePoolAddress(uint8 _poolId, address _newPoolAddress)
-        external
-        override
-        onlyExistingPoolId(_poolId)
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updatePoolAddress(
+        uint8 _poolId,
+        address _newPoolAddress
+    ) external override onlyExistingPoolId(_poolId) onlyRole(DEFAULT_ADMIN_ROLE) {
         UtilLib.checkNonZeroAddress(_newPoolAddress);
         if (INodeRegistry(IStaderPoolBase(_newPoolAddress).getNodeRegistry()).POOL_ID() != _poolId) {
             revert MismatchingPoolId();
@@ -115,37 +113,25 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
     }
 
     /// @inheritdoc IPoolUtils
-    function getQueuedValidatorCountByPool(uint8 _poolId)
-        external
-        view
-        override
-        onlyExistingPoolId(_poolId)
-        returns (uint256)
-    {
+    function getQueuedValidatorCountByPool(
+        uint8 _poolId
+    ) external view override onlyExistingPoolId(_poolId) returns (uint256) {
         address nodeRegistry = getNodeRegistry(_poolId);
         return INodeRegistry(nodeRegistry).getTotalQueuedValidatorCount();
     }
 
     /// @inheritdoc IPoolUtils
-    function getActiveValidatorCountByPool(uint8 _poolId)
-        public
-        view
-        override
-        onlyExistingPoolId(_poolId)
-        returns (uint256)
-    {
+    function getActiveValidatorCountByPool(
+        uint8 _poolId
+    ) public view override onlyExistingPoolId(_poolId) returns (uint256) {
         address nodeRegistry = getNodeRegistry(_poolId);
         return INodeRegistry(nodeRegistry).getTotalActiveValidatorCount();
     }
 
     /// @inheritdoc IPoolUtils
-    function getSocializingPoolAddress(uint8 _poolId)
-        external
-        view
-        override
-        onlyExistingPoolId(_poolId)
-        returns (address)
-    {
+    function getSocializingPoolAddress(
+        uint8 _poolId
+    ) external view override onlyExistingPoolId(_poolId) returns (address) {
         return IStaderPoolBase(poolAddressById[_poolId]).getSocializingPoolAddress();
     }
 
@@ -248,16 +234,10 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
     }
 
     //compute the share of rewards between user, protocol and operator
-    function calculateRewardShare(uint8 _poolId, uint256 _totalRewards)
-        external
-        view
-        override
-        returns (
-            uint256 userShare,
-            uint256 operatorShare,
-            uint256 protocolShare
-        )
-    {
+    function calculateRewardShare(
+        uint8 _poolId,
+        uint256 _totalRewards
+    ) external view override returns (uint256 userShare, uint256 operatorShare, uint256 protocolShare) {
         uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(_poolId);
         uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;

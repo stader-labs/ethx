@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/interfaces/IRatedV1.sol';
+import "../../contracts/interfaces/IRatedV1.sol";
 
-import '../../contracts/Penalty.sol';
-import '../../contracts/StaderConfig.sol';
+import "../../contracts/Penalty.sol";
+import "../../contracts/StaderConfig.sol";
 
-import '../mocks//PoolUtilsMock.sol';
-import '../mocks//StaderOracleMock.sol';
+import "../mocks//PoolUtilsMock.sol";
+import "../mocks//StaderOracleMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract PenaltyTest is Test {
     address staderAdmin;
@@ -27,10 +27,12 @@ contract PenaltyTest is Test {
     StaderOracleMock staderOracle;
 
     function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         rated = vm.addr(200);
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
 
         proxyAdmin = new ProxyAdmin();
 
@@ -38,7 +40,7 @@ contract PenaltyTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -47,12 +49,12 @@ contract PenaltyTest is Test {
         TransparentUpgradeableProxy penaltyProxy = new TransparentUpgradeableProxy(
             address(penaltyImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         penaltyContract = Penalty(address(penaltyProxy));
         penaltyContract.initialize(staderAdmin, address(staderConfig), rated);
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
         staderOracle = new StaderOracleMock();
 
         vm.startPrank(staderAdmin);
@@ -68,7 +70,7 @@ contract PenaltyTest is Test {
         TransparentUpgradeableProxy penaltyProxy = new TransparentUpgradeableProxy(
             address(penaltyImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         Penalty penaltyContract2 = Penalty(address(penaltyProxy));
         penaltyContract2.initialize(staderAdmin, address(staderConfig), rated);
@@ -85,11 +87,7 @@ contract PenaltyTest is Test {
         UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
 
-    function test_additionalPenaltyAmount(
-        address anyone,
-        uint256 amount,
-        bytes memory pubkey
-    ) public {
+    function test_additionalPenaltyAmount(address anyone, uint256 amount, bytes memory pubkey) public {
         vm.assume(anyone != address(0) && anyone != address(proxyAdmin) && anyone != staderManager);
 
         vm.expectRevert(UtilLib.CallerNotManager.selector);
@@ -120,9 +118,10 @@ contract PenaltyTest is Test {
         assertEq(penaltyContract.mevTheftPenaltyPerStrike(), _mevTheftPenaltyPerStrike);
     }
 
-    function test_updateMissedAttestationPenaltyPerStrike(address anyone, uint256 _missedAttestationPenaltyPerStrike)
-        public
-    {
+    function test_updateMissedAttestationPenaltyPerStrike(
+        address anyone,
+        uint256 _missedAttestationPenaltyPerStrike
+    ) public {
         vm.assume(anyone != address(0) && anyone != address(proxyAdmin) && anyone != staderManager);
 
         vm.expectRevert(UtilLib.CallerNotManager.selector);
@@ -176,7 +175,7 @@ contract PenaltyTest is Test {
     }
 
     function test_calculateMEVTheftPenalty() public {
-        bytes32 pubkeyRoot = keccak256('sample_pubkey_root');
+        bytes32 pubkeyRoot = keccak256("sample_pubkey_root");
         uint256[] memory mockViolatedEpochs = new uint256[](1);
 
         vm.mockCall(
@@ -196,7 +195,7 @@ contract PenaltyTest is Test {
     }
 
     function test_calculateMissedAttestationPenalty() public {
-        bytes32 pubkeyRoot = keccak256('sample_pubkey_root');
+        bytes32 pubkeyRoot = keccak256("sample_pubkey_root");
 
         vm.mockCall(
             address(staderOracle),
@@ -211,7 +210,7 @@ contract PenaltyTest is Test {
 
     function test_updateTotalPenaltyAmount() public {
         bytes[] memory pubkeys = new bytes[](1);
-        pubkeys[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        pubkeys[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
         vm.mockCall(address(poolUtils), abi.encodeWithSelector(IPoolUtils.getValidatorPoolId.selector), abi.encode(1));
         vm.mockCall(

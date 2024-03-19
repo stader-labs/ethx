@@ -14,4 +14,6 @@ RUN npm ci
 RUN npm run prettier:check
 # RUN slither .
 # RUN npm run lint
-# RUN forge test -vvv
+RUN forge test -v
+RUN forge coverage
+RUN forge geiger --check contracts/*.sol contracts/*/*.sol

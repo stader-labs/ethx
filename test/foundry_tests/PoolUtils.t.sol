@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/PoolUtils.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/PoolUtils.sol";
 
-import '../mocks/NodeRegistryMock.sol';
-import '../mocks/PoolMock.sol';
+import "../mocks/NodeRegistryMock.sol";
+import "../mocks/PoolMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract PoolUtilsTest is Test {
     address staderAdmin;
@@ -27,12 +27,13 @@ contract PoolUtilsTest is Test {
     event ExitOperator(address operator, uint256 amount);
 
     function setUp() public {
+        vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
 
         address ethDepositAddr = vm.addr(103);
-        nodeRegistry = new NodeRegistryMock();
+        nodeRegistry = new NodeRegistryMock(operator);
         pool = new PoolMock(address(nodeRegistry));
 
         ProxyAdmin admin = new ProxyAdmin();
@@ -41,7 +42,7 @@ contract PoolUtilsTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, address(ethDepositAddr));
@@ -50,7 +51,7 @@ contract PoolUtilsTest is Test {
         TransparentUpgradeableProxy poolUtilsProxy = new TransparentUpgradeableProxy(
             address(poolUtilsImpl),
             address(admin),
-            ''
+            ""
         );
         poolUtils = PoolUtils(payable(address(poolUtilsProxy)));
         poolUtils.initialize(staderAdmin, address(staderConfig));
@@ -68,7 +69,7 @@ contract PoolUtilsTest is Test {
         TransparentUpgradeableProxy poolUtilsProxy = new TransparentUpgradeableProxy(
             address(poolUtilsImpl),
             address(admin),
-            ''
+            ""
         );
         poolUtils = PoolUtils(payable(address(poolUtilsProxy)));
         poolUtils.initialize(staderAdmin, address(staderConfig));
@@ -130,8 +131,8 @@ contract PoolUtilsTest is Test {
 
     function test_processValidatorExitList() public {
         bytes[] memory pubkey = new bytes[](2);
-        pubkey[0] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
-        pubkey[1] = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        pubkey[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
+        pubkey[1] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
         vm.expectRevert(UtilLib.CallerNotOperator.selector);
         poolUtils.processValidatorExitList(pubkey);
@@ -270,7 +271,7 @@ contract PoolUtilsTest is Test {
     }
 
     function test_isExistingPubkey() public {
-        bytes memory pubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        bytes memory pubkey = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         assertFalse(poolUtils.isExistingPubkey(pubkey));
 
         vm.mockCall(
@@ -314,7 +315,7 @@ contract PoolUtilsTest is Test {
     }
 
     function test_getValidatorPoolId() public {
-        bytes memory pubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        bytes memory pubkey = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         vm.expectRevert(IPoolUtils.PubkeyDoesNotExit.selector);
         poolUtils.getValidatorPoolId(pubkey);
 
@@ -373,17 +374,17 @@ contract PoolUtilsTest is Test {
     }
 
     function test_onlyValidKeys() public {
-        bytes memory pubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750';
+        bytes memory pubkey = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         bytes
-            memory preDepositSig = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+            memory preDepositSig = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
         bytes
-            memory depositSig = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6';
+            memory depositSig = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
 
-        bytes memory invalidPubkey = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5';
+        bytes memory invalidPubkey = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5";
         bytes
-            memory invalidPreDepositSig = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad4';
+            memory invalidPreDepositSig = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad4";
         bytes
-            memory invalidDepositSig = '0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489e';
+            memory invalidDepositSig = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489e";
         vm.expectRevert(IPoolUtils.InvalidLengthOfPubkey.selector);
         poolUtils.onlyValidKeys(invalidPubkey, preDepositSig, depositSig);
 

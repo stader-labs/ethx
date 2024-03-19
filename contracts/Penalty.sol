@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IPenalty.sol';
-import './interfaces/IRatedV1.sol';
-import './interfaces/IStaderOracle.sol';
-import './interfaces/IStaderConfig.sol';
+import "./interfaces/IPenalty.sol";
+import "./interfaces/IRatedV1.sol";
+import "./interfaces/IStaderOracle.sol";
+import "./interfaces/IStaderConfig.sol";
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract Penalty is IPenalty, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public staderConfig;
@@ -28,11 +28,7 @@ contract Penalty is IPenalty, AccessControlUpgradeable, ReentrancyGuardUpgradeab
         _disableInitializers();
     }
 
-    function initialize(
-        address _admin,
-        address _staderConfig,
-        address _ratedOracleAddress
-    ) external initializer {
+    function initialize(address _admin, address _staderConfig, address _ratedOracleAddress) external initializer {
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
         UtilLib.checkNonZeroAddress(_ratedOracleAddress);
