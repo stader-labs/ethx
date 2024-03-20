@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/VaultProxy.sol';
-import '../../contracts/ValidatorWithdrawalVault.sol';
-import '../../contracts/OperatorRewardsCollector.sol';
-import '../../contracts/factory/VaultFactory.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/VaultProxy.sol";
+import "../../contracts/ValidatorWithdrawalVault.sol";
+import "../../contracts/OperatorRewardsCollector.sol";
+import "../../contracts/factory/VaultFactory.sol";
 
-import '../mocks/PoolUtilsMock.sol';
-import '../mocks/PenaltyMockForVault.sol';
-import '../mocks/SDCollateralMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
-import '../mocks/SDUtilityPoolMock.sol';
+import "../mocks/PoolUtilsMock.sol";
+import "../mocks/PenaltyMockForVault.sol";
+import "../mocks/SDCollateralMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
+import "../mocks/SDUtilityPoolMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract ValidatorWithdrawalVaultTest is Test {
     address staderAdmin;
@@ -47,7 +47,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -56,7 +56,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
             address(operatorRCImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         operatorRC = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC.initialize(staderAdmin, address(staderConfig));
@@ -68,7 +68,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         ValidatorWithdrawalVault withdrawVaultImpl = new ValidatorWithdrawalVault();
 
         VaultFactory vfImpl = new VaultFactory();
-        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), '');
+        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), "");
         vaultFactory = VaultFactory(address(vfProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
 
@@ -95,7 +95,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
             address(operatorRCImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         OperatorRewardsCollector operatorRC2 = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC2.initialize(staderAdmin, address(staderConfig));
@@ -122,7 +122,7 @@ contract ValidatorWithdrawalVaultTest is Test {
 
         assertEq(withdrawVaultClone.balance, 0);
         hoax(randomEOA, amount); // provides amount eth to user and makes it the caller for next call
-        (bool success, ) = withdrawVaultClone.call{value: amount}('');
+        (bool success, ) = withdrawVaultClone.call{ value: amount }("");
         assertTrue(success);
         assertEq(withdrawVaultClone.balance, amount);
     }

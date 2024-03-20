@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/interfaces/IStaderOracle.sol';
+import "../../contracts/interfaces/IStaderOracle.sol";
 
 contract StaderOracleMock {
     function getSDPriceInETH() external pure returns (uint256) {

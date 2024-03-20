@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IPoolUtils.sol';
-import './interfaces/IStaderOracle.sol';
-import './interfaces/ISocializingPool.sol';
-import './interfaces/INodeRegistry.sol';
-import './interfaces/IStaderStakePoolManager.sol';
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/IStaderOracle.sol";
+import "./interfaces/ISocializingPool.sol";
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
 
-import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     bool public override erInspectionMode;
@@ -52,13 +52,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     uint256[] private sdPrices;
 
-    bytes32 public constant ETHX_ER_UF = keccak256('ETHX_ER_UF'); // ETHx Exchange Rate, Balances Update Frequency
-    bytes32 public constant SD_PRICE_UF = keccak256('SD_PRICE_UF'); // SD Price Update Frequency Key
-    bytes32 public constant VALIDATOR_STATS_UF = keccak256('VALIDATOR_STATS_UF'); // Validator Status Update Frequency Key
-    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256('WITHDRAWN_VALIDATORS_UF'); // Withdrawn Validator Update Frequency Key
-    bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256('MISSED_ATTESTATION_PENALTY_UF'); // Missed Attestation Penalty Update Frequency Key
+    bytes32 public constant ETHX_ER_UF = keccak256("ETHX_ER_UF"); // ETHx Exchange Rate, Balances Update Frequency
+    bytes32 public constant SD_PRICE_UF = keccak256("SD_PRICE_UF"); // SD Price Update Frequency Key
+    bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF"); // Validator Status Update Frequency Key
+    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF"); // Withdrawn Validator Update Frequency Key
+    bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256("MISSED_ATTESTATION_PENALTY_UF"); // Missed Attestation Penalty Update Frequency Key
     // Ready to Deposit Validators Update Frequency Key
-    bytes32 public constant VALIDATOR_VERIFICATION_DETAIL_UF = keccak256('VALIDATOR_VERIFICATION_DETAIL_UF');
+    bytes32 public constant VALIDATOR_VERIFICATION_DETAIL_UF = keccak256("VALIDATOR_VERIFICATION_DETAIL_UF");
     mapping(bytes32 => uint256) public updateFrequencyMap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -122,14 +122,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitExchangeRateData(ExchangeRate calldata _exchangeRate)
-        external
-        override
-        trustedNodeOnly
-        checkMinTrustedNodes
-        checkERInspectionMode
-        whenNotPaused
-    {
+    function submitExchangeRateData(
+        ExchangeRate calldata _exchangeRate
+    ) external override trustedNodeOnly checkMinTrustedNodes checkERInspectionMode whenNotPaused {
         if (isPORFeedBasedERData) {
             revert InvalidERDataSource();
         }
@@ -216,14 +211,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     /// updates operator reward balances on socializing pool
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
     /// @dev _rewardsData.index should not be zero
-    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData)
-        external
-        override
-        nonReentrant
-        trustedNodeOnly
-        checkMinTrustedNodes
-        whenNotPaused
-    {
+    function submitSocializingRewardsMerkleRoot(
+        RewardsData calldata _rewardsData
+    ) external override nonReentrant trustedNodeOnly checkMinTrustedNodes whenNotPaused {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -336,13 +326,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitValidatorStats(ValidatorStats calldata _validatorStats)
-        external
-        override
-        trustedNodeOnly
-        checkMinTrustedNodes
-        whenNotPaused
-    {
+    function submitValidatorStats(
+        ValidatorStats calldata _validatorStats
+    ) external override trustedNodeOnly checkMinTrustedNodes whenNotPaused {
         if (_validatorStats.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -410,14 +396,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators)
-        external
-        override
-        nonReentrant
-        trustedNodeOnly
-        checkMinTrustedNodes
-        whenNotPaused
-    {
+    function submitWithdrawnValidators(
+        WithdrawnValidators calldata _withdrawnValidators
+    ) external override nonReentrant trustedNodeOnly checkMinTrustedNodes whenNotPaused {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -471,14 +452,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitValidatorVerificationDetail(ValidatorVerificationDetail calldata _validatorVerificationDetail)
-        external
-        override
-        nonReentrant
-        trustedNodeOnly
-        checkMinTrustedNodes
-        whenNotPaused
-    {
+    function submitValidatorVerificationDetail(
+        ValidatorVerificationDetail calldata _validatorVerificationDetail
+    ) external override nonReentrant trustedNodeOnly checkMinTrustedNodes whenNotPaused {
         if (_validatorVerificationDetail.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -551,13 +527,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd)
-        external
-        override
-        trustedNodeOnly
-        checkMinTrustedNodes
-        whenNotPaused
-    {
+    function submitMissedAttestationPenalties(
+        MissedAttestationPenaltyData calldata _mapd
+    ) external override trustedNodeOnly checkMinTrustedNodes whenNotPaused {
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -737,10 +709,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return (exchangeRate);
     }
 
-    function attestSubmission(bytes32 _nodeSubmissionKey, bytes32 _submissionCountKey)
-        internal
-        returns (uint8 _submissionCount)
-    {
+    function attestSubmission(
+        bytes32 _nodeSubmissionKey,
+        bytes32 _submissionCountKey
+    ) internal returns (uint8 _submissionCount) {
         // Check & update node submission status
         if (nodeSubmissionKeys[_nodeSubmissionKey]) {
             revert DuplicateSubmissionFromNode();
@@ -754,15 +726,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         return lastReportedSDPriceData.sdPriceInETH;
     }
 
-    function getPORFeedData()
-        internal
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function getPORFeedData() internal view returns (uint256, uint256, uint256) {
         (, int256 totalETHBalanceInInt, , , ) = AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy())
             .latestRoundData();
         (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())

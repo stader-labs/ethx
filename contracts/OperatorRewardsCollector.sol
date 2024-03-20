@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/INodeRegistry.sol';
-import './interfaces/INodeELRewardVault.sol';
-import './interfaces/IPermissionlessNodeRegistry.sol';
-import './interfaces/IOperatorRewardsCollector.sol';
-import './interfaces/IStaderConfig.sol';
-import './interfaces/ISDUtilityPool.sol';
-import './interfaces/SDCollateral/ISDCollateral.sol';
-import './interfaces/IWETH.sol';
-import '../contracts/interfaces/IStaderOracle.sol';
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/INodeELRewardVault.sol";
+import "./interfaces/IPermissionlessNodeRegistry.sol";
+import "./interfaces/IOperatorRewardsCollector.sol";
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/ISDUtilityPool.sol";
+import "./interfaces/SDCollateral/ISDCollateral.sol";
+import "./interfaces/IWETH.sol";
+import "../contracts/interfaces/IStaderOracle.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
@@ -145,7 +145,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
                     operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth
                 );
 
-                weth.deposit{value: wETHDeposit}();
+                weth.deposit{ value: wETHDeposit }();
                 if (weth.transferFrom(address(this), operatorLiquidation.liquidator, wETHDeposit) == false)
                     revert WethTransferFailed();
                 balances[operator] -= wETHDeposit;
@@ -157,7 +157,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
                 sdUtilityPool.completeLiquidation(operator);
             } else {
                 // Transfer WETH to liquidator and ETH to treasury
-                weth.deposit{value: operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth}();
+                weth.deposit{ value: operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth }();
                 if (
                     weth.transferFrom(
                         address(this),
@@ -182,7 +182,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      */
     function _claim(address operator, uint256 amount) internal {
         uint256 maxWithdrawableInEth = withdrawableInEth(operator);
-
         if (amount > maxWithdrawableInEth || amount > balances[operator]) revert InsufficientBalance();
 
         balances[operator] -= amount;

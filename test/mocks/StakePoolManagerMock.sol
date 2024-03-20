@@ -16,10 +16,10 @@ contract StakePoolManagerMock {
     }
 
     function getExchangeRate() external pure returns (uint256) {
-        return 0.8 * 10**18;
+        return 0.8 * 10 ** 18;
     }
 
     function transferETHToUserWithdrawManager(uint256 _amount) external {
-        (bool success, ) = payable(msg.sender).call{value: _amount}('');
+        (bool success, ) = payable(msg.sender).call{ value: _amount }("");
     }
 }

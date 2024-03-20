@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import '../contracts/interfaces/SDCollateral/IAuction.sol';
-import '../contracts/interfaces/IStaderStakePoolManager.sol';
+import "../contracts/interfaces/SDCollateral/IAuction.sol";
+import "../contracts/interfaces/IStaderStakePoolManager.sol";
 
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract Auction is IAuction, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;
@@ -97,7 +97,7 @@ contract Auction is IAuction, AccessControlUpgradeable, ReentrancyGuardUpgradeab
         if (lotItem.ethExtracted) revert AlreadyClaimed();
 
         lotItem.ethExtracted = true;
-        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveEthFromAuction{value: ethAmount}();
+        IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveEthFromAuction{ value: ethAmount }();
         emit ETHClaimed(lotId, staderConfig.getStakePoolManager(), ethAmount);
     }
 
@@ -126,7 +126,7 @@ contract Auction is IAuction, AccessControlUpgradeable, ReentrancyGuardUpgradeab
         lotItem.bids[msg.sender] -= withdrawalAmount;
 
         // send the funds
-        (bool success, ) = payable(msg.sender).call{value: withdrawalAmount}('');
+        (bool success, ) = payable(msg.sender).call{ value: withdrawalAmount }("");
         if (!success) revert ETHWithdrawFailed();
 
         emit BidWithdrawn(lotId, msg.sender, withdrawalAmount);

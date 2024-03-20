@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import 'forge-std/Test.sol';
+import "forge-std/Test.sol";
 
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/VaultProxy.sol';
-import '../../contracts/NodeELRewardVault.sol';
-import '../../contracts/OperatorRewardsCollector.sol';
-import '../../contracts/factory/VaultFactory.sol';
-import {SDCollateral} from '../../contracts/SDCollateral.sol';
-import '../mocks/PoolUtilsMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/VaultProxy.sol";
+import "../../contracts/NodeELRewardVault.sol";
+import "../../contracts/OperatorRewardsCollector.sol";
+import "../../contracts/factory/VaultFactory.sol";
+import { SDCollateral } from "../../contracts/SDCollateral.sol";
+import "../mocks/PoolUtilsMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
 
 contract NodeELRewardVaultTest is Test {
     address staderAdmin;
@@ -38,7 +38,7 @@ contract NodeELRewardVaultTest is Test {
         operatorId = 1;
 
         operator = vm.addr(500);
-        emit log_named_address('operator', operator);
+        emit log_named_address("operator", operator);
 
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
@@ -52,7 +52,7 @@ contract NodeELRewardVaultTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -64,7 +64,7 @@ contract NodeELRewardVaultTest is Test {
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
             address(operatorRCImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         operatorRC = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC.initialize(staderAdmin, address(staderConfig));
@@ -73,7 +73,7 @@ contract NodeELRewardVaultTest is Test {
         NodeELRewardVault nodeELRewardVaultImpl = new NodeELRewardVault();
 
         VaultFactory vfImpl = new VaultFactory();
-        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), '');
+        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), "");
         vaultFactory = VaultFactory(address(vfProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
 
@@ -81,7 +81,7 @@ contract NodeELRewardVaultTest is Test {
         TransparentUpgradeableProxy collateralProxy = new TransparentUpgradeableProxy(
             address(collateralImpl),
             address(staderAdmin),
-            ''
+            ""
         );
         SDCollateral sdCollateral = SDCollateral(address(collateralProxy));
         sdCollateral.initialize(staderAdmin, address(staderConfig));
@@ -109,7 +109,7 @@ contract NodeELRewardVaultTest is Test {
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
             address(operatorRCImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         OperatorRewardsCollector operatorRC2 = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC2.initialize(staderAdmin, address(staderConfig));
@@ -136,7 +136,7 @@ contract NodeELRewardVaultTest is Test {
         assertEq(nodeELCloneAddr.balance, 0);
 
         hoax(randomEOA, amount); // provides amount eth to user and makes it the caller for next call
-        (bool success, ) = nodeELCloneAddr.call{value: amount}('');
+        (bool success, ) = nodeELCloneAddr.call{ value: amount }("");
         assertTrue(success);
 
         assertEq(nodeELCloneAddr.balance, amount);
@@ -210,7 +210,7 @@ contract NodeELRewardVaultTest is Test {
     }
 
     function mockSdUtilityPool(address sdUtilityPoolMock, StaderConfig staderConfig) private {
-        emit log_named_address('sdUtilityPoolMock', sdUtilityPoolMock);
+        emit log_named_address("sdUtilityPoolMock", sdUtilityPoolMock);
         vm.mockCall(
             sdUtilityPoolMock,
             abi.encodeWithSelector(ISDUtilityPool.getOperatorLiquidation.selector, operator),
@@ -240,7 +240,7 @@ contract NodeELRewardVaultTest is Test {
     }
 
     function mockStaderOracle(address staderOracleMock, StaderConfig staderConfig) private {
-        emit log_named_address('staderOracleMock', staderOracleMock);
+        emit log_named_address("staderOracleMock", staderOracleMock);
         vm.mockCall(
             staderOracleMock,
             abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),

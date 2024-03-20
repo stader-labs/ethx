@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IStaderConfig.sol';
+import "./interfaces/IStaderConfig.sol";
 
-import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 /**
  * @title ETHx token Contract
@@ -18,8 +18,8 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
     event UpdatedStaderConfig(address indexed _staderConfig);
 
     IStaderConfig public staderConfig;
-    bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
-    bytes32 public constant BURNER_ROLE = keccak256('BURNER_ROLE');
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -30,7 +30,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         UtilLib.checkNonZeroAddress(_admin);
         UtilLib.checkNonZeroAddress(_staderConfig);
 
-        __ERC20_init('ETHx', 'ETHx');
+        __ERC20_init("ETHx", "ETHx");
         __Pausable_init();
         __AccessControl_init();
 
@@ -74,11 +74,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
         _unpause();
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override whenNotPaused {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override whenNotPaused {
         super._beforeTokenTransfer(from, to, amount);
     }
 

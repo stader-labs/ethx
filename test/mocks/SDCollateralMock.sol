@@ -5,25 +5,13 @@ contract SDCollateralMock {
     event SDWithdrawn(address indexed operator, uint256 sdAmount);
     event SDRepaid(address operator, uint256 repayAmount);
 
-    function hasEnoughSDCollateral(
-        address,
-        uint8,
-        uint256
-    ) external pure returns (bool) {
+    function hasEnoughSDCollateral(address, uint8, uint256) external pure returns (bool) {
         return true;
     }
 
     function slashValidatorSD(uint256, uint8) external {}
 
-    function getOperatorInfo(address)
-        external
-        pure
-        returns (
-            uint8,
-            uint256,
-            uint256
-        )
-    {
+    function getOperatorInfo(address) external pure returns (uint8, uint256, uint256) {
         return (1, 1, 1);
     }
 

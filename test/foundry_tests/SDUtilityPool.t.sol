@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/SDUtilityPool.sol';
-import '../../contracts/interfaces/ISDUtilityPool.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/SDUtilityPool.sol";
+import "../../contracts/interfaces/ISDUtilityPool.sol";
 
-import '../mocks/SDCollateralMock.sol';
-import '../mocks/StaderTokenMock.sol';
-import '../mocks/SDIncentiveControllerMock.sol';
-import '../mocks/OperatorRewardsCollectorMock.sol';
-import '../mocks/PoolUtilsMock.sol';
+import "../mocks/SDCollateralMock.sol";
+import "../mocks/StaderTokenMock.sol";
+import "../mocks/SDIncentiveControllerMock.sol";
+import "../mocks/OperatorRewardsCollectorMock.sol";
+import "../mocks/PoolUtilsMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract SDUtilityPoolTest is Test {
     address staderAdmin;
@@ -43,7 +43,7 @@ contract SDUtilityPoolTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -69,7 +69,7 @@ contract SDUtilityPoolTest is Test {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(sdUtilityPoolImpl),
             address(admin),
-            ''
+            ""
         );
         sdUtilityPool = SDUtilityPool(address(proxy));
         staderToken.approve(address(sdUtilityPool), 1 ether);
@@ -82,7 +82,7 @@ contract SDUtilityPoolTest is Test {
         TransparentUpgradeableProxy utilityPoolProxy = new TransparentUpgradeableProxy(
             address(utilityPoolImpl),
             address(admin),
-            ''
+            ""
         );
         SDUtilityPool sdUtilityPool2 = SDUtilityPool(address(utilityPoolProxy));
         staderToken.approve(address(sdUtilityPool2), 1 ether);
@@ -119,12 +119,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(ltv, 50);
     }
 
-    function test_Delegate(
-        uint128 sdAmount,
-        uint128 approveAmount,
-        uint16 randomSeed,
-        uint16 randomSeed2
-    ) public {
+    function test_Delegate(uint128 sdAmount, uint128 approveAmount, uint16 randomSeed, uint16 randomSeed2) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance / 4);
         vm.assume(sdAmount > 1e15);
@@ -140,7 +135,7 @@ contract SDUtilityPoolTest is Test {
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(user2);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.delegate(sdAmount);
         vm.stopPrank();
         vm.prank(staderAdmin);
@@ -229,7 +224,7 @@ contract SDUtilityPoolTest is Test {
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(user);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.requestWithdraw(cTokenWithdrawAmount);
         vm.stopPrank();
         vm.prank(staderAdmin);
@@ -339,7 +334,7 @@ contract SDUtilityPoolTest is Test {
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(user);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.requestWithdrawWithSDAmount(sdWithdrawAmount / 2);
         vm.stopPrank();
         vm.prank(staderAdmin);
@@ -412,7 +407,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(sdUtilityPool.delegatorWithdrawRequestedCTokenCount(user2), user2CToken / 2 + user2CToken / 2);
         vm.prank(staderManager);
         sdUtilityPool.pause();
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.finalizeDelegatorWithdrawalRequest();
         vm.startPrank(staderAdmin);
         sdUtilityPool.unpause();
@@ -479,7 +474,7 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.updateProtocolFee(1e17);
         sdUtilityPool.pause();
         vm.stopPrank();
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.utilize(utilizeAmount);
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
@@ -551,15 +546,11 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.withdrawProtocolFee(sdUtilityPool.accumulatedProtocolFee());
         sdUtilityPool.pause();
         uint256 latestAccumulatedProtocolFee = sdUtilityPool.accumulatedProtocolFee();
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.withdrawProtocolFee(latestAccumulatedProtocolFee);
     }
 
-    function test_UtilizeWhileAddingKeys(
-        uint16 randomSeed,
-        uint128 utilizeAmount,
-        uint128 nonTerminalKeyCount
-    ) public {
+    function test_UtilizeWhileAddingKeys(uint16 randomSeed, uint128 utilizeAmount, uint128 nonTerminalKeyCount) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(randomSeed > 0);
         vm.assume(utilizeAmount < deployerSDBalance / 10);
@@ -587,7 +578,7 @@ contract SDUtilityPoolTest is Test {
         vm.prank(staderManager);
         sdUtilityPool.pause();
         vm.startPrank(permissionlessNodeRegistry);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.utilizeWhileAddingKeys(user, maxUtilize, nonTerminalKeyCount);
         vm.stopPrank();
         vm.prank(staderAdmin);
@@ -628,11 +619,7 @@ contract SDUtilityPoolTest is Test {
         vm.stopPrank();
     }
 
-    function test_Repay(
-        uint8 randomSeed,
-        uint128 utilizeAmount,
-        uint128 repayAmount
-    ) public {
+    function test_Repay(uint8 randomSeed, uint128 utilizeAmount, uint128 repayAmount) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(randomSeed > 0);
         vm.assume(utilizeAmount < deployerSDBalance / 4);
@@ -663,7 +650,7 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.pause();
         vm.stopPrank();
         vm.prank(user);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.repay(repayAmount);
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
@@ -677,11 +664,7 @@ contract SDUtilityPoolTest is Test {
         assertEq(principal2, (principal1 * utilizeIndex2) / utilizeIndex1 - actualRepayAmount);
     }
 
-    function test_RepayOnBehalf(
-        uint8 randomSeed,
-        uint128 utilizeAmount,
-        uint128 repayAmount
-    ) public {
+    function test_RepayOnBehalf(uint8 randomSeed, uint128 utilizeAmount, uint128 repayAmount) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(randomSeed > 0);
         vm.assume(utilizeAmount < deployerSDBalance / 4);
@@ -710,7 +693,7 @@ contract SDUtilityPoolTest is Test {
         );
         vm.prank(staderManager);
         sdUtilityPool.pause();
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.repayOnBehalf(user, repayAmount);
         vm.prank(staderAdmin);
         sdUtilityPool.unpause();
@@ -851,7 +834,7 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.pause();
         vm.stopPrank();
         vm.startPrank(liquidator);
-        vm.expectRevert('Pausable: paused');
+        vm.expectRevert("Pausable: paused");
         sdUtilityPool.liquidationCall(operator);
         vm.stopPrank();
 

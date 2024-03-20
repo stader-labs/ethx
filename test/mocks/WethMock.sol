@@ -7,11 +7,7 @@ contract WETHMock {
 
     function withdraw(uint256) external {}
 
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 wad
-    ) external returns (bool) {
+    function transferFrom(address, address, uint256) external returns (bool) {
         return true;
     }
 }

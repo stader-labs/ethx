@@ -1,75 +1,75 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/IStaderConfig.sol';
+import "./interfaces/IStaderConfig.sol";
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     // staked ETH per node on beacon chain i.e. 32 ETH
-    bytes32 public constant ETH_PER_NODE = keccak256('ETH_PER_NODE');
+    bytes32 public constant ETH_PER_NODE = keccak256("ETH_PER_NODE");
     //amount of ETH for pre-deposit on beacon chain i.e 1 ETH
-    bytes32 public constant PRE_DEPOSIT_SIZE = keccak256('PRE_DEPOSIT_SIZE');
+    bytes32 public constant PRE_DEPOSIT_SIZE = keccak256("PRE_DEPOSIT_SIZE");
     //amount of ETH for full deposit on beacon chain i.e 31 ETH
-    bytes32 public constant FULL_DEPOSIT_SIZE = keccak256('FULL_DEPOSIT_SIZE');
+    bytes32 public constant FULL_DEPOSIT_SIZE = keccak256("FULL_DEPOSIT_SIZE");
     // ETH to WEI ratio i.e 1e18
-    bytes32 public constant DECIMALS = keccak256('DECIMALS');
+    bytes32 public constant DECIMALS = keccak256("DECIMALS");
     //Total fee bips
-    bytes32 public constant TOTAL_FEE = keccak256('TOTAL_FEE');
+    bytes32 public constant TOTAL_FEE = keccak256("TOTAL_FEE");
     //maximum length of operator name string
-    bytes32 public constant OPERATOR_MAX_NAME_LENGTH = keccak256('OPERATOR_MAX_NAME_LENGTH');
+    bytes32 public constant OPERATOR_MAX_NAME_LENGTH = keccak256("OPERATOR_MAX_NAME_LENGTH");
 
-    bytes32 public constant SOCIALIZING_POOL_CYCLE_DURATION = keccak256('SOCIALIZING_POOL_CYCLE_DURATION');
+    bytes32 public constant SOCIALIZING_POOL_CYCLE_DURATION = keccak256("SOCIALIZING_POOL_CYCLE_DURATION");
     bytes32 public constant SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD =
-        keccak256('SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD');
-    bytes32 public constant REWARD_THRESHOLD = keccak256('REWARD_THRESHOLD');
-    bytes32 public constant MIN_DEPOSIT_AMOUNT = keccak256('MIN_DEPOSIT_AMOUNT');
-    bytes32 public constant MAX_DEPOSIT_AMOUNT = keccak256('MAX_DEPOSIT_AMOUNT');
-    bytes32 public constant MIN_WITHDRAW_AMOUNT = keccak256('MIN_WITHDRAW_AMOUNT');
-    bytes32 public constant MAX_WITHDRAW_AMOUNT = keccak256('MAX_WITHDRAW_AMOUNT');
+        keccak256("SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD");
+    bytes32 public constant REWARD_THRESHOLD = keccak256("REWARD_THRESHOLD");
+    bytes32 public constant MIN_DEPOSIT_AMOUNT = keccak256("MIN_DEPOSIT_AMOUNT");
+    bytes32 public constant MAX_DEPOSIT_AMOUNT = keccak256("MAX_DEPOSIT_AMOUNT");
+    bytes32 public constant MIN_WITHDRAW_AMOUNT = keccak256("MIN_WITHDRAW_AMOUNT");
+    bytes32 public constant MAX_WITHDRAW_AMOUNT = keccak256("MAX_WITHDRAW_AMOUNT");
     //minimum delay between user requesting withdraw and request finalization
     bytes32 public constant MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST =
-        keccak256('MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST');
-    bytes32 public constant WITHDRAWN_KEYS_BATCH_SIZE = keccak256('WITHDRAWN_KEYS_BATCH_SIZE');
+        keccak256("MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST");
+    bytes32 public constant WITHDRAWN_KEYS_BATCH_SIZE = keccak256("WITHDRAWN_KEYS_BATCH_SIZE");
 
-    bytes32 public constant ADMIN = keccak256('ADMIN');
-    bytes32 public constant STADER_TREASURY = keccak256('STADER_TREASURY');
+    bytes32 public constant ADMIN = keccak256("ADMIN");
+    bytes32 public constant STADER_TREASURY = keccak256("STADER_TREASURY");
 
-    bytes32 public constant override POOL_UTILS = keccak256('POOL_UTILS');
-    bytes32 public constant override POOL_SELECTOR = keccak256('POOL_SELECTOR');
-    bytes32 public constant override SD_COLLATERAL = keccak256('SD_COLLATERAL');
-    bytes32 public constant override OPERATOR_REWARD_COLLECTOR = keccak256('OPERATOR_REWARD_COLLECTOR');
-    bytes32 public constant override VAULT_FACTORY = keccak256('VAULT_FACTORY');
-    bytes32 public constant override STADER_ORACLE = keccak256('STADER_ORACLE');
-    bytes32 public constant override AUCTION_CONTRACT = keccak256('AuctionContract');
-    bytes32 public constant override PENALTY_CONTRACT = keccak256('PENALTY_CONTRACT');
-    bytes32 public constant override PERMISSIONED_POOL = keccak256('PERMISSIONED_POOL');
-    bytes32 public constant override STAKE_POOL_MANAGER = keccak256('STAKE_POOL_MANAGER');
-    bytes32 public constant override ETH_DEPOSIT_CONTRACT = keccak256('ETH_DEPOSIT_CONTRACT');
-    bytes32 public constant override PERMISSIONLESS_POOL = keccak256('PERMISSIONLESS_POOL');
-    bytes32 public constant override USER_WITHDRAW_MANAGER = keccak256('USER_WITHDRAW_MANAGER');
-    bytes32 public constant override STADER_INSURANCE_FUND = keccak256('STADER_INSURANCE_FUND');
-    bytes32 public constant override PERMISSIONED_NODE_REGISTRY = keccak256('PERMISSIONED_NODE_REGISTRY');
-    bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY = keccak256('PERMISSIONLESS_NODE_REGISTRY');
-    bytes32 public constant override PERMISSIONED_SOCIALIZING_POOL = keccak256('PERMISSIONED_SOCIALIZING_POOL');
-    bytes32 public constant override PERMISSIONLESS_SOCIALIZING_POOL = keccak256('PERMISSIONLESS_SOCIALIZING_POOL');
+    bytes32 public constant override POOL_UTILS = keccak256("POOL_UTILS");
+    bytes32 public constant override POOL_SELECTOR = keccak256("POOL_SELECTOR");
+    bytes32 public constant override SD_COLLATERAL = keccak256("SD_COLLATERAL");
+    bytes32 public constant override OPERATOR_REWARD_COLLECTOR = keccak256("OPERATOR_REWARD_COLLECTOR");
+    bytes32 public constant override VAULT_FACTORY = keccak256("VAULT_FACTORY");
+    bytes32 public constant override STADER_ORACLE = keccak256("STADER_ORACLE");
+    bytes32 public constant override AUCTION_CONTRACT = keccak256("AuctionContract");
+    bytes32 public constant override PENALTY_CONTRACT = keccak256("PENALTY_CONTRACT");
+    bytes32 public constant override PERMISSIONED_POOL = keccak256("PERMISSIONED_POOL");
+    bytes32 public constant override STAKE_POOL_MANAGER = keccak256("STAKE_POOL_MANAGER");
+    bytes32 public constant override ETH_DEPOSIT_CONTRACT = keccak256("ETH_DEPOSIT_CONTRACT");
+    bytes32 public constant override PERMISSIONLESS_POOL = keccak256("PERMISSIONLESS_POOL");
+    bytes32 public constant override USER_WITHDRAW_MANAGER = keccak256("USER_WITHDRAW_MANAGER");
+    bytes32 public constant override STADER_INSURANCE_FUND = keccak256("STADER_INSURANCE_FUND");
+    bytes32 public constant override PERMISSIONED_NODE_REGISTRY = keccak256("PERMISSIONED_NODE_REGISTRY");
+    bytes32 public constant override PERMISSIONLESS_NODE_REGISTRY = keccak256("PERMISSIONLESS_NODE_REGISTRY");
+    bytes32 public constant override PERMISSIONED_SOCIALIZING_POOL = keccak256("PERMISSIONED_SOCIALIZING_POOL");
+    bytes32 public constant override PERMISSIONLESS_SOCIALIZING_POOL = keccak256("PERMISSIONLESS_SOCIALIZING_POOL");
     bytes32 public constant override NODE_EL_REWARD_VAULT_IMPLEMENTATION =
-        keccak256('NODE_EL_REWARD_VAULT_IMPLEMENTATION');
+        keccak256("NODE_EL_REWARD_VAULT_IMPLEMENTATION");
     bytes32 public constant override VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION =
-        keccak256('VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION');
+        keccak256("VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION");
 
     //POR Feed Proxy
-    bytes32 public constant override ETH_BALANCE_POR_FEED = keccak256('ETH_BALANCE_POR_FEED');
-    bytes32 public constant override ETHX_SUPPLY_POR_FEED = keccak256('ETHX_SUPPLY_POR_FEED');
+    bytes32 public constant override ETH_BALANCE_POR_FEED = keccak256("ETH_BALANCE_POR_FEED");
+    bytes32 public constant override ETHX_SUPPLY_POR_FEED = keccak256("ETHX_SUPPLY_POR_FEED");
 
     //Roles
-    bytes32 public constant override MANAGER = keccak256('MANAGER');
-    bytes32 public constant override OPERATOR = keccak256('OPERATOR');
+    bytes32 public constant override MANAGER = keccak256("MANAGER");
+    bytes32 public constant override OPERATOR = keccak256("OPERATOR");
 
-    bytes32 public constant SD = keccak256('SD');
-    bytes32 public constant ETHx = keccak256('ETHx');
+    bytes32 public constant SD = keccak256("SD");
+    bytes32 public constant ETHx = keccak256("ETHx");
 
     mapping(bytes32 => uint256) private constantsMap;
     mapping(bytes32 => uint256) private variablesMap;
@@ -77,8 +77,8 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     mapping(bytes32 => address) private contractsMap;
     mapping(bytes32 => address) private tokensMap;
 
-    bytes32 public constant override SD_UTILITY_POOL = keccak256('SD_UTILITY_POOL');
-    bytes32 public constant override SD_INCENTIVE_CONTROLLER = keccak256('SD_INCENTIVE_CONTROLLER');
+    bytes32 public constant override SD_UTILITY_POOL = keccak256("SD_UTILITY_POOL");
+    bytes32 public constant override SD_INCENTIVE_CONTROLLER = keccak256("SD_INCENTIVE_CONTROLLER");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -111,10 +111,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setVariable(SOCIALIZING_POOL_CYCLE_DURATION, _socializingPoolCycleDuration);
     }
 
-    function updateSocializingPoolOptInCoolingPeriod(uint256 _SocializePoolOptInCoolingPeriod)
-        external
-        onlyRole(MANAGER)
-    {
+    function updateSocializingPoolOptInCoolingPeriod(
+        uint256 _SocializePoolOptInCoolingPeriod
+    ) external onlyRole(MANAGER) {
         setVariable(SOCIALIZING_POOL_OPT_IN_COOLING_PERIOD, _SocializePoolOptInCoolingPeriod);
     }
 
@@ -158,10 +157,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         verifyDepositAndWithdrawLimits();
     }
 
-    function updateMinBlockDelayToFinalizeWithdrawRequest(uint256 _minBlockDelay)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateMinBlockDelayToFinalizeWithdrawRequest(
+        uint256 _minBlockDelay
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setVariable(MIN_BLOCK_DELAY_TO_FINALIZE_WITHDRAW_REQUEST, _minBlockDelay);
     }
 
@@ -247,24 +245,21 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setContract(PERMISSIONED_NODE_REGISTRY, _permissionedNodeRegistry);
     }
 
-    function updatePermissionlessNodeRegistry(address _permissionlessNodeRegistry)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updatePermissionlessNodeRegistry(
+        address _permissionlessNodeRegistry
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setContract(PERMISSIONLESS_NODE_REGISTRY, _permissionlessNodeRegistry);
     }
 
-    function updatePermissionedSocializingPool(address _permissionedSocializePool)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updatePermissionedSocializingPool(
+        address _permissionedSocializePool
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setContract(PERMISSIONED_SOCIALIZING_POOL, _permissionedSocializePool);
     }
 
-    function updatePermissionlessSocializingPool(address _permissionlessSocializePool)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updatePermissionlessSocializingPool(
+        address _permissionlessSocializePool
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setContract(PERMISSIONLESS_SOCIALIZING_POOL, _permissionlessSocializePool);
     }
 
@@ -272,10 +267,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setContract(NODE_EL_REWARD_VAULT_IMPLEMENTATION, _nodeELRewardVaultImpl);
     }
 
-    function updateValidatorWithdrawalVaultImplementation(address _validatorWithdrawalVaultImpl)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
+    function updateValidatorWithdrawalVaultImplementation(
+        address _validatorWithdrawalVaultImpl
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setContract(VALIDATOR_WITHDRAWAL_VAULT_IMPLEMENTATION, _validatorWithdrawalVaultImpl);
     }
 

@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/StaderConfig.sol';
-import '../../contracts/factory/VaultFactory.sol';
-import '../../contracts/NodeELRewardVault.sol';
-import '../../contracts/ValidatorWithdrawalVault.sol';
+import "../../contracts/StaderConfig.sol";
+import "../../contracts/factory/VaultFactory.sol";
+import "../../contracts/NodeELRewardVault.sol";
+import "../../contracts/ValidatorWithdrawalVault.sol";
 
-import '../mocks/PoolUtilsMock.sol';
+import "../mocks/PoolUtilsMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract VaultFactoryTest is Test {
     address staderAdmin;
@@ -32,7 +32,7 @@ contract VaultFactoryTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(proxyAdmin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -40,7 +40,7 @@ contract VaultFactoryTest is Test {
         poolUtils = new PoolUtilsMock(address(staderConfig));
 
         VaultFactory vfImpl = new VaultFactory();
-        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), '');
+        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), "");
         vaultFactory = VaultFactory(address(vfProxy));
         vaultFactory.initialize(staderAdmin, address(staderConfig));
 
@@ -61,7 +61,7 @@ contract VaultFactoryTest is Test {
     function test_JustToIncreaseCoverage() public {
         ProxyAdmin proxyAdmin = new ProxyAdmin();
         VaultFactory vfImpl = new VaultFactory();
-        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), '');
+        TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), "");
         VaultFactory vaultFactory2 = VaultFactory(address(vfProxy));
         vaultFactory2.initialize(staderAdmin, address(staderConfig));
     }

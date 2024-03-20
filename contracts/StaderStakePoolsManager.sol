@@ -2,22 +2,22 @@
 
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './ETHx.sol';
-import './interfaces/IPoolUtils.sol';
-import './interfaces/IPoolSelector.sol';
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IStaderOracle.sol';
-import './interfaces/IStaderPoolBase.sol';
-import './interfaces/IUserWithdrawalManager.sol';
-import './interfaces/IStaderStakePoolManager.sol';
+import "./ETHx.sol";
+import "./interfaces/IPoolUtils.sol";
+import "./interfaces/IPoolSelector.sol";
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IStaderOracle.sol";
+import "./interfaces/IStaderPoolBase.sol";
+import "./interfaces/IUserWithdrawalManager.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 /**
  *  @title Liquid Staking Pool Implementation
@@ -99,7 +99,7 @@ contract StaderStakePoolsManager is
     function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant whenNotPaused {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.USER_WITHDRAW_MANAGER());
         //slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = payable(staderConfig.getUserWithdrawManager()).call{value: _amount}('');
+        (bool success, ) = payable(staderConfig.getUserWithdrawManager()).call{ value: _amount }("");
         if (!success) {
             revert TransferFailed();
         }
@@ -172,13 +172,10 @@ contract StaderStakePoolsManager is
      * @return _shares amount of ETHx token minted and sent to receiver
      * @dev emits an event with _referralId
      */
-    function deposit(address _receiver, string calldata _referralId)
-        external
-        payable
-        override
-        whenNotPaused
-        returns (uint256 _shares)
-    {
+    function deposit(
+        address _receiver,
+        string calldata _referralId
+    ) external payable override whenNotPaused returns (uint256 _shares) {
         _shares = deposit(_receiver);
         emit DepositReferral(msg.sender, _receiver, msg.value, _shares, _referralId);
     }
@@ -226,7 +223,7 @@ contract StaderStakePoolsManager is
         }
         address poolAddress = poolUtils.poolAddressById(_poolId);
         //slither-disable-next-line arbitrary-send-eth
-        IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: selectedPoolCapacity * poolDepositSize}();
+        IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{ value: selectedPoolCapacity * poolDepositSize }();
         emit ETHTransferredToPool(_poolId, poolAddress, selectedPoolCapacity * poolDepositSize);
     }
 
@@ -262,7 +259,7 @@ contract StaderStakePoolsManager is
 
             lastExcessETHDepositBlock = block.number;
             //slither-disable-next-line arbitrary-send-eth
-            IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{value: validatorToDeposit * poolDepositSize}();
+            IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{ value: validatorToDeposit * poolDepositSize }();
             emit ETHTransferredToPool(i, poolAddress, validatorToDeposit * poolDepositSize);
         }
     }
@@ -324,22 +321,14 @@ contract StaderStakePoolsManager is
      *
      * NOTE: Make sure to keep this function consistent with {initialConvertToShares} when overriding it.
      */
-    function initialConvertToAssets(
-        uint256 _shares,
-        Math.Rounding /*rounding*/
-    ) internal pure returns (uint256) {
+    function initialConvertToAssets(uint256 _shares, Math.Rounding /*rounding*/) internal pure returns (uint256) {
         return _shares;
     }
 
     /**
      * @dev Deposit/mint common workflow.
      */
-    function _deposit(
-        address _caller,
-        address _receiver,
-        uint256 _assets,
-        uint256 _shares
-    ) internal {
+    function _deposit(address _caller, address _receiver, uint256 _assets, uint256 _shares) internal {
         ETHx(staderConfig.getETHxToken()).mint(_receiver, _shares);
         emit Deposited(_caller, _receiver, _assets, _shares);
     }

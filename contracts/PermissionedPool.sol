@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './library/ValidatorStatus.sol';
+import "./library/ValidatorStatus.sol";
 
-import './interfaces/IStaderConfig.sol';
-import './interfaces/IVaultFactory.sol';
-import './interfaces/INodeRegistry.sol';
-import './interfaces/IStaderPoolBase.sol';
-import './interfaces/IDepositContract.sol';
-import './interfaces/IStaderInsuranceFund.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPermissionedNodeRegistry.sol';
+import "./interfaces/IStaderConfig.sol";
+import "./interfaces/IVaultFactory.sol";
+import "./interfaces/INodeRegistry.sol";
+import "./interfaces/IStaderPoolBase.sol";
+import "./interfaces/IDepositContract.sol";
+import "./interfaces/IStaderInsuranceFund.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
+import "./interfaces/IPermissionedNodeRegistry.sol";
 
-import '@openzeppelin/contracts/utils/math/Math.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract PermissionedPool is IStaderPoolBase, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
@@ -149,7 +149,7 @@ contract PermissionedPool is IStaderPoolBase, AccessControlUpgradeable, Reentran
             );
 
             //slither-disable-next-line arbitrary-send-eth
-            IDepositContract(ethDepositContract).deposit{value: fullDepositSize}(
+            IDepositContract(ethDepositContract).deposit{ value: fullDepositSize }(
                 _pubkey[i],
                 withdrawCredential,
                 depositSignature,
@@ -304,7 +304,7 @@ contract PermissionedPool is IStaderPoolBase, AccessControlUpgradeable, Reentran
         );
 
         //slither-disable-next-line arbitrary-send-eth
-        IDepositContract(_ethDepositContract).deposit{value: preDepositSize}(
+        IDepositContract(_ethDepositContract).deposit{ value: preDepositSize }(
             pubkey,
             withdrawCredential,
             preDepositSignature,

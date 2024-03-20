@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../../contracts/library/UtilLib.sol';
+import "../../contracts/library/UtilLib.sol";
 
-import '../../contracts/Auction.sol';
-import '../../contracts/StaderConfig.sol';
+import "../../contracts/Auction.sol";
+import "../../contracts/StaderConfig.sol";
 
-import '../mocks/StaderTokenMock.sol';
-import '../mocks/StakePoolManagerMock.sol';
+import "../mocks/StaderTokenMock.sol";
+import "../mocks/StakePoolManagerMock.sol";
 
-import 'forge-std/Test.sol';
-import '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol';
-import '@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol';
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract AuctionTest is Test {
     address staderAdmin;
@@ -33,7 +33,7 @@ contract AuctionTest is Test {
         TransparentUpgradeableProxy configProxy = new TransparentUpgradeableProxy(
             address(configImpl),
             address(admin),
-            ''
+            ""
         );
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
@@ -43,7 +43,7 @@ contract AuctionTest is Test {
         vm.stopPrank();
 
         Auction auctionImpl = new Auction();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), '');
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), "");
         auction = Auction(address(proxy));
         auction.initialize(staderAdmin, address(staderConfig));
     }
@@ -51,7 +51,7 @@ contract AuctionTest is Test {
     function test_JustToIncreaseCoverage() public {
         ProxyAdmin admin = new ProxyAdmin();
         Auction auctionImpl = new Auction();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), '');
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), "");
         Auction auction2 = Auction(address(proxy));
         auction2.initialize(staderAdmin, address(staderConfig));
     }
@@ -100,11 +100,7 @@ contract AuctionTest is Test {
         assertFalse(ethExtracted);
     }
 
-    function test_addBid(
-        uint256 sdAmount,
-        uint256 u1_bid1,
-        uint256 u1_bid2
-    ) public {
+    function test_addBid(uint256 sdAmount, uint256 u1_bid1, uint256 u1_bid2) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -115,24 +111,19 @@ contract AuctionTest is Test {
         vm.assume(u1_bid1 < auction.bidIncrement());
         hoax(user1, u1_bid1); // sets user1 as next method's caller and sends u1_bid1 eth
         vm.expectRevert();
-        auction.addBid{value: u1_bid1}(1);
+        auction.addBid{ value: u1_bid1 }(1);
 
         vm.assume(u1_bid2 > auction.bidIncrement());
         // vm.assume(u1_bid2 + u1_bid2 < type(uint256).max )
         hoax(user1, u1_bid2);
-        auction.addBid{value: u1_bid2}(1);
+        auction.addBid{ value: u1_bid2 }(1);
         (, , , address highestBidder, uint256 highestBidAmount, , ) = auction.lots(1);
         assertEq(highestBidder, user1);
         assertEq(highestBidAmount, u1_bid2);
     }
 
     // used uint128 else it will overflow
-    function test_addBidByAnotherUser(
-        uint256 sdAmount,
-        uint128 u1_bid1,
-        uint256 u2_bid1,
-        uint256 u2_bid2
-    ) public {
+    function test_addBidByAnotherUser(uint256 sdAmount, uint128 u1_bid1, uint256 u2_bid1, uint256 u2_bid2) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -144,30 +135,25 @@ contract AuctionTest is Test {
 
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
-        auction.addBid{value: u1_bid1}(1);
+        auction.addBid{ value: u1_bid1 }(1);
         (, , , , uint256 highestBidAmount, , ) = auction.lots(1);
 
         // used uint128, else [highestBidAmount + auction.bidIncrement()] will overflow
         vm.assume(u2_bid1 < highestBidAmount + auction.bidIncrement());
         hoax(user2, u2_bid1);
         vm.expectRevert();
-        auction.addBid{value: u2_bid1}(1);
+        auction.addBid{ value: u2_bid1 }(1);
 
         vm.assume(u2_bid2 >= highestBidAmount + auction.bidIncrement());
         vm.assume(u2_bid2 < type(uint256).max - auction.bidIncrement()); // TODO: fails without this condition, not sure why
         hoax(user2, u2_bid2);
-        auction.addBid{value: u2_bid2}(1);
+        auction.addBid{ value: u2_bid2 }(1);
         (, , , address highestBidder, uint256 highestBidAmount2, , ) = auction.lots(1);
         assertEq(highestBidder, user2);
         assertEq(highestBidAmount2, u2_bid2);
     }
 
-    function test_userIncrementsBid(
-        uint128 sdAmount,
-        uint128 u1_bid1,
-        uint128 u1_bidIncrease,
-        uint128 u2_bid1
-    ) public {
+    function test_userIncrementsBid(uint128 sdAmount, uint128 u1_bid1, uint128 u1_bidIncrease, uint128 u2_bid1) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -179,12 +165,12 @@ contract AuctionTest is Test {
 
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
-        auction.addBid{value: u1_bid1}(1);
+        auction.addBid{ value: u1_bid1 }(1);
         (, , , , uint256 highestBidAmount, , ) = auction.lots(1);
 
         vm.assume(u2_bid1 >= highestBidAmount + auction.bidIncrement());
         hoax(user2, u2_bid1);
-        auction.addBid{value: u2_bid1}(1);
+        auction.addBid{ value: u2_bid1 }(1);
         (, , , address highestBidder2, uint256 highestBidAmount2, , ) = auction.lots(1);
         assertEq(highestBidder2, user2);
         assertEq(highestBidAmount2, u2_bid1);
@@ -193,17 +179,13 @@ contract AuctionTest is Test {
             uint256(u1_bid1) + uint256(u1_bidIncrease) >= uint256(highestBidAmount2) + uint256(auction.bidIncrement())
         );
         hoax(user1, u1_bidIncrease);
-        auction.addBid{value: u1_bidIncrease}(1);
+        auction.addBid{ value: u1_bidIncrease }(1);
         (, , , address highestBidder3, uint256 highestBidAmount3, , ) = auction.lots(1);
         assertEq(highestBidder3, user1);
         assertEq(highestBidAmount3, uint256(u1_bid1) + uint256(u1_bidIncrease));
     }
 
-    function testFail_addBidAfterAuctionEnds(
-        uint256 sdAmount,
-        uint64 extraDuration,
-        uint128 u1_bid1
-    ) public {
+    function testFail_addBidAfterAuctionEnds(uint256 sdAmount, uint64 extraDuration, uint128 u1_bid1) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -215,14 +197,10 @@ contract AuctionTest is Test {
         vm.roll(block.number + auction.duration() + 1 + extraDuration); // sets block.number to
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
-        auction.addBid{value: u1_bid1}(1);
+        auction.addBid{ value: u1_bid1 }(1);
     }
 
-    function test_revertMethodsBeforeAuctionEnds(
-        uint256 sdAmount,
-        uint64 duration,
-        uint128 u1_bid1
-    ) public {
+    function test_revertMethodsBeforeAuctionEnds(uint256 sdAmount, uint64 duration, uint128 u1_bid1) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -250,7 +228,7 @@ contract AuctionTest is Test {
         // user bids
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
-        auction.addBid{value: u1_bid1}(1);
+        auction.addBid{ value: u1_bid1 }(1);
 
         vm.prank(user1);
         vm.expectRevert();
@@ -266,12 +244,7 @@ contract AuctionTest is Test {
         auction.withdrawUnselectedBid(1);
     }
 
-    function test_UserClaimsSD(
-        uint256 sdAmount,
-        uint64 extraDuration,
-        uint128 u1_bid1,
-        uint8 randUserSeed
-    ) public {
+    function test_UserClaimsSD(uint256 sdAmount, uint64 extraDuration, uint128 u1_bid1, uint8 randUserSeed) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -281,7 +254,7 @@ contract AuctionTest is Test {
         address user1 = vm.addr(1);
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
-        auction.addBid{value: u1_bid1}(1);
+        auction.addBid{ value: u1_bid1 }(1);
 
         // Auction Ends
         vm.roll(block.number + auction.duration() + 1 + extraDuration); // sets block.number to
@@ -329,7 +302,7 @@ contract AuctionTest is Test {
 
         address user1 = vm.addr(1);
         hoax(user1, 1 ether);
-        auction.addBid{value: 1 ether}(1);
+        auction.addBid{ value: 1 ether }(1);
 
         // set to a block after auction ends
         vm.roll(block.number + auction.duration() + 1 + extraDuration);
@@ -350,11 +323,7 @@ contract AuctionTest is Test {
         auction.transferHighestBidToSSPM(1);
     }
 
-    function test_revert_extractNonBidSD_whenBidPlaced(
-        uint256 sdAmount,
-        uint256 bid,
-        uint64 duration
-    ) public {
+    function test_revert_extractNonBidSD_whenBidPlaced(uint256 sdAmount, uint256 bid, uint64 duration) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
         staderToken.approve(address(auction), sdAmount);
@@ -364,7 +333,7 @@ contract AuctionTest is Test {
 
         vm.assume(bid > auction.bidIncrement());
         hoax(user1, bid);
-        auction.addBid{value: bid}(1);
+        auction.addBid{ value: bid }(1);
 
         vm.roll(block.number + auction.duration() + 1 + duration);
 
@@ -394,11 +363,7 @@ contract AuctionTest is Test {
         auction.extractNonBidSD(1);
     }
 
-    function test_withdrawUnselectedBid(
-        uint64 duration,
-        uint128 u1_bid1,
-        uint128 u2_bid1
-    ) public {
+    function test_withdrawUnselectedBid(uint64 duration, uint128 u1_bid1, uint128 u2_bid1) public {
         uint256 sdAmount = 3 ether;
         staderToken.approve(address(auction), sdAmount);
         auction.createLot(sdAmount);
@@ -408,12 +373,12 @@ contract AuctionTest is Test {
 
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
-        auction.addBid{value: u1_bid1}(1);
+        auction.addBid{ value: u1_bid1 }(1);
         (, , , , uint256 highestBidAmount, , ) = auction.lots(1);
 
         vm.assume(u2_bid1 >= highestBidAmount + auction.bidIncrement());
         hoax(user2, u2_bid1);
-        auction.addBid{value: u2_bid1}(1);
+        auction.addBid{ value: u2_bid1 }(1);
 
         // Auction ends
         vm.roll(block.number + auction.duration() + 1 + duration);

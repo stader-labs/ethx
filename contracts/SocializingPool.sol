@@ -2,18 +2,18 @@
 
 pragma solidity 0.8.16;
 
-import './library/UtilLib.sol';
+import "./library/UtilLib.sol";
 
-import './interfaces/ISocializingPool.sol';
-import './interfaces/SDCollateral/ISDCollateral.sol';
-import './interfaces/IStaderStakePoolManager.sol';
-import './interfaces/IPermissionlessNodeRegistry.sol';
+import "./interfaces/ISocializingPool.sol";
+import "./interfaces/SDCollateral/ISDCollateral.sol";
+import "./interfaces/IStaderStakePoolManager.sol";
+import "./interfaces/IPermissionlessNodeRegistry.sol";
 
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SocializingPool is
     ISocializingPool,
@@ -88,7 +88,7 @@ contract SocializingPool is
             value: _rewardsData.userETHRewards
         }();
 
-        (bool success, ) = payable(staderConfig.getStaderTreasury()).call{value: _rewardsData.protocolETHRewards}('');
+        (bool success, ) = payable(staderConfig.getStaderTreasury()).call{ value: _rewardsData.protocolETHRewards }("");
         if (!success) {
             revert ETHTransferFailed(staderConfig.getStaderTreasury(), _rewardsData.protocolETHRewards);
         }
@@ -143,7 +143,7 @@ contract SocializingPool is
         bool success;
         if (totalAmountETH > 0) {
             totalOperatorETHRewardsRemaining -= totalAmountETH;
-            (success, ) = payable(operatorRewardsAddr).call{value: totalAmountETH}('');
+            (success, ) = payable(operatorRewardsAddr).call{ value: totalAmountETH }("");
             if (!success) {
                 revert ETHTransferFailed(operatorRewardsAddr, totalAmountETH);
             }
@@ -243,11 +243,7 @@ contract SocializingPool is
         external
         view
         override
-        returns (
-            uint256 currentIndex,
-            uint256 currentStartBlock,
-            uint256 currentEndBlock
-        )
+        returns (uint256 currentIndex, uint256 currentStartBlock, uint256 currentEndBlock)
     {
         currentIndex = getCurrentRewardsIndex();
         (currentStartBlock, currentEndBlock) = getRewardCycleDetails(currentIndex);
