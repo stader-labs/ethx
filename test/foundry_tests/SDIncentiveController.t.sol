@@ -56,7 +56,8 @@ contract SDIncentiveControllerTest is Test {
 
         sdCollateral = new SDCollateralMock();
         operatorRewardsCollector = new OperatorRewardsCollectorMock();
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        address operator = address(500);
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));

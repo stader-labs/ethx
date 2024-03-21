@@ -59,6 +59,8 @@ contract OperatorRewardsCollectorTest is Test {
         setupMocks();
 
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
+
         ProxyAdmin admin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
@@ -71,7 +73,7 @@ contract OperatorRewardsCollectorTest is Test {
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
         sdCollateral = new SDCollateralMock();
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));

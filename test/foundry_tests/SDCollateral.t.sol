@@ -29,6 +29,7 @@ contract SDCollateralTest is Test {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
 
         StaderOracleMock staderOracle = new StaderOracleMock();
 
@@ -46,7 +47,7 @@ contract SDCollateralTest is Test {
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
-        PoolUtilsMock poolUtils = new PoolUtilsMock(address(staderConfig));
+        PoolUtilsMock poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         Auction auctionImpl = new Auction();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(auctionImpl), address(admin), "");

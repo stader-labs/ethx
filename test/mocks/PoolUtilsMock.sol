@@ -9,8 +9,8 @@ contract PoolUtilsMock {
     uint256 operatorTotalNonTerminalKeys;
     StaderConfig staderConfig;
 
-    constructor(address _staderConfigAddr) {
-        nodeRegistry = new NodeRegistryMock();
+    constructor(address _staderConfigAddr, address _operator) {
+        nodeRegistry = new NodeRegistryMock(_operator);
         operatorTotalNonTerminalKeys = 5;
         staderConfig = StaderConfig(_staderConfigAddr);
     }

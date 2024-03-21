@@ -69,7 +69,7 @@ contract StaderStakePoolManagerTest is Test {
         permissionlessPoolAddress = new PoolMock(vm.addr(120));
         permissionedPoolAddress = new PoolMock(vm.addr(130));
         staderOracle = new StaderOracleMock();
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateETHxToken(address(ethX));

@@ -31,6 +31,7 @@ contract PenaltyTest is Test {
         staderManager = vm.addr(101);
         rated = vm.addr(200);
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
 
         proxyAdmin = new ProxyAdmin();
 
@@ -52,7 +53,7 @@ contract PenaltyTest is Test {
         penaltyContract = Penalty(address(penaltyProxy));
         penaltyContract.initialize(staderAdmin, address(staderConfig), rated);
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
         staderOracle = new StaderOracleMock();
 
         vm.startPrank(staderAdmin);

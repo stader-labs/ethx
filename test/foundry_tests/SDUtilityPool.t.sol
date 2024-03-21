@@ -35,7 +35,8 @@ contract SDUtilityPoolTest is Test {
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
         staderTreasury = vm.addr(105);
-
+        address operator = address(500);
+        
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
 
@@ -51,7 +52,8 @@ contract SDUtilityPoolTest is Test {
         sdCollateral = new SDCollateralMock();
         SDIncentiveControllerMock sdIncentiveController = new SDIncentiveControllerMock();
         operatorRewardsCollector = new OperatorRewardsCollectorMock();
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));

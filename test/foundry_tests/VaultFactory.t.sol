@@ -25,7 +25,8 @@ contract VaultFactoryTest is Test {
     function setUp() public {
         staderAdmin = vm.addr(100);
         address ethDepositAddr = vm.addr(102);
-
+        address operator = address(500);
+        
         ProxyAdmin proxyAdmin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
@@ -37,7 +38,7 @@ contract VaultFactoryTest is Test {
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         VaultFactory vfImpl = new VaultFactory();
         TransparentUpgradeableProxy vfProxy = new TransparentUpgradeableProxy(address(vfImpl), address(proxyAdmin), "");

@@ -7,12 +7,12 @@ contract NodeRegistryMock {
     mapping(uint256 => Validator) public validatorRegistry;
     mapping(uint256 => Operator) public operatorStructById;
 
-    constructor() {
+    constructor(address _operatorAddress) {
         validatorRegistry[1].withdrawVaultAddress = address(1);
         validatorRegistry[1].operatorId = 1;
         validatorRegistry[1].pubkey = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
-        operatorStructById[1].operatorAddress = address(500);
+        operatorStructById[1].operatorAddress = _operatorAddress;
     }
 
     function operatorIDByAddress(address) external pure returns (uint256) {

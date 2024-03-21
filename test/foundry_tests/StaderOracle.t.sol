@@ -30,6 +30,7 @@ contract StaderOracleTest is Test {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
+        address operator = address(500);
 
         staderToken = new StaderTokenMock();
         ProxyAdmin admin = new ProxyAdmin();
@@ -69,7 +70,7 @@ contract StaderOracleTest is Test {
         permissionlessSP = SocializingPool(payable(permissionlessSPProxy));
         permissionlessSP.initialize(staderAdmin, address(staderConfig));
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderOracle(address(staderOracle));

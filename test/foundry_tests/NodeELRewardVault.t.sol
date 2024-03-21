@@ -71,7 +71,7 @@ contract NodeELRewardVaultTest is Test {
         operatorRC = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC.initialize(staderAdmin, address(staderConfig));
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
         NodeELRewardVault nodeELRewardVaultImpl = new NodeELRewardVault();
 
         VaultFactory vfImpl = new VaultFactory();

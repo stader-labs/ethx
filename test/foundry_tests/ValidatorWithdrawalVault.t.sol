@@ -40,7 +40,8 @@ contract ValidatorWithdrawalVaultTest is Test {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         address ethDepositAddr = vm.addr(102);
-
+        address operator = address(500);
+        
         ProxyAdmin proxyAdmin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
@@ -61,7 +62,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         operatorRC = OperatorRewardsCollector(address(operatorRCProxy));
         operatorRC.initialize(staderAdmin, address(staderConfig));
 
-        poolUtils = new PoolUtilsMock(address(staderConfig));
+        poolUtils = new PoolUtilsMock(address(staderConfig), operator);
         PenaltyMockForVault penaltyContract = new PenaltyMockForVault();
         SDCollateralMock sdCollateral = new SDCollateralMock();
         SDUtilityPoolMock sdUtilityPool = new SDUtilityPoolMock();

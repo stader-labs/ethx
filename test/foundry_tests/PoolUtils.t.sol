@@ -32,7 +32,7 @@ contract PoolUtilsTest is Test {
         operator = vm.addr(102);
 
         address ethDepositAddr = vm.addr(103);
-        nodeRegistry = new NodeRegistryMock();
+        nodeRegistry = new NodeRegistryMock(operator);
         pool = new PoolMock(address(nodeRegistry));
 
         ProxyAdmin admin = new ProxyAdmin();
