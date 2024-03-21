@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
+import { console2 } from "forge-std/console2.sol";
 
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -34,10 +35,11 @@ contract NodeELRewardVaultTest is Test {
     VaultFactory vaultFactory;
 
     function setUp() public {
+        vm.clearMockedCalls();
         poolId = 1;
         operatorId = 1;
 
-        operator = vm.addr(500);
+        operator = address(500);
         emit log_named_address("operator", operator);
 
         staderAdmin = vm.addr(100);
@@ -57,8 +59,8 @@ contract NodeELRewardVaultTest is Test {
         staderConfig = StaderConfig(address(configProxy));
         staderConfig.initialize(staderAdmin, ethDepositAddr);
 
-        mockSdUtilityPool(sdUtilityPoolMock, staderConfig);
-        mockStaderOracle(staderOracleMock, staderConfig);
+        mockStaderOracle(staderOracleMock);
+        mockSdUtilityPool(sdUtilityPoolMock, operator);
 
         OperatorRewardsCollector operatorRCImpl = new OperatorRewardsCollector();
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
@@ -142,19 +144,34 @@ contract NodeELRewardVaultTest is Test {
         assertEq(nodeELCloneAddr.balance, amount);
     }
 
-    // NOTE: used uint128 to avoid arithmetic underflow overflow in calculateRewardShare
-    function test_withdraw(uint128 rewardEth) public {
+    function testNotEnoughRewardToWithdraw() public {
         assertEq(nodeELCloneAddr.balance, 0);
         vm.expectRevert(INodeELRewardVault.NotEnoughRewardToWithdraw.selector);
         INodeELRewardVault(nodeELCloneAddr).withdraw();
+    }
 
+    function testSDUtilityPoolMock() public {
+        address sdUtilityPoolMock = staderConfig.getSDUtilityPool();
+        ISDUtilityPool sdUtilityPool = ISDUtilityPool(sdUtilityPoolMock);
+        UserData memory userData = sdUtilityPool.getUserData(operator);
+        assertEq(userData.totalInterestSD, 64);
+        assertEq(userData.totalCollateralInEth, 1024);
+        assertEq(userData.healthFactor, 1);
+        assertEq(userData.lockedEth, 0);
+    }
+
+    // NOTE: used uint128 to avoid arithmetic underflow overflow in calculateRewardShare
+    function test_withdraw(uint128 rewardEth) public {
         vm.assume(rewardEth > 0);
+        console2.log("rewardEth", rewardEth);
 
+        assertEq(nodeELCloneAddr.balance, 0);
         vm.deal(nodeELCloneAddr, rewardEth); // send rewardEth to nodeELRewardVault
 
         StakePoolManagerMock sspm = new StakePoolManagerMock();
         address treasury = vm.addr(3);
-        address opRewardAddr = vm.addr(4);
+        address opRewardAddr = poolUtils.nodeRegistry().getOperatorRewardAddress(operatorId);
+        console2.log("opRewardAddr", opRewardAddr);
 
         vm.prank(staderAdmin);
         staderConfig.updateStakePoolManager(address(sspm));
@@ -185,8 +202,19 @@ contract NodeELRewardVaultTest is Test {
             abi.encode(opRewardAddr)
         );
 
+        address sdUtilityPoolMock = staderConfig.getSDUtilityPool();
+        vm.mockCall(
+            sdUtilityPoolMock,
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, operator),
+            abi.encode(UserData(64, operatorShare + 1, 1, 0))
+        );
+
         vm.prank(operator);
         operatorRC.claim();
+
+        console2.log("opRewardAddr", opRewardAddr);
+        console2.log("operatorShare", operatorShare);
+        console2.log("address(opRewardAddr).balance", address(opRewardAddr).balance);
 
         assertEq(address(opRewardAddr).balance, operatorShare);
         assertEq(operatorRC.balances(operator), 0);
@@ -209,42 +237,28 @@ contract NodeELRewardVaultTest is Test {
         assertEq(VaultProxy(nodeELCloneAddr).owner(), vm.addr(203));
     }
 
-    function mockSdUtilityPool(address sdUtilityPoolMock, StaderConfig staderConfig) private {
+    function mockSdUtilityPool(address sdUtilityPoolMock, address _operator) private {
         emit log_named_address("sdUtilityPoolMock", sdUtilityPoolMock);
+        emit log_named_address("operator account", _operator);
         vm.mockCall(
             sdUtilityPoolMock,
-            abi.encodeWithSelector(ISDUtilityPool.getOperatorLiquidation.selector, operator),
-            abi.encode(
-                OperatorLiquidation(
-                    staderConfig.getStakedEthPerNode(),
-                    0,
-                    staderConfig.getTotalFee(),
-                    true,
-                    false,
-                    address(0x0)
-                )
-            )
+            abi.encodeWithSelector(ISDUtilityPool.getOperatorLiquidation.selector, _operator),
+            abi.encode(OperatorLiquidation(0, 0, 0, false, false, address(0x0)))
         );
         vm.mockCall(
             sdUtilityPoolMock,
             abi.encodeWithSelector(ISDUtilityPool.getLiquidationThreshold.selector),
-            abi.encode(1)
+            abi.encode(50)
         );
         vm.mockCall(
             sdUtilityPoolMock,
             abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, operator),
-            abi.encode(
-                abi.encode(UserData(staderConfig.getMinDepositAmount(), staderConfig.getMinDepositAmount(), 1, 0))
-            )
+            abi.encode(UserData(64, 1024, 1, 0))
         );
     }
 
-    function mockStaderOracle(address staderOracleMock, StaderConfig staderConfig) private {
+    function mockStaderOracle(address staderOracleMock) private {
         emit log_named_address("staderOracleMock", staderOracleMock);
-        vm.mockCall(
-            staderOracleMock,
-            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
-            abi.encode(staderConfig.getTotalFee())
-        );
+        vm.mockCall(staderOracleMock, abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector), abi.encode(1));
     }
 }
