@@ -57,7 +57,16 @@ interface ISocializingPool {
     // methods
     function handleRewards(RewardsData calldata _rewardsData) external;
 
+    function maxApproveSD() external;
+
     function claim(
+        uint256[] calldata _index,
+        uint256[] calldata _amountSD,
+        uint256[] calldata _amountETH,
+        bytes32[][] calldata _merkleProof
+    ) external;
+
+    function claimAndDepositSD(
         uint256[] calldata _index,
         uint256[] calldata _amountSD,
         uint256[] calldata _amountETH,

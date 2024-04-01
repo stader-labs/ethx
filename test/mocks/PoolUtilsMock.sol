@@ -82,4 +82,8 @@ contract PoolUtilsMock {
         if (poolID == 1) return staderConfig.getPermissionlessPool();
         else return staderConfig.getPermissionedPool();
     }
+
+    function processOperatorExit(address _operator, uint256 count) external {
+        return;
+    }
 }
