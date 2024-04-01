@@ -56,3 +56,16 @@ forge coverage
 # Integration
 
 Check the Integration guide [here](https://github.com/stader-labs/ethx/blob/mainnet_V0/INTEGRATION.md)
+
+# Dependencies
+This project incorporates code from the following external sources:
+- Compound Labs, Inc. (licensed under the BSD-3-Clause License)
+
+- Ben Hauser (licensed under the MIT License)
+
+The borrowed code contributes to 'SDUtilityPool.sol for computing fee, utilizer balance and exchange rate for a C-token based model' and 'SDIncentiveController.sol for computing incentivize rewards to the delegator of UtilityPool' respectively. For further details on the specific code sections and their respective licenses, please refer to the Third-Party Licenses file.
+
+Link to Third-Party Licenses:
+
+[THIRD-PARTY-LICENSES.md](https://github.com/stader-labs/ethx/blob/mainnet_V0/THIRD-PARTY-LICENSES.md)
+

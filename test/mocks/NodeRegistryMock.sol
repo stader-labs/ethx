@@ -19,6 +19,10 @@ contract NodeRegistryMock {
         return 1;
     }
 
+    function getOperatorRewardAddress(uint256) external pure returns (address) {
+        return address(2);
+    }
+
     function getOperatorTotalKeys(uint256) external pure returns (uint256 totalKeys) {
         return 5;
     }

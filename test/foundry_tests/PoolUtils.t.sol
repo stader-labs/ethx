@@ -24,6 +24,8 @@ contract PoolUtilsTest is Test {
     PoolMock pool;
     NodeRegistryMock nodeRegistry;
 
+    event ExitOperator(address operator, uint256 amount);
+
     function setUp() public {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
@@ -78,10 +80,10 @@ contract PoolUtilsTest is Test {
     }
 
     function test_addNewPool() public {
-        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        vm.expectRevert();
         poolUtils.addNewPool(1, address(pool));
 
-        vm.startPrank(staderManager);
+        vm.startPrank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertEq(poolUtils.poolAddressById(1), address(pool));
         vm.expectRevert(IPoolUtils.ExistingOrMismatchingPoolId.selector);
@@ -96,7 +98,7 @@ contract PoolUtilsTest is Test {
         );
 
         vm.mockCall(address(vm.addr(106)), abi.encodeWithSelector(INodeRegistry.POOL_ID.selector), abi.encode(2));
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
 
         vm.startPrank(staderAdmin);
@@ -119,7 +121,7 @@ contract PoolUtilsTest is Test {
         );
 
         vm.mockCall(address(vm.addr(106)), abi.encodeWithSelector(INodeRegistry.POOL_ID.selector), abi.encode(1));
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         vm.prank(staderAdmin);
         poolUtils.updatePoolAddress(1, vm.addr(105));
@@ -136,6 +138,18 @@ contract PoolUtilsTest is Test {
 
         vm.prank(operator);
         poolUtils.processValidatorExitList(pubkey);
+    }
+
+    function test_processOperatorExit(uint16 randomSeed, uint128 amount) public {
+        vm.assume(randomSeed > 0);
+        address op = vm.addr(randomSeed);
+        vm.prank(staderAdmin);
+        address utilityPool = vm.addr(199);
+        staderConfig.updateSDUtilityPool(utilityPool);
+        vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
+        poolUtils.processOperatorExit(op, amount);
+        vm.startPrank(utilityPool);
+        poolUtils.processOperatorExit(op, amount);
     }
 
     function test_updateStaderConfig(uint64 _staderConfigSeed) public {
@@ -160,7 +174,7 @@ contract PoolUtilsTest is Test {
         vm.expectRevert(IPoolUtils.PoolIdNotPresent.selector);
         poolUtils.getOperatorFee(1);
 
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
 
         assertEq(poolUtils.getProtocolFee(1), 500);
@@ -203,7 +217,7 @@ contract PoolUtilsTest is Test {
         vm.expectRevert(IPoolUtils.PoolIdNotPresent.selector);
         poolUtils.getQueuedValidatorCountByPool(2);
 
-        vm.startPrank(staderManager);
+        vm.startPrank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         poolUtils.addNewPool(2, permissionedPool);
 
@@ -224,7 +238,7 @@ contract PoolUtilsTest is Test {
 
         vm.expectRevert(IPoolUtils.PoolIdNotPresent.selector);
         poolUtils.getSocializingPoolAddress(1);
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertEq(poolUtils.getSocializingPoolAddress(1), vm.addr(110));
     }
@@ -238,19 +252,19 @@ contract PoolUtilsTest is Test {
 
         vm.expectRevert(IPoolUtils.PoolIdNotPresent.selector);
         poolUtils.getOperatorTotalNonTerminalKeys(1, vm.addr(110), 0, 100);
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertEq(poolUtils.getOperatorTotalNonTerminalKeys(1, vm.addr(110), 0, 100), 100);
     }
 
     function test_getCollateralETH() public {
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertEq(poolUtils.getCollateralETH(1), 4 ether);
     }
 
     function test_getNodeRegistry() public {
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertEq(poolUtils.getNodeRegistry(1), address(nodeRegistry));
     }
@@ -265,7 +279,7 @@ contract PoolUtilsTest is Test {
             abi.encode(true)
         );
 
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertTrue(poolUtils.isExistingPubkey(pubkey));
     }
@@ -279,7 +293,7 @@ contract PoolUtilsTest is Test {
             abi.encode(true)
         );
 
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertTrue(poolUtils.isExistingOperator(vm.addr(110)));
     }
@@ -294,7 +308,7 @@ contract PoolUtilsTest is Test {
             abi.encode(true)
         );
 
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertEq(poolUtils.getOperatorPoolId(vm.addr(110)), 1);
     }
@@ -310,7 +324,7 @@ contract PoolUtilsTest is Test {
             abi.encode(true)
         );
 
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         assertEq(poolUtils.getValidatorPoolId(pubkey), 1);
     }
@@ -330,7 +344,7 @@ contract PoolUtilsTest is Test {
             abi.encode(2)
         );
 
-        vm.startPrank(staderManager);
+        vm.startPrank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         poolUtils.addNewPool(2, permissionedPool);
 
@@ -385,7 +399,7 @@ contract PoolUtilsTest is Test {
             abi.encode(true)
         );
 
-        vm.prank(staderManager);
+        vm.prank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
 
         vm.expectRevert(IPoolUtils.PubkeyAlreadyExist.selector);
@@ -424,7 +438,7 @@ contract PoolUtilsTest is Test {
             abi.encode(0)
         );
 
-        vm.startPrank(staderManager);
+        vm.startPrank(staderAdmin);
         poolUtils.addNewPool(1, address(pool));
         poolUtils.addNewPool(2, permissionedPool);
 
