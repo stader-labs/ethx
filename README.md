@@ -58,7 +58,9 @@ forge coverage
 Check the Integration guide [here](https://github.com/stader-labs/ethx/blob/mainnet_V0/INTEGRATION.md)
 
 # Dependencies
+
 This project incorporates code from the following external sources:
+
 - Compound Labs, Inc. (licensed under the BSD-3-Clause License)
 
 - Ben Hauser (licensed under the MIT License)
