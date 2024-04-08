@@ -1,38 +1,29 @@
 name: Lint
-
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
   pull_request:
-
 permissions:
   checks: write
   contents: write
-
 jobs:
   run-linters:
     name: Run linters
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v2
         with:
           token: ${{ secrets.github_token }}
-
-      - name: Set up node
+      - name: Set up nodejs
         uses: actions/setup-node@v1
         with:
           node-version: 18
-
-      - name: Install dependencies
-        run: npm install --frozen-lockfile
-
-      - name: Run linters
-        uses: wearerequired/lint-action@v2.1.0
-        with:
-          github_token: ${{ secrets.github_token }}
-          prettier: true
-          prettier_extensions: 'js,json,jsx,md,ts,tsx,yaml,yml,sol'
-          continue_on_error: false
+      - name: install dependencies (npm)
+        run: npm ci --frozen-lockfile
+      - name: Prettier
+        run: npm run prettier:check
+      - name: Solhint
+        run: npm run lint

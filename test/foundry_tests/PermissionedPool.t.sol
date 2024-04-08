@@ -219,10 +219,10 @@ contract PermissionedPoolTest is Test {
         assertEq(permissionedPool.operatorFee(), operatorFee);
     }
 
-    function test_test_setCommissionFeesWithInvalidInput(uint64 protocolFee, uint64 operatorFee) public {
-        vm.assume(protocolFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS());
+    function test_setCommissionFeesWithInvalidInput(uint64 protocolFee, uint64 operatorFee) public {
         vm.assume(
-            operatorFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS() &&
+            protocolFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS() &&
+                operatorFee < permissionedPool.MAX_COMMISSION_LIMIT_BIPS() &&
                 protocolFee + operatorFee > permissionedPool.MAX_COMMISSION_LIMIT_BIPS()
         );
         vm.expectRevert(IStaderPoolBase.InvalidCommission.selector);

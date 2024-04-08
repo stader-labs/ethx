@@ -1,11 +1,9 @@
 name: Slither Analysis
-
 on:
   push:
     branches:
       - main
   pull_request:
-
 jobs:
   analyze:
     runs-on: ubuntu-latest
@@ -20,7 +18,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           token: ${{ secrets.github_token }}
-
       - name: Run Slither
         uses: crytic/slither-action@v0.2.0
         id: slither
@@ -28,7 +25,6 @@ jobs:
           node-version: 16
           sarif: results.sarif
           fail-on: config
-
       - if: failure()
         uses: Ayrx/sarif_to_github_annotations@v0.2.2
         with:
