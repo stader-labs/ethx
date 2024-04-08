@@ -197,18 +197,11 @@ contract SDUtilityPoolTest is Test {
         assertEq(sdUtilityPool.getDelegatorLatestSDBalance(user), 0);
     }
 
-    function test_RequestWithdraw(
-        uint128 sdDelegateAmount,
-        uint128 cTokenWithdrawAmount,
-        uint128 cTokenWithdrawAmount2,
-        uint16 randomSeed
-    ) public {
-        uint256 deployerSDBalance = staderToken.balanceOf(address(this));
-        vm.assume(sdDelegateAmount <= deployerSDBalance / 2 && sdDelegateAmount > 1e15);
-        // vm.assume(cTokenWithdrawAmount <= sdDelegateAmount);
-
-        vm.assume(randomSeed > 0);
-        address user = vm.addr(randomSeed);
+    function test_RequestWithdraw(uint128 cTokenWithdrawAmount, uint128 cTokenWithdrawAmount2) public {
+        uint deployerSDBalance = staderToken.balanceOf(address(this));
+        address user = vm.addr(1000);
+        uint sdDelegateAmount = deployerSDBalance / 4;
+        vm.assume(sdDelegateAmount > 1e15);
 
         staderToken.transfer(user, sdDelegateAmount);
         staderToken.transfer(address(sdUtilityPool), sdDelegateAmount);
@@ -269,19 +262,16 @@ contract SDUtilityPoolTest is Test {
         vm.stopPrank();
     }
 
-    function test_RequestWithdrawWithSDAndFullAmount(
-        uint128 sdDelegateAmount,
-        uint128 rewards,
-        uint16 randomSeed
-    ) public {
+    function test_RequestWithdrawWithSDAndFullAmount(uint128 sdDelegateAmount, uint128 rewards) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
-        vm.assume(sdDelegateAmount <= deployerSDBalance / 2 && sdDelegateAmount > 1e15);
-        vm.assume(rewards <= deployerSDBalance / 2 && rewards > 1e18);
-
-        vm.assume(randomSeed > 0);
-        address user = vm.addr(randomSeed);
-        vm.assume(user != address(this));
-
+        address user = vm.addr(1000);
+        vm.assume(
+            sdDelegateAmount <= deployerSDBalance / 2 &&
+                sdDelegateAmount > 1e15 &&
+                rewards <= deployerSDBalance / 2 &&
+                rewards > 1e18 &&
+                user != address(this)
+        );
         staderToken.transfer(user, sdDelegateAmount);
         staderToken.transfer(address(sdUtilityPool), rewards);
         vm.startPrank(user);

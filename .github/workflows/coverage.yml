@@ -1,0 +1,27 @@
+name: Coverage
+on: [workflow_dispatch, pull_request, push]
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: npm install
+        run: |
+          npm ci --frozen-lockfile --production
+      - name: Run Forge coverage
+        run: |
+          forge coverage --report lcov
+        id: coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true

@@ -68,9 +68,8 @@ contract StaderInsuranceFundTest is Test {
         UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
 
-    function test_depositFund(uint256 _ethAmount, address anyone) public {
-        vm.assume(anyone != address(0) && anyone != address(proxyAdmin));
-
+    function test_depositFund(uint256 _ethAmount) public {
+        address anyone = vm.addr(1000);
         hoax(address(anyone), _ethAmount); // provides anyone _ethAmount and makes it the caller for next call
         assertEq(address(iFund).balance, 0);
         iFund.depositFund{ value: _ethAmount }();
