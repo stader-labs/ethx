@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 /**
  * @title ETHx token Contract for L2s
@@ -13,9 +13,9 @@ import '@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol';
 contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessControlUpgradeable {
     error ZeroAddress();
 
-    bytes32 public constant MINTER_ROLE = keccak256('MINTER_ROLE');
-    bytes32 public constant BURNER_ROLE = keccak256('BURNER_ROLE');
-    bytes32 public constant PAUSER_ROLE = keccak256('PAUSER_ROLE');
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -23,7 +23,7 @@ contract ETHx is Initializable, ERC20Upgradeable, PausableUpgradeable, AccessCon
     }
 
     function initialize(address _admin) external initializer onlyNonZeroAddress(_admin) {
-        __ERC20_init('ETHx', 'ETHx');
+        __ERC20_init("ETHx", "ETHx");
         __Pausable_init();
         __AccessControl_init();
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './INodeRegistry.sol';
+import "./INodeRegistry.sol";
 
 // Interface for the PoolUtils contract
 interface IPoolUtils {
@@ -85,12 +85,8 @@ interface IPoolUtils {
         bytes calldata _depositSignature
     ) external;
 
-    function calculateRewardShare(uint8 _poolId, uint256 _totalRewards)
-        external
-        view
-        returns (
-            uint256 userShare,
-            uint256 operatorShare,
-            uint256 protocolShare
-        );
+    function calculateRewardShare(
+        uint8 _poolId,
+        uint256 _totalRewards
+    ) external view returns (uint256 userShare, uint256 operatorShare, uint256 protocolShare);
 }

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../library/UtilLib.sol';
-import '../VaultProxy.sol';
-import '../interfaces/IVaultFactory.sol';
-import '../interfaces/IStaderConfig.sol';
+import "../library/UtilLib.sol";
+import "../VaultProxy.sol";
+import "../interfaces/IVaultFactory.sol";
+import "../interfaces/IStaderConfig.sol";
 
-import '@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol';
-import '@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol';
+import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
     address public vaultProxyImplementation;
 
-    bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256('NODE_REGISTRY_CONTRACT');
+    bytes32 public constant override NODE_REGISTRY_CONTRACT = keccak256("NODE_REGISTRY_CONTRACT");
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -45,12 +45,10 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         return withdrawVaultAddress;
     }
 
-    function deployNodeELRewardVault(uint8 _poolId, uint256 _operatorId)
-        external
-        override
-        onlyRole(NODE_REGISTRY_CONTRACT)
-        returns (address)
-    {
+    function deployNodeELRewardVault(
+        uint8 _poolId,
+        uint256 _operatorId
+    ) external override onlyRole(NODE_REGISTRY_CONTRACT) returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
         address nodeELRewardVaultAddress = ClonesUpgradeable.cloneDeterministic(vaultProxyImplementation, salt);
         VaultProxy(payable(nodeELRewardVaultAddress)).initialise(false, _poolId, _operatorId, address(staderConfig));
@@ -68,12 +66,10 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }
 
-    function computeNodeELRewardVaultAddress(uint8 _poolId, uint256 _operatorId)
-        external
-        view
-        override
-        returns (address)
-    {
+    function computeNodeELRewardVaultAddress(
+        uint8 _poolId,
+        uint256 _operatorId
+    ) external view override returns (address) {
         bytes32 salt = sha256(abi.encode(_poolId, _operatorId));
         return ClonesUpgradeable.predictDeterministicAddress(vaultProxyImplementation, salt);
     }

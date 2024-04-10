@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../library/ValidatorStatus.sol';
-import './INodeRegistry.sol';
+import "../library/ValidatorStatus.sol";
+import "./INodeRegistry.sol";
 
 interface IPermissionedNodeRegistry {
     // Errors
@@ -38,9 +38,10 @@ interface IPermissionedNodeRegistry {
 
     function whitelistPermissionedNOs(address[] calldata _permissionedNOs) external;
 
-    function onboardNodeOperator(string calldata _operatorName, address payable _operatorRewardAddress)
-        external
-        returns (address mevFeeRecipientAddress);
+    function onboardNodeOperator(
+        string calldata _operatorName,
+        address payable _operatorRewardAddress
+    ) external returns (address mevFeeRecipientAddress);
 
     function addValidatorKeys(
         bytes[] calldata _pubkey,
@@ -48,9 +49,9 @@ interface IPermissionedNodeRegistry {
         bytes[] calldata _depositSignature
     ) external;
 
-    function allocateValidatorsAndUpdateOperatorId(uint256 _numValidators)
-        external
-        returns (uint256[] memory selectedOperatorCapacity);
+    function allocateValidatorsAndUpdateOperatorId(
+        uint256 _numValidators
+    ) external returns (uint256[] memory selectedOperatorCapacity);
 
     function activateNodeOperator(uint256 _operatorId) external;
 

@@ -17,7 +17,7 @@
         {
             "label": "install",
             "type": "shell",
-            "command": "npm ci",
+            "command": "npm ci --frozen-lockfile",
             "options": {
                 "cwd": "${workspaceFolder}"
             },

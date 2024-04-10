@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import './IStaderConfig.sol';
+import "./IStaderConfig.sol";
 
 interface IValidatorWithdrawalVault {
     // Errors
@@ -26,9 +26,5 @@ interface IValidatorWithdrawalVault {
     function calculateValidatorWithdrawalShare()
         external
         view
-        returns (
-            uint256 _userShare,
-            uint256 _operatorShare,
-            uint256 _protocolShare
-        );
+        returns (uint256 _userShare, uint256 _operatorShare, uint256 _protocolShare);
 }

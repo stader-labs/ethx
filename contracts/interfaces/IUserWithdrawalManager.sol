@@ -55,7 +55,9 @@ interface IUserWithdrawalManager {
 
     function maxNonRedeemedUserRequestCount() external view returns (uint256);
 
-    function userWithdrawRequests(uint256)
+    function userWithdrawRequests(
+        uint256
+    )
         external
         view
         returns (

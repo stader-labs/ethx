@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.16;
 
-import './IStaderConfig.sol';
+import "./IStaderConfig.sol";
 
 /// @title RewardsData
 /// @notice This struct holds rewards merkleRoot and rewards split
@@ -100,11 +100,7 @@ interface ISocializingPool {
     function getRewardDetails()
         external
         view
-        returns (
-            uint256 currentIndex,
-            uint256 currentStartBlock,
-            uint256 currentEndBlock
-        );
+        returns (uint256 currentIndex, uint256 currentStartBlock, uint256 currentEndBlock);
 
     function getRewardCycleDetails(uint256 _index) external view returns (uint256 _startBlock, uint256 _endBlock);
 }

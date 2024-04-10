@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../library/ValidatorStatus.sol';
-import './INodeRegistry.sol';
+import "../library/ValidatorStatus.sol";
+import "./INodeRegistry.sol";
 
 interface IPermissionlessNodeRegistry {
     // Errors
@@ -79,9 +79,9 @@ interface IPermissionlessNodeRegistry {
 
     function updateOperatorName(string calldata _operatorName) external;
 
-    function changeSocializingPoolState(bool _optInForSocializingPool)
-        external
-        returns (address mevFeeRecipientAddress);
+    function changeSocializingPoolState(
+        bool _optInForSocializingPool
+    ) external returns (address mevFeeRecipientAddress);
 
     function pause() external;
 

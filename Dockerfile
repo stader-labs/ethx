@@ -1,18 +1,28 @@
 FROM ghcr.io/collectivexyz/foundry:latest
 
+RUN python3 -m pip install slither-analyzer --break-system-packages
+
 ARG PROJECT=ethx
 WORKDIR /workspaces/${PROJECT}
-RUN chown -R foundry:foundry .
-COPY --chown=foundry:foundry . .
+
 ENV USER=foundry
 USER foundry
 ENV PATH=${PATH}:~/.cargo/bin:/usr/local/go/bin
 
-RUN python3 -m pip install slither-analyzer --break-system-packages
+RUN chown -R foundry:foundry .
+
+COPY --chown=foundry:foundry package.json .
+COPY --chown=foundry:foundry package-lock.json .
+COPY --chown=foundry:foundry tsconfig.json .
+COPY --chown=foundry:foundry node_modules node_modules
+
+RUN npm ci --frozen-lockfile
+
+COPY --chown=foundry:foundry . .
 
 RUN yamlfmt -lint .github/workflows/*.yml
 
-RUN npm ci --frozen-lockfile
+RUN forge install
 RUN npm run prettier:check
 # RUN slither .
 # RUN npm run lint

@@ -26,7 +26,7 @@ contract VaultFactoryTest is Test {
         staderAdmin = vm.addr(100);
         address ethDepositAddr = vm.addr(102);
         address operator = address(500);
-        
+
         ProxyAdmin proxyAdmin = new ProxyAdmin();
 
         StaderConfig configImpl = new StaderConfig();
