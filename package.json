@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prettier:check": "prettier --check \"(contracts|test|script)/**.sol\"",
-    "prettier:fix": "prettier --write \"(contracts|test|script)/**.sol\"",
+    "test": "forge test -v",
+    "prettier:check": "prettier --check \"(contracts|test|script)/**/*.sol\"",
+    "prettier:fix": "prettier --write \"(contracts|test|script)/**/*.sol\"",
     "lint": "solhint -w 3 'contracts/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'"
   },
   "repository": {
@@ -32,7 +32,7 @@
     "prettier": "3.2.5",
     "prettier-plugin-solidity": "1.3.1",
     "typechain": "^8.1.1",
-    "solhint": "4.5.2"
+    "solhint": "^4.5.2"
   },
   "dependencies": {
     "@chainlink/contracts": "^0.5.1",

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../interfaces/IStaderConfig.sol';
-import '../interfaces/INodeRegistry.sol';
-import '../interfaces/IPoolUtils.sol';
-import '../interfaces/IVaultProxy.sol';
+import "../interfaces/IStaderConfig.sol";
+import "../interfaces/INodeRegistry.sol";
+import "../interfaces/IPoolUtils.sol";
+import "../interfaces/IVaultProxy.sol";
 
 library UtilLib {
     error ZeroAddress();
@@ -36,11 +36,7 @@ library UtilLib {
     }
 
     //checks if caller is a stader contract address
-    function onlyStaderContract(
-        address _addr,
-        IStaderConfig _staderConfig,
-        bytes32 _contractName
-    ) internal view {
+    function onlyStaderContract(address _addr, IStaderConfig _staderConfig, bytes32 _contractName) internal view {
         if (!_staderConfig.onlyStaderContract(_addr, _contractName)) {
             revert CallerNotStaderContract();
         }
@@ -115,11 +111,10 @@ library UtilLib {
         return operatorAddress;
     }
 
-    function getOperatorRewardAddress(address _operator, IStaderConfig _staderConfig)
-        internal
-        view
-        returns (address payable)
-    {
+    function getOperatorRewardAddress(
+        address _operator,
+        IStaderConfig _staderConfig
+    ) internal view returns (address payable) {
         uint8 poolId = IPoolUtils(_staderConfig.getPoolUtils()).getOperatorPoolId(_operator);
         address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         uint256 operatorId = INodeRegistry(nodeRegistry).operatorIDByAddress(_operator);
@@ -140,11 +135,10 @@ library UtilLib {
         return sha256(abi.encodePacked(_pubkey, bytes16(0)));
     }
 
-    function getValidatorSettleStatus(bytes calldata _pubkey, IStaderConfig _staderConfig)
-        internal
-        view
-        returns (bool)
-    {
+    function getValidatorSettleStatus(
+        bytes calldata _pubkey,
+        IStaderConfig _staderConfig
+    ) internal view returns (bool) {
         uint8 poolId = IPoolUtils(_staderConfig.getPoolUtils()).getValidatorPoolId(_pubkey);
         address nodeRegistry = IPoolUtils(_staderConfig.getPoolUtils()).getNodeRegistry(poolId);
         uint256 validatorId = INodeRegistry(nodeRegistry).validatorIdByPubkey(_pubkey);
@@ -165,7 +159,7 @@ library UtilLib {
     }
 
     function sendValue(address _receiver, uint256 _amount) internal {
-        (bool success, ) = payable(_receiver).call{value: _amount}('');
+        (bool success, ) = payable(_receiver).call{ value: _amount }("");
         if (!success) {
             revert TransferFailed();
         }

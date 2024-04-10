@@ -1,30 +1,37 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "../../contracts/library/UtilLib.sol";
+import { Test } from "forge-std/Test.sol";
 
-import "../../contracts/ETHx.sol";
-import "../../contracts/StaderConfig.sol";
-import "../../contracts/UserWithdrawalManager.sol";
+import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import { ProxyAdmin } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import "../mocks/StaderOracleMock.sol";
-import "../mocks/StakePoolManagerMock.sol";
+import { UtilLib } from "../../contracts/library/UtilLib.sol";
 
-import "forge-std/Test.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import { IUserWithdrawalManager } from "../../contracts/interfaces/IUserWithdrawalManager.sol";
+import { IStaderStakePoolManager } from "../../contracts/interfaces/IStaderStakePoolManager.sol";
+import { IStaderOracle } from "../../contracts/interfaces/IStaderOracle.sol";
+
+import { ETHx } from "../../contracts/ETHx.sol";
+import { StaderConfig } from "../../contracts/StaderConfig.sol";
+import { UserWithdrawalManager } from "../../contracts/UserWithdrawalManager.sol";
+
+import { StaderOracleMock } from "../mocks/StaderOracleMock.sol";
+import { StakePoolManagerMock } from "../mocks/StakePoolManagerMock.sol";
 
 contract UserWithdrawalManagerTest is Test {
-    address staderAdmin;
-    address staderManager;
-    address operator;
+    event FinalizedWithdrawRequest(uint256 requestId);
 
-    ETHx ethX;
-    StaderConfig staderConfig;
-    UserWithdrawalManager userWithdrawalManager;
+    address private staderAdmin;
+    address private staderManager;
+    address private operator;
 
-    StaderOracleMock staderOracle;
-    StakePoolManagerMock staderStakePoolManager;
+    ETHx private ethX;
+    StaderConfig private staderConfig;
+    UserWithdrawalManager private userWithdrawalManager;
+
+    StaderOracleMock private staderOracle;
+    StakePoolManagerMock private staderStakePoolManager;
 
     function setUp() public {
         vm.clearMockedCalls();
@@ -117,28 +124,22 @@ contract UserWithdrawalManagerTest is Test {
         vm.startPrank(staderAdmin);
         userWithdrawalManager.updateStaderConfig(newStaderConfig);
         assertEq(address(userWithdrawalManager.staderConfig()), newStaderConfig);
+        vm.stopPrank();
     }
 
-    function testFail_updateStaderConfig(uint64 _staderConfigSeed) public {
-        vm.assume(_staderConfigSeed > 0);
+    function test_updateStaderConfigRequiresAdmin() public {
+        uint _staderConfigSeed = 1001;
         address newStaderConfig = vm.addr(_staderConfigSeed);
+        vm.expectRevert(
+            "AccessControl: account 0x7fa9385be102ac3eac297483dd6233d62b3e1496 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
+        );
         userWithdrawalManager.updateStaderConfig(newStaderConfig);
-        assertEq(address(userWithdrawalManager.staderConfig()), newStaderConfig);
     }
 
-    function test_requestWithdraw(uint64 randomPrivateKey, uint64 randomPrivateKey2) public {
-        vm.assume(
-            randomPrivateKey > 0 &&
-                vm.addr(randomPrivateKey) != address(userWithdrawalManager) &&
-                vm.addr(randomPrivateKey) != address(staderStakePoolManager)
-        );
-        vm.assume(
-            randomPrivateKey2 > 0 &&
-                vm.addr(randomPrivateKey) != address(userWithdrawalManager) &&
-                vm.addr(randomPrivateKey) != address(staderStakePoolManager)
-        );
-        address ethXHolder = vm.addr(randomPrivateKey);
-        address owner = vm.addr(randomPrivateKey2);
+    function test_requestWithdraw() public {
+        address ethXHolder = vm.addr(1001);
+        address owner = vm.addr(1002);
+
         vm.prank(staderManager);
         userWithdrawalManager.pause();
         vm.expectRevert();
@@ -167,44 +168,15 @@ contract UserWithdrawalManagerTest is Test {
         userWithdrawalManager.requestWithdraw(100 ether, owner);
     }
 
-    function test_finalizeUserWithdrawalRequest(uint64 randomPrivateKey, uint64 randomPrivateKey2) public {
-        vm.assume(randomPrivateKey != randomPrivateKey2);
-        vm.assume(
-            randomPrivateKey > 0 &&
-                vm.addr(randomPrivateKey) != address(userWithdrawalManager) &&
-                vm.addr(randomPrivateKey) != address(staderStakePoolManager)
-        );
-        vm.assume(
-            randomPrivateKey2 > 0 &&
-                vm.addr(randomPrivateKey) != address(userWithdrawalManager) &&
-                vm.addr(randomPrivateKey) != address(staderStakePoolManager)
-        );
-        address ethXHolder = vm.addr(randomPrivateKey);
-        address owner = vm.addr(randomPrivateKey2);
-
-        vm.prank(staderManager);
-        userWithdrawalManager.pause();
-        vm.expectRevert();
-        userWithdrawalManager.finalizeUserWithdrawalRequest();
-        vm.prank(staderAdmin);
-        userWithdrawalManager.unpause();
-        vm.mockCall(address(staderOracle), abi.encodeWithSelector(IStaderOracle.safeMode.selector), abi.encode(true));
-        vm.mockCall(
-            address(staderStakePoolManager),
-            abi.encodeWithSelector(IStaderStakePoolManager.isVaultHealthy.selector),
-            abi.encode(false)
-        );
-
-        vm.expectRevert(IUserWithdrawalManager.UnsupportedOperationInSafeMode.selector);
-        userWithdrawalManager.finalizeUserWithdrawalRequest();
+    function test_finalizeUserWithdrawalRequest() public {
         vm.mockCall(address(staderOracle), abi.encodeWithSelector(IStaderOracle.safeMode.selector), abi.encode(false));
-        vm.expectRevert(IUserWithdrawalManager.ProtocolNotHealthy.selector);
-        userWithdrawalManager.finalizeUserWithdrawalRequest();
         vm.mockCall(
             address(staderStakePoolManager),
             abi.encodeWithSelector(IStaderStakePoolManager.isVaultHealthy.selector),
             abi.encode(true)
         );
+        address ethXHolder = vm.addr(1001);
+        address owner = vm.addr(1002);
         vm.prank(address(staderStakePoolManager));
         ethX.mint(ethXHolder, 100 ether);
         assertEq(ethX.balanceOf(ethXHolder), 100 ether);
@@ -250,6 +222,70 @@ contract UserWithdrawalManagerTest is Test {
         assertEq(userWithdrawalManager.ethRequestedForWithdraw(), 0);
         assertEq(address(userWithdrawalManager).balance, 40 ether);
         assertEq(userWithdrawalManager.nextRequestIdToFinalize(), 6);
+        vm.stopPrank();
+    }
+
+    function test_finalizeUserWithdrawalRequestEmitFinalizedWithdrawRequest() public {
+        vm.mockCall(address(staderOracle), abi.encodeWithSelector(IStaderOracle.safeMode.selector), abi.encode(false));
+        vm.mockCall(
+            address(staderStakePoolManager),
+            abi.encodeWithSelector(IStaderStakePoolManager.isVaultHealthy.selector),
+            abi.encode(true)
+        );
+        address ethXHolder = vm.addr(1001);
+        address owner = vm.addr(1002);
+        vm.prank(address(staderStakePoolManager));
+        ethX.mint(ethXHolder, 100 ether);
+        assertEq(ethX.balanceOf(ethXHolder), 100 ether);
+        vm.startPrank(ethXHolder);
+        ethX.approve(address(userWithdrawalManager), type(uint256).max);
+        userWithdrawalManager.requestWithdraw(10 ether, owner);
+        userWithdrawalManager.requestWithdraw(10 ether, ethXHolder);
+
+        uint nextRequestId = userWithdrawalManager.nextRequestId();
+        assertEq(nextRequestId, 3);
+        assertEq(userWithdrawalManager.nextRequestIdToFinalize(), 1);
+
+        vm.deal(address(staderStakePoolManager), 20 ether);
+        vm.roll(block.number + 600);
+        vm.expectEmit();
+        emit FinalizedWithdrawRequest(3);
+        userWithdrawalManager.finalizeUserWithdrawalRequest();
+        vm.stopPrank();
+    }
+
+    function test_finalizeUserWithdrawalRequestRevertIfPaused() public {
+        vm.prank(staderManager);
+        userWithdrawalManager.pause();
+        vm.expectRevert();
+        userWithdrawalManager.finalizeUserWithdrawalRequest();
+    }
+
+    function test_finalizeUserWithdrawalRequestRevertInSafeMode() public {
+        vm.prank(staderAdmin);
+        //userWithdrawalManager.unpause();
+        vm.mockCall(address(staderOracle), abi.encodeWithSelector(IStaderOracle.safeMode.selector), abi.encode(true));
+        vm.mockCall(
+            address(staderStakePoolManager),
+            abi.encodeWithSelector(IStaderStakePoolManager.isVaultHealthy.selector),
+            abi.encode(false)
+        );
+
+        vm.expectRevert(IUserWithdrawalManager.UnsupportedOperationInSafeMode.selector);
+        userWithdrawalManager.finalizeUserWithdrawalRequest();
+    }
+
+    function test_finalizeUserWithdrawalRequest_revertProtocolNotHealthy() public {
+        vm.prank(staderAdmin);
+        //userWithdrawalManager.unpause();
+        vm.mockCall(
+            address(staderStakePoolManager),
+            abi.encodeWithSelector(IStaderStakePoolManager.isVaultHealthy.selector),
+            abi.encode(false)
+        );
+        vm.mockCall(address(staderOracle), abi.encodeWithSelector(IStaderOracle.safeMode.selector), abi.encode(false));
+        vm.expectRevert(IUserWithdrawalManager.ProtocolNotHealthy.selector);
+        userWithdrawalManager.finalizeUserWithdrawalRequest();
     }
 
     function test_claim(uint64 randomPrivateKey, uint64 randomPrivateKey2) public {

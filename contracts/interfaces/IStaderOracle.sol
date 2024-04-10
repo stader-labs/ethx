@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../library/ValidatorStatus.sol';
+import "../library/ValidatorStatus.sol";
 
-import './ISocializingPool.sol';
-import './IStaderConfig.sol';
+import "./ISocializingPool.sol";
+import "./IStaderConfig.sol";
 
 struct SDPriceData {
     uint256 reportingBlockNumber;
@@ -240,8 +240,9 @@ interface IStaderOracle {
      *  and if the submission count reaches the required threshold, it updates the markValidatorReadyToDeposit (NodeRegistry).
      * @param _validatorVerificationDetail validator verification data, containing valid pubkeys, front run and invalid signature
      */
-    function submitValidatorVerificationDetail(ValidatorVerificationDetail calldata _validatorVerificationDetail)
-        external;
+    function submitValidatorVerificationDetail(
+        ValidatorVerificationDetail calldata _validatorVerificationDetail
+    ) external;
 
     /**
      * @notice store the missed attestation penalty strike on validator

@@ -113,11 +113,7 @@ interface ISDUtilityPool {
 
     function utilize(uint256 utilizeAmount) external;
 
-    function utilizeWhileAddingKeys(
-        address operator,
-        uint256 utilizeAmount,
-        uint256 nonTerminalKeyCount
-    ) external;
+    function utilizeWhileAddingKeys(address operator, uint256 utilizeAmount, uint256 nonTerminalKeyCount) external;
 
     function repayFullAmount() external returns (uint256, uint256);
 
@@ -200,16 +196,12 @@ interface ISDUtilityPool {
 
     function getOperatorLiquidation(address) external view returns (OperatorLiquidation memory);
 
-    function delegatorWithdrawRequests(uint256)
+    function delegatorWithdrawRequests(
+        uint256
+    )
         external
         view
-        returns (
-            address owner,
-            uint256 amountOfCToken,
-            uint256 sdExpected,
-            uint256 sdFinalized,
-            uint256 requestBlock
-        );
+        returns (address owner, uint256 amountOfCToken, uint256 sdExpected, uint256 sdFinalized, uint256 requestBlock);
 
     function requestIdsByDelegatorAddress(address, uint256) external view returns (uint256);
 

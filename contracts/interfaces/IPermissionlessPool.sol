@@ -11,8 +11,8 @@ interface IPermissionlessPool {
 
     function receiveRemainingCollateralETH() external payable;
 
-    function getAllSocializingPoolOptOutOperators(uint256 _pageNumber, uint256 _pageSize)
-        external
-        view
-        returns (address[] memory);
+    function getAllSocializingPoolOptOutOperators(
+        uint256 _pageNumber,
+        uint256 _pageSize
+    ) external view returns (address[] memory);
 }

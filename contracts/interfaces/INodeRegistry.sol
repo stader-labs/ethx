@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../library/ValidatorStatus.sol';
+import "../library/ValidatorStatus.sol";
 
 struct Validator {
     ValidatorStatus status; // status of validator
@@ -68,7 +68,9 @@ interface INodeRegistry {
     ) external;
 
     // return validator struct for a validator Id
-    function validatorRegistry(uint256)
+    function validatorRegistry(
+        uint256
+    )
         external
         view
         returns (
@@ -83,7 +85,9 @@ interface INodeRegistry {
         );
 
     // returns the operator struct given operator Id
-    function operatorStructById(uint256)
+    function operatorStructById(
+        uint256
+    )
         external
         view
         returns (

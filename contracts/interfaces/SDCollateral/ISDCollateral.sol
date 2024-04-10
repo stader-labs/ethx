@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import '../IStaderConfig.sol';
+import "../IStaderConfig.sol";
 
 interface ISDCollateral {
     struct PoolThresholdInfo {
@@ -91,12 +91,7 @@ interface ISDCollateral {
 
     function convertETHToSD(uint256 _ethAmount) external view returns (uint256);
 
-    function getOperatorInfo(address _operator)
-        external
-        view
-        returns (
-            uint8 _poolId,
-            uint256 _operatorId,
-            uint256 _validatorCount
-        );
+    function getOperatorInfo(
+        address _operator
+    ) external view returns (uint8 _poolId, uint256 _operatorId, uint256 _validatorCount);
 }
