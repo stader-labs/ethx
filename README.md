@@ -1,6 +1,9 @@
+# ETHx
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 [![Test](https://github.com/stader-labs/ethx/actions/workflows/ci-image.yml/badge.svg)](https://github.com/stader-labs/ethx/actions/workflows/ci-image.yml)
+[![codecov](https://codecov.io/gh/stader-labs/ethx/graph/badge.svg?token=PWU803B3QS)](https://codecov.io/gh/stader-labs/ethx)
 
 # Overview
 
