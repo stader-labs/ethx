@@ -36,11 +36,25 @@ const config: HardhatUserConfig = {
       url: process.env.PROVIDER_URL_MAINNET ?? '',
       accounts: [process.env.OWNER_PRIVATE_KEY_MAINNET ?? ethers.Wallet.createRandom().privateKey],
     },
+    holesky: {
+      url: process.env.PROVIDER_URL_HOLESKY ?? '',
+      accounts: [process.env.OWNER_PRIVATE_KEY_HOLESKY ?? ethers.Wallet.createRandom().privateKey],
+    }
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
     apiKey: process.env.API_KEY,
+    customChains: [
+      {
+        network: "holesky",
+        chainId: 17000,
+        urls: {
+          apiURL: "https://api-holesky.etherscan.io/api",
+          browserURL: "https://holesky.etherscan.io"
+        }
+      }
+    ]
   },
 }
 
