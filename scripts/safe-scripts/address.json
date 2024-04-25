@@ -1,0 +1,18 @@
+{
+  "mainnet": {
+    "ETHx": "0xA35b1B31Ce002FBF2058D22F30f95D405200A15b",
+    "safe": "0x45B977CeCB9Dfaa17dFcBa88826ef684b8489fF6"
+  },
+  "arbitrum": {
+    "ETHx": "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7",
+    "safe": "0xe85F0d083D0CD18485E531c1A8B8a05ad2C0308f"
+  },
+  "eth-holesky": {
+    "ETHx": "0xB4F5fc289a778B80392b86fa70A7111E5bE0F859",
+    "safe": ""
+  },
+  "arb-sepolia": {
+    "ETHx": "0x947Cb49334e6571ccBFEF1f1f1178d8469D65ec7",
+    "safe": ""
+  }
+}
