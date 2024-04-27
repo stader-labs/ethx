@@ -9,7 +9,7 @@ import "./interfaces/ISocializingPool.sol";
 import "./interfaces/INodeRegistry.sol";
 import "./interfaces/IStaderStakePoolManager.sol";
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -24,7 +24,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     ValidatorStats public validatorStats;
 
     uint256 public constant MAX_ER_UPDATE_FREQUENCY = 7200 * 7; // 7 days
-    uint256 public constant ER_CHANGE_MAX_BPS = 10000;
+    uint256 public constant ER_CHANGE_MAX_BPS = 10_000;
     uint256 public override erChangeLimit;
     uint256 public constant MIN_TRUSTED_NODES = 5;
     uint256 public override trustedNodeChangeCoolingPeriod;
@@ -54,9 +54,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     bytes32 public constant ETHX_ER_UF = keccak256("ETHX_ER_UF"); // ETHx Exchange Rate, Balances Update Frequency
     bytes32 public constant SD_PRICE_UF = keccak256("SD_PRICE_UF"); // SD Price Update Frequency Key
-    bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF"); // Validator Status Update Frequency Key
-    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF"); // Withdrawn Validator Update Frequency Key
-    bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256("MISSED_ATTESTATION_PENALTY_UF"); // Missed Attestation Penalty Update Frequency Key
+    bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF"); // Validator Status Update Frequency
+        // Key
+    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF"); // Withdrawn Validator
+        // Update Frequency Key
+    bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256("MISSED_ATTESTATION_PENALTY_UF"); // Missed
+        // Attestation Penalty Update Frequency Key
     // Ready to Deposit Validators Update Frequency Key
     bytes32 public constant VALIDATOR_VERIFICATION_DETAIL_UF = keccak256("VALIDATOR_VERIFICATION_DETAIL_UF");
     mapping(bytes32 => uint256) public updateFrequencyMap;
@@ -77,8 +80,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(ETHX_ER_UF, 7200);
         setUpdateFrequency(SD_PRICE_UF, 7200);
         setUpdateFrequency(VALIDATOR_STATS_UF, 7200);
-        setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, 14400);
-        setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, 50400);
+        setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, 14_400);
+        setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, 50_400);
         setUpdateFrequency(VALIDATOR_VERIFICATION_DETAIL_UF, 7200);
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
@@ -122,9 +125,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitExchangeRateData(
-        ExchangeRate calldata _exchangeRate
-    ) external override trustedNodeOnly checkMinTrustedNodes checkERInspectionMode whenNotPaused {
+    function submitExchangeRateData(ExchangeRate calldata _exchangeRate)
+        external
+        override
+        trustedNodeOnly
+        checkMinTrustedNodes
+        checkERInspectionMode
+        whenNotPaused
+    {
         if (isPORFeedBasedERData) {
             revert InvalidERDataSource();
         }
@@ -158,13 +166,11 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
-            _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
+            submissionCount >= trustedNodesCount / 2 + 1
+                && _exchangeRate.reportingBlockNumber > exchangeRate.reportingBlockNumber
         ) {
             updateWithInLimitER(
-                _exchangeRate.totalETHBalance,
-                _exchangeRate.totalETHXSupply,
-                _exchangeRate.reportingBlockNumber
+                _exchangeRate.totalETHBalance, _exchangeRate.totalETHXSupply, _exchangeRate.reportingBlockNumber
             );
         }
     }
@@ -197,8 +203,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     // turn off erInspectionMode if `inspectionModeExchangeRate` is incorrect so that oracle/POR can push new data
     function disableERInspectionMode() public override whenNotPaused {
         if (
-            !staderConfig.onlyManagerRole(msg.sender) &&
-            erInspectionModeStartBlock + MAX_ER_UPDATE_FREQUENCY > block.number
+            !staderConfig.onlyManagerRole(msg.sender)
+                && erInspectionModeStartBlock + MAX_ER_UPDATE_FREQUENCY > block.number
         ) {
             revert CooldownNotComplete();
         }
@@ -211,9 +217,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     /// updates operator reward balances on socializing pool
     /// @param _rewardsData contains rewards merkleRoot and rewards split info
     /// @dev _rewardsData.index should not be zero
-    function submitSocializingRewardsMerkleRoot(
-        RewardsData calldata _rewardsData
-    ) external override nonReentrant trustedNodeOnly checkMinTrustedNodes whenNotPaused {
+    function submitSocializingRewardsMerkleRoot(RewardsData calldata _rewardsData)
+        external
+        override
+        nonReentrant
+        trustedNodeOnly
+        checkMinTrustedNodes
+        whenNotPaused
+    {
         if (_rewardsData.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -251,26 +262,18 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         // Emit merkle root submitted event
         emit SocializingRewardsMerkleRootSubmitted(
-            msg.sender,
-            _rewardsData.index,
-            _rewardsData.merkleRoot,
-            _rewardsData.poolId,
-            block.number
+            msg.sender, _rewardsData.index, _rewardsData.merkleRoot, _rewardsData.poolId, block.number
         );
 
         uint8 submissionCount = attestSubmission(nodeSubmissionKey, submissionCountKey);
 
         if ((submissionCount >= trustedNodesCount / 2 + 1)) {
-            address socializingPool = IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(
-                _rewardsData.poolId
-            );
+            address socializingPool =
+                IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(_rewardsData.poolId);
             ISocializingPool(socializingPool).handleRewards(_rewardsData);
 
             emit SocializingRewardsMerkleRootUpdated(
-                _rewardsData.index,
-                _rewardsData.merkleRoot,
-                _rewardsData.poolId,
-                block.number
+                _rewardsData.index, _rewardsData.merkleRoot, _rewardsData.poolId, block.number
             );
         }
     }
@@ -326,9 +329,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitValidatorStats(
-        ValidatorStats calldata _validatorStats
-    ) external override trustedNodeOnly checkMinTrustedNodes whenNotPaused {
+    function submitValidatorStats(ValidatorStats calldata _validatorStats)
+        external
+        override
+        trustedNodeOnly
+        checkMinTrustedNodes
+        whenNotPaused
+    {
         if (_validatorStats.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -376,8 +383,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
-            _validatorStats.reportingBlockNumber > validatorStats.reportingBlockNumber
+            submissionCount >= trustedNodesCount / 2 + 1
+                && _validatorStats.reportingBlockNumber > validatorStats.reportingBlockNumber
         ) {
             validatorStats = _validatorStats;
 
@@ -396,9 +403,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitWithdrawnValidators(
-        WithdrawnValidators calldata _withdrawnValidators
-    ) external override nonReentrant trustedNodeOnly checkMinTrustedNodes whenNotPaused {
+    function submitWithdrawnValidators(WithdrawnValidators calldata _withdrawnValidators)
+        external
+        override
+        nonReentrant
+        trustedNodeOnly
+        checkMinTrustedNodes
+        whenNotPaused
+    {
         if (_withdrawnValidators.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -410,10 +422,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         // Get submission keys
         bytes32 nodeSubmissionKey = keccak256(
             abi.encode(
-                msg.sender,
-                _withdrawnValidators.poolId,
-                _withdrawnValidators.reportingBlockNumber,
-                encodedPubkeys
+                msg.sender, _withdrawnValidators.poolId, _withdrawnValidators.reportingBlockNumber, encodedPubkeys
             )
         );
         bytes32 submissionCountKey = keccak256(
@@ -431,12 +440,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
-            _withdrawnValidators.reportingBlockNumber >
-            lastReportingBlockNumberForWithdrawnValidatorsByPoolId[_withdrawnValidators.poolId]
+            submissionCount >= trustedNodesCount / 2 + 1
+                && _withdrawnValidators.reportingBlockNumber
+                    > lastReportingBlockNumberForWithdrawnValidatorsByPoolId[_withdrawnValidators.poolId]
         ) {
-            lastReportingBlockNumberForWithdrawnValidatorsByPoolId[_withdrawnValidators.poolId] = _withdrawnValidators
-                .reportingBlockNumber;
+            lastReportingBlockNumberForWithdrawnValidatorsByPoolId[_withdrawnValidators.poolId] =
+                _withdrawnValidators.reportingBlockNumber;
 
             INodeRegistry(IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_withdrawnValidators.poolId))
                 .withdrawnValidators(_withdrawnValidators.sortedPubkeys);
@@ -452,9 +461,14 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitValidatorVerificationDetail(
-        ValidatorVerificationDetail calldata _validatorVerificationDetail
-    ) external override nonReentrant trustedNodeOnly checkMinTrustedNodes whenNotPaused {
+    function submitValidatorVerificationDetail(ValidatorVerificationDetail calldata _validatorVerificationDetail)
+        external
+        override
+        nonReentrant
+        trustedNodeOnly
+        checkMinTrustedNodes
+        whenNotPaused
+    {
         if (_validatorVerificationDetail.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -481,9 +495,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
         bytes32 submissionCountKey = keccak256(
             abi.encode(
-                _validatorVerificationDetail.poolId,
-                _validatorVerificationDetail.reportingBlockNumber,
-                encodedPubkeys
+                _validatorVerificationDetail.poolId, _validatorVerificationDetail.reportingBlockNumber, encodedPubkeys
             )
         );
 
@@ -500,19 +512,18 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         );
 
         if (
-            submissionCount >= trustedNodesCount / 2 + 1 &&
-            _validatorVerificationDetail.reportingBlockNumber >
-            lastReportingBlockNumberForValidatorVerificationDetailByPoolId[_validatorVerificationDetail.poolId]
+            submissionCount >= trustedNodesCount / 2 + 1
+                && _validatorVerificationDetail.reportingBlockNumber
+                    > lastReportingBlockNumberForValidatorVerificationDetailByPoolId[_validatorVerificationDetail.poolId]
         ) {
-            lastReportingBlockNumberForValidatorVerificationDetailByPoolId[
-                _validatorVerificationDetail.poolId
-            ] = _validatorVerificationDetail.reportingBlockNumber;
+            lastReportingBlockNumberForValidatorVerificationDetailByPoolId[_validatorVerificationDetail.poolId] =
+                _validatorVerificationDetail.reportingBlockNumber;
             INodeRegistry(IPoolUtils(staderConfig.getPoolUtils()).getNodeRegistry(_validatorVerificationDetail.poolId))
                 .markValidatorReadyToDeposit(
-                    _validatorVerificationDetail.sortedReadyToDepositPubkeys,
-                    _validatorVerificationDetail.sortedFrontRunPubkeys,
-                    _validatorVerificationDetail.sortedInvalidSignaturePubkeys
-                );
+                _validatorVerificationDetail.sortedReadyToDepositPubkeys,
+                _validatorVerificationDetail.sortedFrontRunPubkeys,
+                _validatorVerificationDetail.sortedInvalidSignaturePubkeys
+            );
 
             // Emit validator verification detail updated event
             emit ValidatorVerificationDetailUpdated(
@@ -527,9 +538,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     /// @inheritdoc IStaderOracle
-    function submitMissedAttestationPenalties(
-        MissedAttestationPenaltyData calldata _mapd
-    ) external override trustedNodeOnly checkMinTrustedNodes whenNotPaused {
+    function submitMissedAttestationPenalties(MissedAttestationPenaltyData calldata _mapd)
+        external
+        override
+        trustedNodeOnly
+        checkMinTrustedNodes
+        whenNotPaused
+    {
         if (_mapd.reportingBlockNumber >= block.number) {
             revert ReportingFutureBlockData();
         }
@@ -549,17 +564,13 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
         // Emit missed attestation penalty submitted event
         emit MissedAttestationPenaltySubmitted(
-            msg.sender,
-            _mapd.index,
-            block.number,
-            _mapd.reportingBlockNumber,
-            _mapd.sortedPubkeys
+            msg.sender, _mapd.index, block.number, _mapd.reportingBlockNumber, _mapd.sortedPubkeys
         );
 
         if ((submissionCount >= trustedNodesCount / 2 + 1)) {
             lastReportedMAPDIndex = _mapd.index;
             uint256 keyCount = _mapd.sortedPubkeys.length;
-            for (uint256 i; i < keyCount; ) {
+            for (uint256 i; i < keyCount;) {
                 bytes32 pubkeyRoot = UtilLib.getPubkeyRoot(_mapd.sortedPubkeys[i]);
                 missedAttestationPenalty[pubkeyRoot]++;
                 unchecked {
@@ -661,7 +672,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     function getMerkleRootReportableBlockByPoolId(uint8 _poolId) public view override returns (uint256) {
-        (, , uint256 currentEndBlock) = ISocializingPool(
+        (,, uint256 currentEndBlock) = ISocializingPool(
             IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(_poolId)
         ).getRewardDetails();
         return currentEndBlock;
@@ -696,9 +707,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     function getCurrentRewardsIndexByPoolId(uint8 _poolId) public view returns (uint256) {
-        return
-            ISocializingPool(IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(_poolId))
-                .getCurrentRewardsIndex();
+        return ISocializingPool(IPoolUtils(staderConfig.getPoolUtils()).getSocializingPoolAddress(_poolId))
+            .getCurrentRewardsIndex();
     }
 
     function getValidatorStats() external view override returns (ValidatorStats memory) {
@@ -712,7 +722,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     function attestSubmission(
         bytes32 _nodeSubmissionKey,
         bytes32 _submissionCountKey
-    ) internal returns (uint8 _submissionCount) {
+    )
+        internal
+        returns (uint8 _submissionCount)
+    {
         // Check & update node submission status
         if (nodeSubmissionKeys[_nodeSubmissionKey]) {
             revert DuplicateSubmissionFromNode();
@@ -727,10 +740,10 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     }
 
     function getPORFeedData() internal view returns (uint256, uint256, uint256) {
-        (, int256 totalETHBalanceInInt, , , ) = AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy())
-            .latestRoundData();
-        (, int256 totalETHXSupplyInInt, , , ) = AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy())
-            .latestRoundData();
+        (, int256 totalETHBalanceInInt,,,) =
+            AggregatorV3Interface(staderConfig.getETHBalancePORFeedProxy()).latestRoundData();
+        (, int256 totalETHXSupplyInInt,,,) =
+            AggregatorV3Interface(staderConfig.getETHXSupplyPORFeedProxy()).latestRoundData();
         return (uint256(totalETHBalanceInInt), uint256(totalETHXSupplyInInt), block.number);
     }
 
@@ -738,16 +751,17 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         uint256 _newTotalETHBalance,
         uint256 _newTotalETHXSupply,
         uint256 _reportingBlockNumber
-    ) internal {
-        uint256 currentExchangeRate = UtilLib.computeExchangeRate(
-            exchangeRate.totalETHBalance,
-            exchangeRate.totalETHXSupply,
-            staderConfig
-        );
+    )
+        internal
+    {
+        uint256 currentExchangeRate =
+            UtilLib.computeExchangeRate(exchangeRate.totalETHBalance, exchangeRate.totalETHXSupply, staderConfig);
         uint256 newExchangeRate = UtilLib.computeExchangeRate(_newTotalETHBalance, _newTotalETHXSupply, staderConfig);
         if (
-            !(newExchangeRate >= (currentExchangeRate * (ER_CHANGE_MAX_BPS - erChangeLimit)) / ER_CHANGE_MAX_BPS &&
-                newExchangeRate <= ((currentExchangeRate * (ER_CHANGE_MAX_BPS + erChangeLimit)) / ER_CHANGE_MAX_BPS))
+            !(
+                newExchangeRate >= (currentExchangeRate * (ER_CHANGE_MAX_BPS - erChangeLimit)) / ER_CHANGE_MAX_BPS
+                    && newExchangeRate <= ((currentExchangeRate * (ER_CHANGE_MAX_BPS + erChangeLimit)) / ER_CHANGE_MAX_BPS)
+            )
         ) {
             erInspectionMode = true;
             erInspectionModeStartBlock = block.number;
@@ -764,7 +778,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         uint256 _totalETHBalance,
         uint256 _totalETHXSupply,
         uint256 _reportingBlockNumber
-    ) internal {
+    )
+        internal
+    {
         exchangeRate.totalETHBalance = _totalETHBalance;
         exchangeRate.totalETHXSupply = _totalETHXSupply;
         exchangeRate.reportingBlockNumber = _reportingBlockNumber;
