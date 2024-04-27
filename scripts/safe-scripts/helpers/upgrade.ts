@@ -10,7 +10,7 @@ async function main(contractAddress: string, contractName: string) {
     contractName = "contracts/L2/ETHx.sol:ETHx";
   }
 
-  const proxyAdminContract = await upgrades.admin.getInstance();
+  const proxyAdminContractAddress = await upgrades.erc1967.getAdminAddress(contractAddress);
 
   const contractFactory = await ethers.getContractFactory(contractName);
 
@@ -21,16 +21,18 @@ async function main(contractAddress: string, contractName: string) {
 
   console.log(`Preparing upgrade for ${contractName} at ${contractAddress}`);
   const newImplementationAddress = await upgrades.prepareUpgrade(contractAddress, contractFactory, {
-    redeployImplementation: "always",
+    redeployImplementation: "onchange",
     unsafeAllow: ["delegatecall"],
   });
+
+  const proxyAdminContract = await ethers.getContractAt("ProxyAdmin", proxyAdminContractAddress);
 
   console.log(`Proposing upgrade for ${contractName} at ${contractAddress}`);
   const encodedFunctionCall = proxyAdminContract.interface.encodeFunctionData("upgrade", [
     contractAddress,
     newImplementationAddress,
   ]);
-  await proposeTransaction(await proxyAdminContract.address, "0", encodedFunctionCall);
+  await proposeTransaction(await proxyAdminContract.getAddress(), "0", encodedFunctionCall);
 
   console.log(
     `Upgrade transaction proposed for ${contractName} at ${contractAddress} to new implementation at ${newImplementationAddress}`,

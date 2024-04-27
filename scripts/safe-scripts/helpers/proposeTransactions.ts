@@ -8,7 +8,7 @@ import addressesJson from "../address.json";
 const addresses: any = addressesJson;
 
 async function main(transactions: SafeTransactionDataPartial[]) {
-  const inquirer = await import('inquirer');
+  const inquirer = await import("inquirer");
 
   const [signer] = await ethers.getSigners();
   const network = await ethers.provider.getNetwork();

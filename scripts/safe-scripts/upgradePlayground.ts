@@ -1,5 +1,4 @@
 import hardhat from "hardhat";
-// import { ethers, upgrades } from "hardhat";
 
 export class Upgrader {
   private async getArtifacts() {
@@ -63,10 +62,19 @@ export class Upgrader {
     }
 
     const contractInstance = await hardhat.upgrades.upgradeProxy(contractAddress, contractArtifact, {});
-    await contractInstance.deployTransaction.wait();
+    await contractInstance.deployed();
 
-    const proxyAdmin = await hardhat.upgrades.admin.getInstance();
-    const contractImpl = await proxyAdmin.callStatic.getProxyImplementation(contractInstance.address);
+    const contractInstanceAddress = await contractInstance.getAddress();
+
+    const contractImpl = await hardhat.upgrades.erc1967.getImplementationAddress(contractInstanceAddress);
+    const proxyAdminAddress = await hardhat.upgrades.erc1967.getAdminAddress(contractInstanceAddress);
+    console.log(
+      "Called Proxy admin address (%s) to upgrade proxy (%s) to the new implementation (%s) ",
+      proxyAdminAddress,
+      contractInstanceAddress,
+      contractImpl,
+    );
+
     console.log("Contract implementation ", contractImpl);
   }
 }
@@ -76,8 +84,8 @@ async function main() {
 
   const upgrader = new Upgrader();
   // (contractName: string, contractAddress: string)
-  await upgrader.validateUpgrade("ETHx", "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7");
-  // await upgrader.forceImportDeployedProxies("ETHx", "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7");
+  // await upgrader.validateUpgrade("ETHx", "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7");
+  await upgrader.forceImportDeployedProxies("ETHx", "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7");
 
   // await upgrader.validateImplementation("ETHx");
   // await upgrader.run("", "");
