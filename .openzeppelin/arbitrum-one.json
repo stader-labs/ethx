@@ -116,7 +116,7 @@
             "label": "_roles",
             "offset": 0,
             "slot": "201",
-            "type": "t_mapping(t_bytes32,t_struct(RoleData)23_storage)",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)69_storage)",
             "contract": "AccessControlUpgradeable",
             "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:57"
           },
@@ -166,7 +166,7 @@
             "label": "mapping(address => uint256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_bytes32,t_struct(RoleData)23_storage)": {
+          "t_mapping(t_bytes32,t_struct(RoleData)69_storage)": {
             "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
             "numberOfBytes": "32"
           },
@@ -174,7 +174,7 @@
             "label": "string",
             "numberOfBytes": "32"
           },
-          "t_struct(RoleData)23_storage": {
+          "t_struct(RoleData)69_storage": {
             "label": "struct AccessControlUpgradeable.RoleData",
             "members": [
               {
@@ -200,8 +200,17 @@
             "label": "uint8",
             "numberOfBytes": "1"
           }
-        }
-      }
+        },
+        "namespaces": {}
+      },
+      "allAddresses": [
+        "0xc54B43eaF921A5194c7973A4d65E055E5a1453c2",
+        "0x85d456B2DfF1fd8245387C0BfB64Dfb700e98Ef3",
+        "0xdEF49aE5FDBA8F31bBB44be6e233f6afF02918cd",
+        "0x0c383f63426caDaA45aFda5214eBcc98A2020e63",
+        "0x17534831D52f94EAf3FF7418b94179A6cDf9ae6C",
+        "0x77871417419Fd1581A2fb88D57d2589fdbf09A6D"
+      ]
     }
   }
 }
