@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import { Test } from "forge-std/Test.sol";
-import { console2 } from "forge-std/console2.sol";
-
+import "forge-std/Test.sol";
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import { ProxyAdmin } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
@@ -20,6 +18,7 @@ import { StakePoolManagerMock } from "../mocks/StakePoolManagerMock.sol";
 import { StaderOracleMock } from "../mocks/StaderOracleMock.sol";
 import { SDUtilityPoolMock } from "../mocks/SDUtilityPoolMock.sol";
 
+// solhint-disable no-console
 contract NodeELRewardVaultTest is Test {
     address private constant OPERATOR_ADDRESSS = address(500);
     address staderAdmin;
