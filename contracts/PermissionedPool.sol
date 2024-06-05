@@ -92,6 +92,7 @@ contract PermissionedPool is IStaderPoolBase, AccessControlUpgradeable, Reentran
         address nodeRegistryAddress = staderConfig.getPermissionedNodeRegistry();
         address vaultFactory = staderConfig.getVaultFactory();
         address ethDepositContract = staderConfig.getETHDepositContract();
+        //slither-disable-next-line reentrancy-eth
         uint256[] memory selectedOperatorCapacity = IPermissionedNodeRegistry(nodeRegistryAddress)
             .allocateValidatorsAndUpdateOperatorId(requiredValidators);
 
@@ -171,6 +172,7 @@ contract PermissionedPool is IStaderPoolBase, AccessControlUpgradeable, Reentran
         if (preDepositValidatorCount != 0 || address(this).balance == 0) {
             revert CouldNotDetermineExcessETH();
         }
+        //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExcessEthFromPool{
             value: address(this).balance
         }(INodeRegistry((staderConfig).getPermissionedNodeRegistry()).POOL_ID());

@@ -259,6 +259,7 @@ contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, Reentr
             withdrawCredential,
             _DEPOSIT_SIZE
         );
+        //slither-disable-next-line arbitrary-send-eth
         IDepositContract(_ethDepositContract).deposit{ value: _DEPOSIT_SIZE }(
             pubkey,
             withdrawCredential,
