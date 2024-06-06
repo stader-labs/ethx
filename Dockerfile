@@ -24,6 +24,6 @@ RUN yamlfmt -lint .github/workflows/*.yml
 RUN forge install
 RUN npm run prettier:check
 # RUN slither .
-# RUN npm run lint
+RUN npm run lint
 RUN forge test -v
 RUN forge geiger --check contracts/*.sol contracts/*/*.sol
