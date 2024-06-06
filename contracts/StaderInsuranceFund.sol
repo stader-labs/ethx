@@ -57,7 +57,6 @@ contract StaderInsuranceFund is IStaderInsuranceFund, AccessControlUpgradeable, 
         if (address(this).balance < _amount) {
             revert InSufficientBalance();
         }
-        //slither-disable-next-line arbitrary-send-eth
         IPermissionedPool(staderConfig.getPermissionedPool()).receiveInsuranceFund{ value: _amount }();
     }
 

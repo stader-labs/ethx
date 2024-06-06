@@ -6,8 +6,7 @@ import "./interfaces/IVaultProxy.sol";
 
 //contract to delegate call to respective vault implementation based on the flag of 'isValidatorWithdrawalVault'
 contract VaultProxy is IVaultProxy {
-    //slither-disable-next-line constable-states
-    bool public override vaultSettleStatus = false;
+    bool public override vaultSettleStatus;
     bool public override isValidatorWithdrawalVault;
     bool public override isInitialized;
     uint8 public override poolId;
@@ -41,7 +40,6 @@ contract VaultProxy is IVaultProxy {
         address vaultImplementation = isValidatorWithdrawalVault
             ? staderConfig.getValidatorWithdrawalVaultImplementation()
             : staderConfig.getNodeELRewardVaultImplementation();
-        //slither-disable-next-line controlled-delegatecall
         (bool success, bytes memory data) = vaultImplementation.delegatecall(_input);
         if (!success) {
             revert(string(data));

@@ -244,7 +244,6 @@ contract StaderStakePoolsManager is
         if (availableETHForNewDeposit < ETH_PER_NODE) {
             revert InsufficientBalance();
         }
-        //slither-disable-next-line reentrancy-eth
         (uint256[] memory selectedPoolCapacity, uint8[] memory poolIdArray) = IPoolSelector(
             staderConfig.getPoolSelector()
         ).poolAllocationForExcessETHDeposit(availableETHForNewDeposit);

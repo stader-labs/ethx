@@ -228,7 +228,6 @@ contract PermissionlessNodeRegistry is
         }
 
         if (frontRunValidatorsLength > 0) {
-            //slither-disable-next-line arbitrary-send-eth,reentrancy-eth
             IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).depositFund{
                 value: frontRunValidatorsLength * FRONT_RUN_PENALTY
             }();
@@ -441,7 +440,6 @@ contract PermissionlessNodeRegistry is
      */
     function transferCollateralToPool(uint256 _amount) external override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_POOL());
-        //slither-disable-next-line arbitrary-send-eth
         IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{ value: _amount }();
         emit TransferredCollateralToPool(_amount);
     }
@@ -671,7 +669,6 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
-        //slither-disable-next-line arbitrary-send-eth
         IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{
             value: (COLLATERAL_ETH - staderConfig.getPreDepositSize())
         }(operatorAddress);

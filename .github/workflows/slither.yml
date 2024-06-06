@@ -19,10 +19,10 @@ jobs:
         with:
           token: ${{ secrets.github_token }}
       - name: Run Slither
-        uses: crytic/slither-action@v0.4.0
+        uses: crytic/slither-action@v0.2.0
         id: slither
         with:
-          node-version: 18
+          node-version: 16
           sarif: results.sarif
           fail-on: config
       - if: failure()

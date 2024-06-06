@@ -142,7 +142,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
                 address nodeELVault = IPermissionlessNodeRegistry(permissionlessNodeRegistry)
                     .nodeELRewardVaultByOperatorId(operatorId);
                 if (nodeELVault.balance > 0) {
-                    //slither-disable-next-line reentrancy-eth
                     INodeELRewardVault(nodeELVault).withdraw();
                 }
             }
