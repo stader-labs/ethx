@@ -117,7 +117,7 @@ contract StaderStakePoolManagerTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderStakePoolManager.UnsupportedOperation.selector);
-        payable(stakePoolManager).call{ value: 1 ether }('abi.encodeWithSignature("nonExistentFunction()")');
+        payable(stakePoolManager).call{ value: 1 ether }(abi.encodeWithSignature("nonExistentFunction()"));
         vm.stopPrank();
     }
 

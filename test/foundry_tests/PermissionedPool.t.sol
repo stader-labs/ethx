@@ -109,7 +109,7 @@ contract PermissionedPoolTest is Test {
         address externalEOA = vm.addr(1000);
         startHoax(externalEOA);
         vm.expectRevert(IStaderPoolBase.UnsupportedOperation.selector);
-        payable(permissionedPool).call{ value: 1 ether }('abi.encodeWithSignature("nonExistentFunction()")');
+        payable(permissionedPool).call{ value: 1 ether }(abi.encodeWithSignature("nonExistentFunction()"));
         vm.stopPrank();
     }
 

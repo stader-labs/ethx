@@ -17,6 +17,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
+// solhint-disable no-console
 contract SDIncentiveControllerTest is Test {
     event EmissionRateUpdated(uint256 newEmissionRate);
     event RewardEndBlockUpdated(uint256 newRewardEndBlock);
