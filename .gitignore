@@ -8,12 +8,11 @@ typechain-types
 .vscode
 cache
 artifacts
-.openzeppelin
 keystores
 deposits
 
 # test coverage
-lcov.info 
+lcov.info
 
 # Foundry
 cache_forge/

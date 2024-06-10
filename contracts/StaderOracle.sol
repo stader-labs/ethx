@@ -9,7 +9,7 @@ import "./interfaces/ISocializingPool.sol";
 import "./interfaces/INodeRegistry.sol";
 import "./interfaces/IStaderStakePoolManager.sol";
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -24,7 +24,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     ValidatorStats public validatorStats;
 
     uint256 public constant MAX_ER_UPDATE_FREQUENCY = 7200 * 7; // 7 days
-    uint256 public constant ER_CHANGE_MAX_BPS = 10000;
+    uint256 public constant ER_CHANGE_MAX_BPS = 10_000;
     uint256 public override erChangeLimit;
     uint256 public constant MIN_TRUSTED_NODES = 5;
     uint256 public override trustedNodeChangeCoolingPeriod;
@@ -54,9 +54,12 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
 
     bytes32 public constant ETHX_ER_UF = keccak256("ETHX_ER_UF"); // ETHx Exchange Rate, Balances Update Frequency
     bytes32 public constant SD_PRICE_UF = keccak256("SD_PRICE_UF"); // SD Price Update Frequency Key
-    bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF"); // Validator Status Update Frequency Key
-    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF"); // Withdrawn Validator Update Frequency Key
-    bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256("MISSED_ATTESTATION_PENALTY_UF"); // Missed Attestation Penalty Update Frequency Key
+    bytes32 public constant VALIDATOR_STATS_UF = keccak256("VALIDATOR_STATS_UF"); // Validator Status Update Frequency
+    // Key
+    bytes32 public constant WITHDRAWN_VALIDATORS_UF = keccak256("WITHDRAWN_VALIDATORS_UF"); // Withdrawn Validator
+    // Update Frequency Key
+    bytes32 public constant MISSED_ATTESTATION_PENALTY_UF = keccak256("MISSED_ATTESTATION_PENALTY_UF"); // Missed
+    // Attestation Penalty Update Frequency Key
     // Ready to Deposit Validators Update Frequency Key
     bytes32 public constant VALIDATOR_VERIFICATION_DETAIL_UF = keccak256("VALIDATOR_VERIFICATION_DETAIL_UF");
     mapping(bytes32 => uint256) public updateFrequencyMap;
@@ -77,8 +80,8 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         setUpdateFrequency(ETHX_ER_UF, 7200);
         setUpdateFrequency(SD_PRICE_UF, 7200);
         setUpdateFrequency(VALIDATOR_STATS_UF, 7200);
-        setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, 14400);
-        setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, 50400);
+        setUpdateFrequency(WITHDRAWN_VALIDATORS_UF, 14_400);
+        setUpdateFrequency(MISSED_ATTESTATION_PENALTY_UF, 50_400);
         setUpdateFrequency(VALIDATOR_VERIFICATION_DETAIL_UF, 7200);
         staderConfig = IStaderConfig(_staderConfig);
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
