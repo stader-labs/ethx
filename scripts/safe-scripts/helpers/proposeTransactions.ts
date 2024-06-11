@@ -7,15 +7,21 @@ import addressesJson from "../address.json";
 
 const addresses: any = addressesJson;
 
+const TX_SERVICE_URL: { [key: string]: string } = {
+  holesky: "https://transaction-holesky.holesky-safe.protofire.io/api",
+  // Add other networks with txServiceUrl as needed
+};
+
 async function main(transactions: SafeTransactionDataPartial[]) {
   const inquirer = await import("inquirer");
 
   const [signer] = await ethers.getSigners();
   const network = await ethers.provider.getNetwork();
-  if (addresses[network.name].safe === undefined) {
-    throw new Error(`Chain name mismatch got ${network.name} with no safe address in address.json`);
+  const networkName = network.name;
+  if (addresses[networkName].safeAddress === undefined) {
+    throw new Error(`Chain name mismatch got ${networkName} with no safe address in address.json`);
   }
-  const safeAddress = addresses[network.name].safe;
+  const safeAddress = addresses[networkName].safeAddress;
 
   // Create EthAdapter instance
   const ethAdapter = new EthersAdapter({
@@ -28,11 +34,18 @@ async function main(transactions: SafeTransactionDataPartial[]) {
     ethAdapter,
     safeAddress,
   });
-
-  // Create Safe API Kit instance
-  const service = new SafeApiKit({
+  const config: { chainId: bigint; txServiceUrl?: string } = {
     chainId: network.chainId,
-  });
+  };
+
+  const txServiceUrl = TX_SERVICE_URL[networkName];
+  if (txServiceUrl) {
+    config.txServiceUrl = txServiceUrl;
+  }
+
+  // Create Safe API Kit instanceß
+  const service = new SafeApiKit(config);
+
   // Fetch the current nonce from the Safe
   const currentNonce = await service.getNextNonce(safeAddress);
   const firstNonce = await safe.getNonce();

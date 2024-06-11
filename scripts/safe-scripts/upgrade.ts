@@ -5,7 +5,7 @@ import addressJson from "./address.json";
 
 const contractName = "ETHx";
 
-const address: any = addressJson;
+const address: { [networkName: string]: { contracts: { name: string; address: string }[] } } = addressJson;
 
 async function main() {
   const { ethers } = hre;
@@ -16,7 +16,12 @@ async function main() {
 
   try {
     console.log("Upgrading Contract...");
-    await upgrade(address[network.name][contractName], contractName);
+    const networkData = address[network.name];
+    const contract = networkData.contracts.find((c) => c.name === contractName);
+    if (contract === undefined) {
+      throw new Error(`Contract ${contractName} not found`);
+    }
+    await upgrade(contract?.address, contractName);
   } catch (error) {
     console.error("An error occurred:", error);
   }
