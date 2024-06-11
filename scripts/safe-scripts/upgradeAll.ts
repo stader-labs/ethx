@@ -1,6 +1,7 @@
 const { ethers, upgrades } = require("hardhat");
 import upgradeHelper from "./helpers/upgrade";
 import networkAddresses from "./address.json";
+import { artifacts } from "hardhat";
 
 async function main(networks: { [networkName: string]: { contracts: { name: string; address: string }[] } }) {
   const provider = ethers.provider;
@@ -23,8 +24,7 @@ async function main(networks: { [networkName: string]: { contracts: { name: stri
     }
     try {
       await forceImportDeployedProxies(address, name);
-      const artifact = await getArtifact(name);
-      const compiledBytecode = artifact.bytecode;
+      const compiledBytecode = await getArtifact(name);
 
       if (deployedBytecode !== compiledBytecode) {
         console.warn(`Contract "${name}" is out of date!`);
@@ -46,12 +46,12 @@ async function getDeployedBytecode(address: string, provider: any) {
 }
 
 async function getArtifact(name: string) {
-  const contractFactory = await ethers.getContractFactory(name);
-  return contractFactory;
+  const artifact = await artifacts.readArtifact(name);
+  return artifact.deployedBytecode;
 }
 
 async function forceImportDeployedProxies(contractAddress: string, contractName: string) {
-  const contractArtifact = await getArtifact(contractName);
+  const contractArtifact = await ethers.getContractFactory(contractName);
   await upgrades.forceImport(contractAddress, contractArtifact, { kind: "transparent" });
 }
 
