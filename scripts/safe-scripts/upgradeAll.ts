@@ -13,25 +13,22 @@ async function main(networks: { [networkName: string]: { contracts: { name: stri
   for (let { name, address } of networkContracts) {
     console.log(`  - Checking contract "${name}" at address ${address}`);
 
-    if (name === "ETHx") {
-      name = networkName === "arbitrum" ? "contracts/L2/ETHx.sol:ETHx" : "contracts/ETHx.sol:ETHx";
-    }
-
     const deployedBytecode = await getDeployedBytecode(address, provider);
     if (!deployedBytecode) {
-      console.error(`Failed to retrieve deployed bytecode for "${name}". Skipping.`);
+      console.error(`     Failed to retrieve deployed bytecode for "${name}". Skipping.`);
       continue;
     }
     try {
-      await forceImportDeployedProxies(address, name);
+      // Uncomment below line if network files are lost and need to be force import.
+      // await forceImportDeployedProxies(address, name);
       const compiledBytecode = await getArtifact(name);
 
       if (deployedBytecode !== compiledBytecode) {
-        console.warn(`Contract "${name}" is out of date!`);
-        console.log(`Upgrading to latest version...`);
+        console.warn(`     Contract "${name}" is out of date!`);
+        console.log(`      Upgrading to latest version...`);
         await upgradeHelper(address, name);
       } else {
-        console.log(`"${name}" is already up to date on network "${networkName}".`);
+        console.log(`      "${name}" is already up to date on network "${networkName}".`);
       }
     } catch (error) {
       console.error(`Error checking or upgrading "${name}" on network "${networkName}":`, error);

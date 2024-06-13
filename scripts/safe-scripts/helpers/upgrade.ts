@@ -5,10 +5,6 @@ async function main(contractAddress: string, contractName: string) {
   const { ethers, upgrades } = hre;
   const network = await ethers.provider.getNetwork();
 
-  if (contractName === "ETHx") {
-    contractName = network.name === "arbitrum" ? "contracts/L2/ETHx.sol:ETHx" : "contracts/ETHx.sol:ETHx";
-  }
-
   const proxyAdminContractAddress = await upgrades.erc1967.getAdminAddress(contractAddress);
 
   const contractFactory = await ethers.getContractFactory(contractName);
