@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import "./library/ValidatorStatus.sol";
-import "./interfaces/IStaderConfig.sol";
-import "./interfaces/IVaultFactory.sol";
-import "./interfaces/IPoolUtils.sol";
-import "./interfaces/INodeRegistry.sol";
-import "./interfaces/IPermissionedPool.sol";
-import "./interfaces/IValidatorWithdrawalVault.sol";
-import "./interfaces/SDCollateral/ISDCollateral.sol";
-import "./interfaces/IPermissionedNodeRegistry.sol";
+import { UtilLib } from "./library/UtilLib.sol";
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { ValidatorStatus } from "./library/ValidatorStatus.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { IVaultFactory } from "./interfaces/IVaultFactory.sol";
+import { IPoolUtils } from "./interfaces/IPoolUtils.sol";
+import { Operator, Validator, INodeRegistry } from "./interfaces/INodeRegistry.sol";
+import { IPermissionedPool } from "./interfaces/IPermissionedPool.sol";
+import { IValidatorWithdrawalVault } from "./interfaces/IValidatorWithdrawalVault.sol";
+import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
+import { IPermissionedNodeRegistry } from "./interfaces/IPermissionedNodeRegistry.sol";
 
 contract PermissionedNodeRegistry is
     INodeRegistry,

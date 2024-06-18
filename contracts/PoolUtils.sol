@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "./interfaces/IPoolUtils.sol";
-import "./interfaces/IStaderPoolBase.sol";
-import "./interfaces/IStaderConfig.sol";
+import { UtilLib } from "./library/UtilLib.sol";
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { IPoolUtils } from "./interfaces/IPoolUtils.sol";
+import { IStaderPoolBase } from "./interfaces/IStaderPoolBase.sol";
+import { INodeRegistry } from "./interfaces/INodeRegistry.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
 
 contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
     uint64 private constant PUBKEY_LENGTH = 48;

@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
-import "./interfaces/IStaderConfig.sol";
-import "./interfaces/ISDIncentiveController.sol";
-import "./interfaces/ISDUtilityPool.sol";
-import "./interfaces/SDCollateral/ISDCollateral.sol";
-import "./interfaces/IPoolUtils.sol";
-import "./interfaces/IOperatorRewardsCollector.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { UtilLib } from "./library/UtilLib.sol";
+
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { ISDIncentiveController } from "./interfaces/ISDIncentiveController.sol";
+import { ISDUtilityPool, OperatorLiquidation, UserData } from "./interfaces/ISDUtilityPool.sol";
+import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
+import { IPoolUtils } from "./interfaces/IPoolUtils.sol";
+import { IOperatorRewardsCollector } from "./interfaces/IOperatorRewardsCollector.sol";
 
 contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgradeable {
     using Math for uint256;

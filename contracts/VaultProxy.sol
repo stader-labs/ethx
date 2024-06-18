@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
-import "./interfaces/IVaultProxy.sol";
+import { UtilLib } from "./library/UtilLib.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { IVaultProxy } from "./interfaces/IVaultProxy.sol";
 
 //contract to delegate call to respective vault implementation based on the flag of 'isValidatorWithdrawalVault'
 contract VaultProxy is IVaultProxy {
@@ -40,6 +41,7 @@ contract VaultProxy is IVaultProxy {
         address vaultImplementation = isValidatorWithdrawalVault
             ? staderConfig.getValidatorWithdrawalVaultImplementation()
             : staderConfig.getNodeELRewardVaultImplementation();
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory data) = vaultImplementation.delegatecall(_input);
         if (!success) {
             revert(string(data));

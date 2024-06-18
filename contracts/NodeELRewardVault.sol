@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { UtilLib } from "./library/UtilLib.sol";
 
-import "./interfaces/IPoolUtils.sol";
-import "./interfaces/IVaultProxy.sol";
-import "./interfaces/INodeRegistry.sol";
-import "./interfaces/INodeELRewardVault.sol";
-import "./interfaces/IStaderStakePoolManager.sol";
-import "./interfaces/IOperatorRewardsCollector.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { IPoolUtils } from "./interfaces/IPoolUtils.sol";
+import { IVaultProxy } from "./interfaces/IVaultProxy.sol";
+import { INodeELRewardVault } from "./interfaces/INodeELRewardVault.sol";
+import { IStaderStakePoolManager } from "./interfaces/IStaderStakePoolManager.sol";
+import { IOperatorRewardsCollector } from "./interfaces/IOperatorRewardsCollector.sol";
 
 contract NodeELRewardVault is INodeELRewardVault {
-    constructor() {}
-
     /**
      * @notice Allows the contract to receive ETH
      * @dev execution layer rewards may be sent as plain ETH transfers

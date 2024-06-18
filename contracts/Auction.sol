@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import "../contracts/interfaces/SDCollateral/IAuction.sol";
-import "../contracts/interfaces/IStaderStakePoolManager.sol";
-
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { UtilLib } from "./library/UtilLib.sol";
+import { IAuction } from "../contracts/interfaces/SDCollateral/IAuction.sol";
+import { IStaderStakePoolManager } from "../contracts/interfaces/IStaderStakePoolManager.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
 
 contract Auction is IAuction, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public override staderConfig;

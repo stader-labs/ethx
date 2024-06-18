@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { MerkleProofUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./interfaces/ISocializingPool.sol";
-import "./interfaces/SDCollateral/ISDCollateral.sol";
-import "./interfaces/IStaderStakePoolManager.sol";
-import "./interfaces/IPermissionlessNodeRegistry.sol";
+import { UtilLib } from "./library/UtilLib.sol";
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { ISocializingPool, RewardsData } from "./interfaces/ISocializingPool.sol";
+import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
+import { IStaderStakePoolManager } from "./interfaces/IStaderStakePoolManager.sol";
 
 contract SocializingPool is
     ISocializingPool,

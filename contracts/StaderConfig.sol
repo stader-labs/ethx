@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import "./interfaces/IStaderConfig.sol";
+import { UtilLib } from "./library/UtilLib.sol";
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
 
 contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     // staked ETH per node on beacon chain i.e. 32 ETH

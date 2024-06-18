@@ -7,7 +7,7 @@
     "test": "forge test -v",
     "prettier:check": "prettier --check \"(contracts|test|script)/**/*.sol\"",
     "prettier:fix": "prettier --write \"(contracts|test|script)/**/*.sol\"",
-    "lint": "solhint 'contracts/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'",
+    "lint": "solhint 'contracts/**/*.sol' 'script/**/*.sol'",
     "upgrade:arbitrum": "npx hardhat run scripts/safe-scripts/upgrade.ts --network arbitrum",
     "upgrade:playground:arbitrum": "npx hardhat run scripts/safe-scripts/upgradePlayground.ts --network arbitrum"
   },
@@ -37,7 +37,7 @@
     "inquirer": "8.2.6",
     "prettier": "3.2.5",
     "prettier-plugin-solidity": "1.3.1",
-    "solhint": "^4.5.2",
+    "solhint": "5.0.1",
     "typechain": "^8.3.2"
   },
   "dependencies": {

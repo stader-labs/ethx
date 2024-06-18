@@ -1,25 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
-import "./library/ValidatorStatus.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "./VaultProxy.sol";
-import "./interfaces/IPenalty.sol";
-import "./interfaces/IPoolUtils.sol";
-import "./interfaces/INodeRegistry.sol";
-import "./interfaces/IStaderStakePoolManager.sol";
-import "./interfaces/IValidatorWithdrawalVault.sol";
-import "./interfaces/SDCollateral/ISDCollateral.sol";
-import "./interfaces/IOperatorRewardsCollector.sol";
+import { UtilLib } from "./library/UtilLib.sol";
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { VaultProxy } from "./VaultProxy.sol";
+import { IPenalty } from "./interfaces/IPenalty.sol";
+import { IPoolUtils } from "./interfaces/IPoolUtils.sol";
+import { INodeRegistry } from "./interfaces/INodeRegistry.sol";
+import { IStaderStakePoolManager } from "./interfaces/IStaderStakePoolManager.sol";
+import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
+import { IOperatorRewardsCollector } from "./interfaces/IOperatorRewardsCollector.sol";
+import { IValidatorWithdrawalVault } from "./interfaces/IValidatorWithdrawalVault.sol";
 
 contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     bool internal vaultSettleStatus;
     using Math for uint256;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
+    // solhint-disable-next-line no-empty-blocks
     constructor() {}
 
     // Allows the contract to receive ETH
@@ -89,9 +90,9 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
     {
         uint8 poolId = VaultProxy(payable(address(this))).poolId();
         IStaderConfig staderConfig = VaultProxy(payable(address(this))).staderConfig();
-        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
+        uint256 totalStakedEth = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(poolId, staderConfig); // 0, incase of permissioned NOs
-        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 usersETH = totalStakedEth - collateralETH;
         uint256 contractBalance = address(this).balance;
 
         uint256 totalRewards;
@@ -99,12 +100,12 @@ contract ValidatorWithdrawalVault is IValidatorWithdrawalVault {
         if (contractBalance <= usersETH) {
             _userShare = contractBalance;
             return (_userShare, _operatorShare, _protocolShare);
-        } else if (contractBalance <= TOTAL_STAKED_ETH) {
+        } else if (contractBalance <= totalStakedEth) {
             _userShare = usersETH;
             _operatorShare = contractBalance - _userShare;
             return (_userShare, _operatorShare, _protocolShare);
         } else {
-            totalRewards = contractBalance - TOTAL_STAKED_ETH;
+            totalRewards = contractBalance - totalStakedEth;
             _operatorShare = collateralETH;
             _userShare = usersETH;
         }
