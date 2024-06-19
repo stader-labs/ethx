@@ -1,18 +1,40 @@
 {
+  "holesky": {
+    "contracts": [
+      { "name": "ETHx", "address": "0xB4F5fc289a778B80392b86fa70A7111E5bE0F859" },
+      { "name": "StaderConfig", "address": "0x50FD3384783EE49011E7b57d7A3430a762b3f3F2" },
+      { "name": "VaultFactory", "address": "0xc83B40Ad346e0dEFeF2cD9989a1bC6f6B86772bD" },
+      { "name": "Auction", "address": "0xbADbFbda220806ab9ad59C6b9eDe3d6631B4Eb1d" },
+      { "name": "OperatorRewardsCollector", "address": "0x3E018b4DD6105426Aa35593a111C37A6c7bf7D8e" },
+      { "name": "Penalty", "address": "0x330Bc84eae6dEC3282A94359cC0eb7856fa399c3" },
+      { "name": "PermissionedNodeRegistry", "address": "0x146B82b471dA1fC7f8E04DD33a6aD063f212F24B" },
+      { "name": "PermissionedPool", "address": "0x404D6534C0732B2B2E177B82DFd3526AB76f1f47" },
+      { "name": "PermissionlessNodeRegistry", "address": "0x08CDa83AfEA67cC932daEb2Cacf1ee2C09Fb0F75" },
+      { "name": "PermissionlessPool", "address": "0x9d8003bfd1AA879776e279BAa9E5C9C0a9B69E21" },
+      { "name": "PoolSelector", "address": "0xC6047C19865EB6f6D51109cf9B0a33e9746395e3" },
+      { "name": "PoolUtils", "address": "0x74D92F18017aDbA80052Ae1C66b29ee35d477644" },
+      { "name": "SDCollateral", "address": "0x88D9599C5955DC40371d462D1b6F994B55316242" },
+      { "name": "SocializingPool", "address": "0xda68C8E02747C246250ca0D28c1bbb5949d90fBC" },
+      { "name": "SocializingPool", "address": "0x47C34e95a15C022450711174E1F0b676618cBa58" },
+      { "name": "StaderInsuranceFund", "address": "0x6118558114A1d2c9634dA647C3D3330CADc8913C" },
+      { "name": "StaderOracle", "address": "0x90ED1c6563e99Ea284F7940b1b443CE0BC4fC3e4" },
+      { "name": "StaderStakePoolsManager", "address": "0x7F09ceb3874F5E35Cd2135F56fd4329b88c5d119" },
+      { "name": "UserWithdrawalManager", "address": "0x3F6F1C1081744c18Bd67DD518F363B9d4c76E1d2" },
+      { "name": "SDUtilityPool", "address": "0x854b60e64E7dedd328bf782Db5601fbc07132b66" },
+      { "name": "SDIncentiveController", "address": "0x016524D32DA97621E51605AbAABc140aA039D29a" }
+    ],
+    "safeAddress": "0x8AD81487E553123A5f54fA688892a159AA6Ce53C"
+  },
   "mainnet": {
-    "ETHx": "0xA35b1B31Ce002FBF2058D22F30f95D405200A15b",
-    "safe": "0x45B977CeCB9Dfaa17dFcBa88826ef684b8489fF6"
+    "contracts": [{ "name": "ETHx", "address": "0xA35b1B31Ce002FBF2058D22F30f95D405200A15b" }],
+    "safeAddress": "0x45B977CeCB9Dfaa17dFcBa88826ef684b8489fF6"
   },
   "arbitrum": {
-    "ETHx": "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7",
-    "safe": "0xe85F0d083D0CD18485E531c1A8B8a05ad2C0308f"
-  },
-  "eth-holesky": {
-    "ETHx": "0xB4F5fc289a778B80392b86fa70A7111E5bE0F859",
-    "safe": ""
+    "contracts": [{ "name": "ETHx", "address": "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7" }],
+    "safeAddress": "0xe85F0d083D0CD18485E531c1A8B8a05ad2C0308f"
   },
   "arb-sepolia": {
-    "ETHx": "0x947Cb49334e6571ccBFEF1f1f1178d8469D65ec7",
-    "safe": ""
+    "contracts": [{ "name": "ETHx", "address": "0x947Cb49334e6571ccBFEF1f1f1178d8469D65ec7" }],
+    "safeAddress": ""
   }
 }

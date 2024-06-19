@@ -5,11 +5,6 @@ async function main(contractAddress: string, contractName: string) {
   const { ethers, upgrades } = hre;
   const network = await ethers.provider.getNetwork();
 
-  if (network.name === "arbitrum" && contractName === "ETHx") {
-    // override contractName for Arbitrum
-    contractName = "contracts/L2/ETHx.sol:ETHx";
-  }
-
   const proxyAdminContractAddress = await upgrades.erc1967.getAdminAddress(contractAddress);
 
   const contractFactory = await ethers.getContractFactory(contractName);
@@ -21,7 +16,7 @@ async function main(contractAddress: string, contractName: string) {
 
   console.log(`Preparing upgrade for ${contractName} at ${contractAddress}`);
   const newImplementationAddress = await upgrades.prepareUpgrade(contractAddress, contractFactory, {
-    redeployImplementation: "onchange",
+    redeployImplementation: "always",
     unsafeAllow: ["delegatecall"],
   });
 

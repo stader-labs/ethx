@@ -39,6 +39,10 @@ const config: HardhatUserConfig = {
       url: process.env.PROVIDER_URL_ARBITRUM ?? "https://arb1.arbitrum.io/rpc",
       accounts: [process.env.OWNER_PRIVATE_KEY_ARBITRUM ?? ethers.Wallet.createRandom().privateKey],
     },
+    holesky: {
+      url: process.env.PROVIDER_URL_HOLESKY ?? "https://1rpc.io/holesky",
+      accounts: [process.env.OWNER_PRIVATE_KEY_HOLESKY ?? ethers.Wallet.createRandom().privateKey],
+    },
   },
   etherscan: {
     // Your API key for Etherscan
