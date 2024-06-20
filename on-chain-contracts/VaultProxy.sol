@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
 import './library/UtilLib.sol';
@@ -14,7 +14,9 @@ contract VaultProxy is IVaultProxy {
     address public override owner;
     IStaderConfig public override staderConfig;
 
-    constructor() {}
+    constructor() {
+        isInitialized = true;
+    }
 
     //initialise the vault proxy with data
     function initialise(
@@ -33,6 +35,7 @@ contract VaultProxy is IVaultProxy {
         id = _id;
         staderConfig = IStaderConfig(_staderConfig);
         owner = staderConfig.getAdmin();
+        UtilLib.checkNonZeroAddress(owner);
     }
 
     /**route all call to this proxy contract to the respective latest vault contract
