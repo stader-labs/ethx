@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "../library/ValidatorStatus.sol";
-
-import "./ISocializingPool.sol";
-import "./IStaderConfig.sol";
+import { IStaderConfig } from "./IStaderConfig.sol";
+import { RewardsData } from "./ISocializingPool.sol";
 
 struct SDPriceData {
     uint256 reportingBlockNumber;

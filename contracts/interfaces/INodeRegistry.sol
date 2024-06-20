@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "../library/ValidatorStatus.sol";
+import { ValidatorStatus } from "../library/ValidatorStatus.sol";
 
 struct Validator {
     ValidatorStatus status; // status of validator

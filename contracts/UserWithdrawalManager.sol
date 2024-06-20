@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import "./ETHx.sol";
-import "./interfaces/IStaderConfig.sol";
-import "./interfaces/IStaderOracle.sol";
-import "./interfaces/IStaderStakePoolManager.sol";
-import "./interfaces/IUserWithdrawalManager.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { UtilLib } from "./library/UtilLib.sol";
+
+import { ETHx } from "./ETHx.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { IStaderOracle } from "./interfaces/IStaderOracle.sol";
+import { IStaderStakePoolManager } from "./interfaces/IStaderStakePoolManager.sol";
+import { IUserWithdrawalManager } from "./interfaces/IUserWithdrawalManager.sol";
 
 contract UserWithdrawalManager is
     IUserWithdrawalManager,
@@ -140,7 +142,7 @@ contract UserWithdrawalManager is
             revert ProtocolNotHealthy();
         }
         address poolManager = staderConfig.getStakePoolManager();
-        uint256 DECIMALS = staderConfig.getDecimals();
+        uint256 ethxDecimals = staderConfig.getDecimals();
         uint256 exchangeRate = IStaderStakePoolManager(poolManager).getExchangeRate();
         uint256 maxRequestIdToFinalize = Math.min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit) - 1;
         uint256 lockedEthXToBurn;
@@ -151,7 +153,7 @@ contract UserWithdrawalManager is
             UserWithdrawInfo memory userWithdrawInfo = userWithdrawRequests[requestId];
             uint256 requiredEth = userWithdrawInfo.ethExpected;
             uint256 lockedEthX = userWithdrawInfo.ethXAmount;
-            uint256 minEThRequiredToFinalizeRequest = Math.min(requiredEth, (lockedEthX * exchangeRate) / DECIMALS);
+            uint256 minEThRequiredToFinalizeRequest = Math.min(requiredEth, (lockedEthX * exchangeRate) / ethxDecimals);
             if (
                 (ethToSendToFinalizeRequest + minEThRequiredToFinalizeRequest > pooledETH) ||
                 (userWithdrawInfo.requestBlock + staderConfig.getMinBlockDelayToFinalizeWithdrawRequest() >

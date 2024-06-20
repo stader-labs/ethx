@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "./library/UtilLib.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import "./interfaces/IPenalty.sol";
-import "./interfaces/IRatedV1.sol";
-import "./interfaces/IStaderOracle.sol";
-import "./interfaces/IStaderConfig.sol";
+import { UtilLib } from "./library/UtilLib.sol";
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { IPenalty } from "./interfaces/IPenalty.sol";
+import { IStaderOracle } from "./interfaces/IStaderOracle.sol";
+import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
+import { IRatedV1 } from "./interfaces/IRatedV1.sol";
 
 contract Penalty is IPenalty, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     IStaderConfig public staderConfig;

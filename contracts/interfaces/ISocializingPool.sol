@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.16;
 
-import "./IStaderConfig.sol";
+import { IStaderConfig } from "./IStaderConfig.sol";
 
 /// @title RewardsData
 /// @notice This struct holds rewards merkleRoot and rewards split

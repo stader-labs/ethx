@@ -10,7 +10,7 @@ import "../mocks/PoolUtilsMock.sol";
 import "../mocks/StaderOracleMock.sol";
 
 import "forge-std/Test.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 

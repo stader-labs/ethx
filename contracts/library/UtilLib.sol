@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "../interfaces/IStaderConfig.sol";
-import "../interfaces/INodeRegistry.sol";
-import "../interfaces/IPoolUtils.sol";
-import "../interfaces/IVaultProxy.sol";
+import { IStaderConfig } from "../interfaces/IStaderConfig.sol";
+import { INodeRegistry } from "../interfaces/INodeRegistry.sol";
+import { IPoolUtils } from "../interfaces/IPoolUtils.sol";
+import { IVaultProxy } from "../interfaces/IVaultProxy.sol";
 
 library UtilLib {
     error ZeroAddress();

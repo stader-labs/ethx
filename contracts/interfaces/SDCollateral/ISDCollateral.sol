@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import "../IStaderConfig.sol";
+import { IStaderConfig } from "../IStaderConfig.sol";
 
 interface ISDCollateral {
     struct PoolThresholdInfo {
