@@ -1,5 +1,6 @@
 import hre from "hardhat";
 import upgrade from "./helpers/upgrade";
+import proposeTransaction from "./helpers/proposeTransaction";
 
 import addressJson from "./address.json";
 
@@ -21,7 +22,8 @@ async function main() {
     if (contract === undefined) {
       throw new Error(`Contract ${contractName} not found`);
     }
-    await upgrade(contract?.address, contractName);
+    const {to, value, data} = await upgrade(contract?.address, contractName);
+    await proposeTransaction(to, data, value);
   } catch (error) {
     console.error("An error occurred:", error);
   }

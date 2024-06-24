@@ -1,6 +1,7 @@
 const { ethers, upgrades } = require("hardhat");
 import upgradeHelper from "./helpers/upgrade";
 import networkAddresses from "./address.json";
+import proposeTransaction from "./helpers/proposeTransaction";
 import { artifacts } from "hardhat";
 
 async function main(networks: { [networkName: string]: { contracts: { name: string; address: string }[] } }) {
@@ -26,7 +27,8 @@ async function main(networks: { [networkName: string]: { contracts: { name: stri
       if (deployedBytecode !== compiledBytecode) {
         console.warn(`     Contract "${name}" is out of date!`);
         console.log(`      Upgrading to latest version...`);
-        await upgradeHelper(address, name);
+       const {to, value, data} =  await upgradeHelper(address, name);
+        await proposeTransaction(to, data, value);
       } else {
         console.log(`      "${name}" is already up to date on network "${networkName}".`);
       }

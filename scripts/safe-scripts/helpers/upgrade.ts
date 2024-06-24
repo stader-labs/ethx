@@ -1,6 +1,4 @@
 import hre from "hardhat";
-import proposeTransaction from "./proposeTransaction";
-
 async function main(contractAddress: string, contractName: string) {
   const { ethers, upgrades } = hre;
   const network = await ethers.provider.getNetwork();
@@ -27,12 +25,19 @@ async function main(contractAddress: string, contractName: string) {
     contractAddress,
     newImplementationAddress,
   ]);
-  await proposeTransaction(await proxyAdminContract.getAddress(), "0", encodedFunctionCall);
 
   console.log(
     `Upgrade transaction proposed for ${contractName} at ${contractAddress} to new implementation at ${newImplementationAddress}`,
   );
   console.log(`When finished run to verify:`);
   console.log(`npx hardhat verify ${newImplementationAddress} --network ${network.name}`);
+  console.log("\n");
+  
+
+  const to = await proxyAdminContract.getAddress();
+  const value ="0"
+  const data = encodedFunctionCall;
+
+  return{to, value, data};
 }
 export default main;
