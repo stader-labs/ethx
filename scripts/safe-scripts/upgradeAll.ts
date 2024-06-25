@@ -1,8 +1,8 @@
-const { ethers, upgrades } = require("hardhat");
+const { ethers } = require("hardhat");
 import upgradeHelper from "./helpers/upgrade";
 import networkAddresses from "./address.json";
 import proposeTransaction from "./helpers/proposeTransaction";
-import { artifacts } from "hardhat";
+import {getArtifact, getDeployedBytecode, forceImportDeployedProxies} from "./helpers/utils";
 
 async function main(networks: { [networkName: string]: { contracts: { name: string; address: string }[] } }) {
   const provider = ethers.provider;
@@ -36,22 +36,6 @@ async function main(networks: { [networkName: string]: { contracts: { name: stri
       console.error(`Error checking or upgrading "${name}" on network "${networkName}":`, error);
     }
   }
-}
-
-async function getDeployedBytecode(address: string, provider: any) {
-  const contractImpl = await upgrades.erc1967.getImplementationAddress(address);
-  const response = await provider.getCode(contractImpl);
-  return response;
-}
-
-async function getArtifact(name: string) {
-  const artifact = await artifacts.readArtifact(name);
-  return artifact.deployedBytecode;
-}
-
-async function forceImportDeployedProxies(contractAddress: string, contractName: string) {
-  const contractArtifact = await ethers.getContractFactory(contractName);
-  await upgrades.forceImport(contractAddress, contractArtifact, { kind: "transparent" });
 }
 
 main(networkAddresses)
