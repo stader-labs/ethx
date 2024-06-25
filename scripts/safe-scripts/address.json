@@ -26,7 +26,29 @@
     "safeAddress": "0x8AD81487E553123A5f54fA688892a159AA6Ce53C"
   },
   "mainnet": {
-    "contracts": [{ "name": "ETHx", "address": "0xA35b1B31Ce002FBF2058D22F30f95D405200A15b" }],
+    "contracts": [
+      { "name": "ETHx", "address": "0xA35b1B31Ce002FBF2058D22F30f95D405200A15b" },
+      { "name": "StaderConfig", "address": "0x4ABEF2263d5A5ED582FC9A9789a41D85b68d69DB" },
+      { "name": "VaultFactory", "address": "0x03ABEEC03BF39ac5A5C8886cF3496326d8164E1E" },
+      { "name": "Auction", "address": "0x85A22763f94D703d2ee39E9374616ae4C1612569" },
+      { "name": "OperatorRewardsCollector", "address": "0x84ffDC9De310144D889540A49052F6d1AdB2C335" },
+      { "name": "Penalty", "address": "0x84645f1B80475992Df2C65c28bE6688d15dc6ED6" },
+      { "name": "PermissionedNodeRegistry", "address": "0xaf42d795A6D279e9DCc19DC0eE1cE3ecd4ecf5dD" },
+      { "name": "PermissionedPool", "address": "0x09134C643A6B95D342BdAf081Fa473338F066572" },
+      { "name": "PermissionlessNodeRegistry", "address": "0x4f4Bfa0861F62309934a5551E0B2541Ee82fdcF1" },
+      { "name": "PermissionlessPool", "address": "0xd1a72Bd052e0d65B7c26D3dd97A98B74AcbBb6c5" },
+      { "name": "PoolSelector", "address": "0x62e0b431990Ea128fe685E764FB04e7d604603B0" },
+      { "name": "PoolUtils", "address": "0xeDA89ed8F89D786D816F8E14CF8d2F90c6BF763f" },
+      { "name": "SDCollateral", "address": "0x7Af4730cc8EbAd1a050dcad5c03c33D2793EE91f" },
+      { "name": "SocializingPool", "address": "0x9d4C3166c59412CEdBe7d901f5fDe41903a1d6Fc" },
+      { "name": "SocializingPool", "address": "0x1DE458031bFbe5689deD5A8b9ed57e1E79EaB2A4" },
+      { "name": "StaderInsuranceFund", "address": "0xbe3781CE437Cc3fC8c8167913B4d462347D11F20" },
+      { "name": "StaderOracle", "address": "0xF64bAe65f6f2a5277571143A24FaaFDFC0C2a737" },
+      { "name": "StaderStakePoolsManager", "address": "0xcf5EA1b38380f6aF39068375516Daf40Ed70D299" },
+      { "name": "UserWithdrawalManager", "address": "0x9F0491B32DBce587c50c4C43AB303b06478193A7" },
+      { "name": "SDUtilityPool", "address": "0xED6EE5049f643289ad52411E9aDeC698D04a9602" },
+      { "name": "SDIncentiveController", "address": "0xe225825bcf20F39E2F2e2170412a3247D83492D0" }
+    ],
     "safeAddress": "0x45B977CeCB9Dfaa17dFcBa88826ef684b8489fF6"
   },
   "arbitrum": {
