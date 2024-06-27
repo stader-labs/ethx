@@ -58,6 +58,38 @@ forge test --gas-report
 forge coverage
 ```
 
+# Upgrades via Multisig tx
+## Single Contract Upgrade
+
+To upgrade a single contract, replace `contractName` with the desired contract name [here](https://github.com/stader-labs/ethx/blob/main/scripts/safe-scripts/upgrade.ts#L7):
+
+```bash
+npx hardhat run scripts/safe-scripts/upgrade.ts --network <network>
+```
+
+## Individual Proposals for All Contracts
+
+To upgrade all contracts in individual proposals:
+
+```bash
+npx hardhat run scripts/safe-scripts/upgradeAll.ts --network <network>
+```
+## Single Proposal for All Contracts
+
+To upgrade all contracts in a single proposal:
+
+```bash
+npx hardhat run scripts/safe-scripts/upgradeAllBatch.ts --network <network>
+```
+
+`NOTE:`
+
+1. **Lost Network Files**:
+   If network files are lost under `.openzeppelin`, uncomment force import in the scripts.
+
+2. **Upgrade Checks**:
+   Both `UpgradeAll` and `UpgradeAllBatch` scripts check the on-chain and local code before preparing the upgrade. If the deployed bytecode and compiled bytecode match exactly, the upgrade will be skipped for that particular contract.
+
 # Integration
 
 Check the Integration guide [here](https://github.com/stader-labs/ethx/blob/mainnet_V0/INTEGRATION.md)
