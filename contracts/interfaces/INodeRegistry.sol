@@ -27,7 +27,7 @@ interface INodeRegistry {
     // Errors
     error DuplicatePoolIDOrPoolNotAdded();
     error OperatorAlreadyOnBoardedInProtocol();
-    error maxKeyLimitReached();
+    error MaxKeyLimitReached();
     error OperatorNotOnBoarded();
     error InvalidKeyCount();
     error InvalidStartAndEndIndex();

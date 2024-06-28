@@ -687,7 +687,7 @@ contract PermissionlessNodeRegistry is
         totalKeys = getOperatorTotalKeys(_operatorId);
         uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
         if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) {
-            revert maxKeyLimitReached();
+            revert MaxKeyLimitReached();
         }
 
         // check for collateral ETH for adding keys

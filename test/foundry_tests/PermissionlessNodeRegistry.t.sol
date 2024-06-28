@@ -254,6 +254,24 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(nodeRegistry.isExistingPubkey(pubkeys[0]), true);
     }
 
+    function testAddValidatorKeysNotEnoughSDCollateral() public {
+        (
+            bytes[] memory pubkeys,
+            bytes[] memory preDepositSignature,
+            bytes[] memory depositSignature
+        ) = getValidatorKeys();
+        startHoax(address(this));
+        nodeRegistry.onboardNodeOperator(true, "testOP", payable(address(this)));
+        vm.mockCall(
+            address(sdCollateral),
+            abi.encodeWithSelector(ISDCollateral.hasEnoughSDCollateral.selector),
+            abi.encode(false)
+        );
+        vm.expectRevert(INodeRegistry.NotEnoughSDCollateral.selector);
+        nodeRegistry.addValidatorKeys{ value: 12 ether }(pubkeys, preDepositSignature, depositSignature);
+        vm.stopPrank();
+    }
+
     function test_addValidatorKeysWithMisMatchingInputs() public {
         bytes[] memory pubkeys = new bytes[](1);
         bytes[] memory preDepositSignature = new bytes[](1);
@@ -290,7 +308,7 @@ contract PermissionlessNodeRegistryTest is Test {
         nodeRegistry.updateMaxNonTerminalKeyPerOperator(2);
         startHoax(address(this));
         nodeRegistry.onboardNodeOperator(true, "testOP", payable(address(this)));
-        vm.expectRevert(INodeRegistry.maxKeyLimitReached.selector);
+        vm.expectRevert(INodeRegistry.MaxKeyLimitReached.selector);
         nodeRegistry.addValidatorKeys{ value: 12 ether }(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
     }
