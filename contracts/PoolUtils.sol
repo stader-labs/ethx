@@ -239,17 +239,17 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
         uint8 _poolId,
         uint256 _totalRewards
     ) external view override returns (uint256 userShare, uint256 operatorShare, uint256 protocolShare) {
-        uint256 TOTAL_STAKED_ETH = staderConfig.getStakedEthPerNode();
+        uint256 totalStakedEth = staderConfig.getStakedEthPerNode();
         uint256 collateralETH = getCollateralETH(_poolId);
-        uint256 usersETH = TOTAL_STAKED_ETH - collateralETH;
+        uint256 usersETH = totalStakedEth - collateralETH;
         uint256 protocolFeeBps = getProtocolFee(_poolId);
         uint256 operatorFeeBps = getOperatorFee(_poolId);
 
-        uint256 _userShareBeforeCommission = (_totalRewards * usersETH) / TOTAL_STAKED_ETH;
+        uint256 _userShareBeforeCommission = (_totalRewards * usersETH) / totalStakedEth;
 
         protocolShare = (protocolFeeBps * _userShareBeforeCommission) / staderConfig.getTotalFee();
 
-        operatorShare = (_totalRewards * collateralETH) / TOTAL_STAKED_ETH;
+        operatorShare = (_totalRewards * collateralETH) / totalStakedEth;
         operatorShare += (operatorFeeBps * _userShareBeforeCommission) / staderConfig.getTotalFee();
 
         userShare = _totalRewards - protocolShare - operatorShare;

@@ -407,7 +407,7 @@ contract PoolUtilsTest is Test {
         poolUtils.onlyValidKeys(pubkey, preDepositSig, depositSig);
     }
 
-    function test_calculateRewardShare() public {
+    function testCalculateRewardShare() public {
         address permissionedPool = vm.addr(105);
         address permissionedNodeRegistry = vm.addr(106);
         vm.mockCall(
@@ -460,5 +460,51 @@ contract PoolUtilsTest is Test {
         assertEq(userShareP2, 0.9 ether);
         assertEq(operatorShareP2, 0.05 ether);
         assertEq(protocolShareP2, 0.05 ether);
+    }
+
+    // check commission fee for a 6% protocol and 4% operator fee
+    function testCalculateRewardShare6_4_90() public {
+        address permissionedPool = vm.addr(105);
+        address permissionedNodeRegistry = vm.addr(106);
+        vm.mockCall(
+            address(permissionedPool),
+            abi.encodeWithSelector(IStaderPoolBase.getNodeRegistry.selector),
+            abi.encode(permissionedNodeRegistry)
+        );
+        vm.mockCall(
+            address(permissionedPool),
+            abi.encodeWithSelector(IStaderPoolBase.protocolFee.selector),
+            abi.encode(600)
+        );
+
+        vm.mockCall(
+            address(permissionedPool),
+            abi.encodeWithSelector(IStaderPoolBase.operatorFee.selector),
+            abi.encode(400)
+        );
+
+        vm.mockCall(
+            address(permissionedNodeRegistry),
+            abi.encodeWithSelector(INodeRegistry.POOL_ID.selector),
+            abi.encode(2)
+        );
+
+        vm.mockCall(
+            address(permissionedNodeRegistry),
+            abi.encodeWithSelector(INodeRegistry.getCollateralETH.selector),
+            abi.encode(0)
+        );
+
+        vm.startPrank(staderAdmin);
+        poolUtils.addNewPool(2, permissionedPool);
+
+        (uint256 userShareP2, uint256 operatorShareP2, uint256 protocolShareP2) = poolUtils.calculateRewardShare(
+            2,
+            1 ether
+        );
+
+        assertEq(userShareP2, 0.9 ether);
+        assertEq(operatorShareP2, 0.04 ether);
+        assertEq(protocolShareP2, 0.06 ether);
     }
 }
