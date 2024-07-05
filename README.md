@@ -215,3 +215,14 @@ ETHx: 0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7
 ### Optimism
 
 ETHx: 0xc54B43eaF921A5194c7973A4d65E055E5a1453c2
+
+### Safe Account
+
+| Network  | Safe Account                               |
+| -------- | ------------------------------------------ |
+| Ethereum | 0xAAfb31780e4b9c95Bc920e388f4925A874cd07AF |
+| Polygon  | 0x51358004cFe135E64453d7F6a0dC433CAba09A2a |
+| Arbitrum | 0xe85F0d083D0CD18485E531c1A8B8a05ad2C0308f |
+| Optimism | 0x71a06E7F6332dCA230748D387758BfC4618a2799 |
+| Gnosis   | 0x20a6535456bB2Ba740F0d65Ee5e98B840DBDa838 |
+| XLayer   | 0x112c3e02fD6AB1291dde44F31cb1F4A26fD6e979 |
