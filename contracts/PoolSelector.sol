@@ -22,6 +22,9 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
 
     mapping(uint8 => uint256) public poolWeights;
 
+    bytes32 public constant POOL_WEIGHTS_OPERATOR = keccak256("POOL_WEIGHTS_OPERATOR");
+    error CallerNotPoolWeightsOperator();
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -108,12 +111,14 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
 
     /**
      * @notice update the target weights of existing pools
-     * @dev only `Manager` can call,
+     * @dev only `POOL_WEIGHTS_OPERATOR's` can call,
      * @param _poolTargets new target weights of pools
      * `_poolTargets` array provide pool target in the same order of poolIDs that are stored in poolIdArray of poolUtils
      */
     function updatePoolWeights(uint256[] calldata _poolTargets) external {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (!onlyPoolWeightsOperatorRole(msg.sender)) {
+            revert CallerNotPoolWeightsOperator();
+        }
         uint8[] memory poolIdArray = IPoolUtils(staderConfig.getPoolUtils()).getPoolIdArray();
         uint256 poolCount = poolIdArray.length;
         uint256 poolTargetLength = _poolTargets.length;
@@ -144,5 +149,9 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
         emit UpdatedStaderConfig(_staderConfig);
+    }
+
+    function onlyPoolWeightsOperatorRole(address account) private view returns (bool) {
+        return hasRole(POOL_WEIGHTS_OPERATOR, account);
     }
 }

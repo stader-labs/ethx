@@ -23,6 +23,8 @@ contract PoolSelectorTest is Test {
     PoolSelector poolSelector;
     PoolUtilsMockForDepositFlow poolUtils;
 
+    error CallerNotPoolWeightsOperator();
+
     function setUp() public {
         vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
@@ -55,6 +57,7 @@ contract PoolSelectorTest is Test {
         poolUtils = new PoolUtilsMockForDepositFlow(address(0), address(staderConfig));
 
         vm.startPrank(staderAdmin);
+        poolSelector.grantRole(poolSelector.POOL_WEIGHTS_OPERATOR(), staderManager);
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updateStakePoolManager(staderStakePoolManager);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
@@ -95,7 +98,7 @@ contract PoolSelectorTest is Test {
         invalidSizePoolWeight[1] = 4000;
         invalidSizePoolWeight[2] = 4000;
 
-        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        vm.expectRevert(CallerNotPoolWeightsOperator.selector);
         poolSelector.updatePoolWeights(poolWeight);
 
         vm.startPrank(staderManager);
