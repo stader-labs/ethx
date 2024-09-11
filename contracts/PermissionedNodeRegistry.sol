@@ -720,22 +720,6 @@ contract PermissionedNodeRegistry is
             revert InvalidKeyCount();
         }
         totalKeys = getOperatorTotalKeys(_operatorId);
-        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
-        if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) {
-            revert MaxKeyLimitReached();
-        }
-
-        //checks if operator has enough SD collateral for adding `keyCount` keys
-        //SD threshold for permissioned NOs is 0 for phase1
-        if (
-            !ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
-                msg.sender,
-                POOL_ID,
-                totalNonTerminalKeys + keyCount
-            )
-        ) {
-            revert NotEnoughSDCollateral();
-        }
     }
 
     // operator in active state
