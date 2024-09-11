@@ -721,9 +721,6 @@ contract PermissionedNodeRegistry is
         }
         totalKeys = getOperatorTotalKeys(_operatorId);
         uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
-        if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) {
-            revert MaxKeyLimitReached();
-        }
 
         //checks if operator has enough SD collateral for adding `keyCount` keys
         //SD threshold for permissioned NOs is 0 for phase1

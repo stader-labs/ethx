@@ -271,21 +271,6 @@ contract PermissionedNodeRegistryTest is Test {
         vm.stopPrank();
     }
 
-    function test_addValidatorKeysOPCrossingMaxNonTerminalKeys() public {
-        (
-            bytes[] memory pubkeys,
-            bytes[] memory preDepositSignature,
-            bytes[] memory depositSignature
-        ) = getValidatorKeys();
-        vm.prank(staderManager);
-        nodeRegistry.updateMaxNonTerminalKeyPerOperator(2);
-        vm.startPrank(permissionedNO);
-        nodeRegistry.onboardNodeOperator("testOP", payable(address(this)));
-        vm.expectRevert(INodeRegistry.MaxKeyLimitReached.selector);
-        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
-        vm.stopPrank();
-    }
-
     function test_addValidatorKeysWithInsufficientSDCollateral() public {
         (
             bytes[] memory pubkeys,
