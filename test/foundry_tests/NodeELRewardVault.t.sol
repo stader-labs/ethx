@@ -19,6 +19,7 @@ import { PoolUtilsMock } from "../mocks/PoolUtilsMock.sol";
 import { StakePoolManagerMock } from "../mocks/StakePoolManagerMock.sol";
 import { StaderOracleMock } from "../mocks/StaderOracleMock.sol";
 import { SDUtilityPoolMock } from "../mocks/SDUtilityPoolMock.sol";
+import { PermissionlessNodeRegistryMock } from "../mocks/PermissionlessNodeRegistryMock.sol";
 
 contract NodeELRewardVaultTest is Test {
     address private constant OPERATOR_ADDRESSS = address(500);
@@ -59,6 +60,7 @@ contract NodeELRewardVaultTest is Test {
         address operator = OPERATOR_ADDRESSS;
         mockStaderOracle(staderOracleMock);
         mockSdUtilityPool(sdUtilityPoolMock, operator);
+        mockPermissionlessNodeRegistry(vm.addr(105));
 
         OperatorRewardsCollector operatorRCImpl = new OperatorRewardsCollector();
         TransparentUpgradeableProxy operatorRCProxy = new TransparentUpgradeableProxy(
@@ -95,6 +97,7 @@ contract NodeELRewardVaultTest is Test {
         staderConfig.updateSDCollateral(address(sdCollateral));
         staderConfig.updateSDUtilityPool(sdUtilityPoolMock);
         staderConfig.updateStaderOracle(staderOracleMock);
+        staderConfig.updatePermissionlessNodeRegistry(vm.addr(105));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(poolUtils.nodeRegistry()));
         vm.stopPrank();
@@ -264,5 +267,12 @@ contract NodeELRewardVaultTest is Test {
         StaderOracleMock implementation = new StaderOracleMock();
         bytes memory mockCode = address(implementation).code;
         vm.etch(staderOracleMock, mockCode);
+    }
+
+    function mockPermissionlessNodeRegistry(address _permissionlessNodeRegistry) private {
+        emit log_named_address("permissionlessNodeRegistry", _permissionlessNodeRegistry);
+        PermissionlessNodeRegistryMock nodeRegistryMock = new PermissionlessNodeRegistryMock();
+        bytes memory mockCode = address(nodeRegistryMock).code;
+        vm.etch(_permissionlessNodeRegistry, mockCode);
     }
 }

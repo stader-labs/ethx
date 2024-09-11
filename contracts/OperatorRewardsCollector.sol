@@ -16,6 +16,7 @@ import { ISDUtilityPool, UserData, OperatorLiquidation } from "./interfaces/ISDU
 import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
 import { IStaderOracle } from "../contracts/interfaces/IStaderOracle.sol";
+import { IPoolUtils } from "../contracts/interfaces/IPoolUtils.sol";
 
 contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
@@ -71,7 +72,12 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     }
 
     function claimLiquidation(address operator) public override {
-        _transferBackUtilizedSD(operator);
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        uint8 poolId = poolUtils.getOperatorPoolId(operator);
+        address permissionlessNodeRegistry = staderConfig.getPermissionlessNodeRegistry();
+
+        if (INodeRegistry(permissionlessNodeRegistry).POOL_ID() == poolId) _transferBackUtilizedSD(operator);
+
         _completeLiquidationIfExists(operator);
     }
 
