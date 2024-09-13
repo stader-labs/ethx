@@ -16,6 +16,7 @@ contract PoolSelectorTest is Test {
     address staderAdmin;
     address staderManager;
     address operator;
+    address configurator;
 
     address staderStakePoolManager;
 
@@ -23,13 +24,12 @@ contract PoolSelectorTest is Test {
     PoolSelector poolSelector;
     PoolUtilsMockForDepositFlow poolUtils;
 
-    error CallerNotPoolWeightsOperator();
-
     function setUp() public {
         vm.clearMockedCalls();
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
+        configurator = vm.addr(116);
         staderStakePoolManager = vm.addr(110);
 
         address ethDepositAddr = vm.addr(103);
@@ -57,11 +57,11 @@ contract PoolSelectorTest is Test {
         poolUtils = new PoolUtilsMockForDepositFlow(address(0), address(staderConfig));
 
         vm.startPrank(staderAdmin);
-        poolSelector.grantRole(poolSelector.POOL_WEIGHTS_OPERATOR(), staderManager);
         staderConfig.updatePoolUtils(address(poolUtils));
         staderConfig.updateStakePoolManager(staderStakePoolManager);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
+        staderConfig.grantRole(staderConfig.CONFIGURATOR(), configurator);
         vm.stopPrank();
     }
 
@@ -98,10 +98,10 @@ contract PoolSelectorTest is Test {
         invalidSizePoolWeight[1] = 4000;
         invalidSizePoolWeight[2] = 4000;
 
-        vm.expectRevert(CallerNotPoolWeightsOperator.selector);
+        vm.expectRevert(UtilLib.CallerNotConfigurator.selector);
         poolSelector.updatePoolWeights(poolWeight);
 
-        vm.startPrank(staderManager);
+        vm.startPrank(configurator);
         vm.expectRevert(IPoolSelector.InvalidNewTargetInput.selector);
         poolSelector.updatePoolWeights(invalidSizePoolWeight);
 
@@ -115,7 +115,7 @@ contract PoolSelectorTest is Test {
         uint256[] memory poolWeight = new uint256[](2);
         poolWeight[0] = 7000;
         poolWeight[1] = 3000;
-        vm.prank(staderManager);
+        vm.prank(configurator);
         poolSelector.updatePoolWeights(poolWeight);
         vm.prank(operator);
         poolSelector.updatePoolAllocationMaxSize(1000);

@@ -70,7 +70,7 @@ contract PoolUtils is IPoolUtils, AccessControlUpgradeable {
      * @dev emit an event containing validator pubkey for offchain to exit the validator
      */
     function processValidatorExitList(bytes[] calldata _pubkeys) external override {
-        UtilLib.onlyOperatorRole(msg.sender, staderConfig);
+        UtilLib.onlyConfiguratorRole(msg.sender, staderConfig);
         uint256 exitValidatorCount = _pubkeys.length;
         for (uint256 i; i < exitValidatorCount; ) {
             emit ExitValidator(_pubkeys[i]);

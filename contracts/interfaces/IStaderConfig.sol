@@ -74,6 +74,8 @@ interface IStaderConfig {
 
     function OPERATOR() external view returns (bytes32);
 
+    function CONFIGURATOR() external view returns (bytes32);
+
     // Constants
     function getStakedEthPerNode() external view returns (uint256);
 
@@ -171,4 +173,6 @@ interface IStaderConfig {
     function onlyManagerRole(address account) external view returns (bool);
 
     function onlyOperatorRole(address account) external view returns (bool);
+
+    function onlyConfiguratorRole(address account) external view returns (bool);
 }

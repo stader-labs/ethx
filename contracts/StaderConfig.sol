@@ -80,6 +80,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     bytes32 public constant override SD_UTILITY_POOL = keccak256("SD_UTILITY_POOL");
     bytes32 public constant override SD_INCENTIVE_CONTROLLER = keccak256("SD_INCENTIVE_CONTROLLER");
 
+    // Role define to manage pools config
+    bytes32 public constant override CONFIGURATOR = keccak256("CONFIGURATOR");
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -535,6 +538,10 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function onlyOperatorRole(address account) external view override returns (bool) {
         return hasRole(OPERATOR, account);
+    }
+
+    function onlyConfiguratorRole(address account) external view override returns (bool) {
+        return hasRole(CONFIGURATOR, account);
     }
 
     function verifyDepositAndWithdrawLimits() internal view {
