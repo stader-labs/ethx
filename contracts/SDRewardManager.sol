@@ -6,12 +6,16 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { IStaderConfig } from "./interfaces/IStaderConfig.sol";
 import { UtilLib } from "./library/UtilLib.sol";
 
+/**
+ * @title SDRewardManager
+ * @notice This contract is responsible to add SD rewards to the socializing pool
+ */
 contract SDRewardManager is Initializable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct SDRewardEntry {
         uint256 cycleNumber;
-        uint256 amount; // in exact SD value, not in gwei or wei
+        uint256 amount;
         bool approved;
     }
 
@@ -38,11 +42,20 @@ contract SDRewardManager is Initializable {
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the contract with a Stader configuration address
+     * @param _staderConfig Address of the StaderConfig contract
+     */
     function initialize(address _staderConfig) external initializer {
         UtilLib.checkNonZeroAddress(_staderConfig);
         staderConfig = IStaderConfig(_staderConfig);
     }
 
+    /**
+     * @notice Adds a new reward entry for a specified cycle
+     * @param _cycleNumber The cycle number for the reward entry
+     * @param _amount The amount of SD to be rewarded
+     */
     function addRewardEntry(uint256 _cycleNumber, uint256 _amount) external {
         if (!staderConfig.isAllowedToCall(msg.sender, "addRewardEntry(uint256,uint256)")) {
             revert AccessDenied(msg.sender);
@@ -60,7 +73,11 @@ contract SDRewardManager is Initializable {
         emit NewRewardEntry(_cycleNumber, _amount);
     }
 
-    function approveEntry(uint256 _cycleNumber, uint256 _amount) external {
+    /**
+     * @notice Approves a reward entry for a specified cycle and transfers the reward amount.
+     * @param _cycleNumber The cycle number for the reward entry
+     */
+    function approveEntry(uint256 _cycleNumber) external {
         if (!staderConfig.isAllowedToCall(msg.sender, "approveEntry(uint256,uint256)")) {
             revert AccessDenied(msg.sender);
         }
@@ -80,12 +97,16 @@ contract SDRewardManager is Initializable {
             IERC20Upgradeable(staderConfig.getStaderToken()).safeTransferFrom(
                 msg.sender,
                 staderConfig.getPermissionlessSocializingPool(),
-                _amount
+                rewardEntry.amount
             );
-            emit RewardEntryApproved(_cycleNumber, _amount);
+            emit RewardEntryApproved(_cycleNumber, rewardEntry.amount);
         }
     }
 
+    /**
+     * @notice Returns the latest reward entry
+     * @return The latest SDRewardEntry struct for the most recent cycle
+     */
     function viewLatestEntry() external view returns (SDRewardEntry memory) {
         return rewardEntries[latestCycleNumber];
     }
