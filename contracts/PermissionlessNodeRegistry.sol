@@ -228,6 +228,7 @@ contract PermissionlessNodeRegistry is
         }
 
         if (frontRunValidatorsLength > 0) {
+            //slither-disable-next-line arbitrary-send-eth
             IStaderInsuranceFund(staderConfig.getStaderInsuranceFund()).depositFund{
                 value: frontRunValidatorsLength * FRONT_RUN_PENALTY
             }();
@@ -440,6 +441,7 @@ contract PermissionlessNodeRegistry is
      */
     function transferCollateralToPool(uint256 _amount) external override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_POOL());
+        //slither-disable-next-line arbitrary-send-eth
         IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{ value: _amount }();
         emit TransferredCollateralToPool(_amount);
     }
@@ -658,6 +660,7 @@ contract PermissionlessNodeRegistry is
 
     // handle front run validator by changing their status, deactivating operator and imposing penalty
     function handleFrontRun(uint256 _validatorId) internal {
+        //slither-disable-next-line reentrancy-eth
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
@@ -666,9 +669,11 @@ contract PermissionlessNodeRegistry is
     // handle validator with invalid signature for 1ETH deposit
     //send back remaining ETH to operator address
     function handleInvalidSignature(uint256 _validatorId) internal {
+        //slither-disable-next-line reentrancy-eth
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
+        //slither-disable-next-line arbitrary-send-eth
         IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{
             value: (COLLATERAL_ETH - staderConfig.getPreDepositSize())
         }(operatorAddress);

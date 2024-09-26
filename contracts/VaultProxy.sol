@@ -41,7 +41,7 @@ contract VaultProxy is IVaultProxy {
         address vaultImplementation = isValidatorWithdrawalVault
             ? staderConfig.getValidatorWithdrawalVaultImplementation()
             : staderConfig.getNodeELRewardVaultImplementation();
-        // solhint-disable-next-line avoid-low-level-calls
+        //slither-disable-next-line controlled-delegatecall
         (bool success, bytes memory data) = vaultImplementation.delegatecall(_input);
         if (!success) {
             revert(string(data));

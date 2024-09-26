@@ -83,6 +83,7 @@ contract SocializingPool is
         lastReportedRewardsData = _rewardsData;
         rewardsDataMap[_rewardsData.index] = _rewardsData;
 
+        //slither-disable-next-line arbitrary-send-eth
         IStaderStakePoolManager(staderConfig.getStakePoolManager()).receiveExecutionLayerRewards{
             value: _rewardsData.userETHRewards
         }();
