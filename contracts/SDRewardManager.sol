@@ -78,7 +78,7 @@ contract SDRewardManager is Initializable {
      * @param _cycleNumber The cycle number for the reward entry
      */
     function approveEntry(uint256 _cycleNumber) external {
-        if (!staderConfig.isAllowedToCall(msg.sender, "approveEntry(uint256,uint256)")) {
+        if (!staderConfig.isAllowedToCall(msg.sender, "approveEntry(uint256)")) {
             revert AccessDenied(msg.sender);
         }
 

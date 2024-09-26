@@ -72,7 +72,7 @@ contract SDRewardManagerTest is Test {
         staderConfig.updateStaderToken(address(staderToken));
         staderConfig.updatePermissionlessSocializingPool(address(permissionlessSP));
         staderConfig.giveCallPermission(address(rewardManager), "addRewardEntry(uint256,uint256)", user1);
-        staderConfig.giveCallPermission(address(rewardManager), "approveEntry(uint256,uint256)", user1);
+        staderConfig.giveCallPermission(address(rewardManager), "approveEntry(uint256)", user1);
         vm.stopPrank();
 
         vm.startPrank(staderTokenDeployer);
