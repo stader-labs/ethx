@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { UtilLib } from "./library/UtilLib.sol";
 
@@ -17,7 +18,7 @@ import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
 import { IStaderOracle } from "../contracts/interfaces/IStaderOracle.sol";
 
-contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
+contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable, ReentrancyGuard {
     IStaderConfig public staderConfig;
 
     mapping(address => uint256) public balances;
@@ -144,19 +145,23 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
                     balances[operator],
                     operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth
                 );
+                
+                uint256 protocolFee = Math.min(operatorLiquidation.totalFeeInEth, balances[operator]);
+
+                // Effects
+                balances[operator] -= wETHDeposit;
+                balances[operator] -= protocolFee;
 
                 weth.deposit{ value: wETHDeposit }();
                 if (weth.transferFrom(address(this), operatorLiquidation.liquidator, wETHDeposit) == false)
                     revert WethTransferFailed();
-                balances[operator] -= wETHDeposit;
 
-                uint256 protocolFee = Math.min(operatorLiquidation.totalFeeInEth, balances[operator]);
                 UtilLib.sendValue(staderConfig.getStaderTreasury(), protocolFee);
 
-                balances[operator] -= protocolFee;
                 sdUtilityPool.completeLiquidation(operator);
             } else {
                 // Transfer WETH to liquidator and ETH to treasury
+                balances[operator] -= operatorLiquidation.totalAmountInEth;
                 weth.deposit{ value: operatorLiquidation.totalAmountInEth - operatorLiquidation.totalFeeInEth }();
                 if (
                     weth.transferFrom(
@@ -168,7 +173,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
                 UtilLib.sendValue(staderConfig.getStaderTreasury(), operatorLiquidation.totalFeeInEth);
 
                 sdUtilityPool.completeLiquidation(operator);
-                balances[operator] -= operatorLiquidation.totalAmountInEth;
             }
         }
     }
@@ -180,10 +184,11 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @param operator The address of the operator claiming the amount.
      * @param amount The amount to be claimed.
      */
-    function _claim(address operator, uint256 amount) internal {
+    function _claim(address operator, uint256 amount) internal nonReentrant{
         uint256 maxWithdrawableInEth = withdrawableInEth(operator);
         if (amount > maxWithdrawableInEth || amount > balances[operator]) revert InsufficientBalance();
 
+        //slither-disable-next-line reentrancy-eth
         balances[operator] -= amount;
 
         // If there's an amount to send, transfer it to the operator's rewards address

@@ -256,6 +256,7 @@ contract StaderStakePoolsManager is
             address poolAddress = IPoolUtils(poolUtils).poolAddressById(poolIdArray[i]);
             uint256 poolDepositSize = ETH_PER_NODE - IPoolUtils(poolUtils).getCollateralETH(poolIdArray[i]);
 
+            //slither-disable-next-line reentrancy-eth
             lastExcessETHDepositBlock = block.number;
             //slither-disable-next-line arbitrary-send-eth
             IStaderPoolBase(poolAddress).stakeUserETHToBeaconChain{ value: validatorToDeposit * poolDepositSize }();

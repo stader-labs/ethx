@@ -272,6 +272,7 @@ contract PermissionedPool is IStaderPoolBase, AccessControlUpgradeable, Reentran
     }
 
     function increasePreDepositValidatorCount(uint256 _count) internal {
+        //slither-disable-next-line reentrancy-eth
         preDepositValidatorCount += _count;
     }
 
