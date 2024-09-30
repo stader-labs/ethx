@@ -80,9 +80,6 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     bytes32 public constant override SD_UTILITY_POOL = keccak256("SD_UTILITY_POOL");
     bytes32 public constant override SD_INCENTIVE_CONTROLLER = keccak256("SD_INCENTIVE_CONTROLLER");
 
-    // Role define to manage pools config
-    bytes32 public constant override CONFIGURATOR = keccak256("CONFIGURATOR");
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -298,6 +295,27 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function updateSDIncentiveController(address _sdIncentiveController) external onlyRole(DEFAULT_ADMIN_ROLE) {
         setContract(SD_INCENTIVE_CONTROLLER, _sdIncentiveController);
+    }
+
+    // Access Control
+    function giveCallPermission(
+        address contractAddress,
+        string calldata functionSig,
+        address accountToPermit
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        bytes32 role = keccak256(abi.encodePacked(contractAddress, functionSig));
+        grantRole(role, accountToPermit);
+        emit PermissionGranted(accountToPermit, contractAddress, functionSig);
+    }
+
+    function revokeCallPermission(
+        address contractAddress,
+        string calldata functionSig,
+        address accountToRevoke
+    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        bytes32 role = keccak256(abi.encodePacked(contractAddress, functionSig));
+        revokeRole(role, accountToRevoke);
+        emit PermissionRevoked(accountToRevoke, contractAddress, functionSig);
     }
 
     //Constants Getters
@@ -540,8 +558,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         return hasRole(OPERATOR, account);
     }
 
-    function onlyConfiguratorRole(address account) external view override returns (bool) {
-        return hasRole(CONFIGURATOR, account);
+    function isAllowedToCall(address account, string calldata functionSig) external view override returns (bool) {
+        bytes32 role = keccak256(abi.encodePacked(msg.sender, functionSig));
+        return hasRole(role, account);
     }
 
     function verifyDepositAndWithdrawLimits() internal view {

@@ -18,6 +18,7 @@ contract PoolUtilsTest is Test {
     address staderManager;
     address operator;
     address configurator;
+    address naiveAddress;
 
     PoolUtils poolUtils;
     StaderConfig staderConfig;
@@ -33,6 +34,7 @@ contract PoolUtilsTest is Test {
         staderManager = vm.addr(101);
         operator = vm.addr(102);
         configurator = vm.addr(114);
+        naiveAddress = vm.addr(117);
 
         address ethDepositAddr = vm.addr(103);
         nodeRegistry = new NodeRegistryMock(operator);
@@ -61,7 +63,7 @@ contract PoolUtilsTest is Test {
         vm.startPrank(staderAdmin);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
-        staderConfig.grantRole(staderConfig.CONFIGURATOR(), configurator);
+        staderConfig.giveCallPermission(address(poolUtils), "processValidatorExitList(bytes[])", configurator);
         vm.stopPrank();
     }
 
@@ -137,7 +139,8 @@ contract PoolUtilsTest is Test {
         pubkey[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         pubkey[1] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
 
-        vm.expectRevert(UtilLib.CallerNotConfigurator.selector);
+        vm.prank(naiveAddress);
+        vm.expectRevert(abi.encodeWithSignature("AccessDenied(address)", naiveAddress));
         poolUtils.processValidatorExitList(pubkey);
 
         vm.prank(configurator);

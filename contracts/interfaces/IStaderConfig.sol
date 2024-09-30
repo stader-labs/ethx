@@ -16,6 +16,8 @@ interface IStaderConfig {
     event SetAccount(bytes32 key, address newAddress);
     event SetContract(bytes32 key, address newAddress);
     event SetToken(bytes32 key, address newAddress);
+    event PermissionGranted(address indexed accountToPermit, address indexed contractAddress, string functionSig);
+    event PermissionRevoked(address indexed accountToRevoke, address indexed contractAddress, string functionSig);
 
     //Contracts
     function POOL_UTILS() external view returns (bytes32);
@@ -73,8 +75,6 @@ interface IStaderConfig {
     function MANAGER() external view returns (bytes32);
 
     function OPERATOR() external view returns (bytes32);
-
-    function CONFIGURATOR() external view returns (bytes32);
 
     // Constants
     function getStakedEthPerNode() external view returns (uint256);
@@ -174,5 +174,13 @@ interface IStaderConfig {
 
     function onlyOperatorRole(address account) external view returns (bool);
 
-    function onlyConfiguratorRole(address account) external view returns (bool);
+    function isAllowedToCall(address account, string calldata functionSig) external view returns (bool);
+
+    function giveCallPermission(address contractAddress, string calldata functionSig, address accountToPermit) external;
+
+    function revokeCallPermission(
+        address contractAddress,
+        string calldata functionSig,
+        address accountToRevoke
+    ) external;
 }

@@ -6,6 +6,7 @@ interface IPoolSelector {
     error InvalidTargetWeight();
     error InvalidNewTargetInput();
     error InvalidSumOfPoolWeights();
+    error AccessDenied(address account);
 
     // Events
 

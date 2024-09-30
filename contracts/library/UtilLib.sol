@@ -14,7 +14,6 @@ library UtilLib {
     error CallerNotStaderContract();
     error CallerNotWithdrawVault();
     error TransferFailed();
-    error CallerNotConfigurator();
 
     uint64 private constant VALIDATOR_PUBKEY_LENGTH = 48;
 
@@ -33,12 +32,6 @@ library UtilLib {
     function onlyOperatorRole(address _addr, IStaderConfig _staderConfig) internal view {
         if (!_staderConfig.onlyOperatorRole(_addr)) {
             revert CallerNotOperator();
-        }
-    }
-
-    function onlyConfiguratorRole(address _addr, IStaderConfig _staderConfig) internal view {
-        if (!_staderConfig.onlyConfiguratorRole(_addr)) {
-            revert CallerNotConfigurator();
         }
     }
 

@@ -17,6 +17,7 @@ contract PoolSelectorTest is Test {
     address staderManager;
     address operator;
     address configurator;
+    address naiveAddress;
 
     address staderStakePoolManager;
 
@@ -30,6 +31,7 @@ contract PoolSelectorTest is Test {
         staderManager = vm.addr(101);
         operator = vm.addr(102);
         configurator = vm.addr(116);
+        naiveAddress = vm.addr(117);
         staderStakePoolManager = vm.addr(110);
 
         address ethDepositAddr = vm.addr(103);
@@ -61,7 +63,7 @@ contract PoolSelectorTest is Test {
         staderConfig.updateStakePoolManager(staderStakePoolManager);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
-        staderConfig.grantRole(staderConfig.CONFIGURATOR(), configurator);
+        staderConfig.giveCallPermission(address(poolSelector), "updatePoolWeights(uint256[])", configurator);
         vm.stopPrank();
     }
 
@@ -98,7 +100,8 @@ contract PoolSelectorTest is Test {
         invalidSizePoolWeight[1] = 4000;
         invalidSizePoolWeight[2] = 4000;
 
-        vm.expectRevert(UtilLib.CallerNotConfigurator.selector);
+        vm.prank(naiveAddress);
+        vm.expectRevert(abi.encodeWithSignature("AccessDenied(address)", naiveAddress));
         poolSelector.updatePoolWeights(poolWeight);
 
         vm.startPrank(configurator);
