@@ -16,6 +16,7 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 
 contract SDRewardManagerTest is Test {
     address staderAdmin;
+    address staderManager;
     address user1;
     address user2;
     address staderTokenDeployer;
@@ -35,6 +36,7 @@ contract SDRewardManagerTest is Test {
         user2 = vm.addr(102);
         staderTokenDeployer = vm.addr(103);
         address ethDepositAddr = vm.addr(104);
+        staderManager = vm.addr(105);
 
         vm.prank(staderTokenDeployer);
         staderToken = new StaderTokenMock();
@@ -70,7 +72,11 @@ contract SDRewardManagerTest is Test {
 
         vm.startPrank(staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
+        staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.updatePermissionlessSocializingPool(address(permissionlessSP));
+        vm.stopPrank();
+
+        vm.startPrank(staderManager);
         staderConfig.giveCallPermission(address(rewardManager), "addRewardEntry(uint256,uint256)", user1);
         staderConfig.giveCallPermission(address(rewardManager), "approveEntry(uint256)", user1);
         vm.stopPrank();
