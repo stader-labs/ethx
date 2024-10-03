@@ -69,7 +69,6 @@ contract SDRewardManagerTest is Test {
         permissionlessSP.initialize(staderAdmin, address(staderConfig));
 
         vm.startPrank(staderAdmin);
-        staderConfig.grantRole(staderConfig.MANAGER(), staderAdmin);
         staderConfig.updateStaderToken(address(staderToken));
         staderConfig.updatePermissionlessSocializingPool(address(permissionlessSP));
         staderConfig.giveCallPermission(address(rewardManager), "addRewardEntry(uint256,uint256)", user1);
