@@ -297,6 +297,27 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         setContract(SD_INCENTIVE_CONTROLLER, _sdIncentiveController);
     }
 
+    // Access Control
+    function giveCallPermission(
+        address contractAddress,
+        string calldata functionSig,
+        address accountToPermit
+    ) external override onlyRole(MANAGER) {
+        bytes32 role = keccak256(abi.encodePacked(contractAddress, functionSig));
+        _grantRole(role, accountToPermit);
+        emit PermissionGranted(accountToPermit, contractAddress, functionSig);
+    }
+
+    function revokeCallPermission(
+        address contractAddress,
+        string calldata functionSig,
+        address accountToRevoke
+    ) external override onlyRole(MANAGER) {
+        bytes32 role = keccak256(abi.encodePacked(contractAddress, functionSig));
+        _revokeRole(role, accountToRevoke);
+        emit PermissionRevoked(accountToRevoke, contractAddress, functionSig);
+    }
+
     //Constants Getters
 
     function getStakedEthPerNode() external view override returns (uint256) {
@@ -535,6 +556,11 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function onlyOperatorRole(address account) external view override returns (bool) {
         return hasRole(OPERATOR, account);
+    }
+
+    function isAllowedToCall(address account, string calldata functionSig) external view override returns (bool) {
+        bytes32 role = keccak256(abi.encodePacked(msg.sender, functionSig));
+        return hasRole(role, account);
     }
 
     function verifyDepositAndWithdrawLimits() internal view {

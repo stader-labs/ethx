@@ -16,6 +16,8 @@ contract PoolSelectorTest is Test {
     address staderAdmin;
     address staderManager;
     address operator;
+    address configurator;
+    address naiveAddress;
 
     address staderStakePoolManager;
 
@@ -28,6 +30,8 @@ contract PoolSelectorTest is Test {
         staderAdmin = vm.addr(100);
         staderManager = vm.addr(101);
         operator = vm.addr(102);
+        configurator = vm.addr(116);
+        naiveAddress = vm.addr(117);
         staderStakePoolManager = vm.addr(110);
 
         address ethDepositAddr = vm.addr(103);
@@ -60,6 +64,9 @@ contract PoolSelectorTest is Test {
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
         vm.stopPrank();
+
+        vm.prank(staderManager);
+        staderConfig.giveCallPermission(address(poolSelector), "updatePoolWeights(uint256[])", configurator);
     }
 
     function test_JustToIncreaseCoverage() public {
@@ -95,10 +102,11 @@ contract PoolSelectorTest is Test {
         invalidSizePoolWeight[1] = 4000;
         invalidSizePoolWeight[2] = 4000;
 
-        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        vm.prank(naiveAddress);
+        vm.expectRevert(abi.encodeWithSignature("AccessDenied(address)", naiveAddress));
         poolSelector.updatePoolWeights(poolWeight);
 
-        vm.startPrank(staderManager);
+        vm.startPrank(configurator);
         vm.expectRevert(IPoolSelector.InvalidNewTargetInput.selector);
         poolSelector.updatePoolWeights(invalidSizePoolWeight);
 
@@ -112,7 +120,7 @@ contract PoolSelectorTest is Test {
         uint256[] memory poolWeight = new uint256[](2);
         poolWeight[0] = 7000;
         poolWeight[1] = 3000;
-        vm.prank(staderManager);
+        vm.prank(configurator);
         poolSelector.updatePoolWeights(poolWeight);
         vm.prank(operator);
         poolSelector.updatePoolAllocationMaxSize(1000);

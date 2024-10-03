@@ -14,6 +14,7 @@ interface IPoolUtils {
     error OperatorIsNotOnboarded();
     error InvalidLengthOfSignature();
     error ExistingOrMismatchingPoolId();
+    error AccessDenied(address account);
 
     // Events
     event PoolAdded(uint8 indexed poolId, address poolAddress);

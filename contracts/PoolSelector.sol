@@ -108,12 +108,15 @@ contract PoolSelector is IPoolSelector, AccessControlUpgradeable {
 
     /**
      * @notice update the target weights of existing pools
-     * @dev only `Manager` can call,
+     * @dev only authorised callers can call,
      * @param _poolTargets new target weights of pools
      * `_poolTargets` array provide pool target in the same order of poolIDs that are stored in poolIdArray of poolUtils
      */
     function updatePoolWeights(uint256[] calldata _poolTargets) external {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        if (!staderConfig.isAllowedToCall(msg.sender, "updatePoolWeights(uint256[])")) {
+            revert AccessDenied(msg.sender);
+        }
+
         uint8[] memory poolIdArray = IPoolUtils(staderConfig.getPoolUtils()).getPoolIdArray();
         uint256 poolCount = poolIdArray.length;
         uint256 poolTargetLength = _poolTargets.length;
