@@ -119,6 +119,29 @@ contract SDRewardManagerTest is Test {
         assertEq(isApproved, false);
     }
 
+    function test_addRewardEntry_multipleTimes() public {
+        uint256 cycleNumber = 1;
+        uint256 amount1 = 10 ether;
+        uint256 amount2 = 20 ether;
+
+        // Only allowed contract can call the addRewardEntry function
+        vm.startPrank(user1);
+
+        // Adding entry first time
+        rewardManager.addRewardEntry(cycleNumber, amount1);
+
+        // Adding entry second time
+        rewardManager.addRewardEntry(cycleNumber, amount2);
+
+        vm.stopPrank();
+
+        // Checking if the entry is correct
+        (uint256 storedCycleNumber, uint256 storedAmount, bool isApproved) = rewardManager.rewardEntries(cycleNumber);
+        assertEq(storedCycleNumber, cycleNumber);
+        assertEq(storedAmount, amount2);
+        assertEq(isApproved, false);
+    }
+
     function test_addRewardEntry_AccessDenied() public {
         uint256 cycleNumber = 1;
         uint256 amount = 10 ether;
@@ -138,8 +161,44 @@ contract SDRewardManagerTest is Test {
         rewardManager.addRewardEntry(cycleNumber, amount);
 
         // Attempt to add the same entry again
-        vm.expectRevert(abi.encodeWithSignature("EntryAlreadyRegistered(uint256)", cycleNumber));
-        rewardManager.addRewardEntry(cycleNumber, amount);
+        vm.expectRevert(abi.encodeWithSignature("EntryAlreadyRegistered(uint256)", cycleNumber - 1));
+        rewardManager.addRewardEntry(cycleNumber - 1, amount);
+        vm.stopPrank();
+    }
+
+    function test_addRewardEntry_InvalidCycleNumber() public {
+        uint256 cycleNumber1 = 1;
+        uint256 cycleNumber2 = 5;
+        uint256 amount = 10 ether;
+
+        // Adding the first entry
+        vm.startPrank(user1);
+        rewardManager.addRewardEntry(cycleNumber1, amount);
+
+        // Attempt to add the same entry again
+        vm.expectRevert(abi.encodeWithSignature("InvalidCycleNumber(uint256)", cycleNumber2));
+        rewardManager.addRewardEntry(cycleNumber2, amount);
+        vm.stopPrank();
+    }
+
+    function test_addRewardEntry_EntryAlreadyApproved() public {
+        uint256 cycleNumber = 1;
+        uint256 amount1 = 10 ether;
+        uint256 amount2 = 20 ether;
+
+        // Only allowed contract can call the addRewardEntry function
+        vm.startPrank(user1);
+
+        // Adding entry first time
+        rewardManager.addRewardEntry(cycleNumber, amount1);
+
+        // Approving Entry
+        rewardManager.approveEntry(cycleNumber);
+
+        // Adding entry second time
+        vm.expectRevert(abi.encodeWithSignature("EntryAlreadyApproved(uint256)", cycleNumber));
+        rewardManager.addRewardEntry(cycleNumber, amount2);
+
         vm.stopPrank();
     }
 
@@ -182,7 +241,7 @@ contract SDRewardManagerTest is Test {
         rewardManager.approveEntry(cycleNumber + 100);
     }
 
-    function test_approveEntry_EntryAlreadApproved() public {
+    function test_approveEntry_EntryAlreadyApproved() public {
         uint256 cycleNumber = 1;
         uint256 amount = 10 ether;
 
@@ -192,7 +251,7 @@ contract SDRewardManagerTest is Test {
         rewardManager.approveEntry(cycleNumber);
 
         // Attempt to approve the same entry again
-        vm.expectRevert(abi.encodeWithSignature("EntryAlreadApproved(uint256)", cycleNumber));
+        vm.expectRevert(abi.encodeWithSignature("EntryAlreadyApproved(uint256)", cycleNumber));
         rewardManager.approveEntry(cycleNumber);
         vm.stopPrank();
     }

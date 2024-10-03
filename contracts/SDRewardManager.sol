@@ -35,7 +35,8 @@ contract SDRewardManager is Initializable {
     error AccessDenied(address account);
     error EntryNotFound(uint256 cycleNumber);
     error EntryAlreadyRegistered(uint256 cycleNumber);
-    error EntryAlreadApproved(uint256 cycleNumber);
+    error EntryAlreadyApproved(uint256 cycleNumber);
+    error InvalidCycleNumber(uint256 cycleNumber);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -61,14 +62,24 @@ contract SDRewardManager is Initializable {
             revert AccessDenied(msg.sender);
         }
 
-        if (_cycleNumber <= latestCycleNumber) {
+        SDRewardEntry memory rewardEntry = rewardEntries[_cycleNumber];
+
+        if (_cycleNumber < latestCycleNumber) {
             revert EntryAlreadyRegistered(_cycleNumber);
         }
 
-        SDRewardEntry storage rewardEntry = rewardEntries[_cycleNumber];
+        if (_cycleNumber > latestCycleNumber + 1) {
+            revert InvalidCycleNumber(_cycleNumber);
+        }
+
+        if (rewardEntry.approved) {
+            revert EntryAlreadyApproved(_cycleNumber);
+        }
+
         rewardEntry.cycleNumber = _cycleNumber;
         rewardEntry.amount = _amount;
         latestCycleNumber = _cycleNumber;
+        rewardEntries[_cycleNumber] = rewardEntry;
 
         emit NewRewardEntry(_cycleNumber, _amount);
     }
@@ -89,7 +100,7 @@ contract SDRewardManager is Initializable {
         }
 
         if (rewardEntry.approved) {
-            revert EntryAlreadApproved(_cycleNumber);
+            revert EntryAlreadyApproved(_cycleNumber);
         }
 
         rewardEntry.approved = true;
