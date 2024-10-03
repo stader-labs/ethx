@@ -63,8 +63,10 @@ contract PoolUtilsTest is Test {
         vm.startPrank(staderAdmin);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
-        staderConfig.giveCallPermission(address(poolUtils), "processValidatorExitList(bytes[])", configurator);
         vm.stopPrank();
+
+        vm.prank(staderManager);
+        staderConfig.giveCallPermission(address(poolUtils), "processValidatorExitList(bytes[])", configurator);
     }
 
     function test_JustToIncreaseCoverage() public {

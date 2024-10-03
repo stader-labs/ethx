@@ -302,9 +302,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         address contractAddress,
         string calldata functionSig,
         address accountToPermit
-    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external override onlyRole(MANAGER) {
         bytes32 role = keccak256(abi.encodePacked(contractAddress, functionSig));
-        grantRole(role, accountToPermit);
+        _grantRole(role, accountToPermit);
         emit PermissionGranted(accountToPermit, contractAddress, functionSig);
     }
 
@@ -312,9 +312,9 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
         address contractAddress,
         string calldata functionSig,
         address accountToRevoke
-    ) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external override onlyRole(MANAGER) {
         bytes32 role = keccak256(abi.encodePacked(contractAddress, functionSig));
-        revokeRole(role, accountToRevoke);
+        _revokeRole(role, accountToRevoke);
         emit PermissionRevoked(accountToRevoke, contractAddress, functionSig);
     }
 

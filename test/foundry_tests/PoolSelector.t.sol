@@ -63,8 +63,10 @@ contract PoolSelectorTest is Test {
         staderConfig.updateStakePoolManager(staderStakePoolManager);
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
-        staderConfig.giveCallPermission(address(poolSelector), "updatePoolWeights(uint256[])", configurator);
         vm.stopPrank();
+
+        vm.prank(staderManager);
+        staderConfig.giveCallPermission(address(poolSelector), "updatePoolWeights(uint256[])", configurator);
     }
 
     function test_JustToIncreaseCoverage() public {
