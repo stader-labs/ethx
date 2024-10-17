@@ -125,6 +125,7 @@ contract StaderOracleTest is Test {
     }
 
     function test_add_remove_trustedNode() public {
+        // Tests for adding nodes
         address trustedNode = vm.addr(123);
         assertEq(staderOracle.trustedNodesCount(), 0);
         assertFalse(staderOracle.isTrustedNode(trustedNode));
@@ -139,16 +140,6 @@ contract StaderOracleTest is Test {
         assertEq(staderOracle.trustedNodesCount(), 1);
         assertTrue(staderOracle.isTrustedNode(trustedNode));
 
-        vm.expectRevert(IStaderOracle.NodeNotTrusted.selector);
-        vm.prank(staderManager);
-        staderOracle.removeTrustedNode(vm.addr(567));
-
-        vm.prank(staderManager);
-        staderOracle.removeTrustedNode(trustedNode);
-
-        assertEq(staderOracle.trustedNodesCount(), 0);
-        assertFalse(staderOracle.isTrustedNode(trustedNode));
-
         // lets update trustedNode cooling period
         vm.expectRevert(UtilLib.CallerNotManager.selector);
         staderOracle.updateTrustedNodeChangeCoolingPeriod(100);
@@ -157,22 +148,36 @@ contract StaderOracleTest is Test {
         staderOracle.updateTrustedNodeChangeCoolingPeriod(100);
 
         vm.expectRevert(IStaderOracle.CooldownNotComplete.selector);
-        staderOracle.addTrustedNode(vm.addr(78));
+        staderOracle.addTrustedNode(vm.addr(77));
 
-        // wait for 100 blocks
+        // wait for 100 blocks each time to add node
+        vm.roll(block.number + 100);
+        staderOracle.addTrustedNode(vm.addr(77));
         vm.roll(block.number + 100);
         staderOracle.addTrustedNode(vm.addr(78));
-        assertEq(staderOracle.trustedNodesCount(), 1);
+        vm.roll(block.number + 100);
+        staderOracle.addTrustedNode(vm.addr(79));
+        assertEq(staderOracle.trustedNodesCount(), 4);
+        assertTrue(staderOracle.isTrustedNode(vm.addr(77)));
         assertTrue(staderOracle.isTrustedNode(vm.addr(78)));
+        assertTrue(staderOracle.isTrustedNode(vm.addr(79)));
+
+        // Tests for removing nodes
+        vm.expectRevert(IStaderOracle.NodeNotTrusted.selector);
+        staderOracle.removeTrustedNode(vm.addr(567));
 
         vm.expectRevert(IStaderOracle.CooldownNotComplete.selector);
-        staderOracle.removeTrustedNode(vm.addr(78));
+        staderOracle.removeTrustedNode(vm.addr(77));
 
         // wait for 100 blocks
         vm.roll(block.number + 100);
+        staderOracle.removeTrustedNode(vm.addr(77));
+        assertEq(staderOracle.trustedNodesCount(), 3);
+        assertFalse(staderOracle.isTrustedNode(vm.addr(77)));
+
+        vm.roll(block.number + 100);
+        vm.expectRevert(IStaderOracle.InsufficientTrustedNodes.selector);
         staderOracle.removeTrustedNode(vm.addr(78));
-        assertEq(staderOracle.trustedNodesCount(), 0);
-        assertFalse(staderOracle.isTrustedNode(vm.addr(78)));
         vm.stopPrank();
     }
 
@@ -189,7 +194,7 @@ contract StaderOracleTest is Test {
         vm.expectRevert(IStaderOracle.InsufficientTrustedNodes.selector);
         staderOracle.submitSDPrice(sdPriceData);
 
-        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 3);
         address trustedNode2 = vm.addr(702);
         address trustedNode3 = vm.addr(703);
         address trustedNode4 = vm.addr(704);
@@ -330,7 +335,7 @@ contract StaderOracleTest is Test {
     function test_submitSDPrice_manipulation_not_possible_by_minority_malicious_oracles() public {
         SDPriceData memory sdPriceData = SDPriceData({ reportingBlockNumber: 1212, sdPriceInETH: 1 });
 
-        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 3);
         address trustedNode1 = vm.addr(701);
         address trustedNode2 = vm.addr(702);
         address trustedNode3 = vm.addr(703);
@@ -800,7 +805,7 @@ contract StaderOracleTest is Test {
             totalETHXSupply: 100
         });
 
-        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 3);
         address trustedNode1 = vm.addr(701);
         address trustedNode2 = vm.addr(702);
         address trustedNode3 = vm.addr(703);
@@ -1007,7 +1012,7 @@ contract StaderOracleTest is Test {
             sortedInvalidSignaturePubkeys: invalidSignaturePubkeys
         });
 
-        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 3);
         address trustedNode1 = vm.addr(701);
         address trustedNode2 = vm.addr(702);
         address trustedNode3 = vm.addr(703);
@@ -1082,7 +1087,7 @@ contract StaderOracleTest is Test {
             sortedPubkeys: sortedPubkeys
         });
 
-        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 3);
         address trustedNode1 = vm.addr(701);
         address trustedNode2 = vm.addr(702);
         address trustedNode3 = vm.addr(703);
@@ -1162,7 +1167,7 @@ contract StaderOracleTest is Test {
             sortedPubkeys: sortedPubkeys
         });
 
-        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 3);
         address trustedNode1 = vm.addr(701);
         address trustedNode2 = vm.addr(702);
         address trustedNode3 = vm.addr(703);
@@ -1232,7 +1237,7 @@ contract StaderOracleTest is Test {
             slashedValidatorsCount: 4
         });
 
-        assertEq(staderOracle.MIN_TRUSTED_NODES(), 5);
+        assertEq(staderOracle.MIN_TRUSTED_NODES(), 3);
         address trustedNode1 = vm.addr(701);
         address trustedNode2 = vm.addr(702);
         address trustedNode3 = vm.addr(703);
