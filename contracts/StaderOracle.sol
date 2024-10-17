@@ -119,7 +119,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         if (block.number < lastTrustedNodeCountChangeBlock + trustedNodeChangeCoolingPeriod) {
             revert CooldownNotComplete();
         }
-        if (trustedNodesCount == MIN_TRUSTED_NODES) {
+        if (trustedNodesCount <= MIN_TRUSTED_NODES) {
             revert InsufficientTrustedNodes();
         }
         lastTrustedNodeCountChangeBlock = block.number;
