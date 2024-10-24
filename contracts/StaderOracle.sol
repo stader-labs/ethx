@@ -307,8 +307,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
-        // price can be derived once more than 66% percent oracles have submitted price
-        if ((submissionCount >= (2 * trustedNodesCount) / 3 + 1)) {
+        if ((submissionCount >= trustedNodesCount / 2 + 1)) {
             lastReportedSDPriceData = _sdPriceData;
             lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
 

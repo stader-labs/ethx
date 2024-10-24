@@ -312,17 +312,12 @@ contract StaderOracleTest is Test {
         vm.prank(trustedNode3);
         staderOracle.submitSDPrice(sdPriceData);
 
-        sdPriceData.reportingBlockNumber = 5 * 7200;
-        sdPriceData.sdPriceInETH = 4;
-        vm.prank(trustedNode4);
-        staderOracle.submitSDPrice(sdPriceData);
-
         // now consensus is met for reporting block num 5 * 7200
         // trustedNode1 manipulated the sd price if other oracles are not wrking properly
-        // sdPrice submited were [1,6,2,4] => hence median = (2+4)/2 = 3
+        // sdPrice submited were [1,6,2] => hence median = 2
         (lastSDReportingBlockNumber, lastSDPrice) = staderOracle.lastReportedSDPriceData();
         assertEq(lastSDReportingBlockNumber, 5 * 7200);
-        assertEq(lastSDPrice, 3);
+        assertEq(lastSDPrice, 2);
 
         // trusted node 5 tries to submit at reportable block 5 * 7200
         sdPriceData.reportingBlockNumber = 5 * 7200;
@@ -360,9 +355,6 @@ contract StaderOracleTest is Test {
         vm.prank(trustedNode2);
         staderOracle.submitSDPrice(sdPriceData);
 
-        vm.prank(trustedNode3);
-        staderOracle.submitSDPrice(sdPriceData);
-
         // cycle 2
         vm.roll(2 * 7200 + 1);
         sdPriceData.reportingBlockNumber = 2 * 7200;
@@ -372,9 +364,6 @@ contract StaderOracleTest is Test {
         staderOracle.submitSDPrice(sdPriceData);
 
         vm.prank(trustedNode2);
-        staderOracle.submitSDPrice(sdPriceData);
-
-        vm.prank(trustedNode3);
         staderOracle.submitSDPrice(sdPriceData);
 
         // trustedNode4 submits for cycle 1
