@@ -98,7 +98,12 @@ contract SDRewardManagerTest is Test {
     }
 
     function test_addRewardEntry() public {
-        uint256 cycleNumber = 1;
+        uint256 cycleNumber = 3;
+        vm.mockCall(
+            address(permissionlessSP),
+            abi.encodeWithSelector(ISocializingPool.getCurrentRewardsIndex.selector),
+            abi.encode(cycleNumber)
+        );
         uint256 amount = 10 ether;
 
         // Only allowed contract can call the addRewardEntry function
@@ -107,7 +112,7 @@ contract SDRewardManagerTest is Test {
         // Should emit event for adding entry
         vm.expectEmit(true, false, false, true);
         emit NewRewardEntry(cycleNumber, amount);
-        rewardManager.addRewardEntry(cycleNumber, amount);
+        rewardManager.addRewardEntry(amount);
 
         // Checking if the entry is correct
         (uint256 storedCycleNumber, uint256 storedAmount, bool isApproved) = rewardManager.rewardEntries(cycleNumber);
@@ -125,10 +130,10 @@ contract SDRewardManagerTest is Test {
         vm.startPrank(user1);
 
         // Adding entry first time
-        rewardManager.addRewardEntry(cycleNumber, amount1);
+        rewardManager.addRewardEntry(amount1);
 
         // Adding entry second time
-        rewardManager.addRewardEntry(cycleNumber, amount2);
+        rewardManager.addRewardEntry(amount2);
 
         vm.stopPrank();
 
@@ -146,36 +151,7 @@ contract SDRewardManagerTest is Test {
         // anyone cannot call the addRewardEntry method
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSignature("AccessDenied(address)", user2));
-        rewardManager.addRewardEntry(cycleNumber, amount);
-    }
-
-    function test_addRewardEntry_EntryAlreadyRegistered() public {
-        uint256 cycleNumber = 1;
-        uint256 amount = 10 ether;
-
-        // Adding the first entry
-        vm.startPrank(user1);
-        rewardManager.addRewardEntry(cycleNumber, amount);
-
-        // Attempt to add the same entry again
-        vm.expectRevert(abi.encodeWithSignature("EntryAlreadyRegistered(uint256)", cycleNumber - 1));
-        rewardManager.addRewardEntry(cycleNumber - 1, amount);
-        vm.stopPrank();
-    }
-
-    function test_addRewardEntry_InvalidCycleNumber() public {
-        uint256 cycleNumber1 = 1;
-        uint256 cycleNumber2 = 5;
-        uint256 amount = 10 ether;
-
-        // Adding the first entry
-        vm.startPrank(user1);
-        rewardManager.addRewardEntry(cycleNumber1, amount);
-
-        // Attempt to add the same entry again
-        vm.expectRevert(abi.encodeWithSignature("InvalidCycleNumber(uint256)", cycleNumber2));
-        rewardManager.addRewardEntry(cycleNumber2, amount);
-        vm.stopPrank();
+        rewardManager.addRewardEntry(amount);
     }
 
     function test_addRewardEntry_EntryAlreadyApproved() public {
@@ -183,36 +159,41 @@ contract SDRewardManagerTest is Test {
         uint256 amount1 = 10 ether;
         uint256 amount2 = 20 ether;
 
-        // Only allowed contract can call the addRewardEntry function
+        // Only allowed user's can call the addRewardEntry function
         vm.startPrank(user1);
 
         // Adding entry first time
-        rewardManager.addRewardEntry(cycleNumber, amount1);
+        rewardManager.addRewardEntry(amount1);
 
         // Approving Entry
-        rewardManager.approveEntry(cycleNumber);
+        rewardManager.approveEntry();
 
         // Adding entry second time
         vm.expectRevert(abi.encodeWithSignature("EntryAlreadyApproved(uint256)", cycleNumber));
-        rewardManager.addRewardEntry(cycleNumber, amount2);
+        rewardManager.addRewardEntry(amount2);
 
         vm.stopPrank();
     }
 
     function test_approveEntry() public {
-        uint256 cycleNumber = 1;
+        uint256 cycleNumber = 19;
+        vm.mockCall(
+            address(permissionlessSP),
+            abi.encodeWithSelector(ISocializingPool.getCurrentRewardsIndex.selector),
+            abi.encode(cycleNumber)
+        );
         uint256 amount = 10 ether;
 
         // Add the entry
         vm.startPrank(user1);
-        rewardManager.addRewardEntry(cycleNumber, amount);
+        rewardManager.addRewardEntry(amount);
 
         (, uint256 storedAmount, ) = rewardManager.rewardEntries(cycleNumber);
         // Expect the RewardEntryApproved event
         vm.expectEmit(true, false, false, true);
         emit RewardEntryApproved(cycleNumber, storedAmount);
         // Approve the entry
-        rewardManager.approveEntry(cycleNumber);
+        rewardManager.approveEntry();
         vm.stopPrank();
 
         // Check if the entry is approved
@@ -226,16 +207,7 @@ contract SDRewardManagerTest is Test {
         // anyone cannot call the approveEntry method
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSignature("AccessDenied(address)", user2));
-        rewardManager.approveEntry(cycleNumber);
-    }
-
-    function test_approveEntry_EntryNotFound() public {
-        uint256 cycleNumber = 1;
-
-        // Attempt to approve an entry that doesn't exist
-        vm.expectRevert(abi.encodeWithSignature("EntryNotFound(uint256)", cycleNumber + 100));
-        vm.prank(user1);
-        rewardManager.approveEntry(cycleNumber + 100);
+        rewardManager.approveEntry();
     }
 
     function test_approveEntry_EntryAlreadyApproved() public {
@@ -244,25 +216,41 @@ contract SDRewardManagerTest is Test {
 
         // Add the entry
         vm.startPrank(user1);
-        rewardManager.addRewardEntry(cycleNumber, amount);
-        rewardManager.approveEntry(cycleNumber);
+        rewardManager.addRewardEntry(amount);
+        rewardManager.approveEntry();
 
         // Attempt to approve the same entry again
         vm.expectRevert(abi.encodeWithSignature("EntryAlreadyApproved(uint256)", cycleNumber));
-        rewardManager.approveEntry(cycleNumber);
+        rewardManager.approveEntry();
         vm.stopPrank();
     }
 
     function test_viewLatestEntry() public {
         // Add the entries
+        uint256 cycleNumber = 100;
+        vm.mockCall(
+            address(permissionlessSP),
+            abi.encodeWithSelector(ISocializingPool.getCurrentRewardsIndex.selector),
+            abi.encode(cycleNumber)
+        );
         vm.startPrank(user1);
-        rewardManager.addRewardEntry(1, 10 ether);
-        rewardManager.addRewardEntry(2, 20 ether);
-        rewardManager.addRewardEntry(3, 30 ether);
+        rewardManager.addRewardEntry(30 ether);
         vm.stopPrank();
 
         SDRewardManager.SDRewardEntry memory lastestEntry = rewardManager.viewLatestEntry();
-        assertEq(lastestEntry.cycleNumber, 3);
+        assertEq(lastestEntry.cycleNumber, cycleNumber);
         assertEq(lastestEntry.amount, 30 ether);
+    }
+
+    function getCurrentCycleNumber() public {
+        uint256 cycleNumber = 101;
+        vm.mockCall(
+            address(permissionlessSP),
+            abi.encodeWithSelector(ISocializingPool.getCurrentRewardsIndex.selector),
+            abi.encode(cycleNumber)
+        );
+
+        uint256 currentCycleStored = rewardManager.getCurrentCycleNumber();
+        assertEq(currentCycleStored, cycleNumber);
     }
 }
