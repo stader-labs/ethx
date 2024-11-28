@@ -67,6 +67,8 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
     //Roles
     bytes32 public constant override MANAGER = keccak256("MANAGER");
     bytes32 public constant override OPERATOR = keccak256("OPERATOR");
+    bytes32 public constant override ROLE_SD_REWARD_ENTRY = keccak256("ROLE_SD_REWARD_ENTRY");
+    bytes32 public constant override ROLE_SD_REWARD_APPROVER = keccak256("ROLE_SD_REWARD_APPROVER");
 
     bytes32 public constant SD = keccak256("SD");
     bytes32 public constant ETHx = keccak256("ETHx");
@@ -535,6 +537,14 @@ contract StaderConfig is IStaderConfig, AccessControlUpgradeable {
 
     function onlyOperatorRole(address account) external view override returns (bool) {
         return hasRole(OPERATOR, account);
+    }
+
+    function onlySDRewardEntryRole(address account) external view override returns (bool) {
+        return hasRole(ROLE_SD_REWARD_ENTRY, account);
+    }
+
+    function onlySDRewardApproverRole(address account) external view override returns (bool) {
+        return hasRole(ROLE_SD_REWARD_APPROVER, account);
     }
 
     function verifyDepositAndWithdrawLimits() internal view {

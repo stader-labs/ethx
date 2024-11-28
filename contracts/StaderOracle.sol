@@ -29,7 +29,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
     uint256 public constant MAX_ER_UPDATE_FREQUENCY = 7200 * 7; // 7 days
     uint256 public constant ER_CHANGE_MAX_BPS = 10_000;
     uint256 public override erChangeLimit;
-    uint256 public constant MIN_TRUSTED_NODES = 5;
+    uint256 public constant MIN_TRUSTED_NODES = 3;
     uint256 public override trustedNodeChangeCoolingPeriod;
 
     /// @inheritdoc IStaderOracle
@@ -118,6 +118,9 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         }
         if (block.number < lastTrustedNodeCountChangeBlock + trustedNodeChangeCoolingPeriod) {
             revert CooldownNotComplete();
+        }
+        if (trustedNodesCount <= MIN_TRUSTED_NODES) {
+            revert InsufficientTrustedNodes();
         }
         lastTrustedNodeCountChangeBlock = block.number;
 
@@ -304,8 +307,7 @@ contract StaderOracle is IStaderOracle, AccessControlUpgradeable, PausableUpgrad
         // Emit SD Price submitted event
         emit SDPriceSubmitted(msg.sender, _sdPriceData.sdPriceInETH, _sdPriceData.reportingBlockNumber, block.number);
 
-        // price can be derived once more than 66% percent oracles have submitted price
-        if ((submissionCount >= (2 * trustedNodesCount) / 3 + 1)) {
+        if ((submissionCount >= trustedNodesCount / 2 + 1)) {
             lastReportedSDPriceData = _sdPriceData;
             lastReportedSDPriceData.sdPriceInETH = getMedianValue(sdPrices);
 

@@ -74,6 +74,10 @@ interface IStaderConfig {
 
     function OPERATOR() external view returns (bytes32);
 
+    function ROLE_SD_REWARD_ENTRY() external view returns (bytes32);
+
+    function ROLE_SD_REWARD_APPROVER() external view returns (bytes32);
+
     // Constants
     function getStakedEthPerNode() external view returns (uint256);
 
@@ -171,4 +175,8 @@ interface IStaderConfig {
     function onlyManagerRole(address account) external view returns (bool);
 
     function onlyOperatorRole(address account) external view returns (bool);
+
+    function onlySDRewardEntryRole(address account) external view returns (bool);
+
+    function onlySDRewardApproverRole(address account) external view returns (bool);
 }
