@@ -433,17 +433,6 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice update the maximum non terminal key limit per operator
-     * @dev only `MANAGER` role can call
-     * @param _maxNonTerminalKeyPerOperator updated maximum non terminal key per operator limit
-     */
-    function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
-        emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
-    }
-
-    /**
      * @notice update number of validator keys that can be added in a single tx by the operator
      * @dev only `OPERATOR` role can call
      * @param _inputKeyCountLimit updated maximum key limit in the input
@@ -720,22 +709,6 @@ contract PermissionedNodeRegistry is
             revert InvalidKeyCount();
         }
         totalKeys = getOperatorTotalKeys(_operatorId);
-        uint256 totalNonTerminalKeys = getOperatorTotalNonTerminalKeys(msg.sender, 0, totalKeys);
-        if ((totalNonTerminalKeys + keyCount) > maxNonTerminalKeyPerOperator) {
-            revert MaxKeyLimitReached();
-        }
-
-        //checks if operator has enough SD collateral for adding `keyCount` keys
-        //SD threshold for permissioned NOs is 0 for phase1
-        if (
-            !ISDCollateral(staderConfig.getSDCollateral()).hasEnoughSDCollateral(
-                msg.sender,
-                POOL_ID,
-                totalNonTerminalKeys + keyCount
-            )
-        ) {
-            revert NotEnoughSDCollateral();
-        }
     }
 
     // operator in active state
