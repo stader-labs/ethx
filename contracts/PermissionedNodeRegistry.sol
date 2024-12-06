@@ -433,17 +433,6 @@ contract PermissionedNodeRegistry is
     }
 
     /**
-     * @notice update the maximum non terminal key limit per operator
-     * @dev only `MANAGER` role can call
-     * @param _maxNonTerminalKeyPerOperator updated maximum non terminal key per operator limit
-     */
-    function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external override {
-        UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        maxNonTerminalKeyPerOperator = _maxNonTerminalKeyPerOperator;
-        emit UpdatedMaxNonTerminalKeyPerOperator(maxNonTerminalKeyPerOperator);
-    }
-
-    /**
      * @notice update number of validator keys that can be added in a single tx by the operator
      * @dev only `OPERATOR` role can call
      * @param _inputKeyCountLimit updated maximum key limit in the input

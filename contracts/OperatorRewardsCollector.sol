@@ -53,11 +53,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @dev This function first checks for any unpaid liquidations for the operator and repays them if necessary. Then, it transfers any remaining balance to the operator's reward address.
      */
     function claim() external {
-        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
-        uint8 poolId = poolUtils.getOperatorPoolId(msg.sender);
-        address permissionlessNodeRegistry = staderConfig.getPermissionlessNodeRegistry();
         uint256 amount;
-        if (INodeRegistry(permissionlessNodeRegistry).POOL_ID() == poolId) {
+        if (_isPermissionlessCaller(msg.sender)) {
             claimLiquidation(msg.sender);
             amount = balances[msg.sender] > withdrawableInEth(msg.sender)
                 ? withdrawableInEth(msg.sender)
@@ -75,17 +72,12 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @param _amount amount of ETH to claim
      */
     function claimWithAmount(uint256 _amount) external {
-        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
-        uint8 poolId = poolUtils.getOperatorPoolId(msg.sender);
-        address permissionlessNodeRegistry = staderConfig.getPermissionlessNodeRegistry();
-
-        if (INodeRegistry(permissionlessNodeRegistry).POOL_ID() == poolId) {
+        if (_isPermissionlessCaller(msg.sender)) {
             claimLiquidation(msg.sender);
             uint256 maxWithdrawableInEth = withdrawableInEth(msg.sender);
-            if (_amount > maxWithdrawableInEth || _amount > balances[msg.sender]) revert InsufficientBalance();
-        } else {
-            if (_amount > balances[msg.sender]) revert InsufficientBalance();
+            if (_amount > maxWithdrawableInEth) revert InsufficientBalance();
         }
+        if (_amount > balances[msg.sender]) revert InsufficientBalance();
         _claim(msg.sender, _amount);
     }
 
@@ -130,6 +122,14 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
     function getBalance(address operator) external view override returns (uint256) {
         return balances[operator];
+    }
+
+    function _isPermissionlessCaller(address caller) internal returns (bool) {
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        uint8 poolId = poolUtils.getOperatorPoolId(caller);
+        address permissionlessNodeRegistry = staderConfig.getPermissionlessNodeRegistry();
+
+        return INodeRegistry(permissionlessNodeRegistry).POOL_ID() == poolId;
     }
 
     /**

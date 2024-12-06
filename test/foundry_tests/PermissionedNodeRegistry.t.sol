@@ -375,17 +375,6 @@ contract PermissionedNodeRegistryTest is Test {
         assertEq(nodeRegistry.inputKeyCountLimit(), _keyCountLimit);
     }
 
-    function test_updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) public {
-        vm.prank(staderManager);
-        nodeRegistry.updateMaxNonTerminalKeyPerOperator(_maxNonTerminalKeyPerOperator);
-        assertEq(nodeRegistry.maxNonTerminalKeyPerOperator(), _maxNonTerminalKeyPerOperator);
-    }
-
-    function testFail_updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) public {
-        nodeRegistry.updateMaxNonTerminalKeyPerOperator(_maxNonTerminalKeyPerOperator);
-        assertEq(nodeRegistry.maxNonTerminalKeyPerOperator(), _maxNonTerminalKeyPerOperator);
-    }
-
     function test_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
         vm.prank(operator);
         nodeRegistry.updateVerifiedKeysBatchSize(_verifiedKeysBatchSize);
