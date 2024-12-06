@@ -30,6 +30,8 @@ contract OperatorRewardsCollectorTest is Test {
     event SDWithdrawn(address indexed operator, uint256 sdAmount);
     event SDRepaid(address operator, uint256 repayAmount);
 
+    error InsufficientBalance();
+
     address staderAdmin;
     address staderManager;
     address staderTreasury;
@@ -170,6 +172,102 @@ contract OperatorRewardsCollectorTest is Test {
         vm.startPrank(staderManager);
         operatorRewardsCollector.claim();
         assertEq(operatorRewardsCollector.balances(staderManager), 0);
+        vm.stopPrank();
+    }
+
+    function test_Claim_PermissionedPoolOperator(uint256 amount) public {
+        vm.assume(amount < 100000 ether);
+
+        operatorRewardsCollector.depositFor{ value: amount }(staderManager);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(1e14)
+        );
+
+        vm.mockCall(
+            address(poolUtils),
+            abi.encodeWithSelector(IPoolUtils.getOperatorPoolId.selector, staderManager),
+            abi.encode(uint8(2)) // Assuming `POOL_ID()` for PermissionedNodeRegistry is `2`
+        );
+
+        vm.mockCall(
+            address(permissionlessNodeRegistryMock),
+            abi.encodeWithSelector(INodeRegistry.POOL_ID.selector),
+            abi.encode(uint8(1))
+        );
+
+        vm.startPrank(staderManager);
+        operatorRewardsCollector.claim();
+
+        assertEq(operatorRewardsCollector.balances(staderManager), 0);
+        vm.stopPrank();
+    }
+
+    function test_ClaimWithAmount_PermissionlessNodeRegistry(uint256 amount, uint256 claimAmount) public {
+        // Assume reasonable values for deposits and claims
+        vm.assume(amount > 0 && amount < 100000 ether);
+
+        operatorRewardsCollector.depositFor{ value: amount }(staderManager);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
+
+        // Mock the operator's pool ID to match the PermissionlessPool
+        vm.mockCall(
+            address(poolUtils),
+            abi.encodeWithSelector(IPoolUtils.getOperatorPoolId.selector, staderManager),
+            abi.encode(uint8(1))
+        );
+
+        vm.mockCall(
+            address(permissionlessNodeRegistryMock),
+            abi.encodeWithSelector(INodeRegistry.POOL_ID.selector),
+            abi.encode(uint8(1))
+        );
+        uint256 withdrawableAmount = amount / 2;
+        vm.startPrank(staderManager);
+
+        if (!(claimAmount > withdrawableAmount || claimAmount > amount)) {
+            // Case: Claiming valid amount
+            operatorRewardsCollector.claimWithAmount(claimAmount);
+            assertEq(operatorRewardsCollector.balances(staderManager), amount - claimAmount);
+        }
+
+        vm.stopPrank();
+    }
+
+    function test_ClaimWithAmount_PermissionedNodeRegistry(uint256 amount, uint256 claimAmount) public {
+        // Assume reasonable values for deposits and claims
+        vm.assume(amount > 0 && amount < 100000 ether);
+
+        operatorRewardsCollector.depositFor{ value: amount }(staderManager);
+        assertEq(operatorRewardsCollector.balances(staderManager), amount);
+
+        // Mock the operator's pool ID to match the PermissionedPool
+        vm.mockCall(
+            address(poolUtils),
+            abi.encodeWithSelector(IPoolUtils.getOperatorPoolId.selector, staderManager),
+            abi.encode(uint8(2))
+        );
+
+        vm.mockCall(
+            address(permissionlessNodeRegistryMock),
+            abi.encodeWithSelector(INodeRegistry.POOL_ID.selector),
+            abi.encode(uint8(1))
+        );
+
+        vm.startPrank(staderManager);
+
+        if (claimAmount > amount) {
+            // Case: Attempting to claim more than balance, expect revert
+            vm.expectRevert(InsufficientBalance.selector);
+            operatorRewardsCollector.claimWithAmount(claimAmount);
+        } else {
+            // Case: Claiming valid amount
+            operatorRewardsCollector.claimWithAmount(claimAmount);
+            assertEq(operatorRewardsCollector.balances(staderManager), amount - claimAmount);
+        }
+
         vm.stopPrank();
     }
 
