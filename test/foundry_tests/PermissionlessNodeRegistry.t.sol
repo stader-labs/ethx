@@ -97,6 +97,8 @@ contract PermissionlessNodeRegistryTest is Test {
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(nodeRegistry));
         vm.stopPrank();
+        vm.prank(staderManager);
+        nodeRegistry.updateMaxKeyPerOperator(500);
     }
 
     function test_JustToIncreaseCoverage() public {

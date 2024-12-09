@@ -59,6 +59,7 @@ contract PermissionlessNodeRegistry is
     //mapping of operator address with nodeELReward vault address
     mapping(uint256 => address) public override nodeELRewardVaultByOperatorId;
     mapping(uint256 => address) public proposedRewardAddressByOperatorId;
+    uint256 public maxKeyPerOperator;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -150,6 +151,10 @@ contract PermissionlessNodeRegistry is
     ) public payable override nonReentrant whenNotPaused {
         uint256 operatorId = onlyActiveOperator(msg.sender);
         uint256 keyCount = _pubkey.length;
+        uint256 totalKeys = getOperatorTotalKeys(operatorId);
+        if (totalKeys + keyCount > maxKeyPerOperator) {
+            revert MaxKeyLimitExceed();
+        }
         if (keyCount != _preDepositSignature.length || keyCount != _depositSignature.length) {
             revert MisMatchingInputKeysSize();
         }
@@ -442,6 +447,16 @@ contract PermissionlessNodeRegistry is
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_POOL());
         IPermissionlessPool(staderConfig.getPermissionlessPool()).receiveRemainingCollateralETH{ value: _amount }();
         emit TransferredCollateralToPool(_amount);
+    }
+
+    /**
+     * @notice update the max validator per operator value
+     * @dev only `MANAGER` role can update
+     */
+    function updateMaxKeyPerOperator(uint256 _maxKeyPerOperator) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        maxKeyPerOperator = _maxKeyPerOperator;
+        emit UpdateMaxKeyPerOperator(_maxKeyPerOperator);
     }
 
     /**
