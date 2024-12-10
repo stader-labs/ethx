@@ -8,6 +8,7 @@ interface IPermissionlessNodeRegistry {
     error InSufficientBalance();
     error CooldownNotComplete();
     error NoChangeInState();
+    error MaxKeyLimitExceed();
 
     // Events
     event OnboardedOperator(
@@ -21,6 +22,7 @@ interface IPermissionlessNodeRegistry {
     event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);
     event TransferredCollateralToPool(uint256 amount);
     event ValidatorAddedViaReferral(uint256 amount, string referralId);
+    event UpdateMaxKeyPerOperator(uint256 maxKeyPerOperator);
 
     //Getters
 
