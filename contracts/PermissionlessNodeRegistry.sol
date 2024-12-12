@@ -59,7 +59,7 @@ contract PermissionlessNodeRegistry is
     //mapping of operator address with nodeELReward vault address
     mapping(uint256 => address) public override nodeELRewardVaultByOperatorId;
     mapping(uint256 => address) public proposedRewardAddressByOperatorId;
-    uint256 public maxKeyPerOperator;
+    uint256 public maxKeysPerOperator;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -152,7 +152,7 @@ contract PermissionlessNodeRegistry is
         uint256 operatorId = onlyActiveOperator(msg.sender);
         uint256 keyCount = _pubkey.length;
         uint256 totalKeys = getOperatorTotalKeys(operatorId);
-        if (totalKeys + keyCount > maxKeyPerOperator) {
+        if (totalKeys + keyCount > maxKeysPerOperator) {
             revert MaxKeyLimitExceed();
         }
         if (keyCount != _preDepositSignature.length || keyCount != _depositSignature.length) {
@@ -453,10 +453,10 @@ contract PermissionlessNodeRegistry is
      * @notice update the max validator per operator value
      * @dev only `MANAGER` role can update
      */
-    function updateMaxKeyPerOperator(uint256 _maxKeyPerOperator) external {
+    function updateMaxKeysPerOperator(uint256 _maxKeysPerOperator) external {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        maxKeyPerOperator = _maxKeyPerOperator;
-        emit UpdateMaxKeyPerOperator(_maxKeyPerOperator);
+        maxKeysPerOperator = _maxKeysPerOperator;
+        emit UpdateMaxKeysPerOperator(_maxKeysPerOperator);
     }
 
     /**

@@ -22,7 +22,7 @@ interface IPermissionlessNodeRegistry {
     event UpdatedSocializingPoolState(uint256 operatorId, bool optedForSocializingPool, uint256 block);
     event TransferredCollateralToPool(uint256 amount);
     event ValidatorAddedViaReferral(uint256 amount, string referralId);
-    event UpdateMaxKeyPerOperator(uint256 maxKeyPerOperator);
+    event UpdateMaxKeysPerOperator(uint256 maxKeysPerOperator);
 
     //Getters
 

@@ -98,7 +98,7 @@ contract PermissionlessNodeRegistryTest is Test {
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(nodeRegistry));
         vm.stopPrank();
         vm.prank(staderManager);
-        nodeRegistry.updateMaxKeyPerOperator(500);
+        nodeRegistry.updateMaxKeysPerOperator(500);
     }
 
     function test_JustToIncreaseCoverage() public {
@@ -263,7 +263,7 @@ contract PermissionlessNodeRegistryTest is Test {
             bytes[] memory depositSignature
         ) = getValidatorKeys();
         vm.prank(staderManager);
-        nodeRegistry.updateMaxKeyPerOperator(2); // Limit is 2 and trying to add 3 keys
+        nodeRegistry.updateMaxKeysPerOperator(2); // Limit is 2 and trying to add 3 keys
         startHoax(address(this));
         nodeRegistry.onboardNodeOperator(true, "testOP", payable(address(this)));
         vm.expectRevert(IPermissionlessNodeRegistry.MaxKeyLimitExceed.selector);
