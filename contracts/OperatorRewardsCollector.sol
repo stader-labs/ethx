@@ -16,6 +16,7 @@ import { ISDUtilityPool, UserData, OperatorLiquidation } from "./interfaces/ISDU
 import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
 import { IStaderOracle } from "../contracts/interfaces/IStaderOracle.sol";
+import { IPoolUtils } from "../contracts/interfaces/IPoolUtils.sol";
 
 contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
@@ -52,10 +53,15 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @dev This function first checks for any unpaid liquidations for the operator and repays them if necessary. Then, it transfers any remaining balance to the operator's reward address.
      */
     function claim() external {
-        claimLiquidation(msg.sender);
-        uint256 amount = balances[msg.sender] > withdrawableInEth(msg.sender)
-            ? withdrawableInEth(msg.sender)
-            : balances[msg.sender];
+        uint256 amount;
+        if (_isPermissionlessCaller(msg.sender)) {
+            claimLiquidation(msg.sender);
+            amount = balances[msg.sender] > withdrawableInEth(msg.sender)
+                ? withdrawableInEth(msg.sender)
+                : balances[msg.sender];
+        } else {
+            amount = balances[msg.sender];
+        }
         _claim(msg.sender, amount);
     }
 
@@ -66,7 +72,12 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @param _amount amount of ETH to claim
      */
     function claimWithAmount(uint256 _amount) external {
-        claimLiquidation(msg.sender);
+        if (_isPermissionlessCaller(msg.sender)) {
+            claimLiquidation(msg.sender);
+            uint256 maxWithdrawableInEth = withdrawableInEth(msg.sender);
+            if (_amount > maxWithdrawableInEth) revert InsufficientBalance();
+        }
+        if (_amount > balances[msg.sender]) revert InsufficientBalance();
         _claim(msg.sender, _amount);
     }
 
@@ -111,6 +122,14 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
     function getBalance(address operator) external view override returns (uint256) {
         return balances[operator];
+    }
+
+    function _isPermissionlessCaller(address caller) internal returns (bool) {
+        IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
+        uint8 poolId = poolUtils.getOperatorPoolId(caller);
+        address permissionlessNodeRegistry = staderConfig.getPermissionlessNodeRegistry();
+
+        return INodeRegistry(permissionlessNodeRegistry).POOL_ID() == poolId;
     }
 
     /**
@@ -181,9 +200,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @param amount The amount to be claimed.
      */
     function _claim(address operator, uint256 amount) internal {
-        uint256 maxWithdrawableInEth = withdrawableInEth(operator);
-        if (amount > maxWithdrawableInEth || amount > balances[operator]) revert InsufficientBalance();
-
         balances[operator] -= amount;
 
         // If there's an amount to send, transfer it to the operator's rewards address

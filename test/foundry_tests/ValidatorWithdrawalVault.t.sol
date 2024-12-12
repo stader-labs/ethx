@@ -21,6 +21,7 @@ import "../mocks/StakePoolManagerMock.sol";
 
 import { SDUtilityPoolMock } from "../mocks/SDUtilityPoolMock.sol";
 import { StaderOracleMock } from "../mocks/StaderOracleMock.sol";
+import { PermissionlessNodeRegistryMock } from "../mocks/PermissionlessNodeRegistryMock.sol";
 
 contract ValidatorWithdrawalVaultTest is Test {
     address private constant OPERATOR_ADDRESS = address(500);
@@ -52,6 +53,7 @@ contract ValidatorWithdrawalVaultTest is Test {
 
         mockStaderOracle(staderOracleMock);
         mockSDUtilityPool(sdUtilityPoolMock, operator);
+        mockPermissionlessNodeRegistry(vm.addr(105));
 
         ProxyAdmin proxyAdmin = new ProxyAdmin();
 
@@ -93,6 +95,7 @@ contract ValidatorWithdrawalVaultTest is Test {
         staderConfig.updateOperatorRewardsCollector(address(operatorRC));
         staderConfig.updateValidatorWithdrawalVaultImplementation(address(withdrawVaultImpl));
         staderConfig.updateStaderOracle(staderOracleMock);
+        staderConfig.updatePermissionlessNodeRegistry(vm.addr(105));
         staderConfig.grantRole(staderConfig.MANAGER(), staderManager);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(poolUtils.nodeRegistry()));
         vm.stopPrank();
@@ -383,5 +386,12 @@ contract ValidatorWithdrawalVaultTest is Test {
             abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, _operator),
             abi.encode(UserData(0 ether, 4 ether, 1, 0))
         );
+    }
+
+    function mockPermissionlessNodeRegistry(address _permissionlessNodeRegistry) private {
+        emit log_named_address("permissionlessNodeRegistry", _permissionlessNodeRegistry);
+        PermissionlessNodeRegistryMock nodeRegistryMock = new PermissionlessNodeRegistryMock();
+        bytes memory mockCode = address(nodeRegistryMock).code;
+        vm.etch(_permissionlessNodeRegistry, mockCode);
     }
 }

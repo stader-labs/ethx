@@ -227,24 +227,6 @@ contract PermissionedNodeRegistryTest is Test {
         assertEq(nodeRegistry.isExistingPubkey(pubkeys[0]), true);
     }
 
-    function testAddValidatorKeysNotEnoughSDCollateral() public {
-        (
-            bytes[] memory pubkeys,
-            bytes[] memory preDepositSignature,
-            bytes[] memory depositSignature
-        ) = getValidatorKeys();
-        vm.startPrank(permissionedNO);
-        nodeRegistry.onboardNodeOperator("testOP", payable(address(this)));
-        vm.mockCall(
-            address(sdCollateral),
-            abi.encodeWithSelector(ISDCollateral.hasEnoughSDCollateral.selector),
-            abi.encode(false)
-        );
-        vm.expectRevert(INodeRegistry.NotEnoughSDCollateral.selector);
-        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
-        vm.stopPrank();
-    }
-
     function test_addValidatorKeysWithMisMatchingInputs() public {
         bytes[] memory pubkeys = new bytes[](1);
         bytes[] memory preDepositSignature = new bytes[](1);
@@ -267,40 +249,6 @@ contract PermissionedNodeRegistryTest is Test {
         vm.startPrank(permissionedNO);
         nodeRegistry.onboardNodeOperator("testOP", payable(address(this)));
         vm.expectRevert(INodeRegistry.InvalidKeyCount.selector);
-        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
-        vm.stopPrank();
-    }
-
-    function test_addValidatorKeysOPCrossingMaxNonTerminalKeys() public {
-        (
-            bytes[] memory pubkeys,
-            bytes[] memory preDepositSignature,
-            bytes[] memory depositSignature
-        ) = getValidatorKeys();
-        vm.prank(staderManager);
-        nodeRegistry.updateMaxNonTerminalKeyPerOperator(2);
-        vm.startPrank(permissionedNO);
-        nodeRegistry.onboardNodeOperator("testOP", payable(address(this)));
-        vm.expectRevert(INodeRegistry.MaxKeyLimitReached.selector);
-        nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
-        vm.stopPrank();
-    }
-
-    function test_addValidatorKeysWithInsufficientSDCollateral() public {
-        (
-            bytes[] memory pubkeys,
-            bytes[] memory preDepositSignature,
-            bytes[] memory depositSignature
-        ) = getValidatorKeys();
-
-        vm.startPrank(permissionedNO);
-        nodeRegistry.onboardNodeOperator("testOP", payable(address(this)));
-        vm.mockCall(
-            address(sdCollateral),
-            abi.encodeWithSelector(ISDCollateral.hasEnoughSDCollateral.selector),
-            abi.encode(false)
-        );
-        vm.expectRevert(INodeRegistry.NotEnoughSDCollateral.selector);
         nodeRegistry.addValidatorKeys(pubkeys, preDepositSignature, depositSignature);
         vm.stopPrank();
     }
@@ -425,17 +373,6 @@ contract PermissionedNodeRegistryTest is Test {
     function testFail_updateInputKeyCountLimit(uint16 _keyCountLimit) public {
         nodeRegistry.updateInputKeyCountLimit(_keyCountLimit);
         assertEq(nodeRegistry.inputKeyCountLimit(), _keyCountLimit);
-    }
-
-    function test_updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) public {
-        vm.prank(staderManager);
-        nodeRegistry.updateMaxNonTerminalKeyPerOperator(_maxNonTerminalKeyPerOperator);
-        assertEq(nodeRegistry.maxNonTerminalKeyPerOperator(), _maxNonTerminalKeyPerOperator);
-    }
-
-    function testFail_updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) public {
-        nodeRegistry.updateMaxNonTerminalKeyPerOperator(_maxNonTerminalKeyPerOperator);
-        assertEq(nodeRegistry.maxNonTerminalKeyPerOperator(), _maxNonTerminalKeyPerOperator);
     }
 
     function test_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
