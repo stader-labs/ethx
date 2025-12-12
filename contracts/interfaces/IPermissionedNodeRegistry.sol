@@ -62,8 +62,6 @@ interface IPermissionedNodeRegistry {
 
     function markValidatorStatusAsPreDeposit(bytes calldata _pubkey) external;
 
-    function updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) external;
-
     function updateInputKeyCountLimit(uint16 _inputKeyCountLimit) external;
 
     function proposeRewardAddress(address _operatorAddress, address _newRewardAddress) external;

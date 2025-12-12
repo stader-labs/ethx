@@ -97,6 +97,8 @@ contract PermissionlessNodeRegistryTest is Test {
         staderConfig.grantRole(staderConfig.OPERATOR(), operator);
         vaultFactory.grantRole(vaultFactory.NODE_REGISTRY_CONTRACT(), address(nodeRegistry));
         vm.stopPrank();
+        vm.prank(staderManager);
+        nodeRegistry.updateMaxKeysPerOperator(500);
     }
 
     function test_JustToIncreaseCoverage() public {
@@ -252,6 +254,21 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(nodeRegistry.validatorIdByPubkey(pubkeys[0]), 1);
         assertEq(nodeRegistry.validatorIdByPubkey(pubkeys[2]), 3);
         assertEq(nodeRegistry.isExistingPubkey(pubkeys[0]), true);
+    }
+
+    function test_addValidatorKeysWithLLimitExceed() public {
+        (
+            bytes[] memory pubkeys,
+            bytes[] memory preDepositSignature,
+            bytes[] memory depositSignature
+        ) = getValidatorKeys();
+        vm.prank(staderManager);
+        nodeRegistry.updateMaxKeysPerOperator(2); // Limit is 2 and trying to add 3 keys
+        startHoax(address(this));
+        nodeRegistry.onboardNodeOperator(true, "testOP", payable(address(this)));
+        vm.expectRevert(IPermissionlessNodeRegistry.MaxKeyLimitExceed.selector);
+        nodeRegistry.addValidatorKeys{ value: 12 ether }(pubkeys, preDepositSignature, depositSignature);
+        vm.stopPrank();
     }
 
     function testAddValidatorKeysNotEnoughSDCollateral() public {
