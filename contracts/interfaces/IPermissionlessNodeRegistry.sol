@@ -23,6 +23,7 @@ interface IPermissionlessNodeRegistry {
     event TransferredCollateralToPool(uint256 amount);
     event ValidatorAddedViaReferral(uint256 amount, string referralId);
     event UpdateMaxKeysPerOperator(uint256 maxKeysPerOperator);
+    event OperatorNonTerminalKeysCountSet(uint256 indexed operatorId, uint64 nonTerminalKeysCount);
 
     //Getters
 
@@ -81,6 +82,8 @@ interface IPermissionlessNodeRegistry {
     function changeSocializingPoolState(
         bool _optInForSocializingPool
     ) external returns (address mevFeeRecipientAddress);
+
+    function setOperatorNonTerminalKeysCount(uint256 _operatorId, uint64 _nonTerminalKeysCount) external;
 
     function pause() external;
 
