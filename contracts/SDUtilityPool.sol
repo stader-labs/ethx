@@ -152,6 +152,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 exchangeRate = _exchangeRateStored();
         delegatorCTokenBalance[msg.sender] -= _cTokenAmount;
         delegatorWithdrawRequestedCTokenCount[msg.sender] += _cTokenAmount;
+
+        if(delegatorCTokenBalance[msg.sender] * exchangeRate / DECIMAL < MIN_SD_DELEGATE_LIMIT)
+            revert InvalidInput();
+        
         uint256 sdRequested = (exchangeRate * _cTokenAmount) / DECIMAL;
         if (sdRequested < MIN_SD_WITHDRAW_LIMIT) {
             revert InvalidInput();

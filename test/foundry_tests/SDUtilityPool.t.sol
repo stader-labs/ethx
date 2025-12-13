@@ -849,4 +849,25 @@ contract SDUtilityPoolTest is Test {
         userData = sdUtilityPool.getUserData(operator);
         assertEq(0, userData.totalInterestSD);
     }
+    function test_leftOverCannotBeLessThanMinAmount() public {
+        address user = address(0xBAD);
+        deal(address(staderToken), staderAdmin, type(uint).max);
+        // Give tokens to participants
+        vm.prank(staderAdmin);
+        staderToken.transfer(user, 1_000_001e18);
+
+        vm.startPrank(user);
+        staderToken.approve(address(sdUtilityPool), 1e15);
+        sdUtilityPool.delegate(1e15);
+        
+        uint256 userCTokens = sdUtilityPool.delegatorCTokenBalance(user);
+        assertEq(userCTokens, 1e15);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        uint256 withdrawAmount = 1e15 - 1; // All but 1 wei
+        vm.expectRevert();
+        uint256 requestId = sdUtilityPool.requestWithdraw(withdrawAmount);
+
+    }
 }
