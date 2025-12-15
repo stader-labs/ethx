@@ -777,10 +777,37 @@ contract SDUtilityPoolTest is Test {
     function test_UpdateRiskConfig(uint256 randomSeed) public {
         vm.assume(randomSeed > 0);
         vm.assume(randomSeed < 100);
-        vm.expectRevert();
-        sdUtilityPool.updateRiskConfig(randomSeed, randomSeed, randomSeed, randomSeed);
+
+        // Queue the risk config
         vm.prank(staderAdmin);
-        sdUtilityPool.updateRiskConfig(randomSeed, randomSeed, randomSeed, randomSeed);
+        sdUtilityPool.queueRiskConfig(randomSeed, randomSeed, randomSeed, randomSeed);
+
+        // Wait for timelock period
+        vm.warp(block.timestamp + sdUtilityPool.RISK_CONFIG_APPLY());
+
+        // Apply the queued config
+        vm.prank(staderAdmin);
+        sdUtilityPool.applyRiskConfig();
+
+        // Verify the config was applied
+        (uint liquidationThreshold, uint liquidationBonusPercent, uint liquidationFeePercent, uint ltv) = sdUtilityPool.riskConfig();
+        assertEq(randomSeed, liquidationThreshold);
+        assertEq(randomSeed, liquidationBonusPercent);
+        assertEq(randomSeed, liquidationFeePercent);
+        assertEq(randomSeed, ltv);
+    }
+
+    function test_CancelQueuedRiskConfig() public {
+        // Queue a risk config
+        vm.prank(staderAdmin);
+        sdUtilityPool.queueRiskConfig(50, 10, 5, 80);
+
+        // Cancel it
+        vm.prank(staderAdmin);
+        sdUtilityPool.cancelQueuedRiskConfig();
+
+        // Verify timelock was reset
+        assertEq(sdUtilityPool.riskConfigProposeTime(), 0);
     }
 
     function test_LiquidationCall(uint16 randomSeed) public {
