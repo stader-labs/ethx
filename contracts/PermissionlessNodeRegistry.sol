@@ -501,17 +501,13 @@ contract PermissionlessNodeRegistry is
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
-        
+
         // If cached count is initialized and we're querying the full range (startIndex = 0, endIndex = total),
         // return the cached value for gas optimization
-        if (
-            operatorNonTerminalKeysCountInitialized[operatorId] &&
-            _startIndex == 0 &&
-            _endIndex == validatorCount
-        ) {
+        if (operatorNonTerminalKeysCountInitialized[operatorId] && _startIndex == 0 && _endIndex == validatorCount) {
             return operatorNonTerminalKeysCount[operatorId];
         }
-        
+
         // Otherwise, fall back to the loop-based calculation
         uint64 totalNonWithdrawnKeyCount;
         for (uint256 i = _startIndex; i < _endIndex; ) {
