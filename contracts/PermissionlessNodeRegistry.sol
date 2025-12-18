@@ -60,6 +60,10 @@ contract PermissionlessNodeRegistry is
     mapping(uint256 => address) public override nodeELRewardVaultByOperatorId;
     mapping(uint256 => address) public proposedRewardAddressByOperatorId;
     uint256 public maxKeysPerOperator;
+    // mapping of operator Id to cached non-terminal keys count
+    mapping(uint256 => uint64) public operatorNonTerminalKeysCount;
+    // mapping to track if non-terminal keys count has been initialized for an operator
+    mapping(uint256 => bool) public operatorNonTerminalKeysCountInitialized;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -183,6 +187,10 @@ contract PermissionlessNodeRegistry is
 
             validatorIdByPubkey[_pubkey[i]] = nextValidatorId;
             validatorIdsByOperatorId[operatorId].push(nextValidatorId);
+            // increment cached count if it was initialized earlier
+            if (operatorNonTerminalKeysCountInitialized[operatorId]) {
+                operatorNonTerminalKeysCount[operatorId]++;
+            }
             emit AddedValidatorKey(msg.sender, _pubkey[i], nextValidatorId);
             nextValidatorId++;
             unchecked {
@@ -275,8 +283,13 @@ contract PermissionlessNodeRegistry is
             if (!isActiveValidator(validatorId)) {
                 revert UNEXPECTED_STATUS();
             }
+            uint256 operatorId = validatorRegistry[validatorId].operatorId;
             validatorRegistry[validatorId].status = ValidatorStatus.WITHDRAWN;
             validatorRegistry[validatorId].withdrawnBlock = block.number;
+            // decrement cached count if it was initialized earlier
+            if (operatorNonTerminalKeysCountInitialized[operatorId]) {
+                operatorNonTerminalKeysCount[operatorId]--;
+            }
             IValidatorWithdrawalVault(validatorRegistry[validatorId].withdrawVaultAddress).settleFunds();
             emit ValidatorWithdrawn(_pubkeys[i], validatorId);
             unchecked {
@@ -382,6 +395,19 @@ contract PermissionlessNodeRegistry is
     }
 
     /**
+     * @notice set the cached non-terminal keys count for an operator
+     * @dev only `MANAGER` role can call, used to initialize the cached count
+     * @param _operatorId Id of the operator
+     * @param _nonTerminalKeysCount the non-terminal keys count to set
+     */
+    function setOperatorNonTerminalKeysCount(uint256 _operatorId, uint64 _nonTerminalKeysCount) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        operatorNonTerminalKeysCount[_operatorId] = _nonTerminalKeysCount;
+        operatorNonTerminalKeysCountInitialized[_operatorId] = true;
+        emit OperatorNonTerminalKeysCountSet(_operatorId, _nonTerminalKeysCount);
+    }
+
+    /**
      * @notice propose the new reward address of an operator
      * @dev only the existing reward address (msg.sender) can propose
      * @param _operatorAddress operator address
@@ -475,6 +501,14 @@ contract PermissionlessNodeRegistry is
         uint256 operatorId = operatorIDByAddress[_nodeOperator];
         uint256 validatorCount = getOperatorTotalKeys(operatorId);
         _endIndex = _endIndex > validatorCount ? validatorCount : _endIndex;
+
+        // If cached count is initialized and we're querying the full range (startIndex = 0, endIndex = total),
+        // return the cached value for gas optimization
+        if (operatorNonTerminalKeysCountInitialized[operatorId] && _startIndex == 0 && _endIndex == validatorCount) {
+            return operatorNonTerminalKeysCount[operatorId];
+        }
+
+        // Otherwise, fall back to the loop-based calculation
         uint64 totalNonWithdrawnKeyCount;
         for (uint256 i = _startIndex; i < _endIndex; ) {
             uint256 validatorId = validatorIdsByOperatorId[operatorId][i];
@@ -676,6 +710,10 @@ contract PermissionlessNodeRegistry is
         validatorRegistry[_validatorId].status = ValidatorStatus.FRONT_RUN;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
         operatorStructById[operatorId].active = false;
+        // decrement cached count if it was initialized earlier
+        if (operatorNonTerminalKeysCountInitialized[operatorId]) {
+            operatorNonTerminalKeysCount[operatorId]--;
+        }
     }
 
     // handle validator with invalid signature for 1ETH deposit
@@ -683,6 +721,10 @@ contract PermissionlessNodeRegistry is
     function handleInvalidSignature(uint256 _validatorId) internal {
         validatorRegistry[_validatorId].status = ValidatorStatus.INVALID_SIGNATURE;
         uint256 operatorId = validatorRegistry[_validatorId].operatorId;
+        // decrement cached count if it was initialized earlier
+        if (operatorNonTerminalKeysCountInitialized[operatorId]) {
+            operatorNonTerminalKeysCount[operatorId]--;
+        }
         address operatorAddress = operatorStructById[operatorId].operatorAddress;
         IOperatorRewardsCollector(staderConfig.getOperatorRewardsCollector()).depositFor{
             value: (COLLATERAL_ETH - staderConfig.getPreDepositSize())
