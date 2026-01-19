@@ -41,6 +41,7 @@ interface ISDUtilityPool {
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
     error AlreadyLiquidated();
+    error RiskConfigApplyTimeDontReach();
 
     event WithdrawnProtocolFee(uint256 amount);
     event ProtocolFeeFactorUpdated(uint256 protocolFeeFactor);
@@ -73,6 +74,13 @@ interface ISDUtilityPool {
         uint256 liquidationFeePercent,
         uint256 ltv
     );
+    event RiskConfigQueued(
+        uint256 liquidationThreshold,
+        uint256 liquidationBonusPercent,
+        uint256 liquidationFeePercent,
+        uint256 ltv
+    );
+    event RiskConfigCancelled();
     event AccruedFees(uint256 feeAccumulated, uint256 totalProtocolFee, uint256 totalUtilizedSD);
     event WithdrawRequestReceived(address caller, uint256 nextRequestId, uint256 sdAmountToWithdraw);
     event UpdatedConservativeEthPerKey(uint256 conservativeEthPerKey);

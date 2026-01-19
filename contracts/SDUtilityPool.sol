@@ -28,6 +28,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     uint256 public constant MAX_PROTOCOL_FEE = 1e17; // 10%
 
+    uint256 public constant RISK_CONFIG_APPLY = 1 days;
+
+
     // State variables
 
     /// @notice Percentage of protocol fee expressed in gwei
@@ -80,6 +83,12 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     /// @notice risk configuration
     RiskConfig public riskConfig;
+    /// @notice pending risk configuration
+    RiskConfig public pendingRiskConfig;
+    /// @notice risk config propose time
+    uint public riskConfigProposeTime;
+
+    
 
     /// @notice chronological collection of liquidations
     OperatorLiquidation[] public liquidations;
@@ -620,19 +629,55 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     }
 
     /**
-     * @notice Updates the risk configuration
+     * @notice Apply the queued risk configuration after timelock period
+     * @dev Reverts if no configuration is queued or timelock period hasn't elapsed
+    */
+    function applyRiskConfig() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if(riskConfigProposeTime == 0) revert InvalidInput();
+        if(riskConfigProposeTime + RISK_CONFIG_APPLY > block.timestamp)
+            revert RiskConfigApplyTimeDontReach();
+        _updateRiskConfig(pendingRiskConfig.liquidationThreshold, pendingRiskConfig.liquidationBonusPercent, pendingRiskConfig.liquidationFeePercent, pendingRiskConfig.ltv);
+        riskConfigProposeTime = 0; // Reset after applying
+    }
+    /**
+     * @notice Queue a new risk configuration to be applied after timelock period
      * @param liquidationThreshold The new liquidation threshold percent (1 - 100)
      * @param liquidationBonusPercent The new liquidation bonus percent (0 - 100)
      * @param liquidationFeePercent The new liquidation fee percent (0 - 100)
      * @param ltv The new loan-to-value ratio (1 - 100)
      */
-    function updateRiskConfig(
+    function queueRiskConfig(
         uint256 liquidationThreshold,
         uint256 liquidationBonusPercent,
         uint256 liquidationFeePercent,
         uint256 ltv
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _updateRiskConfig(liquidationThreshold, liquidationBonusPercent, liquidationFeePercent, ltv);
+        if (liquidationThreshold > 100 || liquidationThreshold == 0) revert InvalidInput();
+        if (liquidationBonusPercent > 100) revert InvalidInput();
+        if (liquidationFeePercent > 100) revert InvalidInput();
+        if (ltv > 100 || ltv == 0) revert InvalidInput();
+
+        pendingRiskConfig = RiskConfig({
+            liquidationThreshold: liquidationThreshold,
+            liquidationBonusPercent: liquidationBonusPercent,
+            liquidationFeePercent: liquidationFeePercent,
+            ltv: ltv
+        });
+
+        riskConfigProposeTime = block.timestamp;
+
+        emit RiskConfigQueued(liquidationThreshold, liquidationBonusPercent, liquidationFeePercent, ltv);
+    }
+
+    /**
+     * @notice Cancel a queued risk configuration
+     * @dev Only callable by admin, useful for emergency situations
+     */
+    function cancelQueuedRiskConfig() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (riskConfigProposeTime == 0) revert InvalidInput();
+        riskConfigProposeTime = 0;
+        delete pendingRiskConfig;
+        emit RiskConfigCancelled();
     }
 
     //Getters
