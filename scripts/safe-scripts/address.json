@@ -49,7 +49,8 @@
       { "name": "SDUtilityPool", "address": "0xED6EE5049f643289ad52411E9aDeC698D04a9602" },
       { "name": "SDIncentiveController", "address": "0xe225825bcf20F39E2F2e2170412a3247D83492D0" }
     ],
-    "safeAddress": "0x45B977CeCB9Dfaa17dFcBa88826ef684b8489fF6"
+    "safeAddress": "0x45B977CeCB9Dfaa17dFcBa88826ef684b8489fF6",
+    "timelockAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
   },
   "arbitrum": {
     "contracts": [{ "name": "ETHx", "address": "0xED65C5085a18Fa160Af0313E60dcc7905E944Dc7" }],
