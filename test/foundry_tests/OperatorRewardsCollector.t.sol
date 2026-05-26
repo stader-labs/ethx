@@ -522,6 +522,299 @@ contract OperatorRewardsCollectorTest is Test {
         assertEq(address(operatorRewardsCollector.staderConfig()), inputAddr);
     }
 
+    event SunsetGracePeriodSet(uint256 sunsetGracePeriodEnd);
+    event AdminSettledOperator(
+        address indexed operator,
+        uint256 interestSD,
+        uint256 ethToTreasury,
+        uint256 ethToOperator
+    );
+
+    // --- Diff B: sunsetGracePeriodEnd setter ---
+
+    function test_setGrace_revertsForNonAdmin() public {
+        vm.expectRevert();
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
+    }
+
+    function test_setGrace_revertsOnPastTimestamp() public {
+        vm.startPrank(staderAdmin);
+        vm.expectRevert(IOperatorRewardsCollector.InvalidGracePeriod.selector);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp);
+        vm.expectRevert(IOperatorRewardsCollector.InvalidGracePeriod.selector);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp - 1);
+        vm.stopPrank();
+    }
+
+    function test_setGrace_setsValueAndEmits() public {
+        uint256 graceEnd = block.timestamp + 90 days;
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit SunsetGracePeriodSet(graceEnd);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(graceEnd);
+        assertEq(operatorRewardsCollector.sunsetGracePeriodEnd(), graceEnd);
+    }
+
+    function test_setGrace_revertsOnSecondSet() public {
+        vm.startPrank(staderAdmin);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 90 days);
+        vm.expectRevert(IOperatorRewardsCollector.GraceAlreadySet.selector);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 180 days);
+        vm.stopPrank();
+    }
+
+    function test_gatedFunctionsRevertWhenGraceUnset() public {
+        address op = vm.addr(700);
+        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+
+        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
+        operatorRewardsCollector.claimOnBehalf(op);
+    }
+
+    // --- Diff B: adminSettleOperator ---
+
+    function _setGraceAndWarpPast() internal {
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 2 days);
+    }
+
+    function test_adminSettle_revertsBeforeGraceEnd() public {
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
+        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(vm.addr(700));
+    }
+
+    function test_adminSettle_revertsForNonManager() public {
+        _setGraceAndWarpPast();
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        operatorRewardsCollector.adminSettleOperator(vm.addr(700));
+    }
+
+    function test_adminSettle_revertsIfPrincipalNonZero() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        vm.mockCall(
+            sdCollateralMock,
+            abi.encodeWithSelector(ISDCollateral.operatorUtilizedSDBalance.selector, op),
+            abi.encode(uint256(1e18))
+        );
+        vm.expectRevert(IOperatorRewardsCollector.PrincipalNotZeroed.selector);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+    }
+
+    function test_adminSettle_noInterestNoBalance_emitsZero() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit AdminSettledOperator(op, 0, 0, 0);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+        assertEq(operatorRewardsCollector.balances(op), 0);
+    }
+
+    function test_adminSettle_noInterestWithBalance_drainsToOperator() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        // address(2) is the reward address returned by NodeRegistryMock.
+        address rewardAddr = address(2);
+        uint256 startRewardBal = rewardAddr.balance;
+
+        operatorRewardsCollector.depositFor{ value: 4 ether }(op);
+        assertEq(operatorRewardsCollector.balances(op), 4 ether);
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit AdminSettledOperator(op, 0, 0, 4 ether);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+
+        assertEq(operatorRewardsCollector.balances(op), 0);
+        assertEq(rewardAddr.balance, startRewardBal + 4 ether);
+    }
+
+    function test_adminSettle_withInterest_fullyCovered() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        address rewardAddr = address(2);
+
+        // Op has 4 ETH in ORC.
+        operatorRewardsCollector.depositFor{ value: 4 ether }(op);
+
+        // Mock interest position: 1000 SD outstanding interest, SD price 0.0001 ETH.
+        // interestInEth = 1000e18 * 1e14 / 1e18 = 1e17 = 0.1 ETH.
+        uint256 interestSD = 1000e18;
+        UserData memory ud = UserData({
+            totalInterestSD: interestSD,
+            totalCollateralInEth: 4 ether,
+            healthFactor: 2e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.repayOnBehalf.selector, op, interestSD),
+            abi.encode(uint256(interestSD), uint256(0))
+        );
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(uint256(1e14))
+        );
+
+        // Fund treasury with SD and approve ORC to pull it.
+        staderToken.transfer(staderTreasury, interestSD);
+        vm.prank(staderTreasury);
+        staderToken.approve(address(operatorRewardsCollector), type(uint256).max);
+
+        uint256 treasuryEthBefore = staderTreasury.balance;
+        uint256 treasurySDBefore = staderToken.balanceOf(staderTreasury);
+        uint256 rewardBalBefore = rewardAddr.balance;
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit AdminSettledOperator(op, interestSD, 0.1 ether, 3.9 ether);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+
+        assertEq(operatorRewardsCollector.balances(op), 0);
+        assertEq(staderTreasury.balance, treasuryEthBefore + 0.1 ether);
+        assertEq(staderToken.balanceOf(staderTreasury), treasurySDBefore - interestSD);
+        assertEq(rewardAddr.balance, rewardBalBefore + 3.9 ether);
+    }
+
+    function test_adminSettle_withInterest_balanceShortfall() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        address rewardAddr = address(2);
+
+        // Op has only 0.05 ETH in ORC — less than interestInEth (0.1 ETH).
+        operatorRewardsCollector.depositFor{ value: 0.05 ether }(op);
+
+        uint256 interestSD = 1000e18;
+        UserData memory ud = UserData({
+            totalInterestSD: interestSD,
+            totalCollateralInEth: 0.05 ether,
+            healthFactor: 1e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.repayOnBehalf.selector, op, interestSD),
+            abi.encode(uint256(interestSD), uint256(0))
+        );
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(uint256(1e14))
+        );
+
+        staderToken.transfer(staderTreasury, interestSD);
+        vm.prank(staderTreasury);
+        staderToken.approve(address(operatorRewardsCollector), type(uint256).max);
+
+        uint256 treasuryEthBefore = staderTreasury.balance;
+        uint256 rewardBalBefore = rewardAddr.balance;
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit AdminSettledOperator(op, interestSD, 0.05 ether, 0);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+
+        // Treasury absorbs SD shortfall; receives only what op had in ETH.
+        assertEq(operatorRewardsCollector.balances(op), 0);
+        assertEq(staderTreasury.balance, treasuryEthBefore + 0.05 ether);
+        assertEq(rewardAddr.balance, rewardBalBefore); // op gets nothing
+    }
+
+    function test_adminSettle_revertsWhenTreasuryNotApproved() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+
+        uint256 interestSD = 1000e18;
+        UserData memory ud = UserData({
+            totalInterestSD: interestSD,
+            totalCollateralInEth: 4 ether,
+            healthFactor: 2e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+
+        // No approval from treasury → ERC20 transferFrom reverts.
+        staderToken.transfer(staderTreasury, interestSD);
+        vm.expectRevert();
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+    }
+
+    // --- Diff B: claimOnBehalf ---
+
+    function test_claimOnBehalf_revertsBeforeGrace() public {
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
+        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
+        operatorRewardsCollector.claimOnBehalf(vm.addr(700));
+    }
+
+    function test_claimOnBehalf_revertsIfSDDebtNonZero() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        UserData memory ud = UserData({
+            totalInterestSD: 1,
+            totalCollateralInEth: 0,
+            healthFactor: 1e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+        vm.expectRevert(IOperatorRewardsCollector.SDDebtNotCleared.selector);
+        operatorRewardsCollector.claimOnBehalf(op);
+    }
+
+    function test_claimOnBehalf_isPermissionless_drainsBalance() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        address rewardAddr = address(2);
+        address randomCaller = vm.addr(999);
+
+        operatorRewardsCollector.depositFor{ value: 2 ether }(op);
+        uint256 rewardBalBefore = rewardAddr.balance;
+        uint256 callerBalBefore = randomCaller.balance;
+
+        vm.prank(randomCaller);
+        operatorRewardsCollector.claimOnBehalf(op);
+
+        assertEq(operatorRewardsCollector.balances(op), 0);
+        assertEq(rewardAddr.balance, rewardBalBefore + 2 ether);
+        assertEq(randomCaller.balance, callerBalBefore); // caller gets nothing
+    }
+
+    function test_claimOnBehalf_zeroBalanceNoOp() public {
+        _setGraceAndWarpPast();
+        address op = vm.addr(700);
+        operatorRewardsCollector.claimOnBehalf(op);
+        assertEq(operatorRewardsCollector.balances(op), 0);
+    }
+
     function mockSDCollateral(address _sdCollateralMock) private {
         emit log_named_address("sdCollateralMock", _sdCollateralMock);
         SDCollateralMock sdCollateralMockImpl = new SDCollateralMock();

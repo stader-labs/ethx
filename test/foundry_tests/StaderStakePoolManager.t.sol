@@ -276,13 +276,7 @@ contract StaderStakePoolManagerTest is Test {
     function test_deposit() public {
         address receiver = vm.addr(110);
 
-        vm.prank(staderManager);
-        stakePoolManager.pause();
-        vm.expectRevert("Pausable: paused");
-        stakePoolManager.deposit{ value: 1 }(receiver);
-        vm.prank(staderAdmin);
-        stakePoolManager.unpause();
-
+        // Post-sunset: OZ pause no longer blocks deposit() — only depositsPaused does.
         vm.expectRevert(IStaderStakePoolManager.InvalidDepositAmount.selector);
         stakePoolManager.deposit{ value: 1 }(receiver);
 
@@ -360,6 +354,68 @@ contract StaderStakePoolManagerTest is Test {
         stakePoolManager.validatorBatchDeposit(2);
         assertEq(address(stakePoolManager).balance, 4 ether);
         assertEq(address(permissionedPoolAddress).balance, 96 ether);
+    }
+
+    event DepositsPaused();
+
+    function test_depositsPausedDefaultsFalse() public {
+        assertFalse(stakePoolManager.depositsPaused());
+    }
+
+    function test_pauseDeposits_revertsForNonManager() public {
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        stakePoolManager.pauseDeposits();
+    }
+
+    function test_pauseDeposits_succeedsForManager_emitsEvent() public {
+        vm.expectEmit(true, true, true, true, address(stakePoolManager));
+        emit DepositsPaused();
+        vm.prank(staderManager);
+        stakePoolManager.pauseDeposits();
+        assertTrue(stakePoolManager.depositsPaused());
+    }
+
+    function test_deposit_revertsWhenPaused() public {
+        address receiver = vm.addr(110);
+        vm.prank(staderManager);
+        stakePoolManager.pauseDeposits();
+
+        vm.expectRevert(IStaderStakePoolManager.DepositsAreSunset.selector);
+        stakePoolManager.deposit{ value: 100 ether }(receiver);
+
+        vm.expectRevert(IStaderStakePoolManager.DepositsAreSunset.selector);
+        stakePoolManager.deposit{ value: 100 ether }(receiver, "referral");
+    }
+
+    function test_pauseDeposits_doesNotBlockTransferETHToUserWithdrawManager() public {
+        vm.deal(address(stakePoolManager), 5 ether);
+        vm.prank(staderManager);
+        stakePoolManager.pauseDeposits();
+
+        vm.prank(userWithdrawManager);
+        stakePoolManager.transferETHToUserWithdrawManager(5 ether);
+        assertEq(userWithdrawManager.balance, 5 ether);
+        assertEq(address(stakePoolManager).balance, 0);
+    }
+
+    function test_transferETHToUserWithdrawManager_succeedsWhenOZPaused() public {
+        // Defense-in-depth: even if SSPM gets OZ-paused by mistake, withdrawal
+        // finalization must still drain ETH to the UWM.
+        vm.deal(address(stakePoolManager), 5 ether);
+        vm.prank(staderManager);
+        stakePoolManager.pause();
+
+        vm.prank(userWithdrawManager);
+        stakePoolManager.transferETHToUserWithdrawManager(5 ether);
+        assertEq(userWithdrawManager.balance, 5 ether);
+    }
+
+    function test_pauseDeposits_isIdempotent() public {
+        vm.startPrank(staderManager);
+        stakePoolManager.pauseDeposits();
+        stakePoolManager.pauseDeposits();
+        vm.stopPrank();
+        assertTrue(stakePoolManager.depositsPaused());
     }
 
     function test_depositETHOverTargetWeight() public {
