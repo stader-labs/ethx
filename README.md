@@ -45,7 +45,7 @@ brew install libusb
 
 # run
 foundryup
-npm install
+npm install  --force --no-audit --no-fund 
 forge install
 ```
 
