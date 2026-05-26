@@ -36,6 +36,7 @@ contract StaderStakePoolsManager is
     IStaderConfig public staderConfig;
     uint256 public lastExcessETHDepositBlock;
     uint256 public excessETHDepositCoolDown;
+    bool public depositsPaused;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -185,6 +186,9 @@ contract StaderStakePoolsManager is
      * @return shares amount of ETHx token minted and sent to receiver
      */
     function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
+        if (depositsPaused) {
+            revert DepositsAreSunset();
+        }
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < minDeposit()) {
             revert InvalidDepositAmount();
@@ -192,6 +196,12 @@ contract StaderStakePoolsManager is
         uint256 shares = previewDeposit(assets);
         _deposit(msg.sender, _receiver, assets, shares);
         return shares;
+    }
+
+    function pauseDeposits() external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        depositsPaused = true;
+        emit DepositsPaused();
     }
 
     /**

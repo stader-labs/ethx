@@ -41,8 +41,10 @@ interface ISDUtilityPool {
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
     error AlreadyLiquidated();
+    error DelegatorsOutstanding();
 
     event WithdrawnProtocolFee(uint256 amount);
+    event SweptResidualSD(address indexed custody, uint256 amount);
     event ProtocolFeeFactorUpdated(uint256 protocolFeeFactor);
     event UpdatedStaderConfig(address indexed _staderConfig);
     event SDUtilized(address utilizer, uint256 utilizeAmount);
@@ -138,6 +140,8 @@ interface ISDUtilityPool {
     function exchangeRateCurrent() external returns (uint256);
 
     function maxApproveSD() external;
+
+    function sweepResidualSD(address custody) external;
 
     //Setters
 

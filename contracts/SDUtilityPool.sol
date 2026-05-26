@@ -333,6 +333,24 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         emit WithdrawnProtocolFee(_amount);
     }
 
+    function sweepResidualSD(address custody) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(custody);
+        if (!_allRequestsClaimed()) revert DelegatorsOutstanding();
+
+        IERC20 sd = IERC20(staderConfig.getStaderToken());
+        uint256 balance = sd.balanceOf(address(this));
+        uint256 reserved = sdReservedForClaim + accumulatedProtocolFee;
+        uint256 sweepable = balance > reserved ? balance - reserved : 0;
+        if (sweepable > 0) {
+            if (!sd.transfer(custody, sweepable)) revert SDTransferFailed();
+            emit SweptResidualSD(custody, sweepable);
+        }
+    }
+
+    function _allRequestsClaimed() internal view returns (bool) {
+        return cTokenTotalSupply == 0 && nextRequestId == nextRequestIdToFinalize && sdReservedForClaim == 0;
+    }
+
     /// @notice for max approval to SD collateral contract for spending SD tokens
     function maxApproveSD() external override whenNotPaused {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);

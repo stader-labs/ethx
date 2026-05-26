@@ -17,6 +17,7 @@ import { ISDCollateral } from "./interfaces/SDCollateral/ISDCollateral.sol";
 import { IWETH } from "./interfaces/IWETH.sol";
 import { IStaderOracle } from "../contracts/interfaces/IStaderOracle.sol";
 import { IPoolUtils } from "../contracts/interfaces/IPoolUtils.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
     IStaderConfig public staderConfig;
@@ -24,6 +25,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     mapping(address => uint256) public balances;
 
     IWETH public weth;
+
+    uint256 public sunsetGracePeriodEnd;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -207,6 +210,68 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
             address rewardsAddress = UtilLib.getOperatorRewardAddress(operator, staderConfig);
             UtilLib.sendValue(rewardsAddress, amount);
             emit Claimed(rewardsAddress, amount);
+        }
+    }
+
+    function setSunsetGracePeriodEnd(uint256 _sunsetGracePeriodEnd) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (sunsetGracePeriodEnd != 0) revert GraceAlreadySet();
+        if (_sunsetGracePeriodEnd <= block.timestamp) revert InvalidGracePeriod();
+        sunsetGracePeriodEnd = _sunsetGracePeriodEnd;
+        emit SunsetGracePeriodSet(_sunsetGracePeriodEnd);
+    }
+
+    function adminSettleOperator(address operator) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (sunsetGracePeriodEnd == 0 || block.timestamp <= sunsetGracePeriodEnd) revert GracePeriodActive();
+
+        ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
+        if (sdCollateral.operatorUtilizedSDBalance(operator) != 0) revert PrincipalNotZeroed();
+
+        ISDUtilityPool sdUtilityPool = ISDUtilityPool(staderConfig.getSDUtilityPool());
+        UserData memory userData = sdUtilityPool.getUserData(operator);
+
+        uint256 ethToTreasury;
+        if (userData.totalInterestSD > 0) {
+            address treasury = staderConfig.getStaderTreasury();
+            IERC20 sd = IERC20(staderConfig.getStaderToken());
+
+            if (!sd.transferFrom(treasury, address(this), userData.totalInterestSD)) revert WethTransferFailed();
+            sd.approve(address(sdUtilityPool), userData.totalInterestSD);
+            sdUtilityPool.repayOnBehalf(operator, userData.totalInterestSD);
+
+            uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+            uint256 interestInEth = (userData.totalInterestSD * sdPriceInEth) / staderConfig.getDecimals();
+
+            ethToTreasury = Math.min(balances[operator], interestInEth);
+            if (ethToTreasury > 0) {
+                balances[operator] -= ethToTreasury;
+                UtilLib.sendValue(treasury, ethToTreasury);
+            }
+        }
+
+        uint256 remainder = balances[operator];
+        if (remainder > 0) _claim(operator, remainder);
+
+        emit AdminSettledOperator(operator, userData.totalInterestSD, ethToTreasury, remainder);
+    }
+
+    function claimOnBehalf(address operator) external override {
+        if (sunsetGracePeriodEnd == 0 || block.timestamp <= sunsetGracePeriodEnd) revert GracePeriodActive();
+
+        UserData memory userData = ISDUtilityPool(staderConfig.getSDUtilityPool()).getUserData(operator);
+        if (userData.totalInterestSD != 0) revert SDDebtNotCleared();
+
+        uint256 amount = balances[operator];
+        if (amount > 0) _claim(operator, amount);
+    }
+
+    function sweepToCustody(address custody) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(custody);
+        if (sunsetGracePeriodEnd == 0 || block.timestamp <= sunsetGracePeriodEnd) revert GracePeriodActive();
+
+        uint256 residual = address(this).balance;
+        if (residual > 0) {
+            UtilLib.sendValue(custody, residual);
+            emit SweptToCustody(custody, residual);
         }
     }
 

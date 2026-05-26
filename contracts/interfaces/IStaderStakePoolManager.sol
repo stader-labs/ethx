@@ -11,9 +11,11 @@ interface IStaderStakePoolManager {
     error PoolIdDoesNotExit();
     error CooldownNotComplete();
     error UnsupportedOperationInSafeMode();
+    error DepositsAreSunset();
 
     // Events
     event UpdatedStaderConfig(address staderConfig);
+    event DepositsPaused();
     event DepositReferral(
         address indexed caller,
         address indexed owner,
@@ -65,4 +67,6 @@ interface IStaderStakePoolManager {
     function depositETHOverTargetWeight() external;
 
     function isVaultHealthy() external view returns (bool);
+
+    function pauseDeposits() external;
 }
