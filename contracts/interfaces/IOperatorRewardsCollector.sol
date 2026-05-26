@@ -5,6 +5,7 @@ interface IOperatorRewardsCollector {
     //errors
     error InsufficientBalance();
     error WethTransferFailed();
+    error SDTransferFailed();
     error GracePeriodActive();
     error GraceAlreadySet();
     error InvalidGracePeriod();
@@ -22,7 +23,6 @@ interface IOperatorRewardsCollector {
         uint256 ethToTreasury,
         uint256 ethToOperator
     );
-    event SweptToCustody(address indexed custody, uint256 amount);
 
     // methods
 
@@ -43,6 +43,4 @@ interface IOperatorRewardsCollector {
     function adminSettleOperator(address operator) external;
 
     function claimOnBehalf(address operator) external;
-
-    function sweepToCustody(address custody) external;
 }

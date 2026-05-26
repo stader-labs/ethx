@@ -96,7 +96,7 @@ contract StaderStakePoolsManager is
      * @dev only user withdraw manager allowed to call
      * @param _amount amount of ETH to transfer
      */
-    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant whenNotPaused {
+    function transferETHToUserWithdrawManager(uint256 _amount) external override nonReentrant {
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.USER_WITHDRAW_MANAGER());
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = payable(staderConfig.getUserWithdrawManager()).call{ value: _amount }("");
@@ -175,7 +175,7 @@ contract StaderStakePoolsManager is
     function deposit(
         address _receiver,
         string calldata _referralId
-    ) external payable override whenNotPaused returns (uint256 _shares) {
+    ) external payable override returns (uint256 _shares) {
         _shares = deposit(_receiver);
         emit DepositReferral(msg.sender, _receiver, msg.value, _shares, _referralId);
     }
@@ -185,7 +185,7 @@ contract StaderStakePoolsManager is
      * @param _receiver account where ETHx
      * @return shares amount of ETHx token minted and sent to receiver
      */
-    function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
+    function deposit(address _receiver) public payable override returns (uint256) {
         if (depositsPaused) {
             revert DepositsAreSunset();
         }

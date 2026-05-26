@@ -220,7 +220,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         emit SunsetGracePeriodSet(_sunsetGracePeriodEnd);
     }
 
-    function adminSettleOperator(address operator) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function adminSettleOperator(address operator) external override {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
         if (sunsetGracePeriodEnd == 0 || block.timestamp <= sunsetGracePeriodEnd) revert GracePeriodActive();
 
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
@@ -234,7 +235,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
             address treasury = staderConfig.getStaderTreasury();
             IERC20 sd = IERC20(staderConfig.getStaderToken());
 
-            if (!sd.transferFrom(treasury, address(this), userData.totalInterestSD)) revert WethTransferFailed();
+            if (!sd.transferFrom(treasury, address(this), userData.totalInterestSD)) revert SDTransferFailed();
             sd.approve(address(sdUtilityPool), userData.totalInterestSD);
             sdUtilityPool.repayOnBehalf(operator, userData.totalInterestSD);
 
@@ -262,17 +263,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
         uint256 amount = balances[operator];
         if (amount > 0) _claim(operator, amount);
-    }
-
-    function sweepToCustody(address custody) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        UtilLib.checkNonZeroAddress(custody);
-        if (sunsetGracePeriodEnd == 0 || block.timestamp <= sunsetGracePeriodEnd) revert GracePeriodActive();
-
-        uint256 residual = address(this).balance;
-        if (residual > 0) {
-            UtilLib.sendValue(custody, residual);
-            emit SweptToCustody(custody, residual);
-        }
     }
 
     /**
