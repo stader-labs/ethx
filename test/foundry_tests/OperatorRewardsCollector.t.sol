@@ -747,6 +747,103 @@ contract OperatorRewardsCollectorTest is Test {
         assertEq(operatorRewardsCollector.balances(op), 0);
     }
 
+    // --- Diff B: setCustodyDelay + sweepToCustody(asset, custody) ---
+
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address indexed asset, address indexed custody, uint256 amount);
+
+    function _setCustodyDelayAndWarp() internal {
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(1 days);
+        vm.warp(block.timestamp + 1 days + 1);
+    }
+
+    function test_setCustodyDelay_revertsForNonAdmin() public {
+        vm.expectRevert();
+        operatorRewardsCollector.setCustodyDelay(1 days);
+    }
+
+    function test_setCustodyDelay_revertsOnZero() public {
+        vm.expectRevert(IOperatorRewardsCollector.ZeroCustodyDelay.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(0);
+    }
+
+    function test_setCustodyDelay_setsTimestampAndEmits() public {
+        uint256 delay = 7 days;
+        uint256 expected = block.timestamp + delay;
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit SetCustodyDelay(expected);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(delay);
+        assertEq(operatorRewardsCollector.sweepToCustodyTimestamp(), expected);
+    }
+
+    function test_sweep_revertsForNonAdmin() public {
+        _setCustodyDelayAndWarp();
+        vm.expectRevert();
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroCustody() public {
+        _setCustodyDelayAndWarp();
+        vm.expectRevert(UtilLib.ZeroAddress.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), address(0));
+    }
+
+    function test_sweep_revertsBeforeDelay() public {
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(1 days);
+        vm.expectRevert(IOperatorRewardsCollector.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsWhenDelayUnset() public {
+        vm.expectRevert(IOperatorRewardsCollector.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_ethRevertsOnZeroBalance() public {
+        _setCustodyDelayAndWarp();
+        vm.expectRevert(IOperatorRewardsCollector.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_transfersEthToCustody() public {
+        _setCustodyDelayAndWarp();
+        address custody = vm.addr(701);
+        vm.deal(address(operatorRewardsCollector), 5 ether);
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit SweptToCustody(address(0), custody, 5 ether);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), custody);
+
+        assertEq(custody.balance, 5 ether);
+        assertEq(address(operatorRewardsCollector).balance, 0);
+        assertTrue(operatorRewardsCollector.assetCustodied());
+    }
+
+    function test_sweep_transfersERC20ToCustody() public {
+        _setCustodyDelayAndWarp();
+        address custody = vm.addr(701);
+        uint256 amount = 1_000e18;
+        staderToken.transfer(address(operatorRewardsCollector), amount);
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit SweptToCustody(address(staderToken), custody, amount);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(staderToken), custody);
+
+        assertEq(staderToken.balanceOf(custody), amount);
+        assertEq(staderToken.balanceOf(address(operatorRewardsCollector)), 0);
+        assertTrue(operatorRewardsCollector.assetCustodied());
+    }
+
     function mockSDCollateral(address _sdCollateralMock) private {
         emit log_named_address("sdCollateralMock", _sdCollateralMock);
         SDCollateralMock sdCollateralMockImpl = new SDCollateralMock();

@@ -95,6 +95,9 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     uint256 public conservativeEthPerKey;
 
+    uint256 public sweepToCustodyTimestamp;
+    bool public assetCustodied;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -331,6 +334,31 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             revert SDTransferFailed();
         }
         emit WithdrawnProtocolFee(_amount);
+    }
+
+    function setCustodyDelay(uint256 _custodyDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custodyDelay == 0) revert ZeroCustodyDelay();
+        sweepToCustodyTimestamp = block.timestamp + _custodyDelay;
+        emit SetCustodyDelay(sweepToCustodyTimestamp);
+    }
+
+    function sweepToCustody(address _asset, address _custody) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        UtilLib.checkNonZeroAddress(_custody);
+        if (sweepToCustodyTimestamp == 0 || block.timestamp < sweepToCustodyTimestamp) {
+            revert CustodyDelayNotElapsed();
+        }
+        assetCustodied = true;
+        uint256 bal;
+        if (_asset == address(0)) {
+            bal = address(this).balance;
+            if (bal == 0) revert ZeroAmount();
+            UtilLib.sendValue(_custody, bal);
+        } else {
+            bal = IERC20(_asset).balanceOf(address(this));
+            if (bal == 0) revert ZeroAmount();
+            if (!IERC20(_asset).transfer(_custody, bal)) revert SDTransferFailed();
+        }
+        emit SweptToCustody(_asset, _custody, bal);
     }
 
     /// @notice for max approval to SD collateral contract for spending SD tokens

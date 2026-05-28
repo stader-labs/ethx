@@ -8,6 +8,10 @@ interface IOperatorRewardsCollector {
     error SDTransferFailed();
     error PrincipalNotZeroed();
     error SDDebtNotCleared();
+    error ZeroCustodyDelay();
+    error CustodyDelayNotElapsed();
+    error ZeroAmount();
+    error TransferFailed();
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
     event Claimed(address indexed receiver, uint256 amount);
@@ -19,6 +23,8 @@ interface IOperatorRewardsCollector {
         uint256 ethToTreasury,
         uint256 ethToOperator
     );
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address indexed asset, address indexed custody, uint256 amount);
 
     // methods
 
@@ -37,4 +43,8 @@ interface IOperatorRewardsCollector {
     function adminSettleOperator(address operator) external;
 
     function claimOnBehalf(address operator) external;
+
+    function setCustodyDelay(uint256 _custodyDelay) external;
+
+    function sweepToCustody(address _asset, address _custody) external;
 }

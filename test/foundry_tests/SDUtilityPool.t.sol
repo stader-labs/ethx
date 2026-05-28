@@ -783,6 +783,102 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.updateRiskConfig(randomSeed, randomSeed, randomSeed, randomSeed);
     }
 
+    // --- Diff C: setCustodyDelay + sweepToCustody(asset, custody) ---
+
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address indexed asset, address indexed custody, uint256 amount);
+
+    function _setCustodyDelayAndWarp() internal {
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(1 days);
+        vm.warp(block.timestamp + 1 days + 1);
+    }
+
+    function test_setCustodyDelay_revertsForNonAdmin() public {
+        vm.expectRevert();
+        sdUtilityPool.setCustodyDelay(1 days);
+    }
+
+    function test_setCustodyDelay_revertsOnZero() public {
+        vm.expectRevert(ISDUtilityPool.ZeroCustodyDelay.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(0);
+    }
+
+    function test_setCustodyDelay_setsTimestampAndEmits() public {
+        uint256 delay = 7 days;
+        uint256 expected = block.timestamp + delay;
+        vm.expectEmit(true, true, true, true, address(sdUtilityPool));
+        emit SetCustodyDelay(expected);
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(delay);
+        assertEq(sdUtilityPool.sweepToCustodyTimestamp(), expected);
+    }
+
+    function test_sweep_revertsForNonAdmin() public {
+        _setCustodyDelayAndWarp();
+        vm.expectRevert();
+        sdUtilityPool.sweepToCustody(address(staderToken), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroCustody() public {
+        _setCustodyDelayAndWarp();
+        vm.expectRevert(UtilLib.ZeroAddress.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(staderToken), address(0));
+    }
+
+    function test_sweep_revertsBeforeDelay() public {
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(1 days);
+        vm.expectRevert(ISDUtilityPool.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(staderToken), vm.addr(701));
+    }
+
+    function test_sweep_revertsWhenDelayUnset() public {
+        vm.expectRevert(ISDUtilityPool.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(staderToken), vm.addr(701));
+    }
+
+    function test_sweep_transfersSDToCustody() public {
+        _setCustodyDelayAndWarp();
+        address custody = vm.addr(701);
+        uint256 expected = staderToken.balanceOf(address(sdUtilityPool));
+        assertGt(expected, 0); // setUp seeds the pool with 1 ETH worth of SD
+
+        vm.expectEmit(true, true, true, true, address(sdUtilityPool));
+        emit SweptToCustody(address(staderToken), custody, expected);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(staderToken), custody);
+
+        assertEq(staderToken.balanceOf(custody), expected);
+        assertEq(staderToken.balanceOf(address(sdUtilityPool)), 0);
+        assertTrue(sdUtilityPool.assetCustodied());
+    }
+
+    function test_sweep_transfersEthToCustody() public {
+        _setCustodyDelayAndWarp();
+        address custody = vm.addr(701);
+        vm.deal(address(sdUtilityPool), 3 ether);
+
+        vm.expectEmit(true, true, true, true, address(sdUtilityPool));
+        emit SweptToCustody(address(0), custody, 3 ether);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(0), custody);
+
+        assertEq(custody.balance, 3 ether);
+        assertEq(address(sdUtilityPool).balance, 0);
+    }
+
+    function test_sweep_revertsOnZeroBalance() public {
+        _setCustodyDelayAndWarp();
+        vm.expectRevert(ISDUtilityPool.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
     function test_LiquidationCall(uint16 randomSeed) public {
         vm.assume(randomSeed > 1);
         uint256 utilizeAmount = 1e22;
