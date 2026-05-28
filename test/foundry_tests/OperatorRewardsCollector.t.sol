@@ -522,7 +522,6 @@ contract OperatorRewardsCollectorTest is Test {
         assertEq(address(operatorRewardsCollector.staderConfig()), inputAddr);
     }
 
-    event SunsetGracePeriodSet(uint256 sunsetGracePeriodEnd);
     event AdminSettledOperator(
         address indexed operator,
         uint256 interestSD,
@@ -530,73 +529,14 @@ contract OperatorRewardsCollectorTest is Test {
         uint256 ethToOperator
     );
 
-    // --- Diff B: sunsetGracePeriodEnd setter ---
-
-    function test_setGrace_revertsForNonAdmin() public {
-        vm.expectRevert();
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
-    }
-
-    function test_setGrace_revertsOnPastTimestamp() public {
-        vm.startPrank(staderAdmin);
-        vm.expectRevert(IOperatorRewardsCollector.InvalidGracePeriod.selector);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp);
-        vm.expectRevert(IOperatorRewardsCollector.InvalidGracePeriod.selector);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp - 1);
-        vm.stopPrank();
-    }
-
-    function test_setGrace_setsValueAndEmits() public {
-        uint256 graceEnd = block.timestamp + 90 days;
-        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
-        emit SunsetGracePeriodSet(graceEnd);
-        vm.prank(staderAdmin);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(graceEnd);
-        assertEq(operatorRewardsCollector.sunsetGracePeriodEnd(), graceEnd);
-    }
-
-    function test_setGrace_revertsOnSecondSet() public {
-        vm.startPrank(staderAdmin);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 90 days);
-        vm.expectRevert(IOperatorRewardsCollector.GraceAlreadySet.selector);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 180 days);
-        vm.stopPrank();
-    }
-
-    function test_gatedFunctionsRevertWhenGraceUnset() public {
-        address op = vm.addr(700);
-        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
-        vm.prank(staderManager);
-        operatorRewardsCollector.adminSettleOperator(op);
-
-        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
-        operatorRewardsCollector.claimOnBehalf(op);
-    }
-
     // --- Diff B: adminSettleOperator ---
 
-    function _setGraceAndWarpPast() internal {
-        vm.prank(staderAdmin);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
-        vm.warp(block.timestamp + 2 days);
-    }
-
-    function test_adminSettle_revertsBeforeGraceEnd() public {
-        vm.prank(staderAdmin);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
-        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
-        vm.prank(staderManager);
-        operatorRewardsCollector.adminSettleOperator(vm.addr(700));
-    }
-
     function test_adminSettle_revertsForNonManager() public {
-        _setGraceAndWarpPast();
         vm.expectRevert(UtilLib.CallerNotManager.selector);
         operatorRewardsCollector.adminSettleOperator(vm.addr(700));
     }
 
     function test_adminSettle_revertsIfPrincipalNonZero() public {
-        _setGraceAndWarpPast();
         address op = vm.addr(700);
         vm.mockCall(
             sdCollateralMock,
@@ -609,7 +549,6 @@ contract OperatorRewardsCollectorTest is Test {
     }
 
     function test_adminSettle_noInterestNoBalance_emitsZero() public {
-        _setGraceAndWarpPast();
         address op = vm.addr(700);
         vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
         emit AdminSettledOperator(op, 0, 0, 0);
@@ -619,7 +558,7 @@ contract OperatorRewardsCollectorTest is Test {
     }
 
     function test_adminSettle_noInterestWithBalance_drainsToOperator() public {
-        _setGraceAndWarpPast();
+
         address op = vm.addr(700);
         // address(2) is the reward address returned by NodeRegistryMock.
         address rewardAddr = address(2);
@@ -638,7 +577,7 @@ contract OperatorRewardsCollectorTest is Test {
     }
 
     function test_adminSettle_withInterest_fullyCovered() public {
-        _setGraceAndWarpPast();
+
         address op = vm.addr(700);
         address rewardAddr = address(2);
 
@@ -691,7 +630,7 @@ contract OperatorRewardsCollectorTest is Test {
     }
 
     function test_adminSettle_withInterest_balanceShortfall() public {
-        _setGraceAndWarpPast();
+
         address op = vm.addr(700);
         address rewardAddr = address(2);
 
@@ -740,7 +679,7 @@ contract OperatorRewardsCollectorTest is Test {
     }
 
     function test_adminSettle_revertsWhenTreasuryNotApproved() public {
-        _setGraceAndWarpPast();
+
         address op = vm.addr(700);
 
         uint256 interestSD = 1000e18;
@@ -765,15 +704,8 @@ contract OperatorRewardsCollectorTest is Test {
 
     // --- Diff B: claimOnBehalf ---
 
-    function test_claimOnBehalf_revertsBeforeGrace() public {
-        vm.prank(staderAdmin);
-        operatorRewardsCollector.setSunsetGracePeriodEnd(block.timestamp + 1 days);
-        vm.expectRevert(IOperatorRewardsCollector.GracePeriodActive.selector);
-        operatorRewardsCollector.claimOnBehalf(vm.addr(700));
-    }
-
     function test_claimOnBehalf_revertsIfSDDebtNonZero() public {
-        _setGraceAndWarpPast();
+
         address op = vm.addr(700);
         UserData memory ud = UserData({
             totalInterestSD: 1,
@@ -791,7 +723,7 @@ contract OperatorRewardsCollectorTest is Test {
     }
 
     function test_claimOnBehalf_isPermissionless_drainsBalance() public {
-        _setGraceAndWarpPast();
+
         address op = vm.addr(700);
         address rewardAddr = address(2);
         address randomCaller = vm.addr(999);
@@ -809,7 +741,7 @@ contract OperatorRewardsCollectorTest is Test {
     }
 
     function test_claimOnBehalf_zeroBalanceNoOp() public {
-        _setGraceAndWarpPast();
+
         address op = vm.addr(700);
         operatorRewardsCollector.claimOnBehalf(op);
         assertEq(operatorRewardsCollector.balances(op), 0);

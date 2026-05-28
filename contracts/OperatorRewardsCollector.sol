@@ -26,8 +26,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
     IWETH public weth;
 
-    uint256 public sunsetGracePeriodEnd;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -213,16 +211,8 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
         }
     }
 
-    function setSunsetGracePeriodEnd(uint256 _sunsetGracePeriodEnd) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (sunsetGracePeriodEnd != 0) revert GraceAlreadySet();
-        if (_sunsetGracePeriodEnd <= block.timestamp) revert InvalidGracePeriod();
-        sunsetGracePeriodEnd = _sunsetGracePeriodEnd;
-        emit SunsetGracePeriodSet(_sunsetGracePeriodEnd);
-    }
-
     function adminSettleOperator(address operator) external override {
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
-        if (sunsetGracePeriodEnd == 0 || block.timestamp <= sunsetGracePeriodEnd) revert GracePeriodActive();
 
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
         if (sdCollateral.operatorUtilizedSDBalance(operator) != 0) revert PrincipalNotZeroed();
@@ -256,8 +246,6 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     }
 
     function claimOnBehalf(address operator) external override {
-        if (sunsetGracePeriodEnd == 0 || block.timestamp <= sunsetGracePeriodEnd) revert GracePeriodActive();
-
         UserData memory userData = ISDUtilityPool(staderConfig.getSDUtilityPool()).getUserData(operator);
         if (userData.totalInterestSD != 0) revert SDDebtNotCleared();
 

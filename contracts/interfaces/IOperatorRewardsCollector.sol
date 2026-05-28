@@ -6,9 +6,6 @@ interface IOperatorRewardsCollector {
     error InsufficientBalance();
     error WethTransferFailed();
     error SDTransferFailed();
-    error GracePeriodActive();
-    error GraceAlreadySet();
-    error InvalidGracePeriod();
     error PrincipalNotZeroed();
     error SDDebtNotCleared();
     // events
@@ -16,7 +13,6 @@ interface IOperatorRewardsCollector {
     event Claimed(address indexed receiver, uint256 amount);
     event DepositedFor(address indexed sender, address indexed receiver, uint256 amount);
     event UpdatedWethAddress(address indexed weth);
-    event SunsetGracePeriodSet(uint256 sunsetGracePeriodEnd);
     event AdminSettledOperator(
         address indexed operator,
         uint256 interestSD,
@@ -37,8 +33,6 @@ interface IOperatorRewardsCollector {
     function withdrawableInEth(address operator) external view returns (uint256);
 
     function getBalance(address operator) external view returns (uint256);
-
-    function setSunsetGracePeriodEnd(uint256 _sunsetGracePeriodEnd) external;
 
     function adminSettleOperator(address operator) external;
 

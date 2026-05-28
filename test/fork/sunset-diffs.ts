@@ -72,22 +72,4 @@ describe("ETHx sunset diffs — mainnet fork", function () {
         .reverted;
     });
   });
-
-  describe("Diff B — grace gating and one-shot setter", () => {
-    it("gated functions revert before setSunsetGracePeriodEnd", async () => {
-      const manager = await asSigner(STADER_MULTISIG);
-      await expect(orc.connect(manager).adminSettleOperator(ethers.ZeroAddress)).to.be.revertedWithCustomError(
-        orc,
-        "GracePeriodActive"
-      );
-      await expect(orc.claimOnBehalf(ethers.ZeroAddress)).to.be.revertedWithCustomError(
-        orc,
-        "GracePeriodActive"
-      );
-    });
-
-    // setSunsetGracePeriodEnd set-once / past-timestamp semantics are covered by
-    // the Foundry unit tests (test_setGrace_*); skipped here to avoid coupling
-    // the fork suite to a public-RPC log-range query for the admin role holder.
-  });
 });
