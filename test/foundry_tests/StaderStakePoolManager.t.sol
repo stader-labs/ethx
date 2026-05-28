@@ -397,4 +397,154 @@ contract StaderStakePoolManagerTest is Test {
         assertEq(address(permissionedPoolAddress).balance, 32 ether);
         assertEq(address(permissionlessPoolAddress).balance, 56 ether);
     }
+
+    // --- Sunset: setDepositsPaused (reversible MANAGER) ---
+
+    event DepositsPausedSet(bool paused);
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
+
+    function test_setDepositsPaused_revertsForNonManager() public {
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        stakePoolManager.setDepositsPaused(true);
+    }
+
+    function test_setDepositsPaused_togglesOnAndOff() public {
+        assertFalse(stakePoolManager.depositsPaused());
+        vm.startPrank(staderManager);
+        stakePoolManager.setDepositsPaused(true);
+        assertTrue(stakePoolManager.depositsPaused());
+        stakePoolManager.setDepositsPaused(false);
+        assertFalse(stakePoolManager.depositsPaused());
+        vm.stopPrank();
+    }
+
+    function test_setDepositsPaused_emitsDepositsPausedSet() public {
+        vm.expectEmit(true, true, true, true, address(stakePoolManager));
+        emit DepositsPausedSet(true);
+        vm.prank(staderManager);
+        stakePoolManager.setDepositsPaused(true);
+    }
+
+    function test_deposit_revertsWhenDepositsPaused() public {
+        address receiver = vm.addr(110);
+        vm.prank(staderManager);
+        stakePoolManager.setDepositsPaused(true);
+
+        vm.expectRevert(IStaderStakePoolManager.DepositsPaused.selector);
+        stakePoolManager.deposit{ value: 100 ether }(receiver);
+
+        vm.expectRevert(IStaderStakePoolManager.DepositsPaused.selector);
+        stakePoolManager.deposit{ value: 100 ether }(receiver, "ref");
+    }
+
+    // --- Sunset: setCustodyDelay ---
+
+    function test_setCustodyDelay_revertsForNonAdmin() public {
+        vm.expectRevert();
+        stakePoolManager.setCustodyDelay(1 days);
+    }
+
+    function test_setCustodyDelay_revertsOnZero() public {
+        vm.expectRevert(IStaderStakePoolManager.ZeroCustodyDelay.selector);
+        vm.prank(staderAdmin);
+        stakePoolManager.setCustodyDelay(0);
+    }
+
+    function test_setCustodyDelay_setsTimestampAndEmits() public {
+        uint256 expected = block.timestamp + 7 days;
+        vm.expectEmit(true, true, true, true, address(stakePoolManager));
+        emit SetCustodyDelay(expected);
+        vm.prank(staderAdmin);
+        stakePoolManager.setCustodyDelay(7 days);
+        assertEq(stakePoolManager.sweepToCustodyTimestamp(), expected);
+    }
+
+    // --- Sunset: sweepToCustody ---
+
+    function _armSweep() internal {
+        vm.prank(staderAdmin);
+        stakePoolManager.setCustodyDelay(1 days);
+        vm.warp(block.timestamp + 1 days + 1);
+    }
+
+    function test_sweep_revertsForNonAdmin() public {
+        _armSweep();
+        vm.expectRevert();
+        stakePoolManager.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroCustody() public {
+        _armSweep();
+        vm.expectRevert(IStaderStakePoolManager.ZeroAddress.selector);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(0), address(0));
+    }
+
+    function test_sweep_revertsBeforeDelay() public {
+        vm.prank(staderAdmin);
+        stakePoolManager.setCustodyDelay(1 days);
+        vm.expectRevert(IStaderStakePoolManager.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsWhenDelayUnset() public {
+        vm.expectRevert(IStaderStakePoolManager.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroBalance() public {
+        _armSweep();
+        vm.expectRevert(IStaderStakePoolManager.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_transfersEthToCustody() public {
+        _armSweep();
+        address custody = vm.addr(701);
+        vm.deal(address(stakePoolManager), 5 ether);
+
+        vm.expectEmit(true, true, true, true, address(stakePoolManager));
+        emit SweptToCustody(address(0), custody, 5 ether);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(0), custody);
+
+        assertEq(custody.balance, 5 ether);
+        assertEq(address(stakePoolManager).balance, 0);
+        assertTrue(stakePoolManager.assetCustodied());
+    }
+
+    // --- Sunset: assetCustodied kill-switch ---
+
+    function _custodyAndSweep() internal {
+        _armSweep();
+        vm.deal(address(stakePoolManager), 1 wei);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_deposit_revertsAfterAssetCustodied() public {
+        _custodyAndSweep();
+        address receiver = vm.addr(110);
+        vm.expectRevert(IStaderStakePoolManager.AssetCustodied.selector);
+        stakePoolManager.deposit{ value: 100 ether }(receiver);
+
+        vm.expectRevert(IStaderStakePoolManager.AssetCustodied.selector);
+        stakePoolManager.deposit{ value: 100 ether }(receiver, "ref");
+    }
+
+    function test_validatorBatchDeposit_revertsAfterAssetCustodied() public {
+        _custodyAndSweep();
+        vm.expectRevert(IStaderStakePoolManager.AssetCustodied.selector);
+        stakePoolManager.validatorBatchDeposit(1);
+    }
+
+    function test_depositETHOverTargetWeight_revertsAfterAssetCustodied() public {
+        _custodyAndSweep();
+        vm.expectRevert(IStaderStakePoolManager.AssetCustodied.selector);
+        stakePoolManager.depositETHOverTargetWeight();
+    }
 }

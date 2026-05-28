@@ -279,4 +279,110 @@ contract PermissionlessPoolTest is Test {
         permissionlessPool.updateStaderConfig(newStaderConfig);
         assertEq(address(permissionlessPool.staderConfig()), newStaderConfig);
     }
+
+    // --- Sunset: setCustodyDelay / sweepToCustody / kill-switch ---
+
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
+
+    function test_setCustodyDelay_revertsForNonAdmin() public {
+        vm.expectRevert();
+        permissionlessPool.setCustodyDelay(1 days);
+    }
+
+    function test_setCustodyDelay_revertsOnZero() public {
+        vm.expectRevert(PermissionlessPool.ZeroCustodyDelay.selector);
+        vm.prank(staderAdmin);
+        permissionlessPool.setCustodyDelay(0);
+    }
+
+    function test_setCustodyDelay_setsTimestampAndEmits() public {
+        uint256 expected = block.timestamp + 7 days;
+        vm.expectEmit(true, true, true, true, address(permissionlessPool));
+        emit SetCustodyDelay(expected);
+        vm.prank(staderAdmin);
+        permissionlessPool.setCustodyDelay(7 days);
+        assertEq(permissionlessPool.sweepToCustodyTimestamp(), expected);
+    }
+
+    function _armPLPSweep() internal {
+        vm.prank(staderAdmin);
+        permissionlessPool.setCustodyDelay(1 days);
+        vm.warp(block.timestamp + 1 days + 1);
+    }
+
+    function test_sweep_revertsForNonAdmin() public {
+        _armPLPSweep();
+        vm.expectRevert();
+        permissionlessPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroCustody() public {
+        _armPLPSweep();
+        vm.expectRevert(PermissionlessPool.ZeroAddress.selector);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(0), address(0));
+    }
+
+    function test_sweep_revertsBeforeDelay() public {
+        vm.prank(staderAdmin);
+        permissionlessPool.setCustodyDelay(1 days);
+        vm.expectRevert(PermissionlessPool.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsWhenDelayUnset() public {
+        vm.expectRevert(PermissionlessPool.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroBalance() public {
+        _armPLPSweep();
+        vm.expectRevert(PermissionlessPool.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_transfersEthToCustody() public {
+        _armPLPSweep();
+        address custody = vm.addr(701);
+        vm.deal(address(permissionlessPool), 4 ether);
+
+        vm.expectEmit(true, true, true, true, address(permissionlessPool));
+        emit SweptToCustody(address(0), custody, 4 ether);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(0), custody);
+
+        assertEq(custody.balance, 4 ether);
+        assertTrue(permissionlessPool.assetCustodied());
+    }
+
+    function _custodyAndSweepPLP() internal {
+        _armPLPSweep();
+        vm.deal(address(permissionlessPool), 1 wei);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_preDepositOnBeaconChain_revertsAfterAssetCustodied() public {
+        _custodyAndSweepPLP();
+        bytes[] memory pubkey = new bytes[](1);
+        pubkey[0] = "0xdead";
+        bytes[] memory sig = new bytes[](1);
+        sig[0] = "0xbeef";
+        vm.deal(address(nodeRegistry), 1 ether);
+        vm.expectRevert(PermissionlessPool.AssetCustodied.selector);
+        vm.prank(address(nodeRegistry));
+        permissionlessPool.preDepositOnBeaconChain{ value: 1 ether }(pubkey, sig, 1, 0);
+    }
+
+    function test_stakeUserETHToBeaconChain_revertsAfterAssetCustodied() public {
+        _custodyAndSweepPLP();
+        vm.deal(address(poolManager), 32 ether);
+        vm.expectRevert(PermissionlessPool.AssetCustodied.selector);
+        vm.prank(address(poolManager));
+        permissionlessPool.stakeUserETHToBeaconChain{ value: 28 ether }();
+    }
 }

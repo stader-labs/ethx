@@ -344,4 +344,41 @@ contract UserWithdrawalManagerTest is Test {
         assertEq(address(userWithdrawalManager).balance, 16 ether);
         assertEq(address(ethXHolder).balance, 16 ether);
     }
+
+    // --- Sunset: UWM cross-contract gate via SSPM.assetCustodied() ---
+
+    function test_requestWithdraw_revertsWhenSSPMAssetCustodied() public {
+        address ethXHolder = vm.addr(1001);
+        address owner = vm.addr(1002);
+
+        vm.prank(address(staderStakePoolManager));
+        ethX.mint(ethXHolder, 100 ether);
+        vm.startPrank(ethXHolder);
+        ethX.approve(address(userWithdrawalManager), type(uint256).max);
+        vm.stopPrank();
+
+        vm.mockCall(
+            address(staderStakePoolManager),
+            abi.encodeWithSelector(IStaderStakePoolManager.assetCustodied.selector),
+            abi.encode(true)
+        );
+
+        vm.prank(ethXHolder);
+        vm.expectRevert(IUserWithdrawalManager.AssetCustodied.selector);
+        userWithdrawalManager.requestWithdraw(10 ether, owner);
+    }
+
+    function test_requestWithdraw_succeedsWhenSSPMNotCustodied() public {
+        // Sanity: with default mock returning false, requestWithdraw proceeds past the assetCustodied check.
+        address ethXHolder = vm.addr(1001);
+        address owner = vm.addr(1002);
+
+        vm.prank(address(staderStakePoolManager));
+        ethX.mint(ethXHolder, 100 ether);
+        vm.startPrank(ethXHolder);
+        ethX.approve(address(userWithdrawalManager), type(uint256).max);
+        userWithdrawalManager.requestWithdraw(10 ether, owner);
+        vm.stopPrank();
+        assertEq(userWithdrawalManager.nextRequestId(), 2);
+    }
 }
