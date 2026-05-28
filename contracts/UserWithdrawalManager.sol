@@ -114,6 +114,7 @@ contract UserWithdrawalManager is
      */
     function requestWithdraw(uint256 _ethXAmount, address _owner) public override whenNotPaused returns (uint256) {
         if (_owner == address(0)) revert ZeroAddressReceived();
+        if (IStaderStakePoolManager(staderConfig.getStakePoolManager()).assetCustodied()) revert AssetCustodied();
         uint256 assets = IStaderStakePoolManager(staderConfig.getStakePoolManager()).previewWithdraw(_ethXAmount);
         if (assets < staderConfig.getMinWithdrawAmount() || assets > staderConfig.getMaxWithdrawAmount()) {
             revert InvalidWithdrawAmount();

@@ -11,6 +11,12 @@ interface IStaderStakePoolManager {
     error PoolIdDoesNotExit();
     error CooldownNotComplete();
     error UnsupportedOperationInSafeMode();
+    error DepositsPaused();
+    error AssetCustodied();
+    error ZeroCustodyDelay();
+    error ZeroAddress();
+    error ZeroAmount();
+    error CustodyDelayNotElapsed();
 
     // Events
     event UpdatedStaderConfig(address staderConfig);
@@ -29,6 +35,9 @@ interface IStaderStakePoolManager {
     event ETHTransferredToPool(uint256 indexed poolId, address poolAddress, uint256 validatorCount);
     event WithdrawVaultUserShareReceived(uint256 amount);
     event UpdatedExcessETHDepositCoolDown(uint256 excessETHDepositCoolDown);
+    event DepositsPausedSet(bool paused);
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
 
     function deposit(address _receiver, string calldata _referralId) external payable returns (uint256);
 
@@ -65,4 +74,16 @@ interface IStaderStakePoolManager {
     function depositETHOverTargetWeight() external;
 
     function isVaultHealthy() external view returns (bool);
+
+    function depositsPaused() external view returns (bool);
+
+    function assetCustodied() external view returns (bool);
+
+    function sweepToCustodyTimestamp() external view returns (uint256);
+
+    function setDepositsPaused(bool _paused) external;
+
+    function setCustodyDelay(uint256 _custodyDelay) external;
+
+    function sweepToCustody(address _asset, address _custody) external;
 }

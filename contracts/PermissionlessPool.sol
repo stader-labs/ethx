@@ -4,6 +4,8 @@ pragma solidity 0.8.16;
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import { UtilLib } from "./library/UtilLib.sol";
 
@@ -16,6 +18,7 @@ import { IPermissionlessNodeRegistry } from "./interfaces/IPermissionlessNodeReg
 
 contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     IStaderConfig public staderConfig;
 
     uint256 public constant DEPOSIT_NODE_BOND = 3 ether;
@@ -27,6 +30,19 @@ contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, Reentr
     uint256 public override operatorFee;
 
     uint256 public constant MAX_COMMISSION_LIMIT_BIPS = 1500;
+
+    uint256 public sweepToCustodyTimestamp;
+    bool public assetCustodied;
+
+    error AssetCustodied();
+    error ZeroCustodyDelay();
+    error ZeroAddress();
+    error ZeroAmount();
+    error CustodyDelayNotElapsed();
+    error TransferFailed();
+
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -86,6 +102,7 @@ contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, Reentr
         uint256 _operatorId,
         uint256 _operatorTotalKeys
     ) external payable nonReentrant {
+        if (assetCustodied) revert AssetCustodied();
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         address vaultFactory = staderConfig.getVaultFactory();
         uint256 pubkeyCount = _pubkey.length;
@@ -122,6 +139,7 @@ contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, Reentr
      * @dev deposit validator taking care of pool capacity
      */
     function stakeUserETHToBeaconChain() external payable override nonReentrant {
+        if (assetCustodied) revert AssetCustodied();
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.STAKE_POOL_MANAGER());
         uint256 requiredValidators = msg.value / (staderConfig.getFullDepositSize() - DEPOSIT_NODE_BOND);
         address nodeRegistryAddress = staderConfig.getPermissionlessNodeRegistry();
@@ -265,6 +283,34 @@ contract PermissionlessPool is IStaderPoolBase, AccessControlUpgradeable, Reentr
         );
         IPermissionlessNodeRegistry(_nodeRegistryAddress).updateDepositStatusAndBlock(_validatorId);
         emit ValidatorDepositedOnBeaconChain(_validatorId, pubkey);
+    }
+
+    /// @notice arm custody sweep timer; sweepToCustody allowed only after delay elapses
+    /// @dev Admin (timelock) only
+    function setCustodyDelay(uint256 _custodyDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custodyDelay == 0) revert ZeroCustodyDelay();
+        sweepToCustodyTimestamp = block.timestamp + _custodyDelay;
+        emit SetCustodyDelay(sweepToCustodyTimestamp);
+    }
+
+    /// @notice sweep full ETH or ERC20 balance to custody; sticky-flips assetCustodied
+    /// @dev Admin (timelock) only; requires armed setCustodyDelay() with elapsed delay
+    function sweepToCustody(address _asset, address _custody) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custody == address(0)) revert ZeroAddress();
+        if (sweepToCustodyTimestamp == 0 || block.timestamp < sweepToCustodyTimestamp) revert CustodyDelayNotElapsed();
+        assetCustodied = true;
+        uint256 bal;
+        if (_asset == address(0)) {
+            bal = address(this).balance;
+            if (bal == 0) revert ZeroAmount();
+            (bool success, ) = payable(_custody).call{ value: bal }("");
+            if (!success) revert TransferFailed();
+        } else {
+            bal = IERC20Upgradeable(_asset).balanceOf(address(this));
+            if (bal == 0) revert ZeroAmount();
+            IERC20Upgradeable(_asset).safeTransfer(_custody, bal);
+        }
+        emit SweptToCustody(_asset, _custody, bal);
     }
 
     //ethereum deposit contract function to get amount into little_endian_64

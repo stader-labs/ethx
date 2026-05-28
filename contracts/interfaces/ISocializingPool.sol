@@ -37,9 +37,17 @@ interface ISocializingPool {
     error InvalidProof(uint256 cycle, address operator);
     error InvalidCycleIndex();
     error FutureCycleIndex();
+    error AssetCustodied();
+    error ZeroCustodyDelay();
+    error ZeroAddress();
+    error ZeroAmount();
+    error CustodyDelayNotElapsed();
+    error TransferFailed();
 
     // events
     event UpdatedStaderConfig(address indexed staderConfig);
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
     event ETHReceived(address indexed sender, uint256 amount);
     event UpdatedStaderValidatorRegistry(address indexed staderValidatorRegistry);
     event UpdatedStaderOperatorRegistry(address indexed staderOperatorRegistry);
@@ -103,4 +111,12 @@ interface ISocializingPool {
         returns (uint256 currentIndex, uint256 currentStartBlock, uint256 currentEndBlock);
 
     function getRewardCycleDetails(uint256 _index) external view returns (uint256 _startBlock, uint256 _endBlock);
+
+    function assetCustodied() external view returns (bool);
+
+    function sweepToCustodyTimestamp() external view returns (uint256);
+
+    function setCustodyDelay(uint256 _custodyDelay) external;
+
+    function sweepToCustody(address _asset, address _custody) external;
 }
