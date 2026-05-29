@@ -239,6 +239,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param _requestId request id to claim
      */
     function claim(uint256 _requestId) external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         if (_requestId >= nextRequestIdToFinalize) {
             revert RequestIdNotFinalized(_requestId);
         }
@@ -305,6 +306,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param repayAmount The amount to repay
      */
     function repay(uint256 repayAmount) external whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+        if (assetCustodied) revert AssetCustodied();
         accrueFee();
         (repaidAmount, feePaid) = _repay(msg.sender, repayAmount);
     }
@@ -317,6 +319,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         address utilizer,
         uint256 repayAmount
     ) external override whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+        if (assetCustodied) revert AssetCustodied();
         accrueFee();
         (repaidAmount, feePaid) = _repay(utilizer, repayAmount);
     }
@@ -326,6 +329,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * utilizer not to worry about calculating exact SD repayment amount for clearing their entire position
      */
     function repayFullAmount() external override whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+        if (assetCustodied) revert AssetCustodied();
         accrueFee();
         uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(msg.sender);
         (repaidAmount, feePaid) = _repay(msg.sender, accountUtilizedPrev);
@@ -404,6 +408,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param account The address of the account to be liquidated
      */
     function liquidationCall(address account) external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         if (liquidationIndexByOperator[account] != 0) revert AlreadyLiquidated();
 
         accrueFee();

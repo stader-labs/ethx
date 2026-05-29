@@ -965,6 +965,36 @@ contract SDUtilityPoolTest is Test {
         sdUtilityPool.maxApproveSD();
     }
 
+    function test_claim_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.claim(1);
+    }
+
+    function test_repay_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.repay(1);
+    }
+
+    function test_repayOnBehalf_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.repayOnBehalf(vm.addr(800), 1);
+    }
+
+    function test_repayFullAmount_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.repayFullAmount();
+    }
+
+    function test_liquidationCall_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.liquidationCall(vm.addr(800));
+    }
+
     // --- Sunset: setCustodyDelay + sweepToCustody ---
 
     function test_setCustodyDelay_revertsForNonAdmin() public {

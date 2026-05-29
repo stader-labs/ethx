@@ -755,4 +755,76 @@ contract OperatorRewardsCollectorTest is Test {
         assertEq(staderTreasury.balance, treasuryEthBefore + 0.1 ether);
         assertEq(rewardAddr.balance, rewardBalBefore + 3.9 ether);
     }
+
+    // Verify the 2-step safeApprove pattern (zero-first, then set) survives back-to-back
+    // adminSettleOperator calls even when the prior allowance is non-zero.
+    // The mocked repayOnBehalf does not consume the allowance, so without the reset step
+    // the second safeApprove(spender, amount) would revert (SafeERC20: approve from non-zero).
+    function test_adminSettle_2StepApprovalAllowsBackToBackCalls() public {
+        address op = vm.addr(700);
+        operatorRewardsCollector.depositFor{ value: 4 ether }(op);
+
+        vm.mockCall(
+            sdCollateralMock,
+            abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector, op),
+            abi.encode(uint8(1), uint256(1), uint256(0))
+        );
+        uint256 interestSD = 1000e18;
+        UserData memory ud = UserData({
+            totalInterestSD: interestSD,
+            totalCollateralInEth: 4 ether,
+            healthFactor: 2e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.repayOnBehalf.selector, op, interestSD),
+            abi.encode(uint256(interestSD), uint256(0))
+        );
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(uint256(1e14))
+        );
+
+        // Fund treasury twice; approve ORC for max.
+        staderToken.transfer(staderTreasury, interestSD * 2);
+        vm.prank(staderTreasury);
+        staderToken.approve(address(operatorRewardsCollector), type(uint256).max);
+
+        // First settle: ORC allowance to SDUtilityPool ends at interestSD (mock didn't consume).
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+        assertEq(staderToken.allowance(address(operatorRewardsCollector), address(sdUtilityPool)), interestSD);
+
+        // Second settle (different op so balance check passes): would revert without the reset step
+        // because SafeERC20.safeApprove requires current allowance == 0 to set a non-zero value.
+        address op2 = vm.addr(701);
+        operatorRewardsCollector.depositFor{ value: 4 ether }(op2);
+        vm.mockCall(
+            sdCollateralMock,
+            abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector, op2),
+            abi.encode(uint8(1), uint256(2), uint256(0))
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op2),
+            abi.encode(ud)
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.repayOnBehalf.selector, op2, interestSD),
+            abi.encode(uint256(interestSD), uint256(0))
+        );
+
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op2);
+        // Final allowance still == interestSD (second op settled cleanly).
+        assertEq(staderToken.allowance(address(operatorRewardsCollector), address(sdUtilityPool)), interestSD);
+    }
 }

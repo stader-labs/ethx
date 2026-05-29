@@ -252,6 +252,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
             address treasury = staderConfig.getStaderTreasury();
             address sdUtilityPool = staderConfig.getSDUtilityPool();
             sd.safeTransferFrom(treasury, address(this), ud.totalInterestSD);
+            sd.safeApprove(sdUtilityPool, 0);
             sd.safeApprove(sdUtilityPool, ud.totalInterestSD);
             ISDUtilityPool(sdUtilityPool).repayOnBehalf(op, ud.totalInterestSD);
             uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
