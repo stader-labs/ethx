@@ -65,11 +65,12 @@ contract AuctionTest is Test {
         UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
 
-    function testFail_insufficientSDAuctionCreate(uint256 sdAmount) public {
+    function test_RevertWhen_insufficientSDAuctionCreate(uint256 sdAmount) public {
         uint256 userSDBalanceBefore = staderToken.balanceOf(address(this));
 
         vm.assume(sdAmount > userSDBalanceBefore);
         staderToken.approve(address(auction), sdAmount);
+        vm.expectRevert();
         auction.createLot(sdAmount);
     }
 
@@ -185,7 +186,7 @@ contract AuctionTest is Test {
         assertEq(highestBidAmount3, uint256(u1_bid1) + uint256(u1_bidIncrease));
     }
 
-    function testFail_addBidAfterAuctionEnds(uint256 sdAmount, uint64 extraDuration, uint128 u1_bid1) public {
+    function test_RevertWhen_addBidAfterAuctionEnds(uint256 sdAmount, uint64 extraDuration, uint128 u1_bid1) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
@@ -197,6 +198,7 @@ contract AuctionTest is Test {
         vm.roll(block.number + auction.duration() + 1 + extraDuration); // sets block.number to
         vm.assume(u1_bid1 > auction.bidIncrement());
         hoax(user1, u1_bid1);
+        vm.expectRevert();
         auction.addBid{ value: u1_bid1 }(1);
     }
 
@@ -412,9 +414,10 @@ contract AuctionTest is Test {
         assertEq(auction.duration(), newDuration);
     }
 
-    function testFail_shortUpdateDuration(uint256 newDuration) public {
+    function test_RevertWhen_shortUpdateDuration(uint256 newDuration) public {
         vm.assume(newDuration < auction.MIN_AUCTION_DURATION());
         vm.prank(staderManager);
+        vm.expectRevert();
         auction.updateDuration(newDuration);
     }
 

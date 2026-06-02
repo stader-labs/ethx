@@ -276,10 +276,10 @@ contract PoolSelectorTest is Test {
         assertEq(address(poolSelector.staderConfig()), newStaderConfig);
     }
 
-    function testFail_updateStaderConfig(uint64 _staderConfigSeed) public {
+    function test_RevertWhen_updateStaderConfig(uint64 _staderConfigSeed) public {
         vm.assume(_staderConfigSeed > 0);
         address newStaderConfig = vm.addr(_staderConfigSeed);
+        vm.expectRevert();
         poolSelector.updateStaderConfig(newStaderConfig);
-        assertEq(address(poolSelector.staderConfig()), newStaderConfig);
     }
 }

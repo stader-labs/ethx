@@ -138,7 +138,7 @@ contract PermissionlessPoolTest is Test {
         permissionlessPool.preDepositOnBeaconChain{ value: 2 ether }(pubkey, preDepositSig, 1, 2);
     }
 
-    function testFail_preDepositOnBeaconChain() public {
+    function test_RevertWhen_preDepositOnBeaconChain() public {
         bytes[] memory pubkey = new bytes[](3);
         pubkey[0] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
         pubkey[1] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde336750";
@@ -156,6 +156,7 @@ contract PermissionlessPoolTest is Test {
         ] = "0x8faa339ba46c649885ea0fc9c34d32f9d99c5bde3367500ee111075fc390fa48d8dbe155633ad489ee5866e152a5f6";
 
         startHoax(address(nodeRegistry), 3 ether);
+        vm.expectRevert();
         permissionlessPool.preDepositOnBeaconChain{ value: 2 ether }(pubkey, preDepositSig, 1, 2);
     }
 
@@ -273,11 +274,11 @@ contract PermissionlessPoolTest is Test {
         assertEq(address(permissionlessPool.staderConfig()), newStaderConfig);
     }
 
-    function testFail_updateStaderConfig(uint64 _staderConfigSeed) public {
+    function test_RevertWhen_updateStaderConfig(uint64 _staderConfigSeed) public {
         vm.assume(_staderConfigSeed > 0);
         address newStaderConfig = vm.addr(_staderConfigSeed);
+        vm.expectRevert();
         permissionlessPool.updateStaderConfig(newStaderConfig);
-        assertEq(address(permissionlessPool.staderConfig()), newStaderConfig);
     }
 
     // --- Sunset: setCustodyDelay / sweepToCustody / kill-switch ---

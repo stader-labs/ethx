@@ -94,12 +94,16 @@ contract SDCollateralTest is Test {
         UtilLib.onlyManagerRole(staderManager, staderConfig);
     }
 
-    function testFail_depositSDAsCollateral_withInsufficientApproval(uint256 approveAmount, uint256 sdAmount) public {
+    function test_RevertWhen_depositSDAsCollateral_withInsufficientApproval(
+        uint256 approveAmount,
+        uint256 sdAmount
+    ) public {
         uint256 deployerSDBalance = staderToken.balanceOf(address(this));
         vm.assume(sdAmount <= deployerSDBalance);
 
         vm.assume(approveAmount < sdAmount);
         staderToken.approve(address(sdCollateral), approveAmount);
+        vm.expectRevert();
         sdCollateral.depositSDAsCollateral(sdAmount);
     }
 
@@ -172,7 +176,7 @@ contract SDCollateralTest is Test {
         assertEq(sdCollateral.operatorUtilizedSDBalance(operator), 0);
     }
 
-    function testFail_depositSDFromUtilityPoolWithInsufficientAllowance(
+    function test_RevertWhen_depositSDFromUtilityPoolWithInsufficientAllowance(
         uint128 approveAmount,
         uint128 sdAmount,
         uint16 randomSeed
@@ -186,8 +190,8 @@ contract SDCollateralTest is Test {
         staderToken.transfer(address(sdUtilityPool), sdAmount);
         vm.startPrank(address(sdUtilityPool));
         staderToken.approve(address(sdCollateral), approveAmount);
+        vm.expectRevert();
         sdCollateral.depositSDFromUtilityPool(operator, sdAmount);
-        assertEq(sdCollateral.operatorUtilizedSDBalance(operator), sdAmount);
     }
 
     function test_updatePoolThreshold_revertIfNotCalledByManager(

@@ -370,9 +370,9 @@ contract PermissionedNodeRegistryTest is Test {
         assertEq(nodeRegistry.inputKeyCountLimit(), _keyCountLimit);
     }
 
-    function testFail_updateInputKeyCountLimit(uint16 _keyCountLimit) public {
+    function test_RevertWhen_updateInputKeyCountLimit(uint16 _keyCountLimit) public {
+        vm.expectRevert();
         nodeRegistry.updateInputKeyCountLimit(_keyCountLimit);
-        assertEq(nodeRegistry.inputKeyCountLimit(), _keyCountLimit);
     }
 
     function test_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
@@ -381,9 +381,9 @@ contract PermissionedNodeRegistryTest is Test {
         assertEq(nodeRegistry.verifiedKeyBatchSize(), _verifiedKeysBatchSize);
     }
 
-    function testFail_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
+    function test_RevertWhen_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
+        vm.expectRevert();
         nodeRegistry.updateVerifiedKeysBatchSize(_verifiedKeysBatchSize);
-        assertEq(nodeRegistry.verifiedKeyBatchSize(), _verifiedKeysBatchSize);
     }
 
     function test_updateStaderConfig(uint64 _staderConfigSeed) public {
@@ -394,18 +394,18 @@ contract PermissionedNodeRegistryTest is Test {
         assertEq(address(nodeRegistry.staderConfig()), newStaderConfig);
     }
 
-    function testFail_updateStaderConfigWithoutAdminRole(uint64 _staderConfigSeed) public {
+    function test_RevertWhen_updateStaderConfigWithoutAdminRole(uint64 _staderConfigSeed) public {
         vm.assume(_staderConfigSeed > 0);
         address newStaderConfig = vm.addr(_staderConfigSeed);
+        vm.expectRevert();
         nodeRegistry.updateStaderConfig(newStaderConfig);
-        assertEq(address(nodeRegistry.staderConfig()), newStaderConfig);
     }
 
-    function testFail_updateStaderConfigWithZeroAddr() public {
-        address newStaderConfig = vm.addr(0);
+    function test_RevertWhen_updateStaderConfigWithZeroAddr() public {
+        address newStaderConfig = address(0);
         vm.prank(staderAdmin);
+        vm.expectRevert();
         nodeRegistry.updateStaderConfig(newStaderConfig);
-        assertEq(address(nodeRegistry.staderConfig()), newStaderConfig);
     }
 
     function test_updateOperatorRewardAddress(string calldata _operatorName, uint64 __opAddrSeed) public {
