@@ -411,6 +411,7 @@ contract PermissionedNodeRegistryTest is Test {
     function test_updateOperatorRewardAddress(string calldata _operatorName, uint64 __opAddrSeed) public {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         vm.assume(__opAddrSeed > 0);
+        vm.assume(__opAddrSeed != 456 && __opAddrSeed != 567 && __opAddrSeed != 666);
         address operatorAddr = vm.addr(__opAddrSeed);
         address payable opRewardAddr = payable(vm.addr(456));
         address payable newOPRewardAddr = payable(vm.addr(567));

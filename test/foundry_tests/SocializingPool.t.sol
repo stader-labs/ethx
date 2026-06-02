@@ -200,4 +200,97 @@ contract SocializingPoolTest is Test {
         vm.prank(staderManager);
         socializingPool.maxApproveSD();
     }
+
+    function test_maxApproveSD_setsAllowance() public {
+        vm.prank(staderManager);
+        socializingPool.maxApproveSD();
+        assertEq(staderToken.allowance(address(socializingPool), address(sdCollateral)), type(uint256).max);
+    }
+
+    function test_handleRewards_distributesAllSlices() public {
+        uint256 userETH = 1 ether;
+        uint256 protocolETH = 0.5 ether;
+        uint256 operatorETH = 0.25 ether;
+        uint256 operatorSD = 100e18;
+
+        vm.deal(address(socializingPool), userETH + protocolETH + operatorETH);
+        staderToken.transfer(address(socializingPool), operatorSD);
+
+        RewardsData memory rd = RewardsData({
+            reportingBlockNumber: block.number,
+            index: 1,
+            merkleRoot: bytes32(uint256(1)),
+            poolId: 1,
+            operatorETHRewards: operatorETH,
+            userETHRewards: userETH,
+            protocolETHRewards: protocolETH,
+            operatorSDRewards: operatorSD
+        });
+
+        vm.prank(address(staderOracle));
+        socializingPool.handleRewards(rd);
+
+        assertTrue(socializingPool.handledRewards(1));
+        assertEq(socializingPool.totalOperatorETHRewardsRemaining(), operatorETH);
+        assertEq(socializingPool.totalOperatorSDRewardsRemaining(), operatorSD);
+        assertEq(staderTreasury.balance, protocolETH);
+        assertEq(address(stakePoolManager).balance, userETH);
+    }
+
+    function test_handleRewards_revertsOnDuplicateIndex() public {
+        uint256 userETH = 1 ether;
+        vm.deal(address(socializingPool), userETH);
+
+        RewardsData memory rd = RewardsData({
+            reportingBlockNumber: block.number,
+            index: 1,
+            merkleRoot: bytes32(uint256(1)),
+            poolId: 1,
+            operatorETHRewards: 0,
+            userETHRewards: userETH,
+            protocolETHRewards: 0,
+            operatorSDRewards: 0
+        });
+
+        vm.prank(address(staderOracle));
+        socializingPool.handleRewards(rd);
+
+        vm.expectRevert(ISocializingPool.RewardAlreadyHandled.selector);
+        vm.prank(address(staderOracle));
+        socializingPool.handleRewards(rd);
+    }
+
+    function test_handleRewards_revertsOnInsufficientETH() public {
+        RewardsData memory rd = RewardsData({
+            reportingBlockNumber: block.number,
+            index: 1,
+            merkleRoot: bytes32(uint256(1)),
+            poolId: 1,
+            operatorETHRewards: 0,
+            userETHRewards: 1 ether,
+            protocolETHRewards: 0,
+            operatorSDRewards: 0
+        });
+
+        vm.expectRevert(ISocializingPool.InsufficientETHRewards.selector);
+        vm.prank(address(staderOracle));
+        socializingPool.handleRewards(rd);
+    }
+
+    function test_handleRewards_revertsOnInsufficientSD() public {
+        RewardsData memory rd = RewardsData({
+            reportingBlockNumber: block.number,
+            index: 1,
+            merkleRoot: bytes32(uint256(1)),
+            poolId: 1,
+            operatorETHRewards: 0,
+            userETHRewards: 0,
+            protocolETHRewards: 0,
+            operatorSDRewards: 100e18
+        });
+
+        vm.expectRevert(ISocializingPool.InsufficientSDRewards.selector);
+        vm.prank(address(staderOracle));
+        socializingPool.handleRewards(rd);
+    }
 }
