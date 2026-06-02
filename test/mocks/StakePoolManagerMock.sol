@@ -23,7 +23,5 @@ contract StakePoolManagerMock {
         (bool success, ) = payable(msg.sender).call{ value: _amount }("");
     }
 
-    function assetCustodied() external pure returns (bool) {
-        return false;
-    }
+    bool public assetCustodied;
 }

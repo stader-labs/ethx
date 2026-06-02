@@ -10,6 +10,7 @@ import "../../contracts/PermissionlessPool.sol";
 import "../mocks/ETHDepositMock.sol";
 import "../mocks/StakePoolManagerMock.sol";
 import "../mocks/PermissionlessNodeRegistryMock.sol";
+import "../mocks/StaderTokenMock.sol";
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -358,6 +359,30 @@ contract PermissionlessPoolTest is Test {
 
         assertEq(custody.balance, 4 ether);
         assertTrue(permissionlessPool.assetCustodied());
+    }
+
+    function test_sweep_transfersERC20ToCustody() public {
+        _armPLPSweep();
+        StaderTokenMock token = new StaderTokenMock();
+        address custody = vm.addr(701);
+        uint256 amount = 1_000e18;
+        token.transfer(address(permissionlessPool), amount);
+
+        vm.expectEmit(true, true, true, true, address(permissionlessPool));
+        emit SweptToCustody(address(token), custody, amount);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(token), custody);
+
+        assertEq(token.balanceOf(custody), amount);
+        assertTrue(permissionlessPool.assetCustodied());
+    }
+
+    function test_sweep_revertsOnZeroERC20Balance() public {
+        _armPLPSweep();
+        StaderTokenMock token = new StaderTokenMock();
+        vm.expectRevert(PermissionlessPool.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        permissionlessPool.sweepToCustody(address(token), vm.addr(701));
     }
 
     function _custodyAndSweepPLP() internal {

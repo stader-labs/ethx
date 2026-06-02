@@ -8,6 +8,7 @@ import "../../contracts/StaderStakePoolsManager.sol";
 import "../mocks/PoolMock.sol";
 import "../mocks/PoolUtilsMock.sol";
 import "../mocks/StaderOracleMock.sol";
+import "../mocks/StaderTokenMock.sol";
 
 import "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -515,6 +516,30 @@ contract StaderStakePoolManagerTest is Test {
         assertEq(custody.balance, 5 ether);
         assertEq(address(stakePoolManager).balance, 0);
         assertTrue(stakePoolManager.assetCustodied());
+    }
+
+    function test_sweep_transfersERC20ToCustody() public {
+        _armSweep();
+        StaderTokenMock token = new StaderTokenMock();
+        address custody = vm.addr(701);
+        uint256 amount = 1_000e18;
+        token.transfer(address(stakePoolManager), amount);
+
+        vm.expectEmit(true, true, true, true, address(stakePoolManager));
+        emit SweptToCustody(address(token), custody, amount);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(token), custody);
+
+        assertEq(token.balanceOf(custody), amount);
+        assertTrue(stakePoolManager.assetCustodied());
+    }
+
+    function test_sweep_revertsOnZeroERC20Balance() public {
+        _armSweep();
+        StaderTokenMock token = new StaderTokenMock();
+        vm.expectRevert(IStaderStakePoolManager.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        stakePoolManager.sweepToCustody(address(token), vm.addr(701));
     }
 
     // --- Sunset: assetCustodied kill-switch ---
