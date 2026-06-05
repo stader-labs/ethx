@@ -9,7 +9,8 @@
     "prettier:fix": "prettier --write \"(contracts|test|script)/**/*.sol\"",
     "lint": "solhint 'contracts/**/*.sol' 'script/**/*.sol'",
     "upgrade:arbitrum": "npx hardhat run scripts/safe-scripts/upgrade.ts --network arbitrum",
-    "upgrade:playground:arbitrum": "npx hardhat run scripts/safe-scripts/upgradePlayground.ts --network arbitrum"
+    "upgrade:playground:arbitrum": "npx hardhat run scripts/safe-scripts/upgradePlayground.ts --network arbitrum",
+    "test:fork": "FOUNDRY_PROFILE=fork forge test --match-path 'test/fork/sunset/**/*.t.sol' -vvv"
   },
   "repository": {
     "type": "git",
