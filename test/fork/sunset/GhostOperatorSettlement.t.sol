@@ -17,14 +17,17 @@ interface IERC20MinApprove {
 ///         Approves the treasury SD budget, loops
 ///         `adminSettleOperator` per candidate, captures per-call
 ///         `gasleft` deltas, and tracks treasury SD + ETH balance
-///         deltas per settlement. Asserts the 25M cumulative gas
-///         ceiling, flags any single call above 1.5M, and asserts
-///         total treasury SD spent stays within the approved budget.
-///         Writes `ghost-batch-gas-report.json` for downstream review.
+///         deltas per settlement. Enforces EIP-7825 per-tx gas cap
+///         (2^24 = 16_777_216): projected Safe `gasLimit` with 20%
+///         headroom + wrapper overhead must stay under the cap. Flags
+///         any single call above 1.5M. Writes `ghost-batch-gas-report.json`.
 contract GhostOperatorSettlementTest is SunsetForkBase {
     uint256 internal constant PER_CALL_REVIEW_GAS = 1_500_000;
-    uint256 internal constant CUMULATIVE_GAS_CEILING = 25_000_000;
+    /// @dev EIP-7825 (Fusaka): protocol per-transaction gas cap = 2^24.
+    uint256 internal constant MAX_TX_GAS_LIMIT = 16_777_216;
     uint256 internal constant SAFE_WRAPPER_OVERHEAD = 80_000;
+    uint256 internal constant GAS_HEADROOM_NUM = 12;
+    uint256 internal constant GAS_HEADROOM_DEN = 10;
     /// @dev 5% buffer on the SD approval above the sheet's `Σ interestSd`.
     ///      Covers small accrual between sheet snapshot and the actual
     ///      `adminSettleOperator` call.
@@ -36,6 +39,12 @@ contract GhostOperatorSettlementTest is SunsetForkBase {
         uint256 settledCount;
         uint256 totalSdSpent;
         uint256 totalEthReceived;
+    }
+
+    function setUp() public override {
+        super.setUp();
+        // Upgrade so adminSettleOperator exists on the live ORC proxy.
+        _upgradeAllProxies(_loadSheet());
     }
 
     function test_GhostBatch() public {
@@ -54,12 +63,18 @@ contract GhostOperatorSettlementTest is SunsetForkBase {
 
         for (uint256 i = 0; i < sheet.ghostBatch.length; i++) {
             _settleOne(sheet.ghostBatch[i], managerSafe, sdToken, treasury, perCallGas, i, t);
-            assertLe(t.cumulativeGas, CUMULATIVE_GAS_CEILING, "cumulative gas exceeded 25M");
+            _assertWithinTxGasCap(t.cumulativeGas, "ghost batch exceeds EIP-7825 tx gas cap at index");
         }
 
         assertLe(t.totalSdSpent, budgetCap, "aggregate treasury SD spent exceeds budget cap");
 
-        uint256 recommendedSafeGasLimit = (t.cumulativeGas * 12) / 10 + SAFE_WRAPPER_OVERHEAD;
+        uint256 recommendedSafeGasLimit = _recommendedSafeGasLimit(t.cumulativeGas);
+        assertLe(recommendedSafeGasLimit, MAX_TX_GAS_LIMIT, "recommended Safe gasLimit exceeds EIP-7825 cap");
+        assertLe(
+            t.cumulativeGas + SAFE_WRAPPER_OVERHEAD,
+            MAX_TX_GAS_LIMIT,
+            "cumulative inner gas + Safe overhead exceeds EIP-7825 cap"
+        );
         emit log_named_uint("settledCount", t.settledCount);
         emit log_named_uint("totalSdSpent", t.totalSdSpent);
         emit log_named_uint("totalEthReceived", t.totalEthReceived);
@@ -149,12 +164,28 @@ contract GhostOperatorSettlementTest is SunsetForkBase {
             vm.serializeString(root, string.concat("perCall_", vm.toString(i)), rowJson);
         }
         vm.serializeUint(root, "cumulativeGasUsed", cumulativeGas);
-        vm.serializeUint(root, "ceiling", CUMULATIVE_GAS_CEILING);
-        vm.serializeBool(root, "withinCeiling", cumulativeGas <= CUMULATIVE_GAS_CEILING);
+        vm.serializeUint(root, "cumulativeWithSafeOverhead", cumulativeGas + SAFE_WRAPPER_OVERHEAD);
+        vm.serializeUint(root, "maxTxGasLimit", MAX_TX_GAS_LIMIT);
+        vm.serializeUint(root, "maxInnerGasWithHeadroom", _maxInnerGasWithHeadroom());
+        vm.serializeBool(root, "withinProtocolCap", recommendedSafeGasLimit <= MAX_TX_GAS_LIMIT);
         vm.serializeUint(root, "recommendedSafeGasLimit", recommendedSafeGasLimit);
         vm.serializeUint(root, "flaggedCalls", flaggedCount);
         vm.serializeUint(root, "settledCount", settledCount);
         string memory payload = vm.serializeUint(root, "totalSdSpent", totalSdSpent);
         vm.writeJson(payload, "./test/fork/sunset/snapshots/ghost-batch-gas-report.json");
+    }
+
+    function _recommendedSafeGasLimit(uint256 cumulativeGas) private pure returns (uint256) {
+        return (cumulativeGas * GAS_HEADROOM_NUM) / GAS_HEADROOM_DEN + SAFE_WRAPPER_OVERHEAD;
+    }
+
+    /// @dev Largest inner cumulative gas such that `_recommendedSafeGasLimit` <= `MAX_TX_GAS_LIMIT`.
+    function _maxInnerGasWithHeadroom() private pure returns (uint256) {
+        return ((MAX_TX_GAS_LIMIT - SAFE_WRAPPER_OVERHEAD) * GAS_HEADROOM_DEN) / GAS_HEADROOM_NUM;
+    }
+
+    function _assertWithinTxGasCap(uint256 cumulativeGas, string memory err) private {
+        assertLe(_recommendedSafeGasLimit(cumulativeGas), MAX_TX_GAS_LIMIT, err);
+        assertLe(cumulativeGas + SAFE_WRAPPER_OVERHEAD, MAX_TX_GAS_LIMIT, err);
     }
 }
