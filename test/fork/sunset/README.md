@@ -10,9 +10,16 @@ FORK_BLOCK=21500000 \
 FOUNDRY_PROFILE=fork forge test --match-path 'test/fork/sunset/**/*.t.sol'
 ```
 
-That's the whole story. Expect 67/67 green in ~10 seconds on a paid RPC.
+That's the whole story. Most suites finish in seconds on a paid RPC; `AllOperatorsValidatorExitTest` takes several minutes (oracle batch rolls for large operators).
 
 Need a single contract? `--match-contract ArmSunsetControlsTest`. Need one test? `--match-test test_GhostBatch -vvvv`.
+
+All-operator validator exits (inventory scan + mocked cascade):
+
+```bash
+npm run snapshot:all-operator-validators
+FOUNDRY_PROFILE=fork forge test --match-contract AllOperatorsValidatorExitTest -vv
+```
 
 ## The runoff in five phases
 
@@ -21,7 +28,7 @@ Phase 0   FreezeBlockSnapshot   →  PreSunsetVerification
 Phase 1   ArmSunsetControls (first multisig tx)       upgrade + pause + arm 7-day timer
           ArmSunsetControlsSpotCheck                  day-of-execute drift check
 Phase 2   DrainActorTemplates                         per-actor redemption flows
-          ValidatorExitCascade                        beacon-exit cascade (mocked)
+          AllOperatorsValidatorExit                   all sheet operators: mock exit + JSON reports
           GhostOperatorSettlement                     adminSettleOperator batch
 Phase 3   OracleDecommissionGate  →  OpenInstantRedemption (second multisig tx)
                                                       zero out finalization delays
@@ -39,8 +46,8 @@ Phase 5   PreSweepGates  →  CustodySweep (third multisig tx)  →  PostSweepKi
 | `ArmSunsetControls` | First multisig tx. 7 upgrades + 2 pauses + 6 custody arms + full assertion matrix (items 1-24) |
 | `ArmSunsetControlsSpotCheck` | Re-runs the assertion matrix at the execute block to catch drift between propose and execute |
 | `DrainActorTemplates` | ETHx holder withdraw, SD delegator withdraw, operator repay, liquidation claim, vault settlement |
-| `ValidatorExitCascade` | End-to-end validator exit for one operator. Mocks the beacon side via `vm.deal` + oracle quorum |
-| `GhostOperatorSettlement` | Loops `adminSettleOperator` over the sheet's `ghostBatch` slice. 25M gas ceiling, writes `ghost-batch-gas-report.json` |
+| `AllOperatorsValidatorExit` | Loops sheet operators with active keys, exits DEPOSITED validators in oracle batches, writes `all-operators-validator-exit-report.json` |
+| `GhostOperatorSettlement` | Loops `adminSettleOperator` over the sheet's `ghostBatch` slice. Enforces EIP-7825 tx gas cap (16,777,216), writes `ghost-batch-gas-report.json` |
 | `OracleDecommissionGate` | Oracle has zero trusted nodes, historical members untrusted, non-trusted submitters revert |
 | `OpenInstantRedemption` | Second multisig tx. Flips both finalization delays to zero. Asserts events + `IdenticalValue()` revert |
 | `OpenRedemptionHealthChecks` | Solvency invariants for SSPM + SDUtilityPool, top-N holder redemption sims |
@@ -65,7 +72,8 @@ test/fork/sunset/
 ├── helpers/           Solidity helpers (sheet loader, prank wrappers, base contract)
 ├── fixtures/          runoff-sheet.json
 ├── layouts/           forge inspect storage-layout JSON for the 6 upgraded contracts
-├── snapshots/         test output: freeze-snapshot-<block>.json, ghost-batch-gas-report.json
+├── snapshots/         test output: freeze-snapshot-<block>.json, ghost-batch-gas-report.json,
+│                      all-operators-validator-inventory.json, all-operators-validator-exit-report.json
 └── README.md          this file
 ```
 

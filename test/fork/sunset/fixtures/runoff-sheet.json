@@ -1,6 +1,6 @@
 {
   "counts": {
-    "operators": 14,
+    "operators": 8,
     "ethxHolders": 10,
     "sdDelegators": 10,
     "roleHolders": 9,
@@ -64,62 +64,6 @@
       "contact": "op-63"
     },
     {
-      "address": "0xd2dd056CFD662b3A2402F315226caF013D882f2E",
-      "reward": "0xb5fBD6E8a4ce4d53d22347d544555880a51b00D7",
-      "pool": "Permissionless",
-      "totalKeys": "1",
-      "nonTerminalKeys": "1",
-      "sdCollateral": "1400000000000000000000",
-      "utilizedSd": "0",
-      "interestSd": "0",
-      "ethInOrc": "0",
-      "openLiquidation": false,
-      "status": "responsive",
-      "contact": "op-93"
-    },
-    {
-      "address": "0x3Cc3cAE13bBC0cfe544a10E88291c68D97b738FE",
-      "reward": "0x7943091644141B0f33DeA28B74B9316F9143CD60",
-      "pool": "Permissionless",
-      "totalKeys": "2",
-      "nonTerminalKeys": "2",
-      "sdCollateral": "2499829999999999999936",
-      "utilizedSd": "0",
-      "interestSd": "0",
-      "ethInOrc": "0",
-      "openLiquidation": false,
-      "status": "responsive",
-      "contact": "op-146 (both keys flagged slashed off-chain)"
-    },
-    {
-      "address": "0x6e2C509D522d47F509E1a6D75682E6AbBC38B362",
-      "reward": "0x6e2C509D522d47F509E1a6D75682E6AbBC38B362",
-      "pool": "Permissionless",
-      "totalKeys": "10",
-      "nonTerminalKeys": "0",
-      "sdCollateral": "0",
-      "utilizedSd": "0",
-      "interestSd": "0",
-      "ethInOrc": "0",
-      "openLiquidation": false,
-      "status": "drain-complete",
-      "contact": "op-174 (keys not active at freeze block)"
-    },
-    {
-      "address": "0x5Fa35067b85f51083B8afBb3f7D73e79559D25b9",
-      "reward": "0x5Fa35067b85f51083B8afBb3f7D73e79559D25b9",
-      "pool": "Permissionless",
-      "totalKeys": "1",
-      "nonTerminalKeys": "0",
-      "sdCollateral": "0",
-      "utilizedSd": "0",
-      "interestSd": "0",
-      "ethInOrc": "0",
-      "openLiquidation": false,
-      "status": "drain-complete",
-      "contact": "op-181"
-    },
-    {
       "address": "0x6B7468504757a4918a96078F352572d172115263",
       "reward": "0x12c1eF3208de4805Ba4Ac3fEa6A4F132f8D31243",
       "pool": "Permissionless",
@@ -132,20 +76,6 @@
       "openLiquidation": false,
       "status": "responsive",
       "contact": "op-228 (large permissionless operator)"
-    },
-    {
-      "address": "0x7900888951C6d7FedcF36bB9dD4D9aA5aea46782",
-      "reward": "0x7900888951C6d7FedcF36bB9dD4D9aA5aea46782",
-      "pool": "Permissionless",
-      "totalKeys": "1",
-      "nonTerminalKeys": "1",
-      "sdCollateral": "1997665330000000000000",
-      "utilizedSd": "0",
-      "interestSd": "0",
-      "ethInOrc": "0",
-      "openLiquidation": false,
-      "status": "responsive",
-      "contact": "op-238 (one key flagged exited off-chain)"
     },
     {
       "address": "0xaB9DEe304E65D6Fffc7b0f5E6381578F8138aE55",
@@ -162,29 +92,15 @@
       "contact": "permissioned-op-1 stader-permissioned-internal"
     },
     {
-      "address": "0x54ACf499106d8ABCa5E85548261F6F8305768E45",
-      "reward": "0x7D4854ef27e8E5cfCE9001fc8fB380E2aBE268ec",
-      "pool": "Permissioned",
-      "totalKeys": "475",
-      "nonTerminalKeys": "475",
-      "sdCollateral": "0",
-      "utilizedSd": "0",
-      "interestSd": "0",
-      "ethInOrc": "41746350800000000",
-      "openLiquidation": false,
-      "status": "responsive",
-      "contact": "permissioned-op-8 Stakely-2"
-    },
-    {
       "address": "0xa7a8C1306D398D1C7D74968c659CAAc4697E60f0",
       "reward": "0x26B0Bb09478A8423b53b2854dEfFb8A61A889725",
       "pool": "Permissioned",
-      "totalKeys": "500",
-      "nonTerminalKeys": "500",
+      "totalKeys": "400",
+      "nonTerminalKeys": "400",
       "sdCollateral": "0",
       "utilizedSd": "0",
       "interestSd": "0",
-      "ethInOrc": "109688505600000000",
+      "ethInOrc": "0",
       "openLiquidation": false,
       "status": "responsive",
       "contact": "permissioned-op-10 EtherNodesPermissioned"
