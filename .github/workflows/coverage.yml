@@ -11,10 +11,10 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
       - name: npm install
         run: |
-          npm ci --frozen-lockfile --production
+          npm install --no-save --no-audit --no-fund --omit=dev
       - name: Run Forge coverage
         run: |
           forge coverage --report lcov
