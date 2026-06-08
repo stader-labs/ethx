@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import { UtilLib } from "./library/UtilLib.sol";
 
@@ -19,11 +21,16 @@ import { IStaderOracle } from "../contracts/interfaces/IStaderOracle.sol";
 import { IPoolUtils } from "../contracts/interfaces/IPoolUtils.sol";
 
 contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
     IStaderConfig public staderConfig;
 
     mapping(address => uint256) public balances;
 
     IWETH public weth;
+
+    bool public assetCustodied;
+    uint256 public sweepToCustodyTimestamp;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -53,6 +60,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @dev This function first checks for any unpaid liquidations for the operator and repays them if necessary. Then, it transfers any remaining balance to the operator's reward address.
      */
     function claim() external {
+        if (assetCustodied) revert AssetCustodied();
         uint256 amount;
         if (_isPermissionlessCaller(msg.sender)) {
             claimLiquidation(msg.sender);
@@ -72,6 +80,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
      * @param _amount amount of ETH to claim
      */
     function claimWithAmount(uint256 _amount) external {
+        if (assetCustodied) revert AssetCustodied();
         if (_isPermissionlessCaller(msg.sender)) {
             claimLiquidation(msg.sender);
             uint256 maxWithdrawableInEth = withdrawableInEth(msg.sender);
@@ -82,6 +91,7 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
     }
 
     function claimLiquidation(address operator) public override {
+        if (assetCustodied) revert AssetCustodied();
         _transferBackUtilizedSD(operator);
         _completeLiquidationIfExists(operator);
     }
@@ -225,5 +235,63 @@ contract OperatorRewardsCollector is IOperatorRewardsCollector, AccessControlUpg
 
         // transfer back the operator's utilized SD balance to SD Utility Pool
         sdCollateral.transferBackUtilizedSD(operator);
+    }
+
+    /// @notice admin-driven settle: pay liquidator, treasury covers SD interest (when keys terminal), push remaining ETH to operator
+    /// @dev Manager-only. Used during sunset wind-down for delinquent/unreachable operators.
+    /// @param op operator to settle
+    function adminSettleOperator(address op) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+
+        claimLiquidation(op);
+
+        (, , uint256 nonTerminalKeys) = ISDCollateral(staderConfig.getSDCollateral()).getOperatorInfo(op);
+        UserData memory ud = ISDUtilityPool(staderConfig.getSDUtilityPool()).getUserData(op);
+        if (nonTerminalKeys == 0 && ud.totalInterestSD > 0) {
+            IERC20Upgradeable sd = IERC20Upgradeable(staderConfig.getStaderToken());
+            address treasury = staderConfig.getStaderTreasury();
+            address sdUtilityPool = staderConfig.getSDUtilityPool();
+            sd.safeTransferFrom(treasury, address(this), ud.totalInterestSD);
+            sd.safeApprove(sdUtilityPool, 0);
+            sd.safeApprove(sdUtilityPool, ud.totalInterestSD);
+            ISDUtilityPool(sdUtilityPool).repayOnBehalf(op, ud.totalInterestSD);
+            uint256 sdPriceInEth = IStaderOracle(staderConfig.getStaderOracle()).getSDPriceInETH();
+            uint256 interestInEth = (ud.totalInterestSD * sdPriceInEth) / staderConfig.getDecimals();
+            uint256 ethToTreasury = Math.min(balances[op], interestInEth);
+            if (ethToTreasury > 0) {
+                balances[op] -= ethToTreasury;
+                UtilLib.sendValue(treasury, ethToTreasury);
+            }
+        }
+        if (balances[op] > 0) _claim(op, balances[op]);
+        emit AdminSettledOperator(op);
+    }
+
+    /// @notice arm custody sweep timer; sweepToCustody allowed only after delay elapses
+    /// @dev Admin (timelock) only
+    function setCustodyDelay(uint256 _custodyDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custodyDelay == 0) revert ZeroCustodyDelay();
+        sweepToCustodyTimestamp = block.timestamp + _custodyDelay;
+        emit SetCustodyDelay(sweepToCustodyTimestamp);
+    }
+
+    /// @notice sweep full ETH or ERC20 balance to custody; sticky-flips assetCustodied
+    /// @dev Admin (timelock) only; requires armed setCustodyDelay() with elapsed delay
+    function sweepToCustody(address _asset, address _custody) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custody == address(0)) revert ZeroAddress();
+        if (sweepToCustodyTimestamp == 0 || block.timestamp < sweepToCustodyTimestamp) revert CustodyDelayNotElapsed();
+        assetCustodied = true;
+        uint256 bal;
+        if (_asset == address(0)) {
+            bal = address(this).balance;
+            if (bal == 0) revert ZeroAmount();
+            (bool success, ) = payable(_custody).call{ value: bal }("");
+            if (!success) revert TransferFailed();
+        } else {
+            bal = IERC20Upgradeable(_asset).balanceOf(address(this));
+            if (bal == 0) revert ZeroAmount();
+            IERC20Upgradeable(_asset).safeTransfer(_custody, bal);
+        }
+        emit SweptToCustody(_asset, _custody, bal);
     }
 }

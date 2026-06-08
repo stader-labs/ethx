@@ -19,5 +19,5 @@ cache_forge/
 out/
 broadcast
 
-
-
+# Sunset fork test outputs
+test/fork/sunset/snapshots/

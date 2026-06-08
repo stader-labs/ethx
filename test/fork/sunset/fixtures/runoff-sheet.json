@@ -1,0 +1,265 @@
+{
+  "counts": {
+    "operators": 8,
+    "ethxHolders": 10,
+    "sdDelegators": 10,
+    "roleHolders": 9,
+    "ghostBatch": 2
+  },
+  "operators": [
+    {
+      "address": "0x0000000000000000000000000000000000000003",
+      "reward": "0x0000000000000000000000000000000000000004",
+      "pool": "Permissioned",
+      "totalKeys": "5",
+      "nonTerminalKeys": "0",
+      "sdCollateral": "0",
+      "utilizedSd": "1000000000000000000",
+      "interestSd": "500000000000000000",
+      "ethInOrc": "0",
+      "openLiquidation": true,
+      "status": "delinquent",
+      "contact": "stub-for-liquidation-test"
+    },
+    {
+      "address": "0x6CbcdDDb36BBc600f0510a2E0F9141F7c823456f",
+      "reward": "0x6CbcdDDb36BBc600f0510a2E0F9141F7c823456f",
+      "pool": "Permissionless",
+      "totalKeys": "1",
+      "nonTerminalKeys": "1",
+      "sdCollateral": "14000000000000000000000",
+      "utilizedSd": "0",
+      "interestSd": "0",
+      "ethInOrc": "212145307491766252",
+      "openLiquidation": false,
+      "status": "responsive",
+      "contact": "op-6"
+    },
+    {
+      "address": "0xEb016c734f655379a70191b7aeD136c9EC2732B3",
+      "reward": "0xEb016c734f655379a70191b7aeD136c9EC2732B3",
+      "pool": "Permissionless",
+      "totalKeys": "6",
+      "nonTerminalKeys": "6",
+      "sdCollateral": "15928610796774721819145",
+      "utilizedSd": "0",
+      "interestSd": "0",
+      "ethInOrc": "421745500192500000",
+      "openLiquidation": false,
+      "status": "responsive",
+      "contact": "op-16"
+    },
+    {
+      "address": "0x739fEE5bB1bc8ac23cB2d5c3E5756D9aF15943c6",
+      "reward": "0x739fEE5bB1bc8ac23cB2d5c3E5756D9aF15943c6",
+      "pool": "Permissionless",
+      "totalKeys": "15",
+      "nonTerminalKeys": "15",
+      "sdCollateral": "16749517955802816579430",
+      "utilizedSd": "30000465588786840425174",
+      "interestSd": "1427056750307257743830",
+      "ethInOrc": "0",
+      "openLiquidation": false,
+      "status": "delinquent",
+      "contact": "op-63"
+    },
+    {
+      "address": "0x6B7468504757a4918a96078F352572d172115263",
+      "reward": "0x12c1eF3208de4805Ba4Ac3fEa6A4F132f8D31243",
+      "pool": "Permissionless",
+      "totalKeys": "208",
+      "nonTerminalKeys": "208",
+      "sdCollateral": "243122000000000000000000",
+      "utilizedSd": "500000000000000000000000",
+      "interestSd": "119020276004008855753",
+      "ethInOrc": "3653924651612500000",
+      "openLiquidation": false,
+      "status": "responsive",
+      "contact": "op-228 (large permissionless operator)"
+    },
+    {
+      "address": "0xaB9DEe304E65D6Fffc7b0f5E6381578F8138aE55",
+      "reward": "0x5A14BD3f2bf84c3690d653F1d40cfb7a8a9B3c26",
+      "pool": "Permissioned",
+      "totalKeys": "9",
+      "nonTerminalKeys": "2",
+      "sdCollateral": "0",
+      "utilizedSd": "0",
+      "interestSd": "0",
+      "ethInOrc": "13416044240000000",
+      "openLiquidation": false,
+      "status": "responsive",
+      "contact": "permissioned-op-1 stader-permissioned-internal"
+    },
+    {
+      "address": "0xa7a8C1306D398D1C7D74968c659CAAc4697E60f0",
+      "reward": "0x26B0Bb09478A8423b53b2854dEfFb8A61A889725",
+      "pool": "Permissioned",
+      "totalKeys": "400",
+      "nonTerminalKeys": "400",
+      "sdCollateral": "0",
+      "utilizedSd": "0",
+      "interestSd": "0",
+      "ethInOrc": "0",
+      "openLiquidation": false,
+      "status": "responsive",
+      "contact": "permissioned-op-10 EtherNodesPermissioned"
+    },
+    {
+      "address": "0x42ad9D50140CB64Ba2e904f1037c87b5AC47dbC5",
+      "reward": "0xc8b332a50dBC818c02B87a5F37E9493a0C1e9cF3",
+      "pool": "Permissionless",
+      "totalKeys": "2",
+      "nonTerminalKeys": "0",
+      "sdCollateral": "1980404445628804614",
+      "utilizedSd": "0",
+      "interestSd": "4022477204289",
+      "ethInOrc": "1807213266",
+      "openLiquidation": false,
+      "status": "ghost-batch",
+      "contact": "op-271 btcs1 - fully exited, dust-level residuals only"
+    }
+  ],
+  "ethxHolders": [
+    { "address": "0x9d7eD45EE2E8FC5482fa2428f15C971e6369011d", "balanceAtFreeze": "78438292226474716202569" },
+    { "address": "0x1c0E06a0b1A4c160c17545FF2A951bfcA57C0002", "balanceAtFreeze": "9504856153999035865998" },
+    { "address": "0x608e1e01EF072c15E5Da7235ce793f4d24eCa67B", "balanceAtFreeze": "4025429232726456507428" },
+    { "address": "0xc66830E2667bc740c0BED9A71F18B14B8c8184bA", "balanceAtFreeze": "2103757086322966375341" },
+    { "address": "0x59Ab5a5b5d617E478a2479B0cAD80DA7e2831492", "balanceAtFreeze": "1974394762616893859693" },
+    { "address": "0xBdea8e677F9f7C294A4556005c640Ee505bE6925", "balanceAtFreeze": "1749432580595618392219" },
+    { "address": "0xcb166f0148Ae815313039d735E28FCeC617B21Fe", "balanceAtFreeze": "780740269930377840540" },
+    { "address": "0x8291a8E8dCF429e2FA7d032bF3E583ee959F3B06", "balanceAtFreeze": "343750831482836852118" },
+    { "address": "0x64939a882C7d1b096241678b7a3A57eD19445485", "balanceAtFreeze": "266473962629914518413" },
+    { "address": "0xcB73F6284fF33f14F3b926127170A892654B5100", "balanceAtFreeze": "263662152263549859692" }
+  ],
+  "sdDelegators": [
+    {
+      "address": "0x7F1B68d5Ed183CdA6788A66520506eAF3544001C",
+      "ctokenBalance": "16937800000000000000000",
+      "sdBalance": "16937800000000000000000"
+    },
+    {
+      "address": "0x4F2083f5fBede34C2714aFfb3105539775f7FE64",
+      "ctokenBalance": "6758100000000000000000",
+      "sdBalance": "6758100000000000000000"
+    },
+    {
+      "address": "0xaFD306005F5d1a8537BE4960e6D23907b5b9383F",
+      "ctokenBalance": "3675900000000000000000",
+      "sdBalance": "3675900000000000000000"
+    },
+    {
+      "address": "0x63242A4Ea82847b20E506b63B0e2e2eFF0CC6cB0",
+      "ctokenBalance": "3400700000000000000000",
+      "sdBalance": "3400700000000000000000"
+    },
+    {
+      "address": "0xa0f75491720835b36edC92D06DDc468D201e9b73",
+      "ctokenBalance": "3200000000000000000000",
+      "sdBalance": "3200000000000000000000"
+    },
+    {
+      "address": "0x9505CF9822148a00782c7dD29a4341ECb98A6717",
+      "ctokenBalance": "3152400000000000000000",
+      "sdBalance": "3152400000000000000000"
+    },
+    {
+      "address": "0x4A8Feb0e61a39b331d143cd597982A6819e0Bcf9",
+      "ctokenBalance": "3133300000000000000000",
+      "sdBalance": "3133300000000000000000"
+    },
+    {
+      "address": "0x17FC9786B2f98de35F5447CE70D49E4067eBEFb0",
+      "ctokenBalance": "2623200000000000000000",
+      "sdBalance": "2623200000000000000000"
+    },
+    {
+      "address": "0xB1311BF8dE6cb3DcCAc85F83D440a2ADb27a496C",
+      "ctokenBalance": "2576800000000000000000",
+      "sdBalance": "2576800000000000000000"
+    },
+    {
+      "address": "0x2C10f2e3c2Eaa722b78dbD9f7661Ee22520554e6",
+      "ctokenBalance": "2545000000000000000000",
+      "sdBalance": "2545000000000000000000"
+    }
+  ],
+  "roleHolders": [
+    {
+      "contractName": "ProxyAdmin",
+      "contractAddress": "0x67B12264Ca3e0037Fc7E22F2457b42643a04C86e",
+      "roleName": "PROXY_ADMIN_OWNER",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    },
+    {
+      "contractName": "SSPM",
+      "contractAddress": "0xcf5EA1b38380f6aF39068375516Daf40Ed70D299",
+      "roleName": "DEFAULT_ADMIN_ROLE",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    },
+    {
+      "contractName": "SDUtilityPool",
+      "contractAddress": "0xED6EE5049f643289ad52411E9aDeC698D04a9602",
+      "roleName": "DEFAULT_ADMIN_ROLE",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    },
+    {
+      "contractName": "SocializingPool_Permissioned",
+      "contractAddress": "0x9d4C3166c59412CEdBe7d901f5fDe41903a1d6Fc",
+      "roleName": "DEFAULT_ADMIN_ROLE",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    },
+    {
+      "contractName": "SocializingPool_Permissionless",
+      "contractAddress": "0x1DE458031bFbe5689deD5A8b9ed57e1E79EaB2A4",
+      "roleName": "DEFAULT_ADMIN_ROLE",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    },
+    {
+      "contractName": "PermissionlessPool",
+      "contractAddress": "0xd1a72Bd052e0d65B7c26D3dd97A98B74AcbBb6c5",
+      "roleName": "DEFAULT_ADMIN_ROLE",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    },
+    {
+      "contractName": "OperatorRewardsCollector",
+      "contractAddress": "0x84ffDC9De310144D889540A49052F6d1AdB2C335",
+      "roleName": "DEFAULT_ADMIN_ROLE",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    },
+    {
+      "contractName": "StaderConfig",
+      "contractAddress": "0x4ABEF2263d5A5ED582FC9A9789a41D85b68d69DB",
+      "roleName": "MANAGER",
+      "safeAddress": "0xAAfb31780e4b9c95Bc920e388f4925A874cd07AF"
+    },
+    {
+      "contractName": "StaderConfig",
+      "contractAddress": "0x4ABEF2263d5A5ED582FC9A9789a41D85b68d69DB",
+      "roleName": "DEFAULT_ADMIN_ROLE",
+      "safeAddress": "0x1112D5C55670Cb5144BF36114C20a122908068B9"
+    }
+  ],
+  "custody": {
+    "custody": "0x000000000000000000000000000000000000c057",
+    "treasury": "0x01422247a1d15BB4FcF91F5A077Cf25BA6460130",
+    "preDepositDustLimit": "1000000000000000",
+    "oracleQuorum": [
+      "0x57AdE103aA32756eEDcd231353a6236B5Ff1EE34",
+      "0x621c413260b7945cf9bC9d20B4D4050f5610b22D",
+      "0x7cA4125D456017fd994B758a51A8909f0F496f90"
+    ]
+  },
+  "ghostBatch": [
+    {
+      "address": "0x42ad9D50140CB64Ba2e904f1037c87b5AC47dbC5",
+      "interestSd": "4022477204289",
+      "note": "op-271 btcs1 - real ghost: fully exited, dust residuals (4 microSD interest + 1.8 nanoETH in ORC)"
+    },
+    {
+      "address": "0x0000000000000000000000000000000000000003",
+      "interestSd": "500000000000000000",
+      "note": "stub ghost - retained for tests that need a guaranteed revert path"
+    }
+  ]
+}

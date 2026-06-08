@@ -3,3 +3,6 @@ out/
 cache/
 cache_forge/
 artifacts/
+lib/
+node_modules/
+.git/modules/

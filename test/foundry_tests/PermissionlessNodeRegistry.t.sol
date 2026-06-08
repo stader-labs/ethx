@@ -24,6 +24,9 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract PermissionlessNodeRegistryTest is Test {
+    event OperatorNonTerminalKeysCountSet(uint256 indexed operatorId, uint64 nonTerminalKeysCount);
+    event UpdateMaxKeysPerOperator(uint256 maxKeysPerOperator);
+
     address staderAdmin;
     address staderManager;
     address operator;
@@ -500,7 +503,7 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(nodeRegistry.getSocializingPoolStateChangeBlock(operatorId), latestStateChangeBlock);
     }
 
-    function testFail_changeSocializingPoolStateWithSameState(
+    function test_RevertWhen_changeSocializingPoolStateWithSameState(
         string calldata _operatorName,
         uint64 __opAddrSeed,
         uint64 _opRewardAddrSeed
@@ -512,10 +515,11 @@ contract PermissionlessNodeRegistryTest is Test {
         address payable opRewardAddr = payable(vm.addr(_opRewardAddrSeed));
         vm.startPrank(operatorAddr);
         nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        vm.expectRevert();
         nodeRegistry.changeSocializingPoolState(false);
     }
 
-    function testFail_changeSocializingPoolStateDuringCoolDown(
+    function test_RevertWhen_changeSocializingPoolStateDuringCoolDown(
         string calldata _operatorName,
         uint64 __opAddrSeed,
         uint64 _opRewardAddrSeed
@@ -529,6 +533,7 @@ contract PermissionlessNodeRegistryTest is Test {
         staderConfig.updateSocializingPoolOptInCoolingPeriod(50);
         vm.startPrank(operatorAddr);
         nodeRegistry.onboardNodeOperator(false, _operatorName, opRewardAddr);
+        vm.expectRevert();
         nodeRegistry.changeSocializingPoolState(true);
     }
 
@@ -538,9 +543,9 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(nodeRegistry.inputKeyCountLimit(), _keyCountLimit);
     }
 
-    function testFail_updateInputKeyCountLimit(uint16 _keyCountLimit) public {
+    function test_RevertWhen_updateInputKeyCountLimit(uint16 _keyCountLimit) public {
+        vm.expectRevert();
         nodeRegistry.updateInputKeyCountLimit(_keyCountLimit);
-        assertEq(nodeRegistry.inputKeyCountLimit(), _keyCountLimit);
     }
 
     function test_updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) public {
@@ -549,9 +554,9 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(nodeRegistry.maxNonTerminalKeyPerOperator(), _maxNonTerminalKeyPerOperator);
     }
 
-    function testFail_updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) public {
+    function test_RevertWhen_updateMaxNonTerminalKeyPerOperator(uint64 _maxNonTerminalKeyPerOperator) public {
+        vm.expectRevert();
         nodeRegistry.updateMaxNonTerminalKeyPerOperator(_maxNonTerminalKeyPerOperator);
-        assertEq(nodeRegistry.maxNonTerminalKeyPerOperator(), _maxNonTerminalKeyPerOperator);
     }
 
     function test_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
@@ -560,9 +565,9 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(nodeRegistry.verifiedKeyBatchSize(), _verifiedKeysBatchSize);
     }
 
-    function testFail_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
+    function test_RevertWhen_updateVerifiedKeysBatchSize(uint256 _verifiedKeysBatchSize) public {
+        vm.expectRevert();
         nodeRegistry.updateVerifiedKeysBatchSize(_verifiedKeysBatchSize);
-        assertEq(nodeRegistry.verifiedKeyBatchSize(), _verifiedKeysBatchSize);
     }
 
     function test_updateStaderConfig(uint64 _staderConfigSeed) public {
@@ -573,23 +578,24 @@ contract PermissionlessNodeRegistryTest is Test {
         assertEq(address(nodeRegistry.staderConfig()), newStaderConfig);
     }
 
-    function testFail_updateStaderConfigWithoutAdminRole(uint64 _staderConfigSeed) public {
+    function test_RevertWhen_updateStaderConfigWithoutAdminRole(uint64 _staderConfigSeed) public {
         vm.assume(_staderConfigSeed > 0);
         address newStaderConfig = vm.addr(_staderConfigSeed);
+        vm.expectRevert();
         nodeRegistry.updateStaderConfig(newStaderConfig);
-        assertEq(address(nodeRegistry.staderConfig()), newStaderConfig);
     }
 
-    function testFail_updateStaderConfigWithZeroAddr() public {
-        address newStaderConfig = vm.addr(0);
+    function test_RevertWhen_updateStaderConfigWithZeroAddr() public {
+        address newStaderConfig = address(0);
         vm.prank(staderAdmin);
+        vm.expectRevert();
         nodeRegistry.updateStaderConfig(newStaderConfig);
-        assertEq(address(nodeRegistry.staderConfig()), newStaderConfig);
     }
 
     function test_updateOperatorRewardAddress(string calldata _operatorName, uint64 __opAddrSeed) public {
         vm.assume(bytes(_operatorName).length > 0 && bytes(_operatorName).length < 255);
         vm.assume(__opAddrSeed > 0);
+        vm.assume(__opAddrSeed != 456 && __opAddrSeed != 567 && __opAddrSeed != 666);
         address operatorAddr = vm.addr(__opAddrSeed);
         address payable opRewardAddr = payable(vm.addr(456));
         address payable newOPRewardAddr = payable(vm.addr(567));
@@ -717,6 +723,123 @@ contract PermissionlessNodeRegistryTest is Test {
         vm.deal(address(nodeRegistry), _amount);
         vm.expectRevert(UtilLib.CallerNotStaderContract.selector);
         nodeRegistry.transferCollateralToPool(_amount);
+    }
+
+    function test_setOperatorNonTerminalKeysCount() public {
+        address op = vm.addr(501);
+        vm.startPrank(op);
+        nodeRegistry.onboardNodeOperator(true, "cachedOP", payable(op));
+        vm.stopPrank();
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(op);
+
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        nodeRegistry.setOperatorNonTerminalKeysCount(operatorId, 2);
+
+        vm.expectEmit(true, false, false, true, address(nodeRegistry));
+        emit OperatorNonTerminalKeysCountSet(operatorId, 2);
+        vm.prank(staderManager);
+        nodeRegistry.setOperatorNonTerminalKeysCount(operatorId, 2);
+
+        assertTrue(nodeRegistry.operatorNonTerminalKeysCountInitialized(operatorId));
+        assertEq(nodeRegistry.operatorNonTerminalKeysCount(operatorId), 2);
+        assertEq(nodeRegistry.getOperatorTotalNonTerminalKeys(op, 0, 0), 2);
+    }
+
+    function test_cachedNonTerminalKeysIncrementAndRead() public {
+        (
+            bytes[] memory pubkeys,
+            bytes[] memory preDepositSignature,
+            bytes[] memory depositSignature
+        ) = getValidatorKeys();
+        address op = vm.addr(502);
+        vm.startPrank(op);
+        nodeRegistry.onboardNodeOperator(true, "cachedOP", payable(op));
+        vm.stopPrank();
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(op);
+
+        vm.prank(staderManager);
+        nodeRegistry.setOperatorNonTerminalKeysCount(operatorId, 0);
+
+        vm.deal(op, 100 ether);
+        vm.startPrank(op);
+        nodeRegistry.addValidatorKeys{ value: 12 ether }(pubkeys, preDepositSignature, depositSignature);
+        vm.stopPrank();
+
+        assertEq(nodeRegistry.operatorNonTerminalKeysCount(operatorId), pubkeys.length);
+        assertEq(nodeRegistry.getOperatorTotalNonTerminalKeys(op, 0, pubkeys.length), pubkeys.length);
+    }
+
+    function test_cachedNonTerminalKeysDecrementOnWithdraw() public {
+        (
+            bytes[] memory pubkeys,
+            bytes[] memory preDepositSignature,
+            bytes[] memory depositSignature
+        ) = getValidatorKeys();
+        address op = vm.addr(503);
+        vm.deal(op, 100 ether);
+        vm.startPrank(op);
+        nodeRegistry.onboardNodeOperator(true, "cachedOP", payable(op));
+        nodeRegistry.addValidatorKeys{ value: 12 ether }(pubkeys, preDepositSignature, depositSignature);
+        vm.stopPrank();
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(op);
+
+        vm.startPrank(address(permissionlessPool));
+        for (uint256 i = 0; i < pubkeys.length; i++) {
+            nodeRegistry.updateDepositStatusAndBlock(nodeRegistry.validatorIdByPubkey(pubkeys[i]));
+        }
+        nodeRegistry.increaseTotalActiveValidatorCount(pubkeys.length);
+        vm.stopPrank();
+
+        vm.prank(staderManager);
+        nodeRegistry.setOperatorNonTerminalKeysCount(operatorId, uint64(pubkeys.length));
+
+        bytes[] memory withdrawn = new bytes[](1);
+        withdrawn[0] = pubkeys[0];
+        vm.prank(address(staderOracle));
+        nodeRegistry.withdrawnValidators(withdrawn);
+
+        assertEq(nodeRegistry.operatorNonTerminalKeysCount(operatorId), pubkeys.length - 1);
+        assertEq(nodeRegistry.getOperatorTotalNonTerminalKeys(op, 0, pubkeys.length), pubkeys.length - 1);
+    }
+
+    function test_cachedNonTerminalKeysDecrementOnFrontRunAndInvalidSig() public {
+        (
+            bytes[] memory pubkeys,
+            bytes[] memory preDepositSignature,
+            bytes[] memory depositSignature
+        ) = getValidatorKeys();
+        vm.startPrank(operator);
+        vm.deal(operator, 100 ether);
+        nodeRegistry.onboardNodeOperator(true, "cachedOP", payable(address(this)));
+        nodeRegistry.addValidatorKeys{ value: 12 ether }(pubkeys, preDepositSignature, depositSignature);
+        vm.stopPrank();
+        uint256 operatorId = nodeRegistry.operatorIDByAddress(operator);
+
+        vm.prank(staderManager);
+        nodeRegistry.setOperatorNonTerminalKeysCount(operatorId, uint64(pubkeys.length));
+
+        bytes[] memory readyToDepositKeys = new bytes[](1);
+        bytes[] memory frontRunKeys = new bytes[](1);
+        bytes[] memory invalidSigKeys = new bytes[](1);
+        readyToDepositKeys[0] = pubkeys[0];
+        frontRunKeys[0] = pubkeys[1];
+        invalidSigKeys[0] = pubkeys[2];
+        vm.prank(address(staderOracle));
+        nodeRegistry.markValidatorReadyToDeposit(readyToDepositKeys, frontRunKeys, invalidSigKeys);
+
+        assertEq(nodeRegistry.operatorNonTerminalKeysCount(operatorId), 1);
+        assertEq(nodeRegistry.getOperatorTotalNonTerminalKeys(operator, 0, pubkeys.length), 1);
+    }
+
+    function test_updateMaxKeysPerOperator() public {
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        nodeRegistry.updateMaxKeysPerOperator(10);
+
+        vm.expectEmit(false, false, false, true, address(nodeRegistry));
+        emit UpdateMaxKeysPerOperator(10);
+        vm.prank(staderManager);
+        nodeRegistry.updateMaxKeysPerOperator(10);
+        assertEq(nodeRegistry.maxKeysPerOperator(), 10);
     }
 
     function test_getOperatorTotalNonTerminalKeys(

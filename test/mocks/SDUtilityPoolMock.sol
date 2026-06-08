@@ -21,4 +21,6 @@ contract SDUtilityPoolMock {
     }
 
     function completeLiquidation() external pure {}
+
+    bool public assetCustodied;
 }

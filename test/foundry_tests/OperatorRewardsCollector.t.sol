@@ -535,4 +535,296 @@ contract OperatorRewardsCollectorTest is Test {
         bytes memory mockCode = address(nodeRegistryMock).code;
         vm.etch(_permissionlessNodeRegistry, mockCode);
     }
+
+    // --- Sunset: setCustodyDelay / sweepToCustody / kill-switch / adminSettleOperator ---
+
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
+    event AdminSettledOperator(address indexed operator);
+
+    function test_setCustodyDelay_revertsForNonAdmin() public {
+        vm.expectRevert();
+        operatorRewardsCollector.setCustodyDelay(1 days);
+    }
+
+    function test_setCustodyDelay_revertsOnZero() public {
+        vm.expectRevert(IOperatorRewardsCollector.ZeroCustodyDelay.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(0);
+    }
+
+    function test_setCustodyDelay_setsTimestampAndEmits() public {
+        uint256 expected = block.timestamp + 7 days;
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit SetCustodyDelay(expected);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(7 days);
+        assertEq(operatorRewardsCollector.sweepToCustodyTimestamp(), expected);
+    }
+
+    function _armORCSweep() internal {
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(1 days);
+        vm.warp(block.timestamp + 1 days + 1);
+    }
+
+    function test_sweep_revertsForNonAdmin() public {
+        _armORCSweep();
+        vm.expectRevert();
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroCustody() public {
+        _armORCSweep();
+        vm.expectRevert(IOperatorRewardsCollector.ZeroAddress.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), address(0));
+    }
+
+    function test_sweep_revertsBeforeDelay() public {
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.setCustodyDelay(1 days);
+        vm.expectRevert(IOperatorRewardsCollector.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsWhenDelayUnset() public {
+        vm.expectRevert(IOperatorRewardsCollector.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroBalance() public {
+        _armORCSweep();
+        vm.expectRevert(IOperatorRewardsCollector.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_transfersEthToCustody() public {
+        _armORCSweep();
+        address custody = vm.addr(701);
+        vm.deal(address(operatorRewardsCollector), 5 ether);
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit SweptToCustody(address(0), custody, 5 ether);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), custody);
+
+        assertEq(custody.balance, 5 ether);
+        assertTrue(operatorRewardsCollector.assetCustodied());
+    }
+
+    function test_sweep_transfersERC20ToCustody() public {
+        _armORCSweep();
+        address custody = vm.addr(701);
+        uint256 amount = 1_000e18;
+        staderToken.transfer(address(operatorRewardsCollector), amount);
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit SweptToCustody(address(staderToken), custody, amount);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(staderToken), custody);
+
+        assertEq(staderToken.balanceOf(custody), amount);
+        assertTrue(operatorRewardsCollector.assetCustodied());
+    }
+
+    function _custodyAndSweepORC() internal {
+        _armORCSweep();
+        vm.deal(address(operatorRewardsCollector), 1 wei);
+        vm.prank(staderAdmin);
+        operatorRewardsCollector.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_claim_revertsAfterAssetCustodied() public {
+        _custodyAndSweepORC();
+        vm.expectRevert(IOperatorRewardsCollector.AssetCustodied.selector);
+        operatorRewardsCollector.claim();
+    }
+
+    function test_claimWithAmount_revertsAfterAssetCustodied() public {
+        _custodyAndSweepORC();
+        vm.expectRevert(IOperatorRewardsCollector.AssetCustodied.selector);
+        operatorRewardsCollector.claimWithAmount(1 ether);
+    }
+
+    function test_claimLiquidation_revertsAfterAssetCustodied() public {
+        _custodyAndSweepORC();
+        vm.expectRevert(IOperatorRewardsCollector.AssetCustodied.selector);
+        operatorRewardsCollector.claimLiquidation(vm.addr(700));
+    }
+
+    // --- Sunset: adminSettleOperator (Manager-only) ---
+
+    function test_adminSettle_revertsForNonManager() public {
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        operatorRewardsCollector.adminSettleOperator(vm.addr(700));
+    }
+
+    function test_adminSettle_skipsSDRepayWhenInterestZero() public {
+        address op = vm.addr(700);
+        operatorRewardsCollector.depositFor{ value: 2 ether }(op);
+        // Default mock returns totalInterestSD = 0 → no SD repay path. balances flushed to op.
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit AdminSettledOperator(op);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+
+        assertEq(operatorRewardsCollector.balances(op), 0);
+    }
+
+    function test_adminSettle_skipsSDRepayWhenNonTerminalKeysNonZero() public {
+        address op = vm.addr(700);
+        operatorRewardsCollector.depositFor{ value: 2 ether }(op);
+        // Mock getOperatorInfo to return non-zero nonTerminalKeys; treasury never charged.
+        vm.mockCall(
+            sdCollateralMock,
+            abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector, op),
+            abi.encode(uint8(1), uint256(1), uint256(5))
+        );
+        UserData memory ud = UserData({
+            totalInterestSD: 1000e18,
+            totalCollateralInEth: 2 ether,
+            healthFactor: 2e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+
+        uint256 treasuryEthBefore = staderTreasury.balance;
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+        // No ETH netted to treasury since SD repay path skipped.
+        assertEq(staderTreasury.balance, treasuryEthBefore);
+    }
+
+    function test_adminSettle_repaysFromTreasuryAndNetsETHToTreasury() public {
+        address op = vm.addr(700);
+        address rewardAddr = address(2);
+        operatorRewardsCollector.depositFor{ value: 4 ether }(op);
+
+        // SDCollateral: terminal keys.
+        vm.mockCall(
+            sdCollateralMock,
+            abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector, op),
+            abi.encode(uint8(1), uint256(1), uint256(0))
+        );
+        // Outstanding SD interest = 1000 SD, SD price = 0.0001 ETH → interestInEth = 0.1 ETH.
+        uint256 interestSD = 1000e18;
+        UserData memory ud = UserData({
+            totalInterestSD: interestSD,
+            totalCollateralInEth: 4 ether,
+            healthFactor: 2e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.repayOnBehalf.selector, op, interestSD),
+            abi.encode(uint256(interestSD), uint256(0))
+        );
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(uint256(1e14))
+        );
+
+        // Treasury pre-funded + approved.
+        staderToken.transfer(staderTreasury, interestSD);
+        vm.prank(staderTreasury);
+        staderToken.approve(address(operatorRewardsCollector), type(uint256).max);
+
+        uint256 treasuryEthBefore = staderTreasury.balance;
+        uint256 rewardBalBefore = rewardAddr.balance;
+
+        vm.expectEmit(true, true, true, true, address(operatorRewardsCollector));
+        emit AdminSettledOperator(op);
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+
+        assertEq(operatorRewardsCollector.balances(op), 0);
+        assertEq(staderTreasury.balance, treasuryEthBefore + 0.1 ether);
+        assertEq(rewardAddr.balance, rewardBalBefore + 3.9 ether);
+    }
+
+    // Verify the 2-step safeApprove pattern (zero-first, then set) survives back-to-back
+    // adminSettleOperator calls even when the prior allowance is non-zero.
+    // The mocked repayOnBehalf does not consume the allowance, so without the reset step
+    // the second safeApprove(spender, amount) would revert (SafeERC20: approve from non-zero).
+    function test_adminSettle_2StepApprovalAllowsBackToBackCalls() public {
+        address op = vm.addr(700);
+        operatorRewardsCollector.depositFor{ value: 4 ether }(op);
+
+        vm.mockCall(
+            sdCollateralMock,
+            abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector, op),
+            abi.encode(uint8(1), uint256(1), uint256(0))
+        );
+        uint256 interestSD = 1000e18;
+        UserData memory ud = UserData({
+            totalInterestSD: interestSD,
+            totalCollateralInEth: 4 ether,
+            healthFactor: 2e18,
+            lockedEth: 0
+        });
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op),
+            abi.encode(ud)
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.repayOnBehalf.selector, op, interestSD),
+            abi.encode(uint256(interestSD), uint256(0))
+        );
+        vm.mockCall(
+            address(staderOracle),
+            abi.encodeWithSelector(IStaderOracle.getSDPriceInETH.selector),
+            abi.encode(uint256(1e14))
+        );
+
+        // Fund treasury twice; approve ORC for max.
+        staderToken.transfer(staderTreasury, interestSD * 2);
+        vm.prank(staderTreasury);
+        staderToken.approve(address(operatorRewardsCollector), type(uint256).max);
+
+        // First settle: ORC allowance to SDUtilityPool ends at interestSD (mock didn't consume).
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op);
+        assertEq(staderToken.allowance(address(operatorRewardsCollector), address(sdUtilityPool)), interestSD);
+
+        // Second settle (different op so balance check passes): would revert without the reset step
+        // because SafeERC20.safeApprove requires current allowance == 0 to set a non-zero value.
+        address op2 = vm.addr(701);
+        operatorRewardsCollector.depositFor{ value: 4 ether }(op2);
+        vm.mockCall(
+            sdCollateralMock,
+            abi.encodeWithSelector(ISDCollateral.getOperatorInfo.selector, op2),
+            abi.encode(uint8(1), uint256(2), uint256(0))
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.getUserData.selector, op2),
+            abi.encode(ud)
+        );
+        vm.mockCall(
+            address(sdUtilityPool),
+            abi.encodeWithSelector(ISDUtilityPool.repayOnBehalf.selector, op2, interestSD),
+            abi.encode(uint256(interestSD), uint256(0))
+        );
+
+        vm.prank(staderManager);
+        operatorRewardsCollector.adminSettleOperator(op2);
+        // Final allowance still == interestSD (second op settled cleanly).
+        assertEq(staderToken.allowance(address(operatorRewardsCollector), address(sdUtilityPool)), interestSD);
+    }
 }

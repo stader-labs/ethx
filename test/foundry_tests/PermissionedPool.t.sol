@@ -249,10 +249,10 @@ contract PermissionedPoolTest is Test {
         assertEq(address(permissionedPool.staderConfig()), newStaderConfig);
     }
 
-    function testFail_updateStaderConfig(uint64 _staderConfigSeed) public {
+    function test_RevertWhen_updateStaderConfig(uint64 _staderConfigSeed) public {
         vm.assume(_staderConfigSeed > 0);
         address newStaderConfig = vm.addr(_staderConfigSeed);
+        vm.expectRevert();
         permissionedPool.updateStaderConfig(newStaderConfig);
-        assertEq(address(permissionedPool.staderConfig()), newStaderConfig);
     }
 }

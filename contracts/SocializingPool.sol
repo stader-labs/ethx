@@ -6,6 +6,8 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { MerkleProofUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import { UtilLib } from "./library/UtilLib.sol";
 
@@ -20,6 +22,8 @@ contract SocializingPool is
     PausableUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
     IStaderConfig public override staderConfig;
     uint256 public override totalOperatorETHRewardsRemaining;
     uint256 public override totalOperatorSDRewardsRemaining;
@@ -29,6 +33,9 @@ contract SocializingPool is
     mapping(uint256 => bool) public handledRewards;
     RewardsData public lastReportedRewardsData;
     mapping(uint256 => RewardsData) public rewardsDataMap;
+
+    bool public assetCustodied;
+    uint256 public sweepToCustodyTimestamp;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -109,6 +116,7 @@ contract SocializingPool is
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
     ) external override nonReentrant whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         _claimAndDepositSD(false, _index, _amountSD, _amountETH, _merkleProof);
     }
 
@@ -119,6 +127,7 @@ contract SocializingPool is
         uint256[] calldata _amountETH,
         bytes32[][] calldata _merkleProof
     ) external override nonReentrant whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         _claimAndDepositSD(true, _index, _amountSD, _amountETH, _merkleProof);
     }
 
@@ -187,6 +196,7 @@ contract SocializingPool is
 
     /// @notice for max approval to SDCollateral for spending SD tokens
     function maxApproveSD() external override {
+        if (assetCustodied) revert AssetCustodied();
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         address sdCollateral = staderConfig.getSDCollateral();
         UtilLib.checkNonZeroAddress(sdCollateral);
@@ -275,5 +285,33 @@ contract SocializingPool is
 
         // everything else is a future cycle
         revert FutureCycleIndex();
+    }
+
+    /// @notice arm custody sweep timer; sweepToCustody allowed only after delay elapses
+    /// @dev Admin (timelock) only
+    function setCustodyDelay(uint256 _custodyDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custodyDelay == 0) revert ZeroCustodyDelay();
+        sweepToCustodyTimestamp = block.timestamp + _custodyDelay;
+        emit SetCustodyDelay(sweepToCustodyTimestamp);
+    }
+
+    /// @notice sweep full ETH or ERC20 balance to custody; sticky-flips assetCustodied
+    /// @dev Admin (timelock) only; requires armed setCustodyDelay() with elapsed delay
+    function sweepToCustody(address _asset, address _custody) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custody == address(0)) revert ZeroAddress();
+        if (sweepToCustodyTimestamp == 0 || block.timestamp < sweepToCustodyTimestamp) revert CustodyDelayNotElapsed();
+        assetCustodied = true;
+        uint256 bal;
+        if (_asset == address(0)) {
+            bal = address(this).balance;
+            if (bal == 0) revert ZeroAmount();
+            (bool success, ) = payable(_custody).call{ value: bal }("");
+            if (!success) revert TransferFailed();
+        } else {
+            bal = IERC20Upgradeable(_asset).balanceOf(address(this));
+            if (bal == 0) revert ZeroAmount();
+            IERC20Upgradeable(_asset).safeTransfer(_custody, bal);
+        }
+        emit SweptToCustody(_asset, _custody, bal);
     }
 }

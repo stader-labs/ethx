@@ -10,10 +10,22 @@ optimizer_runs = 10_000
 solc_version = "0.8.16"
 build_info = true
 extra_output = ["storageLayout"]
+no_match_path = "test/fork/sunset/**/*.t.sol"
 
 [profile.ci]
 fuzz = { runs = 10_000 }
 verbosity = 4
+no_match_path = "test/fork/sunset/**/*.t.sol"
+
+[profile.fork]
+match_path = "test/fork/sunset/**/*.t.sol"
+no_match_path = "test/foundry_tests/**/*.t.sol"
+gas_limit = "max"
+fs_permissions = [
+    { access = "read", path = "./test/fork/sunset/fixtures" },
+    { access = "read", path = "./test/fork/sunset/layouts" },
+    { access = "read-write", path = "./test/fork/sunset/snapshots" },
+]
 
 [fmt]
 bracket_spacing = true

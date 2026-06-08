@@ -1,0 +1,577 @@
+{
+  "storage": [
+    {
+      "astId": 8266,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "_initialized",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_uint8"
+    },
+    {
+      "astId": 8269,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "_initializing",
+      "offset": 1,
+      "slot": "0",
+      "type": "t_bool"
+    },
+    {
+      "astId": 9426,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_array(t_uint256)50_storage"
+    },
+    {
+      "astId": 9700,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "51",
+      "type": "t_array(t_uint256)50_storage"
+    },
+    {
+      "astId": 7878,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "_roles",
+      "offset": 0,
+      "slot": "101",
+      "type": "t_mapping(t_bytes32,t_struct(RoleData)7873_storage)"
+    },
+    {
+      "astId": 8185,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "102",
+      "type": "t_array(t_uint256)49_storage"
+    },
+    {
+      "astId": 8450,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "_paused",
+      "offset": 0,
+      "slot": "151",
+      "type": "t_bool"
+    },
+    {
+      "astId": 8555,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "152",
+      "type": "t_array(t_uint256)49_storage"
+    },
+    {
+      "astId": 1163,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "protocolFee",
+      "offset": 0,
+      "slot": "201",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1166,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "accrualBlockNumber",
+      "offset": 0,
+      "slot": "202",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1169,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "utilizeIndex",
+      "offset": 0,
+      "slot": "203",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1172,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "totalUtilizedSD",
+      "offset": 0,
+      "slot": "204",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1175,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "accumulatedProtocolFee",
+      "offset": 0,
+      "slot": "205",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1178,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "utilizationRatePerBlock",
+      "offset": 0,
+      "slot": "206",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1181,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "cTokenTotalSupply",
+      "offset": 0,
+      "slot": "207",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1184,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "maxETHWorthOfSDPerValidator",
+      "offset": 0,
+      "slot": "208",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1187,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "nextRequestIdToFinalize",
+      "offset": 0,
+      "slot": "209",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1190,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "nextRequestId",
+      "offset": 0,
+      "slot": "210",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1193,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "sdRequestedForWithdraw",
+      "offset": 0,
+      "slot": "211",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1196,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "finalizationBatchLimit",
+      "offset": 0,
+      "slot": "212",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1199,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "sdReservedForClaim",
+      "offset": 0,
+      "slot": "213",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1202,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "minBlockDelayToFinalizeRequest",
+      "offset": 0,
+      "slot": "214",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1205,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "maxNonRedeemedDelegatorRequestCount",
+      "offset": 0,
+      "slot": "215",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1209,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "staderConfig",
+      "offset": 0,
+      "slot": "216",
+      "type": "t_contract(IStaderConfig)6370"
+    },
+    {
+      "astId": 1213,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "riskConfig",
+      "offset": 0,
+      "slot": "217",
+      "type": "t_struct(RiskConfig)5325_storage"
+    },
+    {
+      "astId": 1218,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "liquidations",
+      "offset": 0,
+      "slot": "221",
+      "type": "t_array(t_struct(OperatorLiquidation)5106_storage)dyn_storage"
+    },
+    {
+      "astId": 1224,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "utilizerData",
+      "offset": 0,
+      "slot": "222",
+      "type": "t_mapping(t_address,t_struct(UtilizerStruct)5305_storage)"
+    },
+    {
+      "astId": 1229,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "delegatorCTokenBalance",
+      "offset": 0,
+      "slot": "223",
+      "type": "t_mapping(t_address,t_uint256)"
+    },
+    {
+      "astId": 1234,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "delegatorWithdrawRequestedCTokenCount",
+      "offset": 0,
+      "slot": "224",
+      "type": "t_mapping(t_address,t_uint256)"
+    },
+    {
+      "astId": 1240,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "delegatorWithdrawRequests",
+      "offset": 0,
+      "slot": "225",
+      "type": "t_mapping(t_uint256,t_struct(DelegatorWithdrawInfo)5316_storage)"
+    },
+    {
+      "astId": 1246,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "requestIdsByDelegatorAddress",
+      "offset": 0,
+      "slot": "226",
+      "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)"
+    },
+    {
+      "astId": 1251,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "liquidationIndexByOperator",
+      "offset": 0,
+      "slot": "227",
+      "type": "t_mapping(t_address,t_uint256)"
+    },
+    {
+      "astId": 1253,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "conservativeEthPerKey",
+      "offset": 0,
+      "slot": "228",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1255,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "sweepToCustodyTimestamp",
+      "offset": 0,
+      "slot": "229",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 1257,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "depositsPaused",
+      "offset": 0,
+      "slot": "230",
+      "type": "t_bool"
+    },
+    {
+      "astId": 1259,
+      "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+      "label": "assetCustodied",
+      "offset": 1,
+      "slot": "230",
+      "type": "t_bool"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "t_array(t_struct(OperatorLiquidation)5106_storage)dyn_storage": {
+      "encoding": "dynamic_array",
+      "label": "struct OperatorLiquidation[]",
+      "numberOfBytes": "32",
+      "base": "t_struct(OperatorLiquidation)5106_storage"
+    },
+    "t_array(t_uint256)49_storage": {
+      "encoding": "inplace",
+      "label": "uint256[49]",
+      "numberOfBytes": "1568",
+      "base": "t_uint256"
+    },
+    "t_array(t_uint256)50_storage": {
+      "encoding": "inplace",
+      "label": "uint256[50]",
+      "numberOfBytes": "1600",
+      "base": "t_uint256"
+    },
+    "t_array(t_uint256)dyn_storage": {
+      "encoding": "dynamic_array",
+      "label": "uint256[]",
+      "numberOfBytes": "32",
+      "base": "t_uint256"
+    },
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    },
+    "t_bytes32": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "t_contract(IStaderConfig)6370": {
+      "encoding": "inplace",
+      "label": "contract IStaderConfig",
+      "numberOfBytes": "20"
+    },
+    "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => uint256[])",
+      "numberOfBytes": "32",
+      "value": "t_array(t_uint256)dyn_storage"
+    },
+    "t_mapping(t_address,t_bool)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => bool)",
+      "numberOfBytes": "32",
+      "value": "t_bool"
+    },
+    "t_mapping(t_address,t_struct(UtilizerStruct)5305_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct ISDUtilityPool.UtilizerStruct)",
+      "numberOfBytes": "32",
+      "value": "t_struct(UtilizerStruct)5305_storage"
+    },
+    "t_mapping(t_address,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_mapping(t_bytes32,t_struct(RoleData)7873_storage)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+      "numberOfBytes": "32",
+      "value": "t_struct(RoleData)7873_storage"
+    },
+    "t_mapping(t_uint256,t_struct(DelegatorWithdrawInfo)5316_storage)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => struct ISDUtilityPool.DelegatorWithdrawInfo)",
+      "numberOfBytes": "32",
+      "value": "t_struct(DelegatorWithdrawInfo)5316_storage"
+    },
+    "t_struct(DelegatorWithdrawInfo)5316_storage": {
+      "encoding": "inplace",
+      "label": "struct ISDUtilityPool.DelegatorWithdrawInfo",
+      "numberOfBytes": "160",
+      "members": [
+        {
+          "astId": 5307,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "owner",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_address"
+        },
+        {
+          "astId": 5309,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "amountOfCToken",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5311,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "sdExpected",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5313,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "sdFinalized",
+          "offset": 0,
+          "slot": "3",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5315,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "requestBlock",
+          "offset": 0,
+          "slot": "4",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    "t_struct(OperatorLiquidation)5106_storage": {
+      "encoding": "inplace",
+      "label": "struct OperatorLiquidation",
+      "numberOfBytes": "128",
+      "members": [
+        {
+          "astId": 5095,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "totalAmountInEth",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5097,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "totalBonusInEth",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5099,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "totalFeeInEth",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5101,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "isRepaid",
+          "offset": 0,
+          "slot": "3",
+          "type": "t_bool"
+        },
+        {
+          "astId": 5103,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "isClaimed",
+          "offset": 1,
+          "slot": "3",
+          "type": "t_bool"
+        },
+        {
+          "astId": 5105,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "liquidator",
+          "offset": 2,
+          "slot": "3",
+          "type": "t_address"
+        }
+      ]
+    },
+    "t_struct(RiskConfig)5325_storage": {
+      "encoding": "inplace",
+      "label": "struct ISDUtilityPool.RiskConfig",
+      "numberOfBytes": "128",
+      "members": [
+        {
+          "astId": 5318,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "liquidationThreshold",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5320,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "liquidationBonusPercent",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5322,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "liquidationFeePercent",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5324,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "ltv",
+          "offset": 0,
+          "slot": "3",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    "t_struct(RoleData)7873_storage": {
+      "encoding": "inplace",
+      "label": "struct AccessControlUpgradeable.RoleData",
+      "numberOfBytes": "64",
+      "members": [
+        {
+          "astId": 7870,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "members",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_mapping(t_address,t_bool)"
+        },
+        {
+          "astId": 7872,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "adminRole",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_bytes32"
+        }
+      ]
+    },
+    "t_struct(UtilizerStruct)5305_storage": {
+      "encoding": "inplace",
+      "label": "struct ISDUtilityPool.UtilizerStruct",
+      "numberOfBytes": "64",
+      "members": [
+        {
+          "astId": 5302,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "principal",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_uint256"
+        },
+        {
+          "astId": 5304,
+          "contract": "contracts/SDUtilityPool.sol:SDUtilityPool",
+          "label": "utilizeIndex",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_uint256"
+        }
+      ]
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "t_uint8": {
+      "encoding": "inplace",
+      "label": "uint8",
+      "numberOfBytes": "1"
+    }
+  }
+}

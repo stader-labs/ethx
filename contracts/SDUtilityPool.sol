@@ -5,6 +5,8 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import { UtilLib } from "./library/UtilLib.sol";
 
@@ -17,6 +19,7 @@ import { IOperatorRewardsCollector } from "./interfaces/IOperatorRewardsCollecto
 
 contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgradeable {
     using Math for uint256;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 public constant DECIMAL = 1e18;
 
@@ -95,6 +98,10 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     uint256 public conservativeEthPerKey;
 
+    uint256 public sweepToCustodyTimestamp;
+    bool public depositsPaused;
+    bool public assetCustodied;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -130,6 +137,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param sdAmount The amount of SD token to delegate
      */
     function delegate(uint256 sdAmount) external override whenNotPaused {
+        if (depositsPaused) revert DepositsPaused();
+        if (assetCustodied) revert AssetCustodied();
         if (sdAmount < MIN_SD_DELEGATE_LIMIT) {
             revert InvalidInput();
         }
@@ -145,6 +154,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @return _requestId generated request ID for withdrawal
      */
     function requestWithdraw(uint256 _cTokenAmount) external override whenNotPaused returns (uint256 _requestId) {
+        if (assetCustodied) revert AssetCustodied();
         if (_cTokenAmount > delegatorCTokenBalance[msg.sender]) {
             revert InvalidAmountOfWithdraw();
         }
@@ -170,6 +180,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
     function requestWithdrawWithSDAmount(
         uint256 _sdAmount
     ) external override whenNotPaused returns (uint256 _requestId) {
+        if (assetCustodied) revert AssetCustodied();
         if (_sdAmount < MIN_SD_WITHDRAW_LIMIT) {
             revert InvalidInput();
         }
@@ -188,6 +199,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @notice finalize delegator's withdraw requests
      */
     function finalizeDelegatorWithdrawalRequest() external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         accrueFee();
         uint256 exchangeRate = _exchangeRateStored();
         uint256 maxRequestIdToFinalize = Math.min(nextRequestId, nextRequestIdToFinalize + finalizationBatchLimit);
@@ -227,6 +239,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param _requestId request id to claim
      */
     function claim(uint256 _requestId) external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         if (_requestId >= nextRequestIdToFinalize) {
             revert RequestIdNotFinalized(_requestId);
         }
@@ -249,6 +262,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param utilizeAmount The amount of the SD token to utilize
      */
     function utilize(uint256 utilizeAmount) external override whenNotPaused {
+        if (depositsPaused) revert DepositsPaused();
+        if (assetCustodied) revert AssetCustodied();
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
         (, , uint256 nonTerminalKeyCount) = sdCollateral.getOperatorInfo(msg.sender);
         uint256 currentUtilizedSDCollateral = sdCollateral.operatorUtilizedSDBalance(msg.sender);
@@ -273,6 +288,8 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         uint256 utilizeAmount,
         uint256 nonTerminalKeyCount
     ) external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
+        if (depositsPaused) revert DepositsPaused();
         UtilLib.onlyStaderContract(msg.sender, staderConfig, staderConfig.PERMISSIONLESS_NODE_REGISTRY());
         ISDCollateral sdCollateral = ISDCollateral(staderConfig.getSDCollateral());
         uint256 currentUtilizedSDCollateral = sdCollateral.operatorUtilizedSDBalance(operator);
@@ -289,6 +306,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param repayAmount The amount to repay
      */
     function repay(uint256 repayAmount) external whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+        if (assetCustodied) revert AssetCustodied();
         accrueFee();
         (repaidAmount, feePaid) = _repay(msg.sender, repayAmount);
     }
@@ -301,6 +319,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
         address utilizer,
         uint256 repayAmount
     ) external override whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+        if (assetCustodied) revert AssetCustodied();
         accrueFee();
         (repaidAmount, feePaid) = _repay(utilizer, repayAmount);
     }
@@ -310,6 +329,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * utilizer not to worry about calculating exact SD repayment amount for clearing their entire position
      */
     function repayFullAmount() external override whenNotPaused returns (uint256 repaidAmount, uint256 feePaid) {
+        if (assetCustodied) revert AssetCustodied();
         accrueFee();
         uint256 accountUtilizedPrev = _utilizerBalanceStoredInternal(msg.sender);
         (repaidAmount, feePaid) = _repay(msg.sender, accountUtilizedPrev);
@@ -321,6 +341,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param _amount amount of protocol fee in SD to withdraw
      */
     function withdrawProtocolFee(uint256 _amount) external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         accrueFee();
         if (_amount > accumulatedProtocolFee || _amount > getPoolAvailableSDBalance()) {
@@ -335,6 +356,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
 
     /// @notice for max approval to SD collateral contract for spending SD tokens
     function maxApproveSD() external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         UtilLib.onlyManagerRole(msg.sender, staderConfig);
         address sdCollateral = staderConfig.getSDCollateral();
         UtilLib.checkNonZeroAddress(sdCollateral);
@@ -386,6 +408,7 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
      * @param account The address of the account to be liquidated
      */
     function liquidationCall(address account) external override whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         if (liquidationIndexByOperator[account] != 0) revert AlreadyLiquidated();
 
         accrueFee();
@@ -957,5 +980,41 @@ contract SDUtilityPool is ISDUtilityPool, AccessControlUpgradeable, PausableUpgr
             ltv: ltv
         });
         emit RiskConfigUpdated(liquidationThreshold, liquidationBonusPercent, liquidationFeePercent, ltv);
+    }
+
+    /// @notice arm custody sweep timer; sweepToCustody allowed only after delay elapses
+    /// @dev Admin (timelock) only
+    function setCustodyDelay(uint256 _custodyDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custodyDelay == 0) revert ZeroCustodyDelay();
+        sweepToCustodyTimestamp = block.timestamp + _custodyDelay;
+        emit SetCustodyDelay(sweepToCustodyTimestamp);
+    }
+
+    /// @notice pause new delegate / utilize / utilizeWhileAddingKeys; exits (withdraw, repay, claim, liquidation) still flow
+    /// @dev Manager-only; reversible
+    function setDepositsPaused(bool _paused) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        depositsPaused = _paused;
+        emit DepositsPausedSet(_paused);
+    }
+
+    /// @notice sweep full ETH or ERC20 balance to custody; sticky-flips assetCustodied
+    /// @dev Admin (timelock) only; requires armed setCustodyDelay() with elapsed delay
+    function sweepToCustody(address _asset, address _custody) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custody == address(0)) revert ZeroAddress();
+        if (sweepToCustodyTimestamp == 0 || block.timestamp < sweepToCustodyTimestamp) revert CustodyDelayNotElapsed();
+        assetCustodied = true;
+        uint256 bal;
+        if (_asset == address(0)) {
+            bal = address(this).balance;
+            if (bal == 0) revert ZeroAmount();
+            (bool success, ) = payable(_custody).call{ value: bal }("");
+            if (!success) revert TransferFailed();
+        } else {
+            bal = IERC20Upgradeable(_asset).balanceOf(address(this));
+            if (bal == 0) revert ZeroAmount();
+            IERC20Upgradeable(_asset).safeTransfer(_custody, bal);
+        }
+        emit SweptToCustody(_asset, _custody, bal);
     }
 }

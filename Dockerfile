@@ -15,13 +15,13 @@ COPY --chown=foundry:foundry package.json .
 COPY --chown=foundry:foundry package-lock.json .
 COPY --chown=foundry:foundry tsconfig.json .
 
-RUN npm ci --frozen-lockfile
+RUN npm install --no-save --no-audit --no-fund
 
 COPY --chown=foundry:foundry . .
 
 RUN yamlfmt -lint .github/workflows/*.yml
 
-RUN forge install
+RUN git submodule update --init --recursive
 RUN npm run prettier:check
 # RUN slither .
 RUN npm run lint

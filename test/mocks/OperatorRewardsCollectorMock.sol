@@ -9,4 +9,6 @@ contract OperatorRewardsCollectorMock {
     function getBalance(address) public view returns (uint256) {
         return 0;
     }
+
+    bool public assetCustodied;
 }

@@ -849,4 +849,240 @@ contract SDUtilityPoolTest is Test {
         userData = sdUtilityPool.getUserData(operator);
         assertEq(0, userData.totalInterestSD);
     }
+
+    // --- Sunset: setDepositsPaused (reversible MANAGER) ---
+
+    event DepositsPausedSet(bool paused);
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
+
+    function test_setDepositsPaused_revertsForNonManager() public {
+        vm.expectRevert(UtilLib.CallerNotManager.selector);
+        sdUtilityPool.setDepositsPaused(true);
+    }
+
+    function test_setDepositsPaused_togglesOnAndOff() public {
+        assertFalse(sdUtilityPool.depositsPaused());
+        vm.startPrank(staderManager);
+        sdUtilityPool.setDepositsPaused(true);
+        assertTrue(sdUtilityPool.depositsPaused());
+        sdUtilityPool.setDepositsPaused(false);
+        assertFalse(sdUtilityPool.depositsPaused());
+        vm.stopPrank();
+    }
+
+    function test_setDepositsPaused_emitsDepositsPausedSet() public {
+        vm.expectEmit(true, true, true, true, address(sdUtilityPool));
+        emit DepositsPausedSet(true);
+        vm.prank(staderManager);
+        sdUtilityPool.setDepositsPaused(true);
+    }
+
+    function test_delegate_revertsWhenDepositsPaused() public {
+        vm.prank(staderManager);
+        sdUtilityPool.setDepositsPaused(true);
+        vm.expectRevert(ISDUtilityPool.DepositsPaused.selector);
+        sdUtilityPool.delegate(1 ether);
+    }
+
+    function test_utilize_revertsWhenDepositsPaused() public {
+        vm.prank(staderManager);
+        sdUtilityPool.setDepositsPaused(true);
+        vm.expectRevert(ISDUtilityPool.DepositsPaused.selector);
+        sdUtilityPool.utilize(1 ether);
+    }
+
+    function test_utilizeWhileAddingKeys_revertsWhenDepositsPaused() public {
+        address plnr = vm.addr(900);
+        vm.prank(staderAdmin);
+        staderConfig.updatePermissionlessNodeRegistry(plnr);
+
+        vm.prank(staderManager);
+        sdUtilityPool.setDepositsPaused(true);
+        vm.prank(plnr);
+        vm.expectRevert(ISDUtilityPool.DepositsPaused.selector);
+        sdUtilityPool.utilizeWhileAddingKeys(vm.addr(800), 1 ether, 1);
+    }
+
+    // --- Sunset: assetCustodied kill-switch ---
+
+    function _custodyAndSweepSDUP() internal {
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(1 days);
+        vm.warp(block.timestamp + 1 days + 1);
+        // Seed pool with a wei of SD so sweep doesn't hit ZeroAmount.
+        staderToken.transfer(address(sdUtilityPool), 1);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(staderToken), vm.addr(701));
+    }
+
+    function test_delegate_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.delegate(1 ether);
+    }
+
+    function test_requestWithdraw_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.requestWithdraw(1);
+    }
+
+    function test_requestWithdrawWithSDAmount_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.requestWithdrawWithSDAmount(1);
+    }
+
+    function test_finalize_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.finalizeDelegatorWithdrawalRequest();
+    }
+
+    function test_utilize_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.utilize(1);
+    }
+
+    function test_utilizeWhileAddingKeys_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.utilizeWhileAddingKeys(vm.addr(800), 1, 1);
+    }
+
+    function test_withdrawProtocolFee_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        vm.prank(staderManager);
+        sdUtilityPool.withdrawProtocolFee(0);
+    }
+
+    function test_maxApproveSD_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.maxApproveSD();
+    }
+
+    function test_claim_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.claim(1);
+    }
+
+    function test_repay_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.repay(1);
+    }
+
+    function test_repayOnBehalf_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.repayOnBehalf(vm.addr(800), 1);
+    }
+
+    function test_repayFullAmount_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.repayFullAmount();
+    }
+
+    function test_liquidationCall_revertsAfterAssetCustodied() public {
+        _custodyAndSweepSDUP();
+        vm.expectRevert(ISDUtilityPool.AssetCustodied.selector);
+        sdUtilityPool.liquidationCall(vm.addr(800));
+    }
+
+    // --- Sunset: setCustodyDelay + sweepToCustody ---
+
+    function test_setCustodyDelay_revertsForNonAdmin() public {
+        vm.expectRevert();
+        sdUtilityPool.setCustodyDelay(1 days);
+    }
+
+    function test_setCustodyDelay_revertsOnZero() public {
+        vm.expectRevert(ISDUtilityPool.ZeroCustodyDelay.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(0);
+    }
+
+    function test_setCustodyDelay_setsTimestampAndEmits() public {
+        uint256 expected = block.timestamp + 7 days;
+        vm.expectEmit(true, true, true, true, address(sdUtilityPool));
+        emit SetCustodyDelay(expected);
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(7 days);
+        assertEq(sdUtilityPool.sweepToCustodyTimestamp(), expected);
+    }
+
+    function _armSDUPSweep() internal {
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(1 days);
+        vm.warp(block.timestamp + 1 days + 1);
+    }
+
+    function test_sweep_revertsForNonAdmin() public {
+        _armSDUPSweep();
+        vm.expectRevert();
+        sdUtilityPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroCustody() public {
+        _armSDUPSweep();
+        vm.expectRevert(ISDUtilityPool.ZeroAddress.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(0), address(0));
+    }
+
+    function test_sweep_revertsBeforeDelay() public {
+        vm.prank(staderAdmin);
+        sdUtilityPool.setCustodyDelay(1 days);
+        vm.expectRevert(ISDUtilityPool.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsWhenDelayUnset() public {
+        vm.expectRevert(ISDUtilityPool.CustodyDelayNotElapsed.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_revertsOnZeroBalance() public {
+        _armSDUPSweep();
+        vm.expectRevert(ISDUtilityPool.ZeroAmount.selector);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(0), vm.addr(701));
+    }
+
+    function test_sweep_transfersEthToCustody() public {
+        _armSDUPSweep();
+        address custody = vm.addr(701);
+        vm.deal(address(sdUtilityPool), 3 ether);
+
+        vm.expectEmit(true, true, true, true, address(sdUtilityPool));
+        emit SweptToCustody(address(0), custody, 3 ether);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(0), custody);
+
+        assertEq(custody.balance, 3 ether);
+        assertTrue(sdUtilityPool.assetCustodied());
+    }
+
+    function test_sweep_transfersSDToCustody() public {
+        _armSDUPSweep();
+        address custody = vm.addr(701);
+        uint256 expected = staderToken.balanceOf(address(sdUtilityPool));
+        assertGt(expected, 0);
+
+        vm.expectEmit(true, true, true, true, address(sdUtilityPool));
+        emit SweptToCustody(address(staderToken), custody, expected);
+        vm.prank(staderAdmin);
+        sdUtilityPool.sweepToCustody(address(staderToken), custody);
+
+        assertEq(staderToken.balanceOf(custody), expected);
+        assertTrue(sdUtilityPool.assetCustodied());
+    }
 }

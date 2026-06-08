@@ -22,4 +22,6 @@ contract StakePoolManagerMock {
     function transferETHToUserWithdrawManager(uint256 _amount) external {
         (bool success, ) = payable(msg.sender).call{ value: _amount }("");
     }
+
+    bool public assetCustodied;
 }

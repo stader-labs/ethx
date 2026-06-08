@@ -3,4 +3,6 @@ pragma solidity 0.8.16;
 
 contract SocializingPoolMock {
     receive() external payable {}
+
+    bool public assetCustodied;
 }

@@ -41,8 +41,18 @@ interface ISDUtilityPool {
     error MaxLimitOnWithdrawRequestCountReached();
     error RequestIdNotFinalized(uint256 requestId);
     error AlreadyLiquidated();
+    error AssetCustodied();
+    error ZeroCustodyDelay();
+    error ZeroAddress();
+    error ZeroAmount();
+    error CustodyDelayNotElapsed();
+    error TransferFailed();
+    error DepositsPaused();
 
     event WithdrawnProtocolFee(uint256 amount);
+    event SetCustodyDelay(uint256 sweepToCustodyTimestamp);
+    event SweptToCustody(address asset, address custody, uint256 amount);
+    event DepositsPausedSet(bool paused);
     event ProtocolFeeFactorUpdated(uint256 protocolFeeFactor);
     event UpdatedStaderConfig(address indexed _staderConfig);
     event SDUtilized(address utilizer, uint256 utilizeAmount);
@@ -210,4 +220,14 @@ interface ISDUtilityPool {
     function getLiquidationThreshold() external view returns (uint256);
 
     function getUserData(address account) external view returns (UserData memory);
+
+    function assetCustodied() external view returns (bool);
+
+    function sweepToCustodyTimestamp() external view returns (uint256);
+
+    function setCustodyDelay(uint256 _custodyDelay) external;
+
+    function setDepositsPaused(bool _paused) external;
+
+    function sweepToCustody(address _asset, address _custody) external;
 }

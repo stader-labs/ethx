@@ -6,6 +6,8 @@ import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import { UtilLib } from "./library/UtilLib.sol";
 
@@ -33,9 +35,13 @@ contract StaderStakePoolsManager is
 {
     using Math for uint256;
     using SafeMath for uint256;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
     IStaderConfig public staderConfig;
     uint256 public lastExcessETHDepositBlock;
     uint256 public excessETHDepositCoolDown;
+    uint256 public sweepToCustodyTimestamp;
+    bool public depositsPaused;
+    bool public assetCustodied;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -175,6 +181,8 @@ contract StaderStakePoolsManager is
         address _receiver,
         string calldata _referralId
     ) external payable override whenNotPaused returns (uint256 _shares) {
+        if (depositsPaused) revert DepositsPaused();
+        if (assetCustodied) revert AssetCustodied();
         _shares = deposit(_receiver);
         emit DepositReferral(msg.sender, _receiver, msg.value, _shares, _referralId);
     }
@@ -185,6 +193,8 @@ contract StaderStakePoolsManager is
      * @return shares amount of ETHx token minted and sent to receiver
      */
     function deposit(address _receiver) public payable override whenNotPaused returns (uint256) {
+        if (depositsPaused) revert DepositsPaused();
+        if (assetCustodied) revert AssetCustodied();
         uint256 assets = msg.value;
         if (assets > maxDeposit() || assets < minDeposit()) {
             revert InvalidDepositAmount();
@@ -199,6 +209,7 @@ contract StaderStakePoolsManager is
      * @dev gets the count of validator to deposit for pool from pool selector logic
      */
     function validatorBatchDeposit(uint8 _poolId) external override nonReentrant whenNotPaused {
+        if (assetCustodied) revert AssetCustodied();
         IPoolUtils poolUtils = IPoolUtils(staderConfig.getPoolUtils());
         if (!poolUtils.isExistingPoolId(_poolId)) {
             revert PoolIdDoesNotExit();
@@ -231,6 +242,7 @@ contract StaderStakePoolsManager is
      * @dev permissionless call with cooldown period
      */
     function depositETHOverTargetWeight() external override nonReentrant {
+        if (assetCustodied) revert AssetCustodied();
         if (block.number < lastExcessETHDepositBlock + excessETHDepositCoolDown) {
             revert CooldownNotComplete();
         }
@@ -278,6 +290,42 @@ contract StaderStakePoolsManager is
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
+    }
+
+    /// @notice pause/unpause new ETH deposits; existing flows (withdraw/finalize) continue
+    /// @dev Manager-only; reversible
+    function setDepositsPaused(bool _paused) external {
+        UtilLib.onlyManagerRole(msg.sender, staderConfig);
+        depositsPaused = _paused;
+        emit DepositsPausedSet(_paused);
+    }
+
+    /// @notice arm custody sweep timer; sweepToCustody allowed only after delay elapses
+    /// @dev Admin (timelock) only
+    function setCustodyDelay(uint256 _custodyDelay) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custodyDelay == 0) revert ZeroCustodyDelay();
+        sweepToCustodyTimestamp = block.timestamp + _custodyDelay;
+        emit SetCustodyDelay(sweepToCustodyTimestamp);
+    }
+
+    /// @notice sweep full ETH or ERC20 balance to custody; sticky-flips assetCustodied
+    /// @dev Admin (timelock) only; requires armed setCustodyDelay() with elapsed delay
+    function sweepToCustody(address _asset, address _custody) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_custody == address(0)) revert ZeroAddress();
+        if (sweepToCustodyTimestamp == 0 || block.timestamp < sweepToCustodyTimestamp) revert CustodyDelayNotElapsed();
+        assetCustodied = true;
+        uint256 bal;
+        if (_asset == address(0)) {
+            bal = address(this).balance;
+            if (bal == 0) revert ZeroAmount();
+            (bool success, ) = payable(_custody).call{ value: bal }("");
+            if (!success) revert TransferFailed();
+        } else {
+            bal = IERC20Upgradeable(_asset).balanceOf(address(this));
+            if (bal == 0) revert ZeroAmount();
+            IERC20Upgradeable(_asset).safeTransfer(_custody, bal);
+        }
+        emit SweptToCustody(_asset, _custody, bal);
     }
 
     /**
