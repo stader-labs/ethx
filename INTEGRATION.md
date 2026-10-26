@@ -107,7 +107,13 @@ contract  Example {
 
 	event  RequestRedeemed(address  receiver, uint256  ethTransferred);
 
-	address  private  STADER_CONFIG_ADDRESS = '0x4ABEF2263d5A5ED582FC9A9789a41D85b68d69DB'; //mainnet address
+	address  private  STADER_CONFIG_ADDRESS = 0x4ABEF2263d5A5ED582FC9A9789a41D85b68d69DB; //mainnet address
+
+	// who gets the ETH of a request this contract owns: set in unstake, paid in claim
+	mapping(uint256 => address) public  receiverOf;
+
+	// UserWithdrawalManager.claim sends the ETH to the request owner, this contract, and claim forwards it
+	receive() external payable {}
 
 	/**
 	 * @notice function to stake ETH and mint ETHx by interacting with StaderStakePoolManager Contract
@@ -154,6 +160,9 @@ contract  Example {
 		// a unique requestID, and sets the owner of unstake request to `_owner`
 		uint256 requestID = userWithdrawalManager.requestWithdraw(_amountInETHx, _owner);
 
+		// only a request this contract owns can be claimed through it, so remember who it is for
+		if (_owner == address(this)) receiverOf[requestID] = msg.sender;
+
 		emit  WithdrawRequestReceived(msg.sender, _owner, requestID, _amountInETHx);
 	}
 
@@ -172,10 +181,18 @@ contract  Example {
 		// ethFinalized is the ETH amount redeemable through a claim
 		(, , , uint256 ethFinalized, ) = userWithdrawalManager.userWithdrawRequests(_requestId);
 
+		address receiver = receiverOf[_requestId];
+		require(receiver != address(0), 'Not a request of this contract');
+		delete receiverOf[_requestId];
+
 		//calls stader userWithdrawManager contract to claim and receives ETH
 		IUserWithdrawalManager(staderConfig.getUserWithdrawManager()).claim(_requestId);
 
-		emit  RequestRedeemed(msg.sender, ethFinalized);
+		// forward the claimed ETH, so it never stays in this contract
+		(bool sent, ) = payable(receiver).call{value: ethFinalized}('');
+		require(sent, 'ETH transfer failed');
+
+		emit  RequestRedeemed(receiver, ethFinalized);
 	}
 
 }
